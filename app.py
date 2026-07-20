@@ -2,9 +2,33 @@ import streamlit as st
 import pandas as pd
 import duckdb
 import re
+import os
 from pygwalker.api.streamlit import StreamlitRenderer
 
-# 1. CONFIGURATION & FULL-SCREEN UI POLISHING
+# --- 1. CONFIGURATION & FILE WATCHER FIX ---
+# Menghindari silent rerun saat gw_config.json ditulis (Penyebab utama drag-and-drop hang)
+def ensure_streamlit_config():
+    config_dir = ".streamlit"
+    config_file = os.path.join(config_dir, "config.toml")
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+        
+    config_content = """[server]
+fileWatcherType = "none"
+"""
+    if not os.path.exists(config_file):
+        with open(config_file, "w") as f:
+            f.write(config_content)
+    else:
+        with open(config_file, "r") as f:
+            content = f.read()
+        if 'fileWatcherType = "none"' not in content:
+            with open(config_file, "a") as f:
+                f.write("\nfileWatcherType = \"none\"\n")
+
+# Jalankan perbaikan konfigurasi sebelum streamlit memuat halaman
+ensure_streamlit_config()
+
 st.set_page_config(
     page_title="SAPA YANFASKES",
     layout="wide",
@@ -14,7 +38,6 @@ st.set_page_config(
 # Suntikan CSS untuk membuang margin bawaan Streamlit agar workspace melebar penuh setara Tableau
 st.markdown("""
 <style>
-    /* Menghilangkan padding atas dan samping dari container utama */
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
@@ -22,7 +45,6 @@ st.markdown("""
         padding-right: 1.5rem !important;
         max-width: 100% !important;
     }
-    /* Memaksa elemen visualisasi PyGWalker menggunakan tinggi optimal */
     iframe {
         height: 850px !important;
         border-radius: 8px;
@@ -40,7 +62,7 @@ header {visibility: hidden;}
 """
 st.markdown(hide_style, unsafe_allow_html=True)
 
-# 2. DATA ENGINE (DuckDB & Custom Join Layer)
+# --- 2. DATA ENGINE (DuckDB & Custom Join Layer) ---
 @st.cache_data(show_spinner="Mengunduh lembar kerja dari Google Sheets...")
 def load_raw_sheets(spreadsheet_id):
     try:
@@ -97,7 +119,18 @@ def load_single_data(source):
         st.sidebar.error(f"Gagal membaca file: {e}")
         return None
 
-# 3. UI SIDEBAR
+# --- 3. CACHED RENDERER RESOURCE (Mencegah Drag-and-Drop Hang/Freeze) ---
+# Memanfaatkan st.cache_resource untuk menstabilkan objek PyGWalker di memori server
+@st.cache_resource
+def get_pyg_renderer(df, cache_key: str) -> StreamlitRenderer:
+    return StreamlitRenderer(
+        df, 
+        spec_path="gw_config.json", 
+        spec_io_mode="rw",
+        appearance="dark"
+    )
+
+# --- 4. UI SIDEBAR ---
 st.sidebar.markdown("# SAPA YANFASKES")
 st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
 st.sidebar.write("---")
@@ -108,6 +141,7 @@ input_method = st.sidebar.radio(
 )
 
 df_active = None
+active_cache_key = ""
 
 if input_method == "Gabung Otomatis (2 Sheets)":
     sheet_url = st.sidebar.text_input(
@@ -151,6 +185,8 @@ if input_method == "Gabung Otomatis (2 Sheets)":
                 )
                 
                 df_active = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
+                # Definisikan cache_key unik untuk penggabungan faskes
+                active_cache_key = f"g_sheets_{ss_id}_{key_antrol}_{key_faskes}"
         else:
             st.sidebar.warning("Format URL Google Sheets tidak dikenali.")
 else:
@@ -160,18 +196,15 @@ else:
     )
     if uploaded_file is not None:
         df_active = load_single_data(uploaded_file)
+        # Definisikan cache_key unik untuk file lokal
+        active_cache_key = f"local_{uploaded_file.name}_{df_active.shape[0]}"
 
-# 4. VISUALIZATION CORE (Tableau Layer via PyGWalker)
+# --- 5. VISUALIZATION CORE (Tableau Layer) ---
 if df_active is not None:
     st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris)")
     
-    # Render Tableau drag-and-drop workspace dengan tinggi dan lebar penuh
-    renderer = StreamlitRenderer(
-        df_active, 
-        spec_path="gw_config.json", 
-        spec_io_mode="rw",
-        appearance="dark"
-    )
+    # Memanggil renderer yang ter-cache dengan cache_key unik
+    renderer = get_pyg_renderer(df_active, active_cache_key)
     renderer.explorer()
 else:
     st.info("💡 Selamat datang di SAPA YANFASKES. Silakan muat data Anda untuk memulai analisis.")
