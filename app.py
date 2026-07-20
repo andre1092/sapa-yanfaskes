@@ -67,15 +67,14 @@ def clean_dataframe_dtypes(df):
             if sample.empty:
                 continue
             
-            # 1. Deteksi Persentase (misal: "85%" atau "85,2%")
+            # 1. Deteksi Persentase (misal: "85%")
             if sample.str.contains('%').any():
                 temp = df[col].astype(str).str.replace('%', '', regex=False).str.replace(',', '.', regex=False).str.strip()
-                # Konversi otomatis menjadi nilai desimal standar BI (misal 85% -> 0.85)
                 converted = pd.to_numeric(temp, errors='coerce') / 100.0
                 df[col] = converted
                 continue
             
-            # 2. Deteksi Angka Format Desimal Indonesia (misal: "0,85" atau "2.500,50")
+            # 2. Deteksi Angka Format Desimal Indonesia (misal: "0,85")
             temp_numeric = df[col].astype(str).str.strip()
             if temp_numeric.str.contains(r'\d+,\d+').any():
                 temp_numeric = temp_numeric.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
@@ -84,7 +83,6 @@ def clean_dataframe_dtypes(df):
                 
             converted = pd.to_numeric(temp_numeric, errors='coerce')
             
-            # Evaluasi kelayakan: pastikan bukan kolom kode seperti faskes "0189R013" (lebih dari 50% data harus numerik)
             original_non_na = df[col].notna().sum()
             converted_non_na = converted.notna().sum()
             
@@ -122,7 +120,6 @@ def merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes):
         if key_faskes != key_antrol and key_faskes in merged_df.columns:
             merged_df = merged_df.drop(columns=[key_faskes])
             
-        # PEMBERSIHAN DATA SEBELUM DI-QUERY DUCKDB
         merged_df = clean_dataframe_dtypes(merged_df)
             
         con = duckdb.connect(database=':memory:')
@@ -144,7 +141,6 @@ def load_single_data(source):
         else:
             return None
             
-        # PEMBERSIHAN DATA
         df = clean_dataframe_dtypes(df)
         
         con = duckdb.connect(database=':memory:')
@@ -176,8 +172,8 @@ input_method = st.sidebar.radio(
     ["Gabung Otomatis (2 Sheets)", "Unggah File Lokal Tunggal"]
 )
 
-df_active = None
-active_cache_key = ""
+df_raw = None
+base_cache_key = ""
 
 if input_method == "Gabung Otomatis (2 Sheets)":
     sheet_url = st.sidebar.text_input(
@@ -220,8 +216,8 @@ if input_method == "Gabung Otomatis (2 Sheets)":
                     index=default_faskes_idx
                 )
                 
-                df_active = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
-                active_cache_key = f"g_sheets_{ss_id}_{key_antrol}_{key_faskes}"
+                df_raw = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
+                base_cache_key = f"g_sheets_{ss_id}_{key_antrol}_{key_faskes}"
         else:
             st.sidebar.warning("Format URL Google Sheets tidak dikenali.")
 else:
@@ -230,10 +226,59 @@ else:
         type=["csv", "xlsx", "xls"]
     )
     if uploaded_file is not None:
-        df_active = load_single_data(uploaded_file)
-        active_cache_key = f"local_{uploaded_file.name}_{df_active.shape[0]}"
+        df_raw = load_single_data(uploaded_file)
+        base_cache_key = f"local_{uploaded_file.name}_{df_raw.shape[0]}"
 
-# --- 6. VISUALIZATION CORE ---
+# --- 6. TABLEAU-STYLE DYNAMIC QUICK FILTERS (SHOW FILTER) ---
+df_active = None
+active_cache_key = ""
+
+if df_raw is not None:
+    # 1. Deteksi otomatis kolom kategori yang ideal untuk filter cepat
+    potential_filters = ['Kabupaten', 'Kepemilikan', 'Cabang', 'Kelas_RS', 'Sourcedata']
+    active_filters = [col for col in potential_filters if col in df_raw.columns]
+    
+    # Fallback jika kolom di atas tidak ada, ambil kolom kategorik berukuran sedang
+    if not active_filters:
+        for col in df_raw.columns:
+            if df_raw[col].dtype == 'object' and 1 < df_raw[col].nunique() < 40:
+                active_filters.append(col)
+                if len(active_filters) >= 3:
+                    break
+                    
+    # 2. Buat container "Show Filter" di sidebar
+    st.sidebar.markdown("### 🎯 Show Filter (Quick Filters)")
+    
+    filtered_df = df_raw.copy()
+    filter_states = {}
+    
+    # Render elemen multiselect interaktif untuk setiap kolom filter
+    for col in active_filters:
+        unique_vals = sorted(df_raw[col].dropna().unique().tolist())
+        selected = st.sidebar.multiselect(
+            f"Filter {col}:",
+            options=unique_vals,
+            default=[],
+            key=f"quick_filter_{col}"
+        )
+        if selected:
+            filtered_df = filtered_df[filtered_df[col].isin(selected)]
+            filter_states[col] = selected
+            
+    df_active = filtered_df
+    
+    # 3. Bangun cache key yang dinamis berdasarkan status pilihan filter
+    filter_suffix = "_".join([f"{k}:{v}" for k, v in filter_states.items()]) if filter_states else "unfiltered"
+    active_cache_key = f"{base_cache_key}_{filter_suffix}"
+    
+    # Tampilkan pengingat penting bagi pengembang dashboard (UX Best Practice)
+    st.sidebar.write("---")
+    st.sidebar.warning(
+        "⚠️ **Pengingat Tableau:** Klik ikon disket (**Save**) di dalam workspace di sebelah kanan "
+        "terlebih dahulu untuk menyimpan tata letak bagan Anda sebelum mengubah filter cepat di sebelah kiri."
+    )
+
+# --- 7. VISUALIZATION CORE ---
 if df_active is not None:
     st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris)")
     
@@ -244,9 +289,5 @@ else:
     st.markdown("""
     ### Panduan Eksplorasi Visual:
     1. **Muat Data Anda** menggunakan menu penggabungan di panel kiri.
-    2. **Tipe Visualisasi Lengkap**: Setelah data muncul, ganti menu **`Mark Type`** di workspace dari *Auto/Bar* menjadi:
-       - **`Table` / `Pivot Table`** untuk membuat tabel silang (*cross-tab*).
-       - **`Arc`** untuk membuat Diagram Lingkaran (*Pie Chart*) atau Donut Chart.
-       - **`Area`**, **`Scatter`**, atau **`Treemap`** untuk analisis tren dan distribusi.
-    3. **Multi-Sheet**: Klik tombol **`+`** di bagian atas workspace untuk menambah lembar kerja analisis baru tanpa menumpuk pekerjaan Anda sebelumnya.
+    2. **Eksplorasi dengan Show Filter**: Gunakan kotak pilihan filter dinamis pada panel kiri untuk mempersempit ruang lingkup analisis data Anda secara instan.
     """)
