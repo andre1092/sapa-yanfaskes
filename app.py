@@ -59,7 +59,41 @@ header {visibility: hidden;}
 """
 st.markdown(hide_style, unsafe_allow_html=True)
 
-# --- 2. DATA ENGINE (DuckDB & Custom Join Layer) ---
+# --- 2. SELF-HEALING DATA CLEANING LAYER ---
+def clean_dataframe_dtypes(df):
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            sample = df[col].dropna().astype(str).str.strip()
+            if sample.empty:
+                continue
+            
+            # 1. Deteksi Persentase (misal: "85%" atau "85,2%")
+            if sample.str.contains('%').any():
+                temp = df[col].astype(str).str.replace('%', '', regex=False).str.replace(',', '.', regex=False).str.strip()
+                # Konversi otomatis menjadi nilai desimal standar BI (misal 85% -> 0.85)
+                converted = pd.to_numeric(temp, errors='coerce') / 100.0
+                df[col] = converted
+                continue
+            
+            # 2. Deteksi Angka Format Desimal Indonesia (misal: "0,85" atau "2.500,50")
+            temp_numeric = df[col].astype(str).str.strip()
+            if temp_numeric.str.contains(r'\d+,\d+').any():
+                temp_numeric = temp_numeric.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            else:
+                temp_numeric = temp_numeric.str.replace(',', '.', regex=False)
+                
+            converted = pd.to_numeric(temp_numeric, errors='coerce')
+            
+            # Evaluasi kelayakan: pastikan bukan kolom kode seperti faskes "0189R013" (lebih dari 50% data harus numerik)
+            original_non_na = df[col].notna().sum()
+            converted_non_na = converted.notna().sum()
+            
+            if original_non_na > 0 and (converted_non_na / original_non_na) >= 0.5:
+                df[col] = converted
+                
+    return df
+
+# --- 3. DATA ENGINE (DuckDB & Custom Join Layer) ---
 @st.cache_data(show_spinner="Mengunduh lembar kerja dari Google Sheets...")
 def load_raw_sheets(spreadsheet_id):
     try:
@@ -88,6 +122,9 @@ def merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes):
         if key_faskes != key_antrol and key_faskes in merged_df.columns:
             merged_df = merged_df.drop(columns=[key_faskes])
             
+        # PEMBERSIHAN DATA SEBELUM DI-QUERY DUCKDB
+        merged_df = clean_dataframe_dtypes(merged_df)
+            
         con = duckdb.connect(database=':memory:')
         con.register('merged_table', merged_df)
         optimized_df = con.execute("SELECT * FROM merged_table").fetchdf()
@@ -106,6 +143,9 @@ def load_single_data(source):
             df = pd.read_excel(source)
         else:
             return None
+            
+        # PEMBERSIHAN DATA
+        df = clean_dataframe_dtypes(df)
         
         con = duckdb.connect(database=':memory:')
         con.register('single_table', df)
@@ -116,9 +156,7 @@ def load_single_data(source):
         st.sidebar.error(f"Gagal membaca file: {e}")
         return None
 
-# --- 3. OPTIMIZED CACHED RENDERER RESOURCE ---
-# Menggunakan awalan nama argumen '_df' (leading underscore) agar Streamlit 
-# mengabaikan proses komputasi hashing tabel data demi performa tanpa lag.
+# --- 4. OPTIMIZED CACHED RENDERER RESOURCE ---
 @st.cache_resource
 def get_pyg_renderer(_df, cache_key: str) -> StreamlitRenderer:
     return StreamlitRenderer(
@@ -128,7 +166,7 @@ def get_pyg_renderer(_df, cache_key: str) -> StreamlitRenderer:
         appearance="dark"
     )
 
-# --- 4. UI SIDEBAR ---
+# --- 5. UI SIDEBAR ---
 st.sidebar.markdown("# SAPA YANFASKES")
 st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
 st.sidebar.write("---")
@@ -195,11 +233,10 @@ else:
         df_active = load_single_data(uploaded_file)
         active_cache_key = f"local_{uploaded_file.name}_{df_active.shape[0]}"
 
-# --- 5. VISUALIZATION CORE ---
+# --- 6. VISUALIZATION CORE ---
 if df_active is not None:
     st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris)")
     
-    # Memanggil renderer teroptimasi
     renderer = get_pyg_renderer(df_active, active_cache_key)
     renderer.explorer()
 else:
