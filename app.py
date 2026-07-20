@@ -84,8 +84,9 @@ def clean_dataframe_dtypes(df):
                 
             converted = pd.to_numeric(temp_numeric, errors='coerce')
             
-            original_non_na = df[col].notna().sum()
-            converted_non_na = converted.notna().sum()
+            # Evaluasi tipe secara aman menggunakan fungsi tingkat tinggi pd.notna
+            original_non_na = int(pd.notna(df[col]).sum())
+            converted_non_na = int(pd.notna(converted).sum())
             
             if original_non_na > 0 and (converted_non_na / original_non_na) >= 0.5:
                 df[col] = converted
@@ -168,7 +169,6 @@ st.sidebar.markdown("# SAPA YANFASKES")
 st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
 st.sidebar.write("---")
 
-# Selektor Mode Tableau setara Server vs Desktop
 app_mode = st.sidebar.radio(
     "Pilih Mode Aplikasi:",
     ["📊 Published Dashboard", "🛠️ Developer (Edit/Design)"]
@@ -229,12 +229,13 @@ else:
         type=["csv", "xlsx", "xls"]
     )
     if uploaded_file is not None:
-        df_raw = load_single_data(uploaded_file)
-        base_cache_key = f"local_{uploaded_file.name}_{df_raw.shape[0]}"
+        df_single = load_single_data(uploaded_file)
+        if df_single is not None:
+            df_raw = df_single
+            base_cache_key = f"local_{uploaded_file.name}_{df_raw.shape[0]}"
 
 # --- 6. RENDER KANVAS DASHBOARD ---
 if df_raw is not None:
-    # DEFINISIKAN KOLOM FILTER YANG SESUAI DENGAN TABLEAU USER
     potential_filters = ['Kabupaten', 'Kepemilikan', 'Cabang', 'Kelas_RS', 'Sumber', 'Sourcedata']
     active_filters = [col for col in potential_filters if col in df_raw.columns]
     
@@ -245,28 +246,22 @@ if df_raw is not None:
                 if len(active_filters) >= 3:
                     break
 
-    # SELEKSI MODE TAMPILAN
     if app_mode == "📊 Published Dashboard":
-        # Tampilkan Header Utama Dashboard di bagian atas halaman
         st.markdown("<h1 style='text-align: center; color: white;'>Pemanfaatan Sistem Antrean Online FKRTL</h1>", unsafe_allow_html=True)
         st.write("---")
         
-        # Buat Layout Multi-Kolom di halaman utama (Kolom 1 untuk Filter & KPI, Kolom 2 untuk Chart)
         dashboard_col1, dashboard_col2 = st.columns([1, 4])
         
         with dashboard_col1:
-            # 1. Tampilkan Penanda Last Update
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             st.markdown(f"<span style='color: #E25858; font-style: italic; font-size: 13px;'>Last Update: {current_time}</span>", unsafe_allow_html=True)
             st.write("")
             
-            # 2. Pembuatan Filter Interaktif (Show Filter) di Badan Dashboard
             filtered_df = df_raw.copy()
             filter_states = {}
             
             for col in active_filters:
                 unique_vals = sorted(df_raw[col].dropna().unique().tolist())
-                # Menghasilkan drop-down pilihan tunggal / jamak setara Tableau
                 selected = st.multiselect(
                     f"{col}",
                     options=unique_vals,
@@ -277,11 +272,9 @@ if df_raw is not None:
                     filtered_df = filtered_df[filtered_df[col].isin(selected)]
                     filter_states[col] = selected
             
-            # 3. Kalkulasi Otomatis Kartu KPI Berbasis Filter Aktif
             st.write("---")
             if 'Capaian' in filtered_df.columns:
-                # Ambil nilai rata-rata dari kolom Capaian (desimal 0-1) dan kalikan 100
-                avg_capaian = filtered_df['Capaian'].mean() * 100
+                avg_capaian = float(filtered_df['Capaian'].mean() * 100)
                 if pd.isna(avg_capaian):
                     kpi_display = "0.00%"
                 else:
@@ -289,7 +282,6 @@ if df_raw is not None:
             else:
                 kpi_display = "N/A"
                 
-            # Render Kartu KPI Biru Tableau-Style
             st.markdown(f"""
             <div style="background-color: #4B79A1; padding: 20px; border-radius: 4px; text-align: center; color: white; border: 1px solid #555; box-shadow: 2px 2px 10px rgba(0,0,0,0.5);">
                 <div style="font-size: 18px; font-weight: bold;">Pemanfaatan</div>
@@ -299,15 +291,13 @@ if df_raw is not None:
             """, unsafe_allow_html=True)
 
         with dashboard_col2:
-            # Render visualisasi murni (View Mode/Viewer) tanpa bar-edit pengembang
             filter_suffix = "_".join([f"{k}:{v}" for k, v in filter_states.items()]) if filter_states else "unfiltered"
             active_cache_key = f"{base_cache_key}_dashboard_{filter_suffix}"
             
             renderer = get_pyg_renderer(filtered_df, active_cache_key)
-            renderer.viewer() # viewer() hanya memuat chart bersih
+            renderer.viewer()
             
     else:
-        # MODE DEVELOPER (Untuk Menggambar / Mendesain Grafik)
         st.sidebar.warning(
             "💡 **Mode Developer Aktif:** Silakan buat lembar kerja (Sheet) baru, drag-and-drop kolom, "
             "dan pastikan untuk mengklik ikon **Simpan (Disket)** sebelum beralih ke Mode Published Dashboard."
@@ -315,7 +305,7 @@ if df_raw is not None:
         
         active_cache_key = f"{base_cache_key}_developer_mode"
         renderer = get_pyg_renderer(df_raw, active_cache_key)
-        renderer.explorer() # explorer() memuat antarmuka drag-and-drop penuh
+        renderer.explorer()
 
 else:
     st.info("💡 Selamat datang di SAPA YANFASKES. Silakan muat data Anda untuk memulai analisis.")
