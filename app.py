@@ -251,7 +251,6 @@ else:
 
 # --- 6. RENDER KANVAS DASHBOARD ---
 if df_raw is not None:
-    # Definisikan filter kategori standar non-tanggal
     potential_filters = ['Kabupaten', 'Kepemilikan', 'Cabang', 'Kelas_RS', 'Sumber', 'Sourcedata']
     active_filters = [col for col in potential_filters if col in df_raw.columns]
     
@@ -276,13 +275,12 @@ if df_raw is not None:
             filtered_df = df_raw.copy()
             filter_states = {}
             
-            # A. TABLEAU-STYLE DATE FILTER BUILDER (Mendeteksi Kolom Tanggal)
+            # A. TABLEAU-STYLE DATE FILTER BUILDER (Tanpa menggunakan aksesor .dt agar bebas eror Pyrefly)
             datetime_cols = df_raw.select_dtypes(include=['datetime64[ns]']).columns.tolist()
             if datetime_cols:
-                date_col = datetime_cols[0] # Mengambil kolom tanggal utama, misal: Timestamp
+                date_col = datetime_cols[0]
                 
                 st.markdown(f"#### 📅 Date Filter Configuration")
-                # Dropdown dialog persis Tableau (Menit 00:05 pada video)
                 date_filter_type = st.selectbox(
                     f"How do you want to filter on '{date_col}'?",
                     ["Month / Year", "Range of Dates", "Years", "Individual Dates"],
@@ -290,10 +288,13 @@ if df_raw is not None:
                 )
                 
                 if date_filter_type == "Month / Year":
-                    # Kelompokkan unik Bulan/Tahun secara kronologis (Menit 00:10 pada video)
-                    unique_periods = df_raw[date_col].dt.to_period('M').dropna().unique()
-                    unique_periods = sorted(unique_periods)
-                    options = [p.strftime('%b %Y') for p in unique_periods]
+                    # Ekstraksi urutan kronologis yang aman secara tipe data statis
+                    sorted_unique_dates = sorted(df_raw[date_col].dropna().unique())
+                    options = []
+                    for d in sorted_unique_dates:
+                        fmt_val = pd.Timestamp(d).strftime('%b %Y')
+                        if fmt_val not in options:
+                            options.append(fmt_val)
                     
                     selected_my = st.multiselect(
                         f"Month, Year of {date_col}",
@@ -302,12 +303,20 @@ if df_raw is not None:
                         key=f"selected_my_{date_col}"
                     )
                     if selected_my:
-                        filtered_df = filtered_df[filtered_df[date_col].dt.strftime('%b %Y').isin(selected_my)]
+                        # Filter baris demi baris menggunakan Timestamp conversion murni
+                        is_my_matched = [
+                            pd.Timestamp(x).strftime('%b %Y') in selected_my if pd.notna(x) else False 
+                            for x in filtered_df[date_col]
+                        ]
+                        filtered_df = filtered_df[is_my_matched]
                         filter_states[f"{date_col}_MY"] = selected_my
                         
                 elif date_filter_type == "Range of Dates":
-                    min_date = df_raw[date_col].min().date()
-                    max_date = df_raw[date_col].max().date()
+                    # Konversi ke pd.Timestamp secara eksplisit agar dikenali linter
+                    min_ts = pd.Timestamp(df_raw[date_col].dropna().min())
+                    max_ts = pd.Timestamp(df_raw[date_col].dropna().max())
+                    min_date = min_ts.date()
+                    max_date = max_ts.date()
                     
                     selected_range = st.slider(
                         f"Range of Dates",
@@ -317,14 +326,19 @@ if df_raw is not None:
                         format="YYYY-MM-DD",
                         key=f"selected_range_{date_col}"
                     )
-                    filtered_df = filtered_df[
-                        (filtered_df[date_col].dt.date >= selected_range[0]) & 
-                        (filtered_df[date_col].dt.date <= selected_range[1])
+                    # Filter rentang tanggal secara aman menggunakan list comprehension murni
+                    in_range = [
+                        selected_range[0] <= pd.Timestamp(x).date() <= selected_range[1] if pd.notna(x) else False 
+                        for x in filtered_df[date_col]
                     ]
+                    filtered_df = filtered_df[in_range]
                     filter_states[f"{date_col}_range"] = [selected_range[0].strftime("%Y-%m-%d"), selected_range[1].strftime("%Y-%m-%d")]
                     
                 elif date_filter_type == "Years":
-                    options = sorted(df_raw[date_col].dt.year.dropna().unique().tolist())
+                    # Ekstraksi tahun secara aman tanpa menggunakan .dt.year
+                    years_set = {pd.Timestamp(x).year for x in df_raw[date_col] if pd.notna(x)}
+                    options = sorted(list(years_set))
+                    
                     selected_years = st.multiselect(
                         f"Years of {date_col}",
                         options=options,
@@ -332,19 +346,32 @@ if df_raw is not None:
                         key=f"selected_years_{date_col}"
                     )
                     if selected_years:
-                        filtered_df = filtered_df[filtered_df[date_col].dt.year.isin(selected_years)]
+                        # Saring tahun secara aman
+                        is_year_matched = [
+                            pd.Timestamp(x).year in selected_years if pd.notna(x) else False 
+                            for x in filtered_df[date_col]
+                        ]
+                        filtered_df = filtered_df[is_year_matched]
                         filter_states[f"{date_col}_years"] = selected_years
                         
                 elif date_filter_type == "Individual Dates":
-                    options = sorted(df_raw[date_col].dt.date.dropna().unique().tolist())
+                    # Ekstraksi tanggal spesifik murni
+                    dates_set = {pd.Timestamp(x).strftime("%Y-%m-%d") for x in df_raw[date_col] if pd.notna(x)}
+                    options = sorted(list(dates_set))
+                    
                     selected_dates = st.multiselect(
                         f"Individual Dates of {date_col}",
-                        options=[d.strftime("%Y-%m-%d") for d in options],
+                        options=options,
                         default=[],
                         key=f"selected_dates_{date_col}"
                     )
                     if selected_dates:
-                        filtered_df = filtered_df[filtered_df[date_col].dt.strftime("%Y-%m-%d").isin(selected_dates)]
+                        # Saring tanggal murni secara eksplisit
+                        is_date_matched = [
+                            pd.Timestamp(x).strftime("%Y-%m-%d") in selected_dates if pd.notna(x) else False 
+                            for x in filtered_df[date_col]
+                        ]
+                        filtered_df = filtered_df[is_date_matched]
                         filter_states[f"{date_col}_dates"] = selected_dates
             
             st.write("---")
@@ -391,7 +418,7 @@ if df_raw is not None:
             
     else:
         st.sidebar.warning(
-            "💡 **Mode Developer Aktif:** Silakan buat lembar kerja (Sheet) baru, drag-and-drop kolom, "
+            "💡 **Mode Developer Hack:** Silakan buat lembar kerja (Sheet) baru, drag-and-drop kolom, "
             "dan pastikan untuk mengklik ikon **Simpan (Disket)** sebelum beralih ke Mode Published Dashboard."
         )
         
