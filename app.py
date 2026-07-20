@@ -4,14 +4,33 @@ import duckdb
 import re
 from pygwalker.api.streamlit import StreamlitRenderer
 
-# 1. CONFIGURATION
+# 1. CONFIGURATION & FULL-SCREEN UI POLISHING
 st.set_page_config(
     page_title="SAPA YANFASKES",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Sembunyikan default Streamlit menu & footer untuk tampilan professional
+# Suntikan CSS untuk membuang margin bawaan Streamlit agar workspace melebar penuh setara Tableau
+st.markdown("""
+<style>
+    /* Menghilangkan padding atas dan samping dari container utama */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        max-width: 100% !important;
+    }
+    /* Memaksa elemen visualisasi PyGWalker menggunakan tinggi optimal */
+    iframe {
+        height: 850px !important;
+        border-radius: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Sembunyikan default Streamlit menu & footer
 hide_style = """
 <style>
 #MainMenu {visibility: hidden;}
@@ -25,7 +44,6 @@ st.markdown(hide_style, unsafe_allow_html=True)
 @st.cache_data(show_spinner="Mengunduh lembar kerja dari Google Sheets...")
 def load_raw_sheets(spreadsheet_id):
     try:
-        # Mengunduh kedua sheet secara independen
         url_faskes = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tqx=out:csv&sheet=DB_FASKES"
         url_antrol = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tqx=out:csv&sheet=DB_LAP_ANTROL_FKRTL"
         
@@ -39,7 +57,6 @@ def load_raw_sheets(spreadsheet_id):
 @st.cache_data(show_spinner="Menggabungkan data dengan DuckDB...")
 def merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes):
     try:
-        # Lakukan LEFT JOIN berdasarkan kunci pilihan user
         merged_df = pd.merge(
             df_antrol, 
             df_faskes, 
@@ -49,11 +66,9 @@ def merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes):
             suffixes=("", "_master")
         )
         
-        # Hapus kolom duplikat jika nama kolom kunci tidak sama persis secara literal
         if key_faskes != key_antrol and key_faskes in merged_df.columns:
             merged_df = merged_df.drop(columns=[key_faskes])
             
-        # Optimasi performa query tabel gabungan via DuckDB
         con = duckdb.connect(database=':memory:')
         con.register('merged_table', merged_df)
         optimized_df = con.execute("SELECT * FROM merged_table").fetchdf()
@@ -103,13 +118,11 @@ if input_method == "Gabung Otomatis (2 Sheets)":
         match = re.search(r"/d/([a-zA-Z0-9-_]+)", sheet_url)
         if match:
             ss_id = match.group(1)
-            # Muat lembar kerja mentah terlebih dahulu
             df_faskes, df_antrol = load_raw_sheets(ss_id)
             
             if df_faskes is not None and df_antrol is not None:
                 st.sidebar.markdown("### 🛠️ Pengaturan Hubungan Tabel")
                 
-                # Coba tebak index kolom default untuk kenyamanan user
                 antrol_cols = list(df_antrol.columns)
                 faskes_cols = list(df_faskes.columns)
                 
@@ -125,7 +138,6 @@ if input_method == "Gabung Otomatis (2 Sheets)":
                         default_faskes_idx = i
                         break
 
-                # Tampilkan Dropdown untuk memilih kolom kunci
                 key_antrol = st.sidebar.selectbox(
                     "Kunci Hubung DB_LAP_ANTROL_FKRTL (Fakta):",
                     options=antrol_cols,
@@ -138,7 +150,6 @@ if input_method == "Gabung Otomatis (2 Sheets)":
                     index=default_faskes_idx
                 )
                 
-                # Eksekusi penggabungan berdasarkan pilihan user
                 df_active = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
         else:
             st.sidebar.warning("Format URL Google Sheets tidak dikenali.")
@@ -152,8 +163,9 @@ else:
 
 # 4. VISUALIZATION CORE (Tableau Layer via PyGWalker)
 if df_active is not None:
-    st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris, {df_active.shape[1]} kolom)")
+    st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris)")
     
+    # Render Tableau drag-and-drop workspace dengan tinggi dan lebar penuh
     renderer = StreamlitRenderer(
         df_active, 
         spec_path="gw_config.json", 
@@ -164,11 +176,11 @@ if df_active is not None:
 else:
     st.info("💡 Selamat datang di SAPA YANFASKES. Silakan muat data Anda untuk memulai analisis.")
     st.markdown("""
-    ### Panduan Penggabungan Manual 2 Sheets:
-    1. **Masukkan Tautan**: Tempelkan URL Google Sheets Anda di panel kiri.
-    2. **Tentukan Hubungan Tabel**: Sistem akan memuat nama kolom dari kedua lembar kerja.
-    3. **Pilih Kunci Hubung**: 
-       - Pilih kolom kunci dari **Tabel Laporan (Fakta)** (misal: `Kdppk`).
-       - Pilih kolom kunci yang berpasangan dari **Tabel Master** (misal: `Kode Faskes` atau `KODEPPK`).
-    4. **Analisis Data**: Setelah kolom dipilih, sistem akan menggabungkan data Anda secara instan dan memuat workspace analisis visual.
+    ### Panduan Eksplorasi Visual:
+    1. **Muat Data Anda** menggunakan menu penggabungan di panel kiri.
+    2. **Tipe Visualisasi Lengkap**: Setelah data muncul, ganti menu **`Mark Type`** di workspace dari *Auto/Bar* menjadi:
+       - **`Table` / `Pivot Table`** untuk membuat tabel silang (*cross-tab*).
+       - **`Arc`** untuk membuat Diagram Lingkaran (*Pie Chart*) atau Donut Chart.
+       - **`Area`**, **`Scatter`**, atau **`Treemap`** untuk analisis tren dan distribusi.
+    3. **Multi-Sheet**: Klik tombol **`+`** di bagian atas workspace untuk menambah lembar kerja analisis baru tanpa menumpuk pekerjaan Anda sebelumnya.
     """)
