@@ -251,6 +251,7 @@ else:
 
 # --- 6. RENDER KANVAS DASHBOARD ---
 if df_raw is not None:
+    # Definisikan filter kategori standar non-tanggal
     potential_filters = ['Kabupaten', 'Kepemilikan', 'Cabang', 'Kelas_RS', 'Sumber', 'Sourcedata']
     active_filters = [col for col in potential_filters if col in df_raw.columns]
     
@@ -275,6 +276,80 @@ if df_raw is not None:
             filtered_df = df_raw.copy()
             filter_states = {}
             
+            # A. TABLEAU-STYLE DATE FILTER BUILDER (Mendeteksi Kolom Tanggal)
+            datetime_cols = df_raw.select_dtypes(include=['datetime64[ns]']).columns.tolist()
+            if datetime_cols:
+                date_col = datetime_cols[0] # Mengambil kolom tanggal utama, misal: Timestamp
+                
+                st.markdown(f"#### 📅 Date Filter Configuration")
+                # Dropdown dialog persis Tableau (Menit 00:05 pada video)
+                date_filter_type = st.selectbox(
+                    f"How do you want to filter on '{date_col}'?",
+                    ["Month / Year", "Range of Dates", "Years", "Individual Dates"],
+                    key=f"date_filter_type_{date_col}"
+                )
+                
+                if date_filter_type == "Month / Year":
+                    # Kelompokkan unik Bulan/Tahun secara kronologis (Menit 00:10 pada video)
+                    unique_periods = df_raw[date_col].dt.to_period('M').dropna().unique()
+                    unique_periods = sorted(unique_periods)
+                    options = [p.strftime('%b %Y') for p in unique_periods]
+                    
+                    selected_my = st.multiselect(
+                        f"Month, Year of {date_col}",
+                        options=options,
+                        default=[],
+                        key=f"selected_my_{date_col}"
+                    )
+                    if selected_my:
+                        filtered_df = filtered_df[filtered_df[date_col].dt.strftime('%b %Y').isin(selected_my)]
+                        filter_states[f"{date_col}_MY"] = selected_my
+                        
+                elif date_filter_type == "Range of Dates":
+                    min_date = df_raw[date_col].min().date()
+                    max_date = df_raw[date_col].max().date()
+                    
+                    selected_range = st.slider(
+                        f"Range of Dates",
+                        min_value=min_date,
+                        max_value=max_date,
+                        value=(min_date, max_date),
+                        format="YYYY-MM-DD",
+                        key=f"selected_range_{date_col}"
+                    )
+                    filtered_df = filtered_df[
+                        (filtered_df[date_col].dt.date >= selected_range[0]) & 
+                        (filtered_df[date_col].dt.date <= selected_range[1])
+                    ]
+                    filter_states[f"{date_col}_range"] = [selected_range[0].strftime("%Y-%m-%d"), selected_range[1].strftime("%Y-%m-%d")]
+                    
+                elif date_filter_type == "Years":
+                    options = sorted(df_raw[date_col].dt.year.dropna().unique().tolist())
+                    selected_years = st.multiselect(
+                        f"Years of {date_col}",
+                        options=options,
+                        default=[],
+                        key=f"selected_years_{date_col}"
+                    )
+                    if selected_years:
+                        filtered_df = filtered_df[filtered_df[date_col].dt.year.isin(selected_years)]
+                        filter_states[f"{date_col}_years"] = selected_years
+                        
+                elif date_filter_type == "Individual Dates":
+                    options = sorted(df_raw[date_col].dt.date.dropna().unique().tolist())
+                    selected_dates = st.multiselect(
+                        f"Individual Dates of {date_col}",
+                        options=[d.strftime("%Y-%m-%d") for d in options],
+                        default=[],
+                        key=f"selected_dates_{date_col}"
+                    )
+                    if selected_dates:
+                        filtered_df = filtered_df[filtered_df[date_col].dt.strftime("%Y-%m-%d").isin(selected_dates)]
+                        filter_states[f"{date_col}_dates"] = selected_dates
+            
+            st.write("---")
+            
+            # B. STANDARD CATEGORICAL FILTERS (Kategori non-tanggal)
             for col in active_filters:
                 unique_vals = sorted(df_raw[col].dropna().unique().tolist())
                 selected = st.multiselect(
@@ -288,6 +363,8 @@ if df_raw is not None:
                     filter_states[col] = selected
             
             st.write("---")
+            
+            # C. DYNAMIC KPI CARD
             if 'Capaian' in filtered_df.columns:
                 avg_capaian = float(filtered_df['Capaian'].mean() * 100)
                 if pd.isna(avg_capaian):
