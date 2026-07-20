@@ -6,7 +6,6 @@ import os
 from pygwalker.api.streamlit import StreamlitRenderer
 
 # --- 1. CONFIGURATION & FILE WATCHER FIX ---
-# Menghindari silent rerun saat gw_config.json ditulis (Penyebab utama drag-and-drop hang)
 def ensure_streamlit_config():
     config_dir = ".streamlit"
     config_file = os.path.join(config_dir, "config.toml")
@@ -26,7 +25,6 @@ fileWatcherType = "none"
             with open(config_file, "a") as f:
                 f.write("\nfileWatcherType = \"none\"\n")
 
-# Jalankan perbaikan konfigurasi sebelum streamlit memuat halaman
 ensure_streamlit_config()
 
 st.set_page_config(
@@ -35,7 +33,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Suntikan CSS untuk membuang margin bawaan Streamlit agar workspace melebar penuh setara Tableau
+# Suntikan CSS untuk membuang margin bawaan Streamlit
 st.markdown("""
 <style>
     .block-container {
@@ -52,7 +50,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Sembunyikan default Streamlit menu & footer
 hide_style = """
 <style>
 #MainMenu {visibility: hidden;}
@@ -119,12 +116,13 @@ def load_single_data(source):
         st.sidebar.error(f"Gagal membaca file: {e}")
         return None
 
-# --- 3. CACHED RENDERER RESOURCE (Mencegah Drag-and-Drop Hang/Freeze) ---
-# Memanfaatkan st.cache_resource untuk menstabilkan objek PyGWalker di memori server
+# --- 3. OPTIMIZED CACHED RENDERER RESOURCE ---
+# Menggunakan awalan nama argumen '_df' (leading underscore) agar Streamlit 
+# mengabaikan proses komputasi hashing tabel data demi performa tanpa lag.
 @st.cache_resource
-def get_pyg_renderer(df, cache_key: str) -> StreamlitRenderer:
+def get_pyg_renderer(_df, cache_key: str) -> StreamlitRenderer:
     return StreamlitRenderer(
-        df, 
+        _df, 
         spec_path="gw_config.json", 
         spec_io_mode="rw",
         appearance="dark"
@@ -185,7 +183,6 @@ if input_method == "Gabung Otomatis (2 Sheets)":
                 )
                 
                 df_active = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
-                # Definisikan cache_key unik untuk penggabungan faskes
                 active_cache_key = f"g_sheets_{ss_id}_{key_antrol}_{key_faskes}"
         else:
             st.sidebar.warning("Format URL Google Sheets tidak dikenali.")
@@ -196,14 +193,13 @@ else:
     )
     if uploaded_file is not None:
         df_active = load_single_data(uploaded_file)
-        # Definisikan cache_key unik untuk file lokal
         active_cache_key = f"local_{uploaded_file.name}_{df_active.shape[0]}"
 
-# --- 5. VISUALIZATION CORE (Tableau Layer) ---
+# --- 5. VISUALIZATION CORE ---
 if df_active is not None:
     st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris)")
     
-    # Memanggil renderer yang ter-cache dengan cache_key unik
+    # Memanggil renderer teroptimasi
     renderer = get_pyg_renderer(df_active, active_cache_key)
     renderer.explorer()
 else:
