@@ -1,0 +1,15 @@
+[theme]
+primaryColor = "#4B79A1"
+backgroundColor = "#0F172A"
+secondaryBackgroundColor = "#1E293B"
+textColor = "#F8FAFC"
+font = "sans serif"
+
+[server]
+fileWatcherType = "none"
+# [S-01] CORS dan XSRF protection diaktifkan kembali untuk keamanan
+enableCORS = true
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
