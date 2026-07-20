@@ -60,22 +60,38 @@ header {visibility: hidden;}
 """
 st.markdown(hide_style, unsafe_allow_html=True)
 
-# --- 2. SELF-HEALING DATA CLEANING LAYER ---
+# --- 2. SELF-HEALING DATA CLEANING & DATE PARSING LAYER ---
 def clean_dataframe_dtypes(df):
     for col in df.columns:
+        # 1. Konversi Kolom Tanggal/Waktu secara Eksplisit (Sangat Penting untuk Hirarki Tableau)
+        if col.strip().lower() in ['timestamp', 'tanggal', 'date', 'waktu']:
+            try:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+                continue
+            except:
+                pass
+                
         if df[col].dtype == 'object':
             sample = df[col].dropna().astype(str).str.strip()
             if sample.empty:
                 continue
             
-            # 1. Deteksi Persentase (misal: "85%")
+            # Cek jika kolom kualitatif berisi tanggal berpola (misal: YYYY-MM-DD atau M/D/YYYY)
+            if sample.str.contains(r'\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4}').any():
+                try:
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                    continue
+                except:
+                    pass
+            
+            # 2. Deteksi Persentase (misal: "85%")
             if sample.str.contains('%').any():
                 temp = df[col].astype(str).str.replace('%', '', regex=False).str.replace(',', '.', regex=False).str.strip()
                 converted = pd.to_numeric(temp, errors='coerce') / 100.0
                 df[col] = converted
                 continue
             
-            # 2. Deteksi Angka Format Desimal Indonesia (misal: "0,85")
+            # 3. Deteksi Angka Format Desimal Indonesia (misal: "0,85")
             temp_numeric = df[col].astype(str).str.strip()
             if temp_numeric.str.contains(r'\d+,\d+').any():
                 temp_numeric = temp_numeric.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
@@ -84,7 +100,6 @@ def clean_dataframe_dtypes(df):
                 
             converted = pd.to_numeric(temp_numeric, errors='coerce')
             
-            # Evaluasi tipe secara aman menggunakan fungsi tingkat tinggi pd.notna
             original_non_na = int(pd.notna(df[col]).sum())
             converted_non_na = int(pd.notna(converted).sum())
             
@@ -166,7 +181,7 @@ def get_pyg_renderer(_df, cache_key: str) -> StreamlitRenderer:
 
 # --- 5. UI SIDEBAR (KONTROL UTAMA & MODE) ---
 st.sidebar.markdown("# SAPA YANFASKES")
-st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
+st.sidebar.caption("Saluran Analioris Performa & Akselerasi")
 st.sidebar.write("---")
 
 app_mode = st.sidebar.radio(
