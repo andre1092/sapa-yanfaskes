@@ -3,6 +3,7 @@ import pandas as pd
 import duckdb
 import re
 import os
+from datetime import datetime
 from pygwalker.api.streamlit import StreamlitRenderer
 
 # --- 1. CONFIGURATION & FILE WATCHER FIX ---
@@ -92,7 +93,7 @@ def clean_dataframe_dtypes(df):
     return df
 
 # --- 3. DATA ENGINE (DuckDB & Custom Join Layer) ---
-@st.cache_data(show_spinner="Mengunduh lembar kerja dari Google Sheets...")
+@st.cache_data(show_spinner="Mengunduh data...")
 def load_raw_sheets(spreadsheet_id):
     try:
         url_faskes = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?tqx=out:csv&sheet=DB_FASKES"
@@ -105,7 +106,7 @@ def load_raw_sheets(spreadsheet_id):
         st.sidebar.error(f"Gagal mengunduh spreadsheet: {e}")
         return None, None
 
-@st.cache_data(show_spinner="Menggabungkan data dengan DuckDB...")
+@st.cache_data(show_spinner="Menggabungkan data...")
 def merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes):
     try:
         merged_df = pd.merge(
@@ -162,9 +163,17 @@ def get_pyg_renderer(_df, cache_key: str) -> StreamlitRenderer:
         appearance="dark"
     )
 
-# --- 5. UI SIDEBAR ---
+# --- 5. UI SIDEBAR (KONTROL UTAMA & MODE) ---
 st.sidebar.markdown("# SAPA YANFASKES")
 st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
+st.sidebar.write("---")
+
+# Selektor Mode Tableau setara Server vs Desktop
+app_mode = st.sidebar.radio(
+    "Pilih Mode Aplikasi:",
+    ["📊 Published Dashboard", "🛠️ Developer (Edit/Design)"]
+)
+
 st.sidebar.write("---")
 
 input_method = st.sidebar.radio(
@@ -187,8 +196,7 @@ if input_method == "Gabung Otomatis (2 Sheets)":
             df_faskes, df_antrol = load_raw_sheets(ss_id)
             
             if df_faskes is not None and df_antrol is not None:
-                st.sidebar.markdown("### 🛠️ Pengaturan Hubungan Tabel")
-                
+                st.sidebar.markdown("### 🛠️ Hubungan Tabel")
                 antrol_cols = list(df_antrol.columns)
                 faskes_cols = list(df_faskes.columns)
                 
@@ -205,15 +213,10 @@ if input_method == "Gabung Otomatis (2 Sheets)":
                         break
 
                 key_antrol = st.sidebar.selectbox(
-                    "Kunci Hubung DB_LAP_ANTROL_FKRTL (Fakta):",
-                    options=antrol_cols,
-                    index=default_antrol_idx
+                    "Kunci Hubung (Fakta):", options=antrol_cols, index=default_antrol_idx
                 )
-                
                 key_faskes = st.sidebar.selectbox(
-                    "Kunci Hubung DB_FASKES (Master):",
-                    options=faskes_cols,
-                    index=default_faskes_idx
+                    "Kunci Hubung (Master):", options=faskes_cols, index=default_faskes_idx
                 )
                 
                 df_raw = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
@@ -229,65 +232,97 @@ else:
         df_raw = load_single_data(uploaded_file)
         base_cache_key = f"local_{uploaded_file.name}_{df_raw.shape[0]}"
 
-# --- 6. TABLEAU-STYLE DYNAMIC QUICK FILTERS (SHOW FILTER) ---
-df_active = None
-active_cache_key = ""
-
+# --- 6. RENDER KANVAS DASHBOARD ---
 if df_raw is not None:
-    # 1. Deteksi otomatis kolom kategori yang ideal untuk filter cepat
-    potential_filters = ['Kabupaten', 'Kepemilikan', 'Cabang', 'Kelas_RS', 'Sourcedata']
+    # DEFINISIKAN KOLOM FILTER YANG SESUAI DENGAN TABLEAU USER
+    potential_filters = ['Kabupaten', 'Kepemilikan', 'Cabang', 'Kelas_RS', 'Sumber', 'Sourcedata']
     active_filters = [col for col in potential_filters if col in df_raw.columns]
     
-    # Fallback jika kolom di atas tidak ada, ambil kolom kategorik berukuran sedang
     if not active_filters:
         for col in df_raw.columns:
             if df_raw[col].dtype == 'object' and 1 < df_raw[col].nunique() < 40:
                 active_filters.append(col)
                 if len(active_filters) >= 3:
                     break
-                    
-    # 2. Buat container "Show Filter" di sidebar
-    st.sidebar.markdown("### 🎯 Show Filter (Quick Filters)")
-    
-    filtered_df = df_raw.copy()
-    filter_states = {}
-    
-    # Render elemen multiselect interaktif untuk setiap kolom filter
-    for col in active_filters:
-        unique_vals = sorted(df_raw[col].dropna().unique().tolist())
-        selected = st.sidebar.multiselect(
-            f"Filter {col}:",
-            options=unique_vals,
-            default=[],
-            key=f"quick_filter_{col}"
-        )
-        if selected:
-            filtered_df = filtered_df[filtered_df[col].isin(selected)]
-            filter_states[col] = selected
-            
-    df_active = filtered_df
-    
-    # 3. Bangun cache key yang dinamis berdasarkan status pilihan filter
-    filter_suffix = "_".join([f"{k}:{v}" for k, v in filter_states.items()]) if filter_states else "unfiltered"
-    active_cache_key = f"{base_cache_key}_{filter_suffix}"
-    
-    # Tampilkan pengingat penting bagi pengembang dashboard (UX Best Practice)
-    st.sidebar.write("---")
-    st.sidebar.warning(
-        "⚠️ **Pengingat Tableau:** Klik ikon disket (**Save**) di dalam workspace di sebelah kanan "
-        "terlebih dahulu untuk menyimpan tata letak bagan Anda sebelum mengubah filter cepat di sebelah kiri."
-    )
 
-# --- 7. VISUALIZATION CORE ---
-if df_active is not None:
-    st.sidebar.success(f"Data Siap! ({df_active.shape[0]} baris)")
-    
-    renderer = get_pyg_renderer(df_active, active_cache_key)
-    renderer.explorer()
+    # SELEKSI MODE TAMPILAN
+    if app_mode == "📊 Published Dashboard":
+        # Tampilkan Header Utama Dashboard di bagian atas halaman
+        st.markdown("<h1 style='text-align: center; color: white;'>Pemanfaatan Sistem Antrean Online FKRTL</h1>", unsafe_allow_html=True)
+        st.write("---")
+        
+        # Buat Layout Multi-Kolom di halaman utama (Kolom 1 untuk Filter & KPI, Kolom 2 untuk Chart)
+        dashboard_col1, dashboard_col2 = st.columns([1, 4])
+        
+        with dashboard_col1:
+            # 1. Tampilkan Penanda Last Update
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.markdown(f"<span style='color: #E25858; font-style: italic; font-size: 13px;'>Last Update: {current_time}</span>", unsafe_allow_html=True)
+            st.write("")
+            
+            # 2. Pembuatan Filter Interaktif (Show Filter) di Badan Dashboard
+            filtered_df = df_raw.copy()
+            filter_states = {}
+            
+            for col in active_filters:
+                unique_vals = sorted(df_raw[col].dropna().unique().tolist())
+                # Menghasilkan drop-down pilihan tunggal / jamak setara Tableau
+                selected = st.multiselect(
+                    f"{col}",
+                    options=unique_vals,
+                    default=[],
+                    key=f"dashboard_filter_{col}"
+                )
+                if selected:
+                    filtered_df = filtered_df[filtered_df[col].isin(selected)]
+                    filter_states[col] = selected
+            
+            # 3. Kalkulasi Otomatis Kartu KPI Berbasis Filter Aktif
+            st.write("---")
+            if 'Capaian' in filtered_df.columns:
+                # Ambil nilai rata-rata dari kolom Capaian (desimal 0-1) dan kalikan 100
+                avg_capaian = filtered_df['Capaian'].mean() * 100
+                if pd.isna(avg_capaian):
+                    kpi_display = "0.00%"
+                else:
+                    kpi_display = f"{avg_capaian:.2f}%"
+            else:
+                kpi_display = "N/A"
+                
+            # Render Kartu KPI Biru Tableau-Style
+            st.markdown(f"""
+            <div style="background-color: #4B79A1; padding: 20px; border-radius: 4px; text-align: center; color: white; border: 1px solid #555; box-shadow: 2px 2px 10px rgba(0,0,0,0.5);">
+                <div style="font-size: 18px; font-weight: bold;">Pemanfaatan</div>
+                <div style="font-size: 11px; font-style: italic; opacity: 0.8; margin-bottom: 12px;">Periode Juli 2026</div>
+                <div style="font-size: 38px; font-weight: 800; letter-spacing: 0.5px;">{kpi_display}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with dashboard_col2:
+            # Render visualisasi murni (View Mode/Viewer) tanpa bar-edit pengembang
+            filter_suffix = "_".join([f"{k}:{v}" for k, v in filter_states.items()]) if filter_states else "unfiltered"
+            active_cache_key = f"{base_cache_key}_dashboard_{filter_suffix}"
+            
+            renderer = get_pyg_renderer(filtered_df, active_cache_key)
+            renderer.viewer() # viewer() hanya memuat chart bersih
+            
+    else:
+        # MODE DEVELOPER (Untuk Menggambar / Mendesain Grafik)
+        st.sidebar.warning(
+            "💡 **Mode Developer Aktif:** Silakan buat lembar kerja (Sheet) baru, drag-and-drop kolom, "
+            "dan pastikan untuk mengklik ikon **Simpan (Disket)** sebelum beralih ke Mode Published Dashboard."
+        )
+        
+        active_cache_key = f"{base_cache_key}_developer_mode"
+        renderer = get_pyg_renderer(df_raw, active_cache_key)
+        renderer.explorer() # explorer() memuat antarmuka drag-and-drop penuh
+
 else:
     st.info("💡 Selamat datang di SAPA YANFASKES. Silakan muat data Anda untuk memulai analisis.")
     st.markdown("""
-    ### Panduan Eksplorasi Visual:
-    1. **Muat Data Anda** menggunakan menu penggabungan di panel kiri.
-    2. **Eksplorasi dengan Show Filter**: Gunakan kotak pilihan filter dinamis pada panel kiri untuk mempersempit ruang lingkup analisis data Anda secara instan.
+    ### Langkah Menampilkan Dashboard Interaktif:
+    1. **Muat Data**: Masukkan link Google Sheets Anda di panel sebelah kiri.
+    2. **Desain Grafik (Mode Developer)**: Pilih mode *Developer* di sidebar untuk mulai mendesain grafik Anda melalui seret-lepas kolom.
+    3. **Simpan Hasil Desain**: Klik tombol Simpan (Disket) di dalam workspace.
+    4. **Publikasikan**: Alihkan pilihan di sidebar ke **`Published Dashboard`** untuk melihat dashboard bersih dengan kartu KPI dinamis dan filter cepat yang berjejer rapi di badan halaman.
     """)
