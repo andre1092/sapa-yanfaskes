@@ -3,6 +3,27 @@ import os
 import logging
 from io import BytesIO
 
+def ensure_streamlit_config():
+    """Ensure server fileWatcherType configuration is present."""
+    config_dir = ".streamlit"
+    config_file = os.path.join(config_dir, "config.toml")
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+        
+    config_content = """[server]
+fileWatcherType = "none"
+"""
+    if not os.path.exists(config_file):
+        with open(config_file, "w") as f:
+            f.write(config_content)
+
+def ensure_gw_config():
+    """Create gw_config.json if not present."""
+    config_path = "gw_config.json"
+    if not os.path.exists(config_path):
+        with open(config_path, "w") as f:
+            f.write("")
+
 MONTH_NAMES_MAP = {
     1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
     7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
