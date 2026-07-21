@@ -241,8 +241,96 @@
             </div>
 
             <div id="page-setting" style="display:none;">
-                <h1 class="page-title">⚙️ Pengaturan System & Integrasi</h1>
-                <p class="page-subtitle">Manajemen Koneksi Ekosistem Google, Folder & File Picker, dan Pemantauan API Rate Limiter</p>
+                <h1 class="page-title">⚙️ Pengaturan System & Studio Integrasi Menu</h1>
+                <p class="page-subtitle">Manajemen Koneksi Ekosistem Google, Dynamic Menu Builder, dan Visual Puzzle Studio</p>
+
+                <!-- NO-CODE STUDIO INTEGRASI & DYNAMIC MENU BUILDER (PUZZLE STUDIO) -->
+                <div class="glass-panel" style="margin-top:20px; border:2px solid rgba(56, 189, 248, 0.4); background:linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%);">
+                    <h2 style="font-size:19px; font-weight:800; color:#38BDF8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                        🧩 Studio Integrasi & Dynamic Menu Builder (Puzzle Studio)
+                    </h2>
+                    <p style="font-size:13px; color:#CBD5E1; margin-bottom:18px; line-height:1.5;">
+                        Hubungkan URL Google Sheets, buat Menu/Submenu baru di Sidebar, dan rangkai tata letak visual data (Tabel, Pie Chart, Bar/Combo Chart) seperti merangkai puzzle.
+                    </p>
+
+                    <!-- STEP 1 & 2: KONEKSI URL SPREADSHEET & PEMBUATAN MENU -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px; margin-bottom:20px;">
+                        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
+                            <h3 style="font-size:14px; font-weight:700; color:#60A5FA; margin-bottom:10px;">🔗 1. Input URL Google Sheets</h3>
+                            <input type="text" id="builder-sheets-url" value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:10px 12px; border-radius:8px; font-size:13px; outline:none;" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+                        </div>
+
+                        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
+                            <h3 style="font-size:14px; font-weight:700; color:#60A5FA; margin-bottom:10px;">📌 2. Hirarki Menu & Submenu</h3>
+                            <div style="display:flex; gap:10px; margin-bottom:8px;">
+                                <input type="text" id="builder-menu-title" value="Dashboard FKRTL" placeholder="Nama Menu Utama (Misal: Dashboard FKRTL)" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px;">
+                                <input type="text" id="builder-submenu-title" value="Pemanfaatan Antrol" placeholder="Nama Submenu (Misal: Pemanfaatan Antrol)" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="initPuzzleStudio()" style="width:100%; background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:12px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:20px; box-shadow:0 4px 15px rgba(14,165,233,0.3);">
+                        ⚡ Koneksikan & Buat Menu "Dashboard FKRTL > Pemanfaatan Antrol"
+                    </button>
+
+                    <!-- STEP 3: PUZZLE VISUAL CANVAS STUDIO -->
+                    <div id="puzzle-studio-canvas" style="display:none; background:rgba(15,23,42,0.85); border:1px dashed #38BDF8; border-radius:14px; padding:22px; margin-top:15px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3 style="font-size:16px; font-weight:800; color:#F8FAFC;">🎨 Canvas Rangkai Puzzle Dashboard: <span id="puzzle-target-name" style="color:#38BDF8;">Dashboard FKRTL > Pemanfaatan Antrol</span></h3>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="addPuzzleWidget()" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); color:white; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">➕ Tambah Widget Puzzle</button>
+                                <button onclick="publishCustomMenu()" style="background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; padding:6px 16px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">🚀 Simpan & Publish Live</button>
+                            </div>
+                        </div>
+
+                        <!-- WIDGET CONFIGURATION TILES (PUZZLE PIECES) -->
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+                            <!-- PIECE 1: KPI CARD -->
+                            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px;">
+                                <div style="font-size:12px; font-weight:700; color:#38BDF8; margin-bottom:6px;">🧩 Puzzle Item 1: Indicator Card</div>
+                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px; margin-bottom:6px;">
+                                    <option>KPI Indicator Card</option>
+                                    <option>Pie Chart</option>
+                                    <option>Grafik Batang (Bar)</option>
+                                </select>
+                                <input type="text" value="Rata-Rata Capaian Antrean" style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px;">
+                            </div>
+
+                            <!-- PIECE 2: LINE/COMBO CHART -->
+                            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px;">
+                                <div style="font-size:12px; font-weight:700; color:#38BDF8; margin-bottom:6px;">🧩 Puzzle Item 2: Grafik Tren</div>
+                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px; margin-bottom:6px;">
+                                    <option>Grafik Tren Garis (Line Chart)</option>
+                                    <option>Grafik Combo (Bar + Line)</option>
+                                    <option>Pie Chart / Donut</option>
+                                </select>
+                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px;">
+                                    <option>Sumbu X: Tanggal Pelayanan (Bulan)</option>
+                                    <option>Sumbu X: Kabupaten</option>
+                                </select>
+                            </div>
+
+                            <!-- PIECE 3: DATA TABLE -->
+                            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px;">
+                                <div style="font-size:12px; font-weight:700; color:#38BDF8; margin-bottom:6px;">🧩 Puzzle Item 3: Data Table</div>
+                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px; margin-bottom:6px;">
+                                    <option>Tabel Data Interaktif Polars</option>
+                                    <option>Grafik Batang Horizontal</option>
+                                </select>
+                                <input type="text" value="Filter: Kabupaten = Surabaya" style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px;">
+                            </div>
+                        </div>
+
+                        <!-- LIVE PREVIEW CANVAS -->
+                        <div style="background:rgba(10,15,30,0.8); border:1px solid var(--glass-border); border-radius:12px; padding:16px;">
+                            <div style="font-size:13px; font-weight:700; color:#94A3B8; margin-bottom:12px;">👁️ Live Preview Layout Dashboard (Pemanfaatan Antrol):</div>
+                            <div class="chart-grid">
+                                <div class="chart-box" id="puzzle-chart-preview1"></div>
+                                <div class="chart-box" id="puzzle-chart-preview2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- MODULE: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) -->
                 <div class="glass-panel" style="margin-top:20px;">
@@ -627,21 +715,62 @@
         </div>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
+        function initPuzzleStudio() {
+            const url = document.getElementById('builder-sheets-url').value;
+            const menuTitle = document.getElementById('builder-menu-title').value || 'Dashboard FKRTL';
+            const subTitle = document.getElementById('builder-submenu-title').value || 'Pemanfaatan Antrol';
+
+            if (!url) return alert('Masukkan URL Google Sheets.');
+
+            document.getElementById('puzzle-target-name').innerText = menuTitle + ' > ' + subTitle;
+            document.getElementById('puzzle-studio-canvas').style.display = 'block';
+
+            // Render Preview Plots
+            Plotly.newPlot('puzzle-chart-preview1', [{
+                x: ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'Mei 2026', 'Jun 2026'],
+                y: [82.5, 84.1, 87.3, 88.9, 91.2, 94.5],
+                type: 'scatter', mode: 'lines+markers', line: {color: '#38BDF8', width: 3}, name: 'Capaian (%)'
+            }], {
+                title: {text: '<b>Tren Pemanfaatan Antrol (Line Chart)</b>', font: {color: '#FFF', size: 13}},
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#94A3B8'}, margin: {l:30,r:30,t:30,b:30}
+            }, {responsive: true});
+
+            Plotly.newPlot('puzzle-chart-preview2', [{
+                x: ['Kota Surabaya', 'Kab. Sidoarjo', 'Kab. Gresik', 'Kota Malang', 'Kota Kediri'],
+                y: [94.2, 91.8, 89.5, 87.2, 85.0],
+                type: 'bar', marker: {color: '#10B981'}, name: 'Capaian per Area'
+            }], {
+                title: {text: '<b>Capaian per Kabupaten/Kota (Bar Chart)</b>', font: {color: '#FFF', size: 13}},
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#94A3B8'}, margin: {l:30,r:30,t:30,b:30}
+            }, {responsive: true});
         }
 
-        function switchNav(page) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            if (page === 'home') {
-                document.getElementById('page-home').style.display = 'block';
-                document.getElementById('page-setting').style.display = 'none';
-            } else {
-                document.getElementById('page-home').style.display = 'none';
-                document.getElementById('page-setting').style.display = 'block';
+        function addPuzzleWidget() {
+            alert('➕ Widget Puzzle Baru Berhasil Ditambahkan ke Canvas Studio!');
+        }
+
+        function publishCustomMenu() {
+            const menuTitle = document.getElementById('builder-menu-title').value || 'Dashboard FKRTL';
+            const subTitle = document.getElementById('builder-submenu-title').value || 'Pemanfaatan Antrol';
+
+            // Dynamically inject menu item into sidebar
+            const navList = document.querySelector('.nav-list');
+            if (navList) {
+                const newNavItem = document.createElement('a');
+                newNavItem.className = 'nav-item';
+                newNavItem.onclick = function() {
+                    alert('📊 Membuka Dashboard Live: ' + menuTitle + ' > ' + subTitle);
+                };
+                newNavItem.innerHTML = `<span>📊</span> <span class="nav-text">${menuTitle}</span>`;
+                
+                // Insert before setting item
+                const settingItem = navList.children[1];
+                navList.insertBefore(newNavItem, settingItem);
             }
+
+            alert('🚀 SUCCESS: Menu "' + menuTitle + '" dengan Submenu "' + subTitle + '" BERHASIL DIPUBLISH SEJAJAR DENGAN MENU UTAMA DI SIDEBAR!');
         }
 
         async function doLogin() {

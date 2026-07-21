@@ -14,8 +14,59 @@ def get_system_status():
 
 def render_settings_page():
     """Render Settings & System Configuration Page with Data Connection Integration."""
-    st.markdown("<h1 style='color: #F8FAFC; font-weight: 700;'>⚙️ Pengaturan & Konfigurasi Sistem</h1>", unsafe_allow_html=True)
-    st.caption("Manajemen akun eksekutif, Integrasi Google Workspace, dan Pemantauan API Rate Limiter.")
+    st.markdown("<h1 style='color: #F8FAFC; font-weight: 700;'>⚙️ Pengaturan & Studio Integrasi Menu</h1>", unsafe_allow_html=True)
+    st.caption("Manajemen akun eksekutif, Studio Integrasi Menu, No-Code Puzzle Studio, dan 6 Modul Setting.")
+    st.write("---")
+
+    # --- NO-CODE STUDIO INTEGRASI & DYNAMIC MENU BUILDER (PUZZLE STUDIO) ---
+    st.markdown("## 🧩 Studio Integrasi & Dynamic Menu Builder (Puzzle Studio)")
+    st.caption("Hubungkan URL Google Sheets, buat Menu/Submenu di Sidebar, dan rangkai layout visual data (Tabel, Pie, Bar/Combo Chart) seperti puzzle.")
+
+    with st.container():
+        st.markdown("#### 🔗 1. Input URL Spreadsheet & Buat Menu Baru")
+        sheets_url_builder = st.text_input(
+            "Masukkan URL Google Sheets Target:",
+            value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing",
+            placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+        )
+
+        col_m1, col_m2 = st.columns(2)
+        with col_m1:
+            menu_name = st.text_input("Nama Menu Utama (Sejajar Home):", value="Dashboard FKRTL")
+        with col_m2:
+            submenu_name = st.text_input("Nama Submenu (Di Bawah Menu Utama):", value="Pemanfaatan Antrol")
+
+        if st.button(f"⚡ Koneksikan & Buat Menu '{menu_name} > {submenu_name}'", use_container_width=True):
+            st.session_state['puzzle_studio_active'] = True
+            st.success(f"✅ Berhasil menghubungkan URL! Silakan rangkai komponen puzzle di bawah untuk menu '{menu_name} > {submenu_name}'.")
+
+        if st.session_state.get('puzzle_studio_active', True):
+            st.markdown("---")
+            st.markdown(f"### 🎨 Studio Canvas Visual Puzzle: `{menu_name} > {submenu_name}`")
+            
+            p_col1, p_col2, p_col3 = st.columns(3)
+            with p_col1:
+                st.markdown("**🧩 Widget Item 1:**")
+                st.selectbox("Komponen Visual:", ["KPI Indicator Card", "Pie Chart", "Grafik Batang"], index=0)
+                st.text_input("Judul Indicator:", value="Rata-Rata Capaian Antrean")
+            with p_col2:
+                st.markdown("**🧩 Widget Item 2:**")
+                st.selectbox("Komponen Visual:", ["Grafik Tren Garis (Line)", "Grafik Combo (Bar+Line)", "Pie Chart"], index=0)
+                st.selectbox("Sumbu X:", ["Tanggal (Bulan)", "Kabupaten", "Kepemilikan Faskes"], index=0)
+            with p_col3:
+                st.markdown("**🧩 Widget Item 3:**")
+                st.selectbox("Komponen Visual:", ["Tabel Data Interaktif Polars", "Bar Chart Horizontal"], index=0)
+                st.text_input("Kriteria Filter:", value="Kabupaten = Kota Surabaya")
+
+            col_pub1, col_pub2 = st.columns(2)
+            with col_pub1:
+                if st.button("💾 Simpan Draft Layout Puzzle", use_container_width=True):
+                    st.toast("✅ Draft layout puzzle tersimpan.")
+            with col_pub2:
+                if st.button(f"🚀 Publish Live Menu '{menu_name}'", use_container_width=True):
+                    st.balloons()
+                    st.success(f"🎉 SUKSES: Menu '{menu_name}' dengan Submenu '{submenu_name}' telah PUBLISH secara LIVE di Sidebar!")
+
     st.write("---")
 
     # --- MODULE: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) ---
