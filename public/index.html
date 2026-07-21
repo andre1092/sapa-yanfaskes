@@ -767,6 +767,53 @@
             "Sunburst & Treemap": "✨ AI Suggestion: Hirarki multi-level (Provinsi -> Kota -> Faskes -> Poli)."
         };
 
+        function getSlotLabels(chartType) {
+            switch (chartType) {
+                case 'Column Chart':
+                case 'Bar Chart':
+                    return { slot1: 'Category (Kategori)', slot2: 'Value (Nilai)', slot3: 'Breakdown/Legend (Warna)' };
+                case 'Line Chart':
+                case 'Area Chart':
+                    return { slot1: 'Time/Axis (Waktu/Sumbu)', slot2: 'Value (Nilai)', slot3: 'Secondary Value (Garis Kedua)' };
+                case 'Combo Chart':
+                    return { slot1: 'Shared Axis (Sumbu Bersama)', slot2: 'Bar Series (Nilai Batang)', slot3: 'Line Series (Nilai Garis)' };
+                case 'Waterfall Chart':
+                    return { slot1: 'Category (Tahapan)', slot2: 'Delta/Value (Nilai Perubahan)', slot3: null };
+                case 'Pie Chart':
+                    return { slot1: 'Slice Label (Label Potongan)', slot2: 'Slice Size (Ukuran Potongan)', slot3: null };
+                case 'Sunburst & Treemap':
+                    return { slot1: 'Hierarchy Levels (Level 1, 2..)', slot2: 'Size (Ukuran Busur/Kotak)', slot3: null };
+                case 'XY Scatter Chart':
+                    return { slot1: 'X Value (Nilai X - Angka)', slot2: 'Y Value (Nilai Y - Angka)', slot3: null };
+                case 'Histogram & Pareto':
+                    return { slot1: 'Data Source (Data Mentah)', slot2: 'Otomatis (Frequency)', slot3: 'Bin Size (Ukuran Rentang)' };
+                case 'Box and Whisker':
+                    return { slot1: 'Category (Grup)', slot2: 'Input Values (Data Mentah)', slot3: 'Otomatis (Quartiles)' };
+                case 'Table':
+                    return { slot1: 'Selected Columns (Pilih Kolom: A, B, C...)', slot2: null, slot3: null };
+                case 'Pivot Table':
+                    return { slot1: 'Rows (Baris)', slot2: 'Columns (Kolom)', slot3: 'Values (Nilai/Isi)' };
+                case 'Radar Chart':
+                    return { slot1: 'Metrics/Axes (Indikator/Sudut)', slot2: 'Scores/Values (Skor Nilai)', slot3: null };
+                case 'Stock Chart':
+                    return { slot1: 'Timeline (Waktu)', slot2: 'High/Low/Close (Nilai Fluktuasi)', slot3: null };
+                case 'Surface Chart':
+                    return { slot1: 'X Axis (Dimensi 1)', slot2: 'Y Axis (Dimensi 2)', slot3: 'Z Elevation (Tinggi 3D)' };
+                default:
+                    return { slot1: 'Category / Axis (Sumbu X)', slot2: 'Value / Metric (Sumbu Y)', slot3: 'Breakdown / Series' };
+            }
+        }
+
+        function toggleSlot3Opt(id, opt) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) {
+                if (!w.slot3Opts) w.slot3Opts = [];
+                if (w.slot3Opts.includes(opt)) w.slot3Opts = w.slot3Opts.filter(x => x !== opt);
+                else w.slot3Opts.push(opt);
+                updateLivePreviewCanvas();
+            }
+        }
+
         function renderPuzzleStudio() {
             const container = document.getElementById('puzzle-items-container');
             if (!container) return;
@@ -799,29 +846,61 @@
                         <input type="text" value="${w.title}" onchange="updateWidgetTitle(${w.id}, this.value)" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
                     </div>
 
-                    <!-- 4. SUMBU X (MULTIPLE) -->
-                    <div style="margin-bottom:10px;">
-                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Pilih Sumbu X (Multiple Dimensions):</label>
-                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                            ${['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'].map(dim => `
-                                <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                    <input type="checkbox" ${w.xAxis.includes(dim) ? 'checked' : ''} onchange="toggleXAxis(${w.id}, '${dim}')" style="accent-color:#38BDF8;"> ${dim}
-                                </label>
-                            `).join('')}
-                        </div>
-                    </div>
+                    <!-- DYNAMIC SLOT LABELS BASED ON CHEAT SHEET -->
+                    ${(() => {
+                        const slots = getSlotLabels(w.chartType);
+                        let html = '';
 
-                    <!-- 5. SUMBU Y (MULTIPLE) -->
-                    <div style="margin-bottom:10px;">
-                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Pilih Sumbu Y (Multiple Metrics):</label>
-                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                            ${['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'].map(met => `
-                                <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                    <input type="checkbox" ${w.yAxis.includes(met) ? 'checked' : ''} onchange="toggleYAxis(${w.id}, '${met}')" style="accent-color:#10B981;"> ${met}
-                                </label>
-                            `).join('')}
-                        </div>
-                    </div>
+                        // SLOT 1
+                        if (slots.slot1) {
+                            html += `
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-size:11px; color:#38BDF8; font-weight:700; margin-bottom:4px;">📌 Slot 1: ${slots.slot1}</label>
+                                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                        ${['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'].map(dim => `
+                                            <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                                <input type="checkbox" ${w.xAxis.includes(dim) ? 'checked' : ''} onchange="toggleXAxis(${w.id}, '${dim}')" style="accent-color:#38BDF8;"> ${dim}
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // SLOT 2
+                        if (slots.slot2) {
+                            html += `
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-size:11px; color:#10B981; font-weight:700; margin-bottom:4px;">📊 Slot 2: ${slots.slot2}</label>
+                                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                        ${['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'].map(met => `
+                                            <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                                <input type="checkbox" ${w.yAxis.includes(met) ? 'checked' : ''} onchange="toggleYAxis(${w.id}, '${met}')" style="accent-color:#10B981;"> ${met}
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // SLOT 3 (OPSIONAL)
+                        if (slots.slot3) {
+                            html += `
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block; font-size:11px; color:#F59E0B; font-weight:700; margin-bottom:4px;">🎨 Slot 3 (Opsional): ${slots.slot3}</label>
+                                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                        ${['Kepemilikan Faskes', 'Garis Tren Kedua', 'Sub-Kategori Area', 'Auto-Bin Interval'].map(opt => `
+                                            <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                                <input type="checkbox" ${w.slot3Opts && w.slot3Opts.includes(opt) ? 'checked' : ''} onchange="toggleSlot3Opt(${w.id}, '${opt}')" style="accent-color:#F59E0B;"> ${opt}
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        return html;
+                    })()}
 
                     <!-- 6. LEGENDA & LABEL OPTIONS -->
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; border:1px solid var(--glass-border);">

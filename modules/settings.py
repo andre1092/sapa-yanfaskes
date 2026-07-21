@@ -76,14 +76,53 @@ def render_settings_page():
                 "Sunburst & Treemap": "✨ AI Suggestion: Hirarki multi-level (Provinsi -> Kabupaten -> Faskes -> Poli)."
             }
 
+            def get_slot_labels_py(chart_type):
+                if chart_type in ["Column Chart", "Bar Chart"]:
+                    return {"slot1": "Category (Kategori)", "slot2": "Value (Nilai)", "slot3": "Breakdown/Legend (Warna)"}
+                elif chart_type in ["Line Chart", "Area Chart"]:
+                    return {"slot1": "Time/Axis (Waktu/Sumbu)", "slot2": "Value (Nilai)", "slot3": "Secondary Value (Garis Kedua)"}
+                elif chart_type == "Combo Chart":
+                    return {"slot1": "Shared Axis (Sumbu Bersama)", "slot2": "Bar Series (Nilai Batang)", "slot3": "Line Series (Nilai Garis)"}
+                elif chart_type == "Waterfall Chart":
+                    return {"slot1": "Category (Tahapan)", "slot2": "Delta/Value (Nilai Perubahan)", "slot3": None}
+                elif chart_type == "Pie Chart":
+                    return {"slot1": "Slice Label (Label Potongan)", "slot2": "Slice Size (Ukuran Potongan)", "slot3": None}
+                elif chart_type == "Sunburst & Treemap":
+                    return {"slot1": "Hierarchy Levels (Level 1, 2..)", "slot2": "Size (Ukuran Busur/Kotak)", "slot3": None}
+                elif chart_type == "XY Scatter Chart":
+                    return {"slot1": "X Value (Nilai X - Angka)", "slot2": "Y Value (Nilai Y - Angka)", "slot3": None}
+                elif chart_type == "Histogram & Pareto":
+                    return {"slot1": "Data Source (Data Mentah)", "slot2": "Otomatis (Frequency)", "slot3": "Bin Size (Ukuran Rentang)"}
+                elif chart_type == "Box and Whisker":
+                    return {"slot1": "Category (Grup)", "slot2": "Input Values (Data Mentah)", "slot3": "Otomatis (Quartiles)"}
+                elif chart_type == "Table":
+                    return {"slot1": "Selected Columns (Pilih Kolom: A, B, C...)", "slot2": None, "slot3": None}
+                elif chart_type == "Pivot Table":
+                    return {"slot1": "Rows (Baris)", "slot2": "Columns (Kolom)", "slot3": "Values (Nilai/Isi)"}
+                elif chart_type == "Radar Chart":
+                    return {"slot1": "Metrics/Axes (Indikator/Sudut)", "slot2": "Scores/Values (Skor Nilai)", "slot3": None}
+                elif chart_type == "Stock Chart":
+                    return {"slot1": "Timeline (Waktu)", "slot2": "High/Low/Close (Nilai Fluktuasi)", "slot3": None}
+                elif chart_type == "Surface Chart":
+                    return {"slot1": "X Axis (Dimensi 1)", "slot2": "Y Axis (Dimensi 2)", "slot3": "Z Elevation (Tinggi 3D)"}
+                else:
+                    return {"slot1": "Category / Axis (Sumbu X)", "slot2": "Value / Metric (Sumbu Y)", "slot3": "Breakdown / Series"}
+
             p_col1, p_col2, p_col3 = st.columns(3)
             with p_col1:
                 st.markdown("#### 🧩 Puzzle Item 1 ❌")
                 c_type1 = st.selectbox("Jenis Chart / Visualisasi:", chart_options, index=4, key="c_type1")
                 st.info(ai_suggestions_map[c_type1])
                 st.text_input("Judul Chart:", value="Tren Capaian Pemanfaatan Antrol 2026", key="c_title1")
-                st.multiselect("Sumbu X (Multiple Dimensions):", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan"], key="c_x1")
-                st.multiselect("Sumbu Y (Multiple Metrics):", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y1")
+                
+                s1_labels = get_slot_labels_py(c_type1)
+                if s1_labels["slot1"]:
+                    st.multiselect(f"📌 Slot 1: {s1_labels['slot1']}", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan"], key="c_x1")
+                if s1_labels["slot2"]:
+                    st.multiselect(f"📊 Slot 2: {s1_labels['slot2']}", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y1")
+                if s1_labels["slot3"]:
+                    st.multiselect(f"🎨 Slot 3 (Opsional): {s1_labels['slot3']}", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_1")
+
                 c_leg1 = st.checkbox("Tampilkan Legenda", value=True, key="leg1")
                 c_leg_pos1 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=0, key="leg_pos1")
                 c_lbl1 = st.checkbox("Tampilkan Label Data", value=True, key="lbl1")
@@ -94,8 +133,15 @@ def render_settings_page():
                 c_type2 = st.selectbox("Jenis Chart / Visualisasi:", chart_options, index=3, key="c_type2")
                 st.info(ai_suggestions_map[c_type2])
                 st.text_input("Judul Chart:", value="Capaian per Kabupaten/Kota", key="c_title2")
-                st.multiselect("Sumbu X (Multiple Dimensions):", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Kabupaten/Kota"], key="c_x2")
-                st.multiselect("Sumbu Y (Multiple Metrics):", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y2")
+                
+                s2_labels = get_slot_labels_py(c_type2)
+                if s2_labels["slot1"]:
+                    st.multiselect(f"📌 Slot 1: {s2_labels['slot1']}", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Kabupaten/Kota"], key="c_x2")
+                if s2_labels["slot2"]:
+                    st.multiselect(f"📊 Slot 2: {s2_labels['slot2']}", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y2")
+                if s2_labels["slot3"]:
+                    st.multiselect(f"🎨 Slot 3 (Opsional): {s2_labels['slot3']}", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_2")
+
                 c_leg2 = st.checkbox("Tampilkan Legenda", value=True, key="leg2")
                 c_leg_pos2 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=1, key="leg_pos2")
                 c_lbl2 = st.checkbox("Tampilkan Label Data", value=True, key="lbl2")
@@ -106,8 +152,15 @@ def render_settings_page():
                 c_type3 = st.selectbox("Jenis Chart / Visualisasi:", chart_options, index=0, key="c_type3")
                 st.info(ai_suggestions_map[c_type3])
                 st.text_input("Judul Chart:", value="Tabel Rekapitulasi Data Polars", key="c_title3")
-                st.multiselect("Sumbu X (Multiple Dimensions):", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan", "Kabupaten/Kota"], key="c_x3")
-                st.multiselect("Sumbu Y (Multiple Metrics):", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Total Antrean", "Waktu Tunggu (Menit)"], key="c_y3")
+                
+                s3_labels = get_slot_labels_py(c_type3)
+                if s3_labels["slot1"]:
+                    st.multiselect(f"📌 Slot 1: {s3_labels['slot1']}", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan", "Kabupaten/Kota"], key="c_x3")
+                if s3_labels["slot2"]:
+                    st.multiselect(f"📊 Slot 2: {s3_labels['slot2']}", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Total Antrean"], key="c_y3")
+                if s3_labels["slot3"]:
+                    st.multiselect(f"🎨 Slot 3 (Opsional): {s3_labels['slot3']}", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_3")
+
                 c_leg3 = st.checkbox("Tampilkan Legenda", value=False, key="leg3")
                 c_leg_pos3 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=0, key="leg_pos3")
                 c_lbl3 = st.checkbox("Tampilkan Label Data", value=True, key="lbl3")
