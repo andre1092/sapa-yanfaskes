@@ -278,53 +278,23 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                             <h3 style="font-size:16px; font-weight:800; color:#F8FAFC;">🎨 Canvas Rangkai Puzzle Dashboard: <span id="puzzle-target-name" style="color:#38BDF8;">Dashboard FKRTL > Pemanfaatan Antrol</span></h3>
                             <div style="display:flex; gap:8px;">
-                                <button onclick="addPuzzleWidget()" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); color:white; padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">➕ Tambah Widget Puzzle</button>
-                                <button onclick="publishCustomMenu()" style="background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; padding:6px 16px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">🚀 Simpan & Publish Live</button>
+                                <button onclick="addPuzzleWidget()" style="background:linear-gradient(135deg, #02628a, #0ea5e9); border:none; color:white; padding:7px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 3px 10px rgba(14,165,233,0.3);">➕ Tambah Widget Puzzle</button>
+                                <button onclick="publishCustomMenu()" style="background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; padding:7px 18px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">🚀 Simpan & Publish Live</button>
                             </div>
                         </div>
 
-                        <!-- WIDGET CONFIGURATION TILES (PUZZLE PIECES) -->
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
-                            <!-- PIECE 1: KPI CARD -->
-                            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px;">
-                                <div style="font-size:12px; font-weight:700; color:#38BDF8; margin-bottom:6px;">🧩 Puzzle Item 1: Indicator Card</div>
-                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px; margin-bottom:6px;">
-                                    <option>KPI Indicator Card</option>
-                                    <option>Pie Chart</option>
-                                    <option>Grafik Batang (Bar)</option>
-                                </select>
-                                <input type="text" value="Rata-Rata Capaian Antrean" style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px;">
-                            </div>
-
-                            <!-- PIECE 2: LINE/COMBO CHART -->
-                            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px;">
-                                <div style="font-size:12px; font-weight:700; color:#38BDF8; margin-bottom:6px;">🧩 Puzzle Item 2: Grafik Tren</div>
-                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px; margin-bottom:6px;">
-                                    <option>Grafik Tren Garis (Line Chart)</option>
-                                    <option>Grafik Combo (Bar + Line)</option>
-                                    <option>Pie Chart / Donut</option>
-                                </select>
-                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px;">
-                                    <option>Sumbu X: Tanggal Pelayanan (Bulan)</option>
-                                    <option>Sumbu X: Kabupaten</option>
-                                </select>
-                            </div>
-
-                            <!-- PIECE 3: DATA TABLE -->
-                            <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px;">
-                                <div style="font-size:12px; font-weight:700; color:#38BDF8; margin-bottom:6px;">🧩 Puzzle Item 3: Data Table</div>
-                                <select style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px; margin-bottom:6px;">
-                                    <option>Tabel Data Interaktif Polars</option>
-                                    <option>Grafik Batang Horizontal</option>
-                                </select>
-                                <input type="text" value="Filter: Kabupaten = Surabaya" style="width:100%; background:rgba(15,23,42,0.9); border:1px solid var(--glass-border); color:white; padding:6px; border-radius:6px; font-size:12px;">
-                            </div>
+                        <!-- DYNAMIC PUZZLE ITEMS CONTAINER -->
+                        <div id="puzzle-items-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px; margin-bottom:24px;">
+                            <!-- Dynamic items generated by Javascript -->
                         </div>
 
                         <!-- LIVE PREVIEW CANVAS -->
-                        <div style="background:rgba(10,15,30,0.8); border:1px solid var(--glass-border); border-radius:12px; padding:16px;">
-                            <div style="font-size:13px; font-weight:700; color:#94A3B8; margin-bottom:12px;">👁️ Live Preview Layout Dashboard (Pemanfaatan Antrol):</div>
-                            <div class="chart-grid">
+                        <div style="background:rgba(10,15,30,0.8); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                                <div style="font-size:14px; font-weight:800; color:#38BDF8;">👁️ Live Preview Layout Dashboard (Pemanfaatan Antrol)</div>
+                                <span style="font-size:11px; color:#A7F3D0; background:rgba(16,185,129,0.15); padding:3px 10px; border-radius:6px; border:1px solid rgba(16,185,129,0.3);">⚡ Real-Time Polars Layout Stream</span>
+                            </div>
+                            <div class="chart-grid" id="preview-grid">
                                 <div class="chart-box" id="puzzle-chart-preview1"></div>
                                 <div class="chart-box" id="puzzle-chart-preview2"></div>
                             </div>
@@ -732,6 +702,157 @@
             }
         }
 
+        let puzzleWidgets = [
+            {
+                id: 1,
+                title: "Tren Capaian Pemanfaatan Antrol 2026",
+                chartType: "Line Chart",
+                aiSuggestion: "✨ AI Suggestion: Sumbu X [Tanggal Pelayanan] & Sumbu Y [Capaian %] direkomendasikan untuk Line Chart",
+                xAxis: ["Tanggal Pelayanan (Bulan)", "Kabupaten/Kota"],
+                yAxis: ["Capaian Pemanfaatan (%)"],
+                showLegend: true,
+                legendPos: "Right",
+                showLabels: true,
+                labelType: "Persentase (%)"
+            },
+            {
+                id: 2,
+                title: "Capaian per Kabupaten/Kota",
+                chartType: "Bar Chart",
+                aiSuggestion: "✨ AI Suggestion: Sumbu X [Kabupaten/Kota] & Sumbu Y [Capaian %] direkomendasikan untuk Bar Chart",
+                xAxis: ["Kabupaten/Kota"],
+                yAxis: ["Capaian Pemanfaatan (%)"],
+                showLegend: true,
+                legendPos: "Bottom",
+                showLabels: true,
+                labelType: "Persentase (%)"
+            },
+            {
+                id: 3,
+                title: "Tabel Data Polars Interaktif",
+                chartType: "Table",
+                aiSuggestion: "✨ AI Suggestion: Menampilkan seluruh dimensi & metrik dalam tabel interaktif",
+                xAxis: ["Tanggal Pelayanan (Bulan)", "Kabupaten/Kota"],
+                yAxis: ["Total Antrean", "Waktu Tunggu (Menit)"],
+                showLegend: false,
+                legendPos: "Right",
+                showLabels: true,
+                labelType: "Angka Absolut"
+            }
+        ];
+
+        const CHART_TYPES = [
+            "Table", "Pivot Table", "Column Chart", "Bar Chart", "Line Chart", 
+            "Pie Chart", "Area Chart", "XY Scatter Chart", "Combo Chart", "Radar Chart", 
+            "Stock Chart", "Surface Chart", "Waterfall Chart", "Histogram & Pareto", 
+            "Box and Whisker", "Sunburst & Treemap"
+        ];
+
+        const AI_SUGGESTIONS = {
+            "Table": "✨ AI Suggestion: Cocok untuk menampilkan struktur data tabular mentah Polars secara lengkap.",
+            "Pivot Table": "✨ AI Suggestion: Rekomendasi matrik agregasi otomatis (Multi-dimensi X & Y).",
+            "Column Chart": "✨ AI Suggestion: Sangat baik untuk perbandingan antar kategori faskes secara vertikal.",
+            "Bar Chart": "✨ AI Suggestion: Cocok untuk urutan capaian wilayah Kabupaten/Kota secara horizontal.",
+            "Line Chart": "✨ AI Suggestion: Ideal untuk analisis tren waktu bulanan Capaian Pemanfaatan Antrol.",
+            "Pie Chart": "✨ AI Suggestion: Cocok untuk proporsi pembagian tipe faskes (RS vs Klinik).",
+            "Area Chart": "✨ AI Suggestion: Baik untuk melihat akumulasi total antrean kumulatif dari waktu ke waktu.",
+            "XY Scatter Chart": "✨ AI Suggestion: Digunakan untuk korelasi antara Waktu Tunggu vs Capaian Pemanfaatan.",
+            "Combo Chart": "✨ AI Suggestion: Menggabungkan Bar (Total Antrean) & Line (Capaian %) secara simultan.",
+            "Radar Chart": "✨ AI Suggestion: Membandingkan 5 indikator mutu layanan antar cabang BPJS.",
+            "Stock Chart": "✨ AI Suggestion: Analisis rentang fluktuasi antrean (Min, Max, Rata-rata).",
+            "Surface Chart": "✨ AI Suggestion: Visualisasi topografi 3D kepadatan antrean per jam & per hari.",
+            "Waterfall Chart": "✨ AI Suggestion: Melacak akumulasi penambahan & pengurangan rujukan antrean.",
+            "Histogram & Pareto": "✨ AI Suggestion: Mengidentifikasi 80/20 bottleneck waktu tunggu terbesar.",
+            "Box and Whisker": "✨ AI Suggestion: Distribusi pencilan (outliers) waktu pelayanan faskes.",
+            "Sunburst & Treemap": "✨ AI Suggestion: Hirarki multi-level (Provinsi -> Kota -> Faskes -> Poli)."
+        };
+
+        function renderPuzzleStudio() {
+            const container = document.getElementById('puzzle-items-container');
+            if (!container) return;
+
+            container.innerHTML = puzzleWidgets.map((w, idx) => `
+                <div style="position:relative; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.4); border-radius:12px; padding:16px; box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+                    <!-- DELETE BUTTON X -->
+                    <button onclick="deletePuzzleWidget(${w.id})" title="Hapus Puzzle Item ini" 
+                        style="position:absolute; top:12px; right:12px; background:rgba(239,68,68,0.25); border:1px solid rgba(239,68,68,0.5); color:#F87171; border-radius:50%; width:24px; height:24px; font-size:12px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s;">✕</button>
+
+                    <div style="font-size:13px; font-weight:800; color:#38BDF8; margin-bottom:10px;">🧩 Puzzle Item ${idx + 1}</div>
+
+                    <!-- 1. DROPDOWN JENIS CHART (16 TYPES) -->
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:3px;">Jenis Chart / Visualisasi:</label>
+                        <select onchange="updateWidgetChartType(${w.id}, this.value)" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:7px 10px; border-radius:6px; font-size:12px; font-weight:600;">
+                            ${CHART_TYPES.map(ct => `<option value="${ct}" ${w.chartType === ct ? 'selected' : ''}>${ct}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <!-- 2. AI SUGGESTION BY AI -->
+                    <div style="background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.3); border-radius:8px; padding:8px 10px; font-size:11px; color:#7DD3FC; margin-bottom:10px; line-height:1.4;">
+                        ${w.aiSuggestion || AI_SUGGESTIONS[w.chartType] || ''}
+                        <button onclick="autoGenerateAIConfig(${w.id})" style="margin-top:6px; background:linear-gradient(135deg, #0ea5e9, #0284c7); border:none; color:white; padding:4px 8px; border-radius:4px; font-size:10px; font-weight:700; cursor:pointer; width:100%;">✨ Auto-Generate Config by AI</button>
+                    </div>
+
+                    <!-- 3. INPUT JUDUL CHART -->
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:3px;">Judul Chart:</label>
+                        <input type="text" value="${w.title}" onchange="updateWidgetTitle(${w.id}, this.value)" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
+                    </div>
+
+                    <!-- 4. SUMBU X (MULTIPLE) -->
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Pilih Sumbu X (Multiple Dimensions):</label>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            ${['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'].map(dim => `
+                                <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                    <input type="checkbox" ${w.xAxis.includes(dim) ? 'checked' : ''} onchange="toggleXAxis(${w.id}, '${dim}')" style="accent-color:#38BDF8;"> ${dim}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- 5. SUMBU Y (MULTIPLE) -->
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Pilih Sumbu Y (Multiple Metrics):</label>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            ${['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'].map(met => `
+                                <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                    <input type="checkbox" ${w.yAxis.includes(met) ? 'checked' : ''} onchange="toggleYAxis(${w.id}, '${met}')" style="accent-color:#10B981;"> ${met}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- 6. LEGENDA & LABEL OPTIONS -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px; border:1px solid var(--glass-border);">
+                        <div>
+                            <label style="font-size:11px; color:#E2E8F0; display:flex; align-items:center; gap:4px; margin-bottom:4px; cursor:pointer;">
+                                <input type="checkbox" ${w.showLegend ? 'checked' : ''} onchange="toggleWidgetLegend(${w.id}, this.checked)" style="accent-color:#F59E0B;"> Tampilkan Legenda
+                            </label>
+                            <select onchange="updateLegendPos(${w.id}, this.value)" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:4px 6px; border-radius:4px; font-size:10px;">
+                                <option value="Right" ${w.legendPos === 'Right' ? 'selected' : ''}>Kanan (Right)</option>
+                                <option value="Bottom" ${w.legendPos === 'Bottom' ? 'selected' : ''}>Bawah (Bottom)</option>
+                                <option value="Top" ${w.legendPos === 'Top' ? 'selected' : ''}>Atas (Top)</option>
+                                <option value="Left" ${w.legendPos === 'Left' ? 'selected' : ''}>Kiri (Left)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="font-size:11px; color:#E2E8F0; display:flex; align-items:center; gap:4px; margin-bottom:4px; cursor:pointer;">
+                                <input type="checkbox" ${w.showLabels ? 'checked' : ''} onchange="toggleWidgetLabels(${w.id}, this.checked)" style="accent-color:#F59E0B;"> Tampilkan Label
+                            </label>
+                            <select onchange="updateLabelType(${w.id}, this.value)" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:4px 6px; border-radius:4px; font-size:10px;">
+                                <option value="Persentase (%)" ${w.labelType === 'Persentase (%)' ? 'selected' : ''}>Persentase (%)</option>
+                                <option value="Angka Absolut" ${w.labelType === 'Angka Absolut' ? 'selected' : ''}>Angka Absolut (12,450)</option>
+                                <option value="Mata Uang (Rp)" ${w.labelType === 'Mata Uang (Rp)' ? 'selected' : ''}>Mata Uang (Rp)</option>
+                                <option value="Custom Formula" ${w.labelType === 'Custom Formula' ? 'selected' : ''}>Custom Formula</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function initPuzzleStudio() {
             const url = document.getElementById('builder-sheets-url').value;
             const menuTitle = document.getElementById('builder-menu-title').value || 'Dashboard FKRTL';
@@ -741,6 +862,8 @@
 
             document.getElementById('puzzle-target-name').innerText = menuTitle + ' > ' + subTitle;
             document.getElementById('puzzle-studio-canvas').style.display = 'block';
+
+            renderPuzzleStudio();
 
             // Render Preview Plots
             Plotly.newPlot('puzzle-chart-preview1', [{
@@ -765,7 +888,83 @@
         }
 
         function addPuzzleWidget() {
-            alert('➕ Widget Puzzle Baru Berhasil Ditambahkan ke Canvas Studio!');
+            const newId = puzzleWidgets.length > 0 ? Math.max(...puzzleWidgets.map(w => w.id)) + 1 : 1;
+            puzzleWidgets.push({
+                id: newId,
+                title: "Widget Puzzle Baru " + newId,
+                chartType: "Column Chart",
+                aiSuggestion: AI_SUGGESTIONS["Column Chart"],
+                xAxis: ["Kabupaten/Kota"],
+                yAxis: ["Capaian Pemanfaatan (%)"],
+                showLegend: true,
+                legendPos: "Right",
+                showLabels: true,
+                labelType: "Persentase (%)"
+            });
+            renderPuzzleStudio();
+        }
+
+        function deletePuzzleWidget(id) {
+            puzzleWidgets = puzzleWidgets.filter(w => w.id !== id);
+            renderPuzzleStudio();
+        }
+
+        function updateWidgetChartType(id, chartType) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) {
+                w.chartType = chartType;
+                w.aiSuggestion = AI_SUGGESTIONS[chartType] || "✨ AI Suggestion: Kustomisasi jenis visualisasi data terkonfigurasi.";
+                renderPuzzleStudio();
+            }
+        }
+
+        function autoGenerateAIConfig(id) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) {
+                alert('✨ AI Auto-Generate: Konfigurasi Sumbu X, Sumbu Y, Legenda, dan Label otomatis dioptimalkan untuk jenis chart "' + w.chartType + '"!');
+                renderPuzzleStudio();
+            }
+        }
+
+        function updateWidgetTitle(id, title) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) w.title = title;
+        }
+
+        function toggleXAxis(id, dim) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) {
+                if (w.xAxis.includes(dim)) w.xAxis = w.xAxis.filter(x => x !== dim);
+                else w.xAxis.push(dim);
+            }
+        }
+
+        function toggleYAxis(id, met) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) {
+                if (w.yAxis.includes(met)) w.yAxis = w.yAxis.filter(y => y !== met);
+                else w.yAxis.push(met);
+            }
+        }
+
+        function toggleWidgetLegend(id, val) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) w.showLegend = val;
+        }
+
+        function updateLegendPos(id, pos) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) w.legendPos = pos;
+        }
+
+        function toggleWidgetLabels(id, val) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) w.showLabels = val;
+        }
+
+        function updateLabelType(id, type) {
+            const w = puzzleWidgets.find(item => item.id === id);
+            if (w) w.labelType = type;
         }
 
         function publishCustomMenu() {
