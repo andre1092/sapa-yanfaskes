@@ -715,6 +715,23 @@
         </div>
     </div>
 
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        }
+
+        function switchNav(page) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            if (page === 'home') {
+                document.getElementById('page-home').style.display = 'block';
+                document.getElementById('page-setting').style.display = 'none';
+            } else {
+                document.getElementById('page-home').style.display = 'none';
+                document.getElementById('page-setting').style.display = 'block';
+            }
+        }
+
         function initPuzzleStudio() {
             const url = document.getElementById('builder-sheets-url').value;
             const menuTitle = document.getElementById('builder-menu-title').value || 'Dashboard FKRTL';
