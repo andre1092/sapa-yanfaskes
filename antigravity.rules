@@ -1,17 +1,18 @@
 # ============================================================================== #
-# ATURAN UTAMA AGEN OTONOM & ARSITEKTUR SAPA YANFASKES
+# ATURAN UTAMA AGEN OTONOM — HIGH-PERFORMANCE STACK (POLARS + TAIPY + PLOTLY)
 # ============================================================================== #
 
-# --- 1. ATURAN EFISIENSI TOKEN & HEMAT KUOTA AGEN ---
-- [STRUKTUR MODULAR] Dilarang keras menumpuk seluruh logic di satu file raksasa. Aplikasi WAJIB terbagi dalam modul-modul kecil (<300 baris) di `modules/` (`theme.py`, `auth.py`, `data_processor.py`, `dashboard.py`, `settings.py`).
-- [SURGICAL EDIT] Saat memperbaiki bug atau menambah fitur, HANYA edit modul spesifik yang bersangkutan. Dilarang melakukan full rewrite pada file yang tidak relevan.
-- [ANTI-LOOP TERMINAL] Batas maksimal kegagalan perintah terminal adalah 2x. Jika gagal 2x berturut-turut, agen WAJIB menganalisa akar masalah secara logis berdasarkan traceback log sebelum mencoba perbaikan baru.
+# --- 1. DATA ENGINE (POLARS LAZY API & FASTEXCEL) ---
+- [LAZY EXPRESSIONS] WAJIB menggunakan Polars Lazy API (`pl.LazyFrame`, `pl.scan_csv`, `.with_columns()`, `.filter()`, `.group_by()`) untuk semua manipulasi data.
+- [FAST EXCEL I/O] Pembacaan file Excel wajib memanfaatkan engine `calamine` atau `fastexcel` via Polars (`pl.read_excel(..., engine="calamine")`) untuk performa I/O 10x lebih cepat.
+- [TABLEAU DATE HIERARCHY] Ekstraksi kolom tanggal wajib dilakukan secara paralel menggunakan fungsi datetime Polars (`pl.col().dt.year()`, `pl.col().dt.quarter()`, `pl.col().dt.month()`, `pl.col().dt.strftime("%b %Y")`, `pl.col().dt.day()`).
 
-# --- 2. ARSITEKTUR 100% GRATIS & BIRTENAGA TINGGI (ZERO-COST STACK) ---
-- [OPEN-SOURCE CORE] Seluruh arsitektur wajib menggunakan teknologi 100% gratis dan open-source: Streamlit + Pandas + PyGWalker + OpenPyXL. Dilarang menggunakan API atau layanan berbayar.
-- [SELF-HEALING PIPELINE] Data cleaning dan ekstraksi hirarki tanggal (Tableau Date Hierarchy: Tahun, Kuartal, Bulan, Bulan-Tahun, Hari) diproses secara efisien di memori Python tanpa dependensi database eksternal yang rumit.
+# --- 2. UI FRAMEWORK (TAIPY REACTIVE STATE ENGINE) ---
+- [STATE SEPARATION] Pisahkan logika secara ketat antara Frontend (Taipy Markdown/Layout) dan Backend (Callbacks/State).
+- [ZERO GLOBAL RERUN] Dilarang menggunakan *rerun* global. Manfaatkan reactive state binding Taipy (`state.property`) untuk pembaruan komponen yang efisien.
 
-# --- 3. STANDAR UI/UX GLASSMORPHISM & FLEXIBILITAS KUSTOMISASI ---
-- [DESAIN GLASSMORPHISM MODERN] Interface wajib menggunakan estetika Glassmorphism premium (backdrop-filter blur, border putih transparan `rgba(255,255,255,0.1)`, dan bayangan lembut).
-- [LAYOUT TABLEAU BI INTERAKTIF] Layout dashboard utama wajib mendukung Tableau-style horizontal quick filters di bagian atas, flexbox KPI cards horizontal, dan multi-sheet tab navigation ("📊 Lembar Analisis" & "🗄️ Tabel Data").
-- [FORMAT EKSEKUTIF] Metrik rasio/capaian wajib diformat persentase (`{:.2f}%`), dan angka nominal besar wajib menggunakan pemisah ribuan.
+# --- 3. VISUALIZATION (PRE-CONFIGURED PLOTLY) ---
+- [CLIENT RENDERING] Gunakan `plotly.graph_objects` & `plotly.express` pre-configured untuk grafik interaktif dengan rendering cepat di sisi klien.
+
+# --- 4. ATURAN EFISIENSI TOKEN AGEN ---
+- [STRUKTUR MODULAR] Setiap modul wajib berukuran ringkas (<300 baris) di dalam direktori `modules/` untuk pengeditan presisi (*surgical edit*).
