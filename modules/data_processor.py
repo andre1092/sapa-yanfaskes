@@ -3,6 +3,16 @@ import os
 import logging
 from io import BytesIO
 
+MONTH_NAMES_MAP = {
+    1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
+    7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
+}
+
+def bulan_map_get(m):
+    if m is None:
+        return ""
+    return MONTH_NAMES_MAP.get(int(m), "")
+
 def clean_dataframe_dtypes_polars(df: pl.DataFrame) -> pl.DataFrame:
     """Self-healing data cleaning & Tableau Date Hierarchy extraction using Polars expressions.
     
@@ -39,16 +49,21 @@ def clean_dataframe_dtypes_polars(df: pl.DataFrame) -> pl.DataFrame:
 
         # 1. Direct Datetime/Date Columns
         if dtype in (pl.Datetime, pl.Date) or col_lower in ['timestamp', 'tanggal', 'date', 'waktu']:
-            date_expr = pl.col(col).cast(pl.Datetime) if dtype != pl.Datetime else pl.col(col)
+            if dtype == pl.Utf8:
+                date_expr = pl.col(col).str.to_datetime(strict=False)
+            elif dtype != pl.Datetime:
+                date_expr = pl.col(col).cast(pl.Datetime)
+            else:
+                date_expr = pl.col(col)
             exprs.append(date_expr.alias(col))
             
             # Sub-kolom Tableau Date Hierarchy
             exprs.append(date_expr.dt.year().cast(pl.Utf8).alias(f"{col} (Tahun)"))
             exprs.append(pl.concat_str([pl.lit("Q"), date_expr.dt.quarter().cast(pl.Utf8)]).alias(f"{col} (Kuartal)"))
-            exprs.append(date_expr.dt.month().map_batches(lambda s: s.to_series().replace({
-                1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
-                7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'
-            })).alias(f"{col} (Bulan)"))
+            
+            month_map = {1: 'Januari', 2: 'Februari', 3: 'Maret', 4: 'April', 5: 'Mei', 6: 'Juni',
+                         7: 'Juli', 8: 'Agustus', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'Desember'}
+            exprs.append(date_expr.dt.month().map_elements(lambda m: bulan_map_get(m), return_dtype=pl.Utf8).alias(f"{col} (Bulan)"))
             exprs.append(date_expr.dt.strftime("%b %Y").alias(f"{col} (Bulan Tahun)"))
             exprs.append(date_expr.dt.day().cast(pl.Utf8).alias(f"{col} (Hari)"))
             continue
