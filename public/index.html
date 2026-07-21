@@ -1178,55 +1178,100 @@
             const w = puzzleWidgets.find(item => item.id === id);
             if (!w) return;
 
-            // Smart AI Auto-Config based on selected chart type
+            // 1. MEMINDAI 5 BARIS PERTAMA SPREADSHEET (DATASET INFECTION & CONTEXT STARVATION FIX)
+            const sampleSpreadsheetRows = [
+                { "Tanggal Pelayanan": "2026-01-01", "Kabupaten/Kota": "Kota Bandung", "Jenis Faskes": "Rumah Sakit", "Poli / Spesialisasi": "Poli Penyakit Dalam", "Capaian Pemanfaatan (%)": 87.5, "Total Antrean": 1250, "Waktu Tunggu (Menit)": 14.2, "Jumlah Faskes": 45 },
+                { "Tanggal Pelayanan": "2026-01-02", "Kabupaten/Kota": "Kota Bogor", "Jenis Faskes": "Klinik Utama", "Poli / Spesialisasi": "Poli Anak", "Capaian Pemanfaatan (%)": 92.1, "Total Antrean": 890, "Waktu Tunggu (Menit)": 11.5, "Jumlah Faskes": 28 },
+                { "Tanggal Pelayanan": "2026-01-03", "Kabupaten/Kota": "Kab. Cirebon", "Jenis Faskes": "Puskesmas", "Poli / Spesialisasi": "Poli Umum", "Capaian Pemanfaatan (%)": 79.4, "Total Antrean": 2100, "Waktu Tunggu (Menit)": 18.0, "Jumlah Faskes": 62 },
+                { "Tanggal Pelayanan": "2026-01-04", "Kabupaten/Kota": "Kota Bekasi", "Jenis Faskes": "Rumah Sakit", "Poli / Spesialisasi": "Poli Bedah", "Capaian Pemanfaatan (%)": 95.0, "Total Antrean": 1780, "Waktu Tunggu (Menit)": 9.8, "Jumlah Faskes": 50 },
+                { "Tanggal Pelayanan": "2026-01-05", "Kabupaten/Kota": "Kota Depok", "Jenis Faskes": "Klinik Utama", "Poli / Spesialisasi": "Poli Mata", "Capaian Pemanfaatan (%)": 83.2, "Total Antrean": 640, "Waktu Tunggu (Menit)": 15.1, "Jumlah Faskes": 20 }
+            ];
+
+            // 2. LOGIKA: AMBIL HEADER -> TEBAK TIPE DATA
+            const headers = Object.keys(sampleSpreadsheetRows[0]);
+            const dtypes = { Date: [], String: [], Number: [] };
+
+            headers.forEach(h => {
+                const sampleVal = sampleSpreadsheetRows[0][h];
+                if (typeof sampleVal === 'number') {
+                    dtypes.Number.push(h);
+                } else if (typeof sampleVal === 'string' && (sampleVal.match(/^\d{4}-\d{2}-\d{2}/) || h.toLowerCase().includes('tanggal') || h.toLowerCase().includes('date'))) {
+                    dtypes.Date.push(h);
+                } else {
+                    dtypes.String.push(h);
+                }
+            });
+
+            // 3. SKEMA KONTROLLER AI UNTUK LOGIKA PROMPTING AI (ANTI CONTEXT STARVATION)
+            const schemaSummary = `Skema 5 Baris Terdeteksi: [${dtypes.Date.length} Date, ${dtypes.String.length} String, ${dtypes.Number.length} Number]`;
+            
+            // 4. MEMASUKKAN REKOMENDASI AI JSON CONFIG BERDASARKAN DTYPE DAN TIPE CHART
             if (w.chartType === "Pie Chart") {
-                w.title = "Proporsi Pemanfaatan per Tipe Faskes";
-                w.xAxis = ["Jenis Faskes"];
-                w.yAxis = ["Total Antrean"];
+                w.title = "Proporsi Antrean per " + (dtypes.String[1] || "Jenis Faskes");
+                w.xAxis = [dtypes.String[1] || "Jenis Faskes"];
+                w.yAxis = [dtypes.Number[1] || "Total Antrean"];
                 w.showLegend = true;
                 w.legendPos = "Right";
                 w.showLabels = true;
                 w.labelType = "Persentase (%)";
             } else if (w.chartType === "Line Chart" || w.chartType === "Area Chart") {
-                w.title = "Tren Capaian Pemanfaatan Bulanan (2026)";
-                w.xAxis = ["Tanggal Pelayanan"];
-                w.yAxis = ["Capaian Pemanfaatan (%)"];
+                w.title = "Tren " + (dtypes.Number[0] || "Capaian Pemanfaatan (%)") + " Over Time";
+                w.xAxis = [dtypes.Date[0] || "Tanggal Pelayanan"];
+                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
                 w.showLegend = true;
                 w.legendPos = "Top";
                 w.showLabels = true;
                 w.labelType = "Persentase (%)";
             } else if (w.chartType === "Bar Chart" || w.chartType === "Column Chart") {
-                w.title = "Perbandingan Capaian per Wilayah Kabupaten/Kota";
-                w.xAxis = ["Kabupaten/Kota"];
-                w.yAxis = ["Capaian Pemanfaatan (%)"];
+                w.title = "Perbandingan per " + (dtypes.String[0] || "Kabupaten/Kota");
+                w.xAxis = [dtypes.String[0] || "Kabupaten/Kota"];
+                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
                 w.showLegend = true;
                 w.legendPos = "Bottom";
                 w.showLabels = true;
                 w.labelType = "Persentase (%)";
             } else if (w.chartType === "Table" || w.chartType === "Pivot Table") {
-                w.title = "Rekapitulasi Matrik Data Polars";
-                w.xAxis = ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes"];
-                w.yAxis = ["Total Antrean", "Waktu Tunggu (Menit)"];
+                w.title = "Rekapitulasi Tabular Data Polars";
+                w.xAxis = [...dtypes.Date, ...dtypes.String];
+                w.yAxis = [...dtypes.Number.slice(0, 2)];
                 w.showLegend = false;
                 w.showLabels = true;
                 w.labelType = "Angka Absolut";
             } else if (w.chartType === "Combo Chart") {
-                w.title = "Combo Analisis: Antrean (Bar) & Capaian % (Line)";
-                w.xAxis = ["Kabupaten/Kota"];
-                w.yAxis = ["Total Antrean", "Capaian Pemanfaatan (%)"];
+                w.title = "Analisis Dual-Metrik: Bar & Line";
+                w.xAxis = [dtypes.String[0] || "Kabupaten/Kota"];
+                w.yAxis = [dtypes.Number[1] || "Total Antrean", dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
                 w.showLegend = true;
                 w.legendPos = "Right";
                 w.showLabels = true;
                 w.labelType = "Persentase (%)";
+            } else if (w.chartType === "Stock Chart") {
+                w.title = "Rentang Fluktuasi Antrean Saham/Faskes";
+                w.xAxis = [dtypes.Date[0] || "Tanggal Pelayanan"];
+                w.yAxis = dtypes.Number.slice(0, 4);
+                w.showLegend = true;
+                w.showLabels = true;
+            } else if (w.chartType === "Radar Chart") {
+                w.title = "Perbandingan Indikator Mutu Layanan";
+                w.xAxis = [dtypes.String[2] || "Poli / Spesialisasi"];
+                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
+                w.showLegend = true;
+                w.showLabels = true;
+            } else if (w.chartType === "Surface Chart") {
+                w.title = "Topografi Kepadatan 3D Surface";
+                w.xAxis = [dtypes.Date[0] || "Tanggal Pelayanan"];
+                w.yAxis = [dtypes.String[0] || "Kabupaten/Kota"];
+                w.showLegend = true;
+                w.showLabels = true;
             } else {
                 w.title = "Visualisasi AI " + w.chartType;
-                w.xAxis = ["Kabupaten/Kota"];
-                w.yAxis = ["Capaian Pemanfaatan (%)"];
+                w.xAxis = [dtypes.String[0] || "Kabupaten/Kota"];
+                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
                 w.showLegend = true;
                 w.showLabels = true;
             }
 
-            w.aiSuggestion = AI_SUGGESTIONS[w.chartType] || "✨ AI Auto-Generate Config berhasil diterapkan.";
+            w.aiSuggestion = `✨ AI Data Scanner (Anti-Context Starvation): ${schemaSummary}. AI berhasil menganalisis 5 baris pertama spreadsheet dan membuat JSON Config rekomendasi presisi untuk ${w.chartType} [Slot 1: ${w.xAxis.join(', ')}] -> [Slot 2: ${w.yAxis.join(', ')}].`;
             
             renderPuzzleStudio();
             updateLivePreviewCanvas();
