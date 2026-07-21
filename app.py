@@ -43,7 +43,7 @@ ensure_gw_config()
 st.set_page_config(
     page_title="SAPA YANFASKES",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # --- 1.5 AUTHENTICATION / LOGIN LAYER (BPJS SSO Style) ---
@@ -142,7 +142,7 @@ if not st.session_state.logged_in:
             
     st.stop()
 
-# Suntikan CSS untuk membuang margin bawaan Streamlit
+# Suntikan CSS untuk membuang margin bawaan Streamlit & Auto-Expand Hover Sidebar
 st.markdown("""
 <style>
     .block-container {
@@ -156,17 +156,49 @@ st.markdown("""
         height: 850px !important;
         border-radius: 8px;
     }
+
+    /* Styling Ikon Garis Tiga (Collapsed Control) & Auto-Expand Hover Sidebar */
+    [data-testid="stSidebarCollapsedControl"] {
+        position: fixed !important;
+        top: 0.6rem !important;
+        left: 0.6rem !important;
+        z-index: 1000001 !important;
+        background-color: #02628a !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        padding: 4px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    [data-testid="stSidebarCollapsedControl"] button, 
+    [data-testid="stSidebarCollapsedControl"] svg {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+    }
+
+    [data-testid="stSidebarCollapsedControl"]:hover {
+        background-color: #014c6c !important;
+        transform: scale(1.08) !important;
+    }
+
+    /* Auto Expand Sidebar ketika Mouse Hover di Garis Tiga atau Area Sidebar */
+    [data-testid="stSidebarCollapsedControl"]:hover ~ [data-testid="stSidebar"],
+    [data-testid="stSidebarCollapsedControl"]:hover + [data-testid="stSidebar"],
+    header:has([data-testid="stSidebarCollapsedControl"]:hover) ~ [data-testid="stSidebar"],
+    section[data-testid="stSidebar"]:hover {
+        margin-left: 0px !important;
+        transform: none !important;
+        visibility: visible !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2) !important;
+    }
+
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
-
-hide_style = """
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-</style>
-"""
-st.markdown(hide_style, unsafe_allow_html=True)
 
 # --- 2. SELF-HEALING DATA CLEANING & DATE PARSING LAYER ---
 def clean_dataframe_dtypes(df):
@@ -331,78 +363,94 @@ def get_pyg_renderer(_df, cache_key: str) -> StreamlitRenderer:
     )
 
 # --- 5. UI SIDEBAR (KONTROL UTAMA & MODE) ---
-st.sidebar.markdown("# SAPA YANFASKES")
-st.sidebar.caption("Saluran Analioris Performa & Akselerasi")
+st.sidebar.markdown("## 🏥 SAPA YANFASKES")
+st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
 st.sidebar.write("---")
 
-app_mode = st.sidebar.radio(
-    "Pilih Mode Aplikasi:",
-    ["📊 Published Dashboard", "🛠️ Developer (Edit/Design)"]
+# Menu Navigasi Utama
+nav_selection = st.sidebar.radio(
+    "📍 Navigasi Utama:",
+    ["🏠 Home", "⚙️ Setting"],
+    key="main_nav_selector"
 )
-
 st.sidebar.write("---")
-
-input_method = st.sidebar.radio(
-    "Metode Input Data:", 
-    ["Gabung Otomatis (2 Sheets)", "Unggah File Lokal Tunggal"]
-)
 
 df_raw = None
 base_cache_key = ""
+app_mode = "📊 Published Dashboard"
 
-if input_method == "Gabung Otomatis (2 Sheets)":
-    sheet_url = st.sidebar.text_input(
-        "Masukkan URL Google Sheets:",
-        placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
+if nav_selection == "🏠 Home":
+    app_mode = st.sidebar.radio(
+        "Pilih Mode Aplikasi:",
+        ["📊 Published Dashboard", "🛠️ Developer (Edit/Design)"]
     )
-    if sheet_url:
-        # [S-04] Validasi bahwa URL berasal dari domain Google Sheets
-        if 'docs.google.com/spreadsheets' not in sheet_url:
-            st.sidebar.warning("URL yang dimasukkan bukan URL Google Sheets yang valid.")
-        else:
-            match = re.search(r"/d/([a-zA-Z0-9-_]+)", sheet_url)
-            if match:
-                ss_id = match.group(1)
-                df_faskes, df_antrol = load_raw_sheets(ss_id)
-                
-                if df_faskes is not None and df_antrol is not None:
-                    st.sidebar.markdown("### 🛠️ Hubungan Tabel")
-                    antrol_cols = list(df_antrol.columns)
-                    faskes_cols = list(df_faskes.columns)
-                    
-                    default_antrol_idx = 0
-                    for i, col in enumerate(antrol_cols):
-                        if col.strip().lower() in ['kdppk', 'kode faskes', 'kodeppk', 'kode_ppk', 'kode_faskes']:
-                            default_antrol_idx = i
-                            break
-                    
-                    default_faskes_idx = 0
-                    for i, col in enumerate(faskes_cols):
-                        if col.strip().lower() in ['kdppk', 'kode faskes', 'kodeppk', 'kode_ppk', 'kode_faskes', 'kodeppk_master']:
-                            default_faskes_idx = i
-                            break
 
-                    key_antrol = st.sidebar.selectbox(
-                        "Kunci Hubung (Fakta):", options=antrol_cols, index=default_antrol_idx
-                    )
-                    key_faskes = st.sidebar.selectbox(
-                        "Kunci Hubung (Master):", options=faskes_cols, index=default_faskes_idx
-                    )
-                    
-                    df_raw = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
-                    base_cache_key = f"g_sheets_{ss_id}_{key_antrol}_{key_faskes}"
+    st.sidebar.write("---")
+
+    input_method = st.sidebar.radio(
+        "Metode Input Data:", 
+        ["Gabung Otomatis (2 Sheets)", "Unggah File Lokal Tunggal"]
+    )
+
+    if input_method == "Gabung Otomatis (2 Sheets)":
+        sheet_url = st.sidebar.text_input(
+            "Masukkan URL Google Sheets:",
+            placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
+        )
+        if sheet_url:
+            # [S-04] Validasi bahwa URL berasal dari domain Google Sheets
+            if 'docs.google.com/spreadsheets' not in sheet_url:
+                st.sidebar.warning("URL yang dimasukkan bukan URL Google Sheets yang valid.")
             else:
-                st.sidebar.warning("Format URL Google Sheets tidak dikenali. Pastikan URL mengandung '/d/' diikuti ID spreadsheet.")
-else:
-    uploaded_file = st.sidebar.file_uploader(
-        "Unggah File CSV atau Excel:", 
-        type=["csv", "xlsx", "xls"]
-    )
-    if uploaded_file is not None:
-        df_single = load_single_data(uploaded_file)
-        if df_single is not None:
-            df_raw = df_single
-            base_cache_key = f"local_{uploaded_file.name}_{df_raw.shape[0]}"
+                match = re.search(r"/d/([a-zA-Z0-9-_]+)", sheet_url)
+                if match:
+                    ss_id = match.group(1)
+                    df_faskes, df_antrol = load_raw_sheets(ss_id)
+                    
+                    if df_faskes is not None and df_antrol is not None:
+                        st.sidebar.markdown("### 🛠️ Hubungan Tabel")
+                        antrol_cols = list(df_antrol.columns)
+                        faskes_cols = list(df_faskes.columns)
+                        
+                        default_antrol_idx = 0
+                        for i, col in enumerate(antrol_cols):
+                            if col.strip().lower() in ['kdppk', 'kode faskes', 'kodeppk', 'kode_ppk', 'kode_faskes']:
+                                default_antrol_idx = i
+                                break
+                        
+                        default_faskes_idx = 0
+                        for i, col in enumerate(faskes_cols):
+                            if col.strip().lower() in ['kdppk', 'kode faskes', 'kodeppk', 'kode_ppk', 'kode_faskes', 'kodeppk_master']:
+                                default_faskes_idx = i
+                                break
+
+                        key_antrol = st.sidebar.selectbox(
+                            "Kunci Hubung (Fakta):", options=antrol_cols, index=default_antrol_idx
+                        )
+                        key_faskes = st.sidebar.selectbox(
+                            "Kunci Hubung (Master):", options=faskes_cols, index=default_faskes_idx
+                        )
+                        
+                        df_raw = merge_data_with_keys(df_antrol, df_faskes, key_antrol, key_faskes)
+                        base_cache_key = f"g_sheets_{ss_id}_{key_antrol}_{key_faskes}"
+                else:
+                    st.sidebar.warning("Format URL Google Sheets tidak dikenali. Pastikan URL mengandung '/d/' diikuti ID spreadsheet.")
+    else:
+        uploaded_file = st.sidebar.file_uploader(
+            "Unggah File CSV atau Excel:", 
+            type=["csv", "xlsx", "xls"]
+        )
+        if uploaded_file is not None:
+            df_single = load_single_data(uploaded_file)
+            if df_single is not None:
+                df_raw = df_single
+                base_cache_key = f"local_{uploaded_file.name}_{df_raw.shape[0]}"
+
+# Tombol Logout selalu tampil di bagian paling bawah sidebar
+st.sidebar.write("---")
+if st.sidebar.button("🚪 Logout", use_container_width=True, key="btn_sidebar_logout_action"):
+    st.session_state.logged_in = False
+    st.rerun()
 
 
 # --- 6. HELPER: Deteksi Periode Dinamis dari Data ---
@@ -691,12 +739,48 @@ if df_raw is not None:
             renderer = get_pyg_renderer(df_raw, active_cache_key)
             renderer.explorer()
 
+elif nav_selection == "⚙️ Setting":
+    st.markdown("<h1 style='color: #F8FAFC; font-weight: 700;'>⚙️ Pengaturan & Konfigurasi Sistem</h1>", unsafe_allow_html=True)
+    st.caption("Manajemen akun eksekutif, status keamanan, dan pembersihan cache data.")
+    st.write("---")
+
+    col_set1, col_set2 = st.columns(2)
+
+    with col_set1:
+        st.markdown("### 👤 Profil Pengguna (User Account)")
+        st.info("""
+        - **Username**: `admin`
+        - **Peran Pengguna**: Administrator Utama SAPA YANFASKES
+        - **Status Sesi**: 🟢 Terautentikasi & Aktif
+        - **Hak Akses**: Akses Penuh (Developer & Published Dashboard)
+        """)
+
+        st.markdown("### ⚡ Manajemen Cache & Performa System")
+        st.write("Jika data Google Sheets Anda telah diubah atau terjadi kendala memuat file, bersihkan cache data sistem di bawah ini:")
+        if st.button("🧹 Bersihkan Cache Data Sekarang", use_container_width=True, key="btn_clear_cache"):
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            st.success("✅ Cache data berhasil dibersihkan! Silakan kembali ke menu 🏠 Home.")
+
+    with col_set2:
+        st.markdown("### ℹ️ Informasi Sistem SAPA YANFASKES")
+        st.success("""
+        - **Versi Sistem**: `v2.4.0-BI (Tableau Edition)`
+        - **Visual Engine**: `PyGWalker + Streamlit`
+        - **Status Keamanan**: CORS & XSRF Protection `Protected`
+        - **Date Hierarchy Extractor**: `Tableau Auto-Parser Active`
+        """)
+
+        st.markdown("### 🔒 Keamanan Kebijakan Sesi")
+        st.warning("Pastikan selalu mengeklik tombol **🚪 Logout** di bagian paling bawah sidebar saat Anda selesai menggunakan aplikasi ini untuk melindungi keamanan data.")
+
 else:
     st.info("💡 Selamat datang di SAPA YANFASKES. Silakan muat data Anda untuk memulai analisis.")
     st.markdown("""
     ### Langkah Menampilkan Dashboard Interaktif:
-    1. **Muat Data**: Masukkan link Google Sheets Anda di panel sebelah kiri.
-    2. **Desain Grafik (Mode Developer)**: Pilih mode *Developer* di sidebar untuk mulai mendesain grafik Anda melalui seret-lepas kolom.
-    3. **Simpan Hasil Desain**: Klik tombol Simpan (Disket) di dalam workspace.
-    4. **Publikasikan**: Alihkan pilihan di sidebar ke **`Published Dashboard`** untuk melihat dashboard bersih dengan kartu KPI dinamis dan filter cepat yang berjejer rapi di badan halaman.
+    1. **Buka Menu Sidebar**: Sorot/arahkan kursor mouse ke tombol garis tiga (tiga garis) di pojok kiri atas untuk membuka panel navigasi.
+    2. **Muat Data**: Masukkan link Google Sheets Anda atau unggah file lokal di menu **🏠 Home**.
+    3. **Desain Grafik (Mode Developer)**: Pilih mode *Developer* di sidebar untuk mulai mendesain grafik Anda melalui seret-lepas kolom.
+    4. **Simpan Hasil Desain**: Klik tombol Simpan (Disket) di dalam workspace.
+    5. **Publikasikan**: Alihkan pilihan di sidebar ke **`Published Dashboard`** untuk melihat dashboard bersih dengan kartu KPI dinamis dan filter cepat yang berjejer rapi di badan halaman.
     """)
