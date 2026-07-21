@@ -1,0 +1,19 @@
+# ========================================== #
+# ATURAN UTAMA AGEN OTONOM SAPA YANFASKES
+# ========================================== #
+
+# --- PROTOKOL GOOGLE GROUNDING (VERIFIKASI REALITAS NYATA) ---
+- [ANALISA BERBASIS FAKTA] Dilarang keras melakukan analisa atau perbaikan berdasarkan asumsi (hallucination). Sebelum mengeksekusi fitur baru atau memperbaiki eror, agen WAJIB melakukan Google Grounding (pencarian real-time) untuk memeriksa dokumentasi Streamlit/DuckDB terbaru tahun 2026.
+- [RESOLUSI EROR VERIFIED] Jika terminal memunculkan eror kode atau dependensi, jalankan pencarian internal/eksternal untuk menemukan solusi yang sudah tervalidasi oleh komunitas (misal: GitHub Issues atau StackOverflow terbaru). Jangan mencoba-coba sintaksis buatan sendiri.
+- [VERIFIKASI SKEMA DATA] Untuk penambahan fitur berbasis data, lakukan grounding visual/skema terlebih dahulu. Baca kamus data (metadata) atau jalankan `PRAGMA table_info('nama_tabel')` pada DuckDB untuk memastikan nama kolom benar-benar ada sebelum menulis query.
+
+# --- 1. ATURAN PENYELAMATAN KUOTA & COMPUTE EFFICIENCY ---
+- [PROSES DATA] DILARANG KERAS membaca file besar (CSV, XLSX, JSON) ke dalam memori secara utuh. WAJIB gunakan `duckdb.query()` atau `pd.read_csv(..., nrows=5)` untuk inspeksi awal. Delegasikan kalkulasi ke query SQL DuckDB, jangan diproses di loop Python.
+- [KODE BEDAH (SURGICAL EDIT)] Jangan menulis ulang seluruh file `app.py`. Gunakan pendekatan modular. Pisahkan fungsi visualisasi, query, dan komponen UI ke file berbeda (misal: `utils.py`, `charts.py`), lalu import ke `app.py`.
+- [ANTI-LOOP & TOLERANSI EROR] Batas maksimal kegagalan eksekusi terminal adalah 2 kali. Jika gagal pada percobaan ke-2, agen WAJIB berhenti otomatis, mencetak log eror, dan melakukan grounding eksternal untuk mencari solusi perbaikan sebelum meminta arahan pengguna.
+
+# --- 2. ATURAN UI/UX DASHBOARD EKSEKUTIF (SETARA TABLEAU) ---
+- [TATA LETAK] Wajib menerapkan prinsip "Dashboard Grid". Gunakan `st.sidebar` hanya untuk navigasi global. Gunakan `st.columns` untuk metrik KPI utama (maksimal 4 kartu per baris) dan visualisasi horizontal.
+- [SUNTIKAN CSS TERISOLASI] Setiap suntikan CSS wajib dibungkus dalam kontainer kelas spesifik (custom class). Desain wajib menggunakan tema korporat: Latar belakang kartu putih/abu-abu terang, radius sudut `8px`, dan `box-shadow: 0 4px 6px rgba(0,0,0,0.05)`.
+- [FORMAT ANGKA MURNI] Semua representasi rasio, performa, dan capaian wajib melalui fungsi format: `{:.2f}%`. Angka nominal besar wajib diformat dengan pemisah ribuan atau ringkasan Juta/Miliar (M/B).
+- [KETERBACAAN EKSEKUTIF] Setiap grafik wajib dilengkapi dengan: (1) Judul yang jelas, (2) Sub-judul penjelasan singkat tren data, dan (3) `st.divider()` sebagai pemisah visual antar bagian konten.

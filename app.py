@@ -142,13 +142,14 @@ if not st.session_state.logged_in:
             
     st.stop()
 
-# Suntikan CSS untuk membuang margin bawaan Streamlit & Auto-Expand Hover Sidebar
+# Suntikan CSS Glassmorphism Collapsible Sidebar + Icon Strip
 st.markdown("""
 <style>
+    /* === Base Layout — geser konten utama ke kanan agar tidak tertutup icon strip === */
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
-        padding-left: 1.5rem !important;
+        padding-left: calc(2rem + 64px) !important;
         padding-right: 1.5rem !important;
         max-width: 100% !important;
     }
@@ -157,50 +158,197 @@ st.markdown("""
         border-radius: 8px;
     }
 
-    /* Styling Ikon Garis Tiga (Collapsed Control) & Auto-Expand Hover Sidebar */
+    /* Sembunyikan kontrol collapsed bawaan Streamlit (diganti icon strip) */
     [data-testid="stSidebarCollapsedControl"] {
-        position: fixed !important;
-        top: 0.6rem !important;
-        left: 0.6rem !important;
-        z-index: 1000001 !important;
-        background-color: #02628a !important;
-        color: #ffffff !important;
-        border-radius: 6px !important;
-        padding: 4px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-        display: block !important;
+        display: none !important;
+    }
+
+    /* ================================================ */
+    /*   GLASSMORPHISM SIDEBAR                          */
+    /* ================================================ */
+    section[data-testid="stSidebar"] {
+        background: rgba(10, 18, 36, 0.78) !important;
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+        /* Override Streamlit hiding — sidebar selalu exist di DOM */
         visibility: visible !important;
-    }
-
-    [data-testid="stSidebarCollapsedControl"] button, 
-    [data-testid="stSidebarCollapsedControl"] svg {
-        color: #ffffff !important;
-        fill: #ffffff !important;
-        stroke: #ffffff !important;
-    }
-
-    [data-testid="stSidebarCollapsedControl"]:hover {
-        background-color: #014c6c !important;
-        transform: scale(1.08) !important;
-    }
-
-    /* Auto Expand Sidebar ketika Mouse Hover di Garis Tiga atau Area Sidebar */
-    [data-testid="stSidebar"] {
-        transition: transform 0.3s ease-in-out !important;
-    }
-    [data-testid="stApp"]:has([data-testid="stSidebarCollapsedControl"]:hover) [data-testid="stSidebar"],
-    [data-testid="stApp"]:has([data-testid="stSidebar"]:hover) [data-testid="stSidebar"] {
-        transform: translateX(0px) !important;
-        visibility: visible !important;
-        box-shadow: 5px 0 15px rgba(0,0,0,0.2) !important;
-        position: fixed !important;
+        width: 280px !important;
+        min-width: 280px !important;
+        /* Default: geser ke luar layar */
+        transform: translateX(-100%) !important;
+        /* Delay 120ms pada COLLAPSE agar tidak flicker saat handoff hover */
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) 0.12s,
+                    box-shadow 0.35s ease 0.12s !important;
         z-index: 1000000 !important;
+        position: fixed !important;
         height: 100vh !important;
+        left: 0 !important;
+        top: 0 !important;
     }
+    /* Inner wrapper — transparan agar glassmorphism terlihat */
+    section[data-testid="stSidebar"] > div:first-child {
+        background: transparent !important;
+    }
+
+    /* ================================================ */
+    /*   EXPAND TRIGGERS (tanpa delay saat expand)      */
+    /* ================================================ */
+    [data-testid="stApp"]:has(.sidebar-icon-strip:hover) section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"]:hover {
+        transform: translateX(0px) !important;
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.40) !important;
+        transition-delay: 0s !important;
+    }
+
+    /* ================================================ */
+    /*   ICON STRIP (Collapsed Sidebar View)            */
+    /* ================================================ */
+    .sidebar-icon-strip {
+        position: fixed;
+        left: 0; top: 0;
+        width: 64px; height: 100vh;
+        background: rgba(10, 18, 36, 0.55);
+        backdrop-filter: blur(16px) saturate(140%);
+        -webkit-backdrop-filter: blur(16px) saturate(140%);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        z-index: 999999;
+        display: flex; flex-direction: column; align-items: center;
+        padding: 18px 0;
+        box-sizing: border-box;
+        transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    .sidebar-icon-strip:hover {
+        background: rgba(10, 18, 36, 0.82);
+        border-right-color: rgba(255, 255, 255, 0.10);
+    }
+
+    /* Logo */
+    .strip-logo {
+        width: 36px; height: 36px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #02628a, #0ea5e9);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; font-weight: 800; color: #fff;
+        margin-bottom: 14px;
+        box-shadow: 0 2px 10px rgba(14, 165, 233, 0.25);
+        font-family: 'Inter','Segoe UI',system-ui,sans-serif;
+    }
+
+    /* Avatar */
+    .strip-avatar {
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3B82F6, #1E40AF);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 13px; font-weight: 700;
+        margin-bottom: 18px;
+        border: 2px solid rgba(255,255,255,0.12);
+        box-shadow: 0 2px 8px rgba(59,130,246,0.20);
+        font-family: 'Inter','Segoe UI',system-ui,sans-serif;
+    }
+
+    /* Divider */
+    .strip-divider {
+        width: 26px; height: 1px;
+        background: rgba(255,255,255,0.07);
+        margin-bottom: 8px;
+    }
+
+    /* Section Label */
+    .strip-label {
+        font-size: 7.5px; font-weight: 700;
+        color: rgba(255,255,255,0.22);
+        letter-spacing: 2px; text-transform: uppercase;
+        margin-bottom: 12px;
+        font-family: 'Inter','Segoe UI',system-ui,sans-serif;
+    }
+
+    /* Icon Item */
+    .strip-item {
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px;
+        color: rgba(255,255,255,0.42);
+        margin-bottom: 4px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+    }
+    .strip-item:hover {
+        background: rgba(255,255,255,0.07);
+        color: #60A5FA;
+        transform: scale(1.08);
+    }
+    .strip-item.active {
+        background: rgba(96,165,250,0.10);
+        color: #60A5FA;
+    }
+    .strip-item.active::before {
+        content: '';
+        position: absolute;
+        left: -13px; top: 50%;
+        transform: translateY(-50%);
+        width: 3px; height: 18px;
+        background: #60A5FA;
+        border-radius: 0 3px 3px 0;
+    }
+
+    .strip-spacer { flex: 1; }
+
+    /* Logout Icon */
+    .strip-item.strip-logout {
+        color: rgba(248,113,113,0.45);
+        margin-bottom: 18px;
+    }
+    .strip-item.strip-logout:hover {
+        background: rgba(239,68,68,0.08);
+        color: #F87171;
+    }
+
+    /* Tooltip on hover */
+    .strip-tip {
+        position: absolute;
+        left: 50px; top: 50%;
+        transform: translateY(-50%);
+        background: rgba(15,23,42,0.92);
+        backdrop-filter: blur(8px);
+        color: #CBD5E1;
+        padding: 3px 10px;
+        border-radius: 5px;
+        font-size: 10.5px; font-weight: 500;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        border: 1px solid rgba(255,255,255,0.06);
+        font-family: 'Inter','Segoe UI',system-ui,sans-serif;
+    }
+    .strip-item:hover .strip-tip { opacity: 1; }
 
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
+
+<!-- Glassmorphism Icon Strip (Collapsed Sidebar View) -->
+<div class="sidebar-icon-strip">
+    <div class="strip-logo">S</div>
+    <div class="strip-avatar">A</div>
+    <div class="strip-divider"></div>
+    <div class="strip-label">MENU</div>
+    <div class="strip-item active">
+        <span>🏠</span><span class="strip-tip">Home</span>
+    </div>
+    <div class="strip-item">
+        <span>⚙️</span><span class="strip-tip">Setting</span>
+    </div>
+    <div class="strip-spacer"></div>
+    <div class="strip-item strip-logout">
+        <span>🚪</span><span class="strip-tip">Logout</span>
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
 # --- 2. SELF-HEALING DATA CLEANING & DATE PARSING LAYER ---

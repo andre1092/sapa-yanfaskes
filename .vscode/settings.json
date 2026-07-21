@@ -1,0 +1,24 @@
+{
+    "python.defaultInterpreterPath": "/Volumes/WD_BLACK_PRO/sapa-yanfaskes/.venv/bin/python",
+    "python.analysis.extraPaths": [
+        "/Volumes/WD_BLACK_PRO/sapa-yanfaskes/.venv/lib/python3.9/site-packages"
+    ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/.DS_Store": true,
+        "**/node_modules": true
+    },
+    "search.exclude": {
+        "**/.venv": true,
+        "**/.git": true,
+        "**/__pycache__": true,
+        "**/node_modules": true
+    },
+    "files.watcherExclude": {
+        "**/.venv/**": true,
+        "**/.git/**": true,
+        "**/node_modules/**": true
+    }
+}
