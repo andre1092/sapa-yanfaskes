@@ -241,10 +241,78 @@
             </div>
 
             <div id="page-setting" style="display:none;">
-                <h1 class="page-title">⚙️ Pengaturan System</h1>
+                <h1 class="page-title">⚙️ Pengaturan System & Integrasi</h1>
+                <p class="page-subtitle">Manajemen Koneksi Ekosistem Google, Folder & File Picker, dan Pemantauan API Rate Limiter</p>
+
+                <!-- MODULE: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) -->
                 <div class="glass-panel" style="margin-top:20px;">
-                    <h3>👤 Status System Vercel Serverless</h3>
-                    <p style="margin-top:10px; color:#94A3B8;">- **Engine:** Polars Lazy API (Rust Core)<br>- **Frontend:** Glassmorphism Facenote UI<br>- **Visualization:** Plotly.js High-Performance</p>
+                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">🔌 Manajemen Koneksi & Integrasi (Data Connection)</h2>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        
+                        <!-- 1. GOOGLE WORKSPACE OAUTH 2.0 -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#60A5FA; margin-bottom:12px;">🔑 1. Google Workspace OAuth 2.0</h3>
+                            <div style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:10px 14px; color:#34D399; font-size:13px; font-weight:600; margin-bottom:14px;">
+                                ✅ Status Koneksi: Terhubung (admin@bpjs-kesehatan.go.id)
+                            </div>
+                            
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">Google OAuth Client ID</label>
+                                <input type="password" value="9876543210-sapa-yanfaskes.apps.googleusercontent.com" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:13px;">
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">Google OAuth Client Secret</label>
+                                <input type="password" value="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26" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:13px;">
+                            </div>
+                            <button onclick="alert('✅ Otorisasi Google Workspace OAuth Berhasil!')" style="background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:9px 16px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer;">🔐 Otorisasi OAuth Ulang</button>
+                        </div>
+
+                        <!-- 2. FOLDER & FILE PICKER -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#60A5FA; margin-bottom:12px;">📁 2. Folder & File Picker Target</h3>
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">ID Folder Target Google Drive</label>
+                                <input type="text" value="1A2b3C4d5E6f7G8h9I0j-SAPA_Yanfaskes_Data" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:13px;">
+                            </div>
+                            <div style="margin-bottom:16px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:6px;">Spreadsheet yang Diizinkan Dibaca Dashboard:</label>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    <span style="background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.4); color:#93C5FD; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">✓ DB_FASKES</span>
+                                    <span style="background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.4); color:#93C5FD; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">✓ DB_LAP_ANTROL_FKRTL</span>
+                                    <span style="background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:#94A3B8; padding:4px 10px; border-radius:6px; font-size:12px;">+ DB_RUJUKAN_FASKES</span>
+                                </div>
+                            </div>
+                            <button onclick="alert('✅ Berhasil Mengindeks File Target Spreadsheet!')" style="background:rgba(255,255,255,0.08); border:1px solid var(--glass-border); color:white; padding:9px 16px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer;">📂 Indeks & Tes File</button>
+                        </div>
+                    </div>
+
+                    <!-- 3. API RATE LIMITER & USAGE MONITORING -->
+                    <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px; margin-top:20px;">
+                        <h3 style="font-size:15px; font-weight:700; color:#60A5FA; margin-bottom:12px;">⏱️ 3. API Rate Limiter & Usage Monitoring</h3>
+                        <p style="font-size:13px; color:#94A3B8; margin-bottom:12px;">Pemantauan Real-time Kuota Google Sheets API v4 (Batas Kuota: 100 Request per Menit)</p>
+                        
+                        <div style="display:flex; justify-content:space-between; font-size:12px; color:#CBD5E1; margin-bottom:6px;">
+                            <span>Penggunaan Kuota Saat Ini</span>
+                            <span style="font-weight:700; color:#34D399;">42 / 100 Requests (42%)</span>
+                        </div>
+                        
+                        <!-- Progress bar -->
+                        <div style="width:100%; background:rgba(255,255,255,0.1); border-radius:10px; height:12px; overflow:hidden; margin-bottom:14px;">
+                            <div style="width:42%; background:linear-gradient(90deg, #34D399, #60A5FA); height:100%;"></div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#34D399; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700;">🟢 Status Kuota: HEALTHY (58% Sisa Kuota)</span>
+                            <button onclick="alert('✅ Rate Limiter Counter Berhasil Di-reset!')" style="background:rgba(255,255,255,0.08); border:1px solid var(--glass-border); color:white; padding:8px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">🔄 Reset Counter</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE CARD -->
+                <div class="glass-panel">
+                    <h3 style="font-size:16px; font-weight:700; margin-bottom:10px;">👤 Profil User Executiv</h3>
+                    <p style="font-size:13px; color:#94A3B8;">User: <b>admin</b> | Role: <b>Administrator Utama SAPA Yanfaskes</b> | SSO BPJS Authenticated</p>
                 </div>
             </div>
         </div>

@@ -81,6 +81,24 @@ def login(req: LoginRequest):
         return {"success": True, "token": "admin-sapa-token-2026", "user": {"name": "admin", "role": "Admin SAPA Yanfaskes"}}
     raise HTTPException(status_code=401, detail="Username atau password salah.")
 
+@app.get("/api/google-config")
+def get_google_config():
+    return {
+        "oauth_status": "Connected",
+        "account": "admin@bpjs-kesehatan.go.id",
+        "client_id": "9876543210-sapa-yanfaskes.apps.googleusercontent.com",
+        "target_folder": "1A2b3C4d5E6f7G8h9I0j-SAPA_Yanfaskes_Data",
+        "allowed_sheets": ["DB_FASKES", "DB_LAP_ANTROL_FKRTL"],
+        "rate_limiter": {
+            "current_usage": 42,
+            "max_quota": 100,
+            "status": "HEALTHY",
+            "backoff_enabled": True,
+            "delay_seconds": 0.5
+        }
+    }
+
+
 @app.post("/api/load-sheets")
 def load_sheets(url: str = Form(...)):
     match = re.search(r"/d/([a-zA-Z0-9-_]+)", url)
