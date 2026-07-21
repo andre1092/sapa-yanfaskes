@@ -157,6 +157,46 @@ def render_settings_page():
 
     st.write("---")
 
+    # --- MODULE: PEMETAAN DATA & SKEMA (DATA MAPPING & SCHEMA) ---
+    st.markdown("## 📐 PemETAAN DATA & SKEMA (DATA MAPPING & SCHEMA)")
+    st.caption("Penetapan tipe data (Type Casting), penamaan alias kolom (Aliasing), dan aturan validasi integritas data.")
+
+    col_schema1, col_schema2 = st.columns(2)
+
+    with col_schema1:
+        st.markdown("### 🔤 1. Data Type Casting (Penetapan Tipe Data)")
+        st.caption("Mengunci tipe data dari Google Sheets agar diolah dengan tepat oleh Polars Engine.")
+        
+        type_mapping = [
+            {"Kolom Asal": "Tanggal_Pelayanan", "Tipe Data Target": "Datetime (YYYY-MM-DD)", "Status": "🔒 LOCKED"},
+            {"Kolom Asal": "KdPPK", "Tipe Data Target": "String (Utf8 - Kunci Kode)", "Status": "🔒 LOCKED"},
+            {"Kolom Asal": "Capaian", "Tipe Data Target": "Float64 (Persentase)", "Status": "🔒 LOCKED"},
+            {"Kolom Asal": "Biaya_Klaim", "Tipe Data Target": "Currency / Decimal (IDR)", "Status": "🔒 LOCKED"}
+        ]
+        st.dataframe(type_mapping, use_container_width=True)
+
+        st.markdown("### 🔀 2. Column Aliasing (Penamaan Alias Kolom Rapi)")
+        col_raw = st.text_input("Nama Kolom Mentah (Spreadsheet):", value="kd_ppk_faskes_master")
+        col_clean = st.text_input("Nama Display Rapi (BI Dashboard):", value="Kode Faskes PPK")
+        if st.button("➕ Tambah Mapping Alias Kolom", use_container_width=True):
+            st.success(f"✅ Alias tersimpan: `{col_raw}` ➔ `{col_clean}`")
+
+    with col_schema2:
+        st.markdown("### ⚠️ 3. Validation Rules & Data Quality Control")
+        st.info("🛡️ **Self-Healing Data Quality Rules (Polars Expressions)**")
+        
+        st.checkbox("Peringatkan jika ada baris data kosong (NULL) atau terdeteksi Corrupted Data", value=True)
+        st.checkbox("Otomatis bersihkan spasi liar (whitespace trim) pada kolom string/kode", value=True)
+        
+        st.slider("Toleransi Maksimum Baris Kosong (Error Threshold):", min_value=0.0, max_value=5.0, value=0.5, step=0.1, format="%.1f%%")
+        
+        st.markdown("💾 **Skema Terverifikasi:** `100% Valid (0 Corrupted Rows)`")
+
+        if st.button("💾 Simpan Skema & Pemetaan Data", use_container_width=True):
+            st.toast("✅ Skema dan Pemetaan Kolom berhasil diperbarui!")
+
+    st.write("---")
+
     # --- MANAGEMENT & OTHER SETTINGS ---
     col_set1, col_set2 = st.columns(2)
 

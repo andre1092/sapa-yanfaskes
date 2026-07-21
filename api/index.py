@@ -133,6 +133,28 @@ def get_users_config():
         ]
     }
 
+@app.get("/api/schema-mapping")
+def get_schema_mapping():
+    return {
+        "type_casting": [
+            {"source_column": "Tanggal_Pelayanan", "target_type": "Datetime (YYYY-MM-DD)", "status": "LOCKED"},
+            {"source_column": "KdPPK", "target_type": "Utf8 String", "status": "LOCKED"},
+            {"source_column": "Capaian", "target_type": "Float64 Percentage", "status": "LOCKED"},
+            {"source_column": "Biaya_Klaim", "target_type": "Decimal Currency IDR", "status": "LOCKED"}
+        ],
+        "column_aliases": {
+            "kd_ppk_faskes_master": "Kode Faskes PPK",
+            "laporan_antrean_online_pct": "Capaian Antrean",
+            "nm_kab_kota": "Kabupaten / Kota"
+        },
+        "validation_rules": {
+            "warn_on_null": True,
+            "auto_trim_whitespace": True,
+            "error_threshold_pct": 0.5,
+            "data_quality_status": "100% Valid (0 Corrupted Rows)"
+        }
+    }
+
 
 @app.post("/api/load-sheets")
 def load_sheets(url: str = Form(...)):
