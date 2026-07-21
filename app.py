@@ -185,14 +185,17 @@ st.markdown("""
     }
 
     /* Auto Expand Sidebar ketika Mouse Hover di Garis Tiga atau Area Sidebar */
-    [data-testid="stSidebarCollapsedControl"]:hover ~ [data-testid="stSidebar"],
-    [data-testid="stSidebarCollapsedControl"]:hover + [data-testid="stSidebar"],
-    header:has([data-testid="stSidebarCollapsedControl"]:hover) ~ [data-testid="stSidebar"],
-    section[data-testid="stSidebar"]:hover {
-        margin-left: 0px !important;
-        transform: none !important;
+    [data-testid="stSidebar"] {
+        transition: transform 0.3s ease-in-out !important;
+    }
+    [data-testid="stApp"]:has([data-testid="stSidebarCollapsedControl"]:hover) [data-testid="stSidebar"],
+    [data-testid="stApp"]:has([data-testid="stSidebar"]:hover) [data-testid="stSidebar"] {
+        transform: translateX(0px) !important;
         visibility: visible !important;
         box-shadow: 5px 0 15px rgba(0,0,0,0.2) !important;
+        position: fixed !important;
+        z-index: 1000000 !important;
+        height: 100vh !important;
     }
 
     #MainMenu {visibility: hidden;}
