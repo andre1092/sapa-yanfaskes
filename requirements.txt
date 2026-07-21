@@ -1,5 +1,6 @@
+streamlit>=1.38.0
 polars>=1.0.0
-taipy>=3.1.0
 plotly>=5.18.0
 fastexcel>=0.11.0
 pyarrow>=14.0.0
+openpyxl>=3.1.0
