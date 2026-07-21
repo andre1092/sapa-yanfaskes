@@ -1,7 +1,7 @@
 import streamlit as st
 
 GLASSMORPHISM_CSS = """
-/* SAPA YANFASKES Glassmorphism Theme for Taipy GUI */
+/* SAPA YANFASKES Glassmorphism Theme */
 body {
     background: #0B132B !important;
     color: #F8FAFC !important;
@@ -21,7 +21,7 @@ body {
 """
 
 def inject_glassmorphism_theme():
-    """Inject premium Glassmorphism UI theme and responsive collapsible sidebar engine."""
+    """Inject premium Glassmorphism UI theme matching exact Facenote sidebar design."""
     st.markdown("""
 <style>
     /* ================================================================ */
@@ -36,7 +36,7 @@ def inject_glassmorphism_theme():
         transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     body:has(section[data-testid="stSidebar"]:not(.mini-variant)) .block-container {
-        padding-left: calc(1.5rem + 280px) !important;
+        padding-left: calc(1.5rem + 260px) !important;
     }
     iframe { height: 850px !important; border-radius: 8px; }
 
@@ -47,14 +47,14 @@ def inject_glassmorphism_theme():
     header   { visibility: hidden !important; }
 
     /* ================================================================ */
-    /*  GLASSMORPHISM SIDEBAR                                            */
+    /*  GLASSMORPHISM SIDEBAR (EXPANDED STATE — 260px)                  */
     /* ================================================================ */
     section[data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
-        box-shadow: 4px 0 30px rgba(0, 0, 0, 0.12) !important;
+        background: linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(15, 23, 42, 0.85) 35%, rgba(10, 15, 30, 0.95) 100%) !important;
+        backdrop-filter: blur(28px) saturate(190%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow: 6px 0 36px rgba(0, 0, 0, 0.35) !important;
         visibility: visible !important;
         position: fixed !important;
         left: 0 !important; top: 0 !important;
@@ -63,187 +63,227 @@ def inject_glassmorphism_theme():
         overflow-x: hidden !important;
         overflow-y: auto !important;
         transform: none !important;
-        width: 280px !important;
-        min-width: 280px !important;
+        width: 260px !important;
+        min-width: 260px !important;
         transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
                     box-shadow 0.3s ease !important;
     }
     section[data-testid="stSidebar"] > div:first-child {
         background: transparent !important;
+        padding-top: 10px !important;
+    }
+
+    /* Custom scrollbar */
+    section[data-testid="stSidebar"]::-webkit-scrollbar { width: 3px; }
+    section[data-testid="stSidebar"]::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.12); border-radius: 4px;
     }
 
     /* ================================================================ */
-    /*  MINI-VARIANT (70px COLLAPSED SIDEBAR)                           */
+    /*  MINI-VARIANT (COLLAPSED STATE — 70px)                           */
     /* ================================================================ */
     section[data-testid="stSidebar"].mini-variant {
         width: 70px !important;
         min-width: 70px !important;
         overflow: hidden !important;
     }
-    section[data-testid="stSidebar"].mini-variant [data-testid="stVerticalBlock"] > div:not(:has(.glass-toggle)):not(:has(.glass-icons)) {
+    /* Hide expanded content in mini variant */
+    section[data-testid="stSidebar"].mini-variant [data-testid="stVerticalBlock"] > div:not(:has(.glass-header-controls)):not(:has(.glass-icons)) {
         display: none !important;
     }
-    section[data-testid="stSidebar"].mini-variant .stMarkdown:not(:has(.glass-toggle)):not(:has(.glass-icons)),
-    section[data-testid="stSidebar"].mini-variant .stRadio,
-    section[data-testid="stSidebar"].mini-variant .stSelectbox,
-    section[data-testid="stSidebar"].mini-variant .stTextInput,
-    section[data-testid="stSidebar"].mini-variant .stFileUploader,
-    section[data-testid="stSidebar"].mini-variant .stButton,
-    section[data-testid="stSidebar"].mini-variant [data-testid="stCaption"],
-    section[data-testid="stSidebar"].mini-variant hr {
+    section[data-testid="stSidebar"].mini-variant .sidebar-expanded-content {
         display: none !important;
     }
 
     /* ================================================================ */
-    /*  ICON COLUMN (FOR MINI-VARIANT STATE)                            */
+    /*  SIDEBAR EXPANDED HEADER & PROFILE (EXACT MATCH TO FACENOTE)     */
+    /* ================================================================ */
+    .sidebar-brand-title {
+        font-size: 21px; font-weight: 800; color: #FFFFFF;
+        letter-spacing: -0.3px; margin-bottom: 22px; margin-left: 6px;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+    .sidebar-user-card {
+        display: flex; align-items: center; gap: 12px;
+        padding: 4px 6px 14px 6px;
+    }
+    .user-avatar-circle {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.10);
+        border: 1px solid rgba(255, 255, 255, 0.20);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .user-info {
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .user-name {
+        font-size: 14px; font-weight: 600; color: #FFFFFF;
+        display: flex; align-items: center; gap: 6px;
+        line-height: 1.2;
+    }
+    .user-arrow { font-size: 10px; opacity: 0.6; }
+    .user-role {
+        font-size: 11px; color: rgba(255, 255, 255, 0.55);
+        margin-top: 2px;
+    }
+    .glass-divider {
+        width: 100%; height: 1px;
+        background: rgba(255, 255, 255, 0.10);
+        margin: 12px 0 16px 0;
+    }
+    .glass-section-label {
+        font-size: 10.5px; font-weight: 700;
+        color: rgba(255, 255, 255, 0.45);
+        letter-spacing: 1.8px; text-transform: uppercase;
+        margin-bottom: 12px; margin-left: 6px;
+    }
+
+    /* ================================================================ */
+    /*  MINI-VARIANT ICON COLUMN (EXACT MATCH TO RIGHT SIDE IN IMAGE)   */
     /* ================================================================ */
     .glass-icons { display: none !important; }
     section[data-testid="stSidebar"].mini-variant .glass-icons {
         display: flex !important;
         flex-direction: column;
         align-items: center;
-        padding: 6px 0;
-        gap: 2px;
+        padding: 14px 0;
+        gap: 6px;
     }
-    .glass-icon-logo {
-        width: 38px; height: 38px; border-radius: 10px;
-        background: linear-gradient(135deg, #02628a, #0ea5e9);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 16px; font-weight: 800; color: #fff;
-        margin-bottom: 8px;
-        box-shadow: 0 2px 10px rgba(14,165,233,0.30);
-        font-family: 'Inter', system-ui, sans-serif;
+    .mini-logo {
+        font-size: 20px; font-weight: 800; color: #FFFFFF;
+        margin-bottom: 18px; font-family: 'Inter', system-ui, sans-serif;
     }
-    .glass-icon-avatar {
-        width: 34px; height: 34px; border-radius: 50%;
-        background: linear-gradient(135deg, #3B82F6, #1E40AF);
+    .mini-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.10);
+        border: 1px solid rgba(255, 255, 255, 0.20);
         display: flex; align-items: center; justify-content: center;
-        color: #fff; font-size: 13px; font-weight: 700;
         margin-bottom: 14px;
-        border: 2px solid rgba(255,255,255,0.15);
-        box-shadow: 0 2px 8px rgba(59,130,246,0.22);
-        font-family: 'Inter', system-ui, sans-serif;
     }
-    .glass-icon-divider {
-        width: 26px; height: 1px;
-        background: rgba(255,255,255,0.08);
-        margin-bottom: 6px;
-    }
-    .glass-icon-label {
-        font-size: 7.5px; font-weight: 700;
-        color: rgba(255,255,255,0.22);
-        letter-spacing: 2px; text-transform: uppercase;
+    .mini-divider {
+        width: 28px; height: 1px;
+        background: rgba(255, 255, 255, 0.10);
         margin-bottom: 10px;
-        font-family: 'Inter', system-ui, sans-serif;
     }
-    .glass-icon-item {
+    .mini-label {
+        font-size: 8px; font-weight: 700;
+        color: rgba(255, 255, 255, 0.45);
+        letter-spacing: 1.5px; text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+    .mini-icon-item {
         width: 42px; height: 42px; border-radius: 10px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 18px; color: rgba(255,255,255,0.50);
+        font-size: 18px; color: rgba(255,255,255,0.60);
         cursor: pointer; transition: all 0.2s ease;
-        position: relative; margin-bottom: 2px;
+        position: relative; margin-bottom: 4px;
     }
-    .glass-icon-item:hover {
+    .mini-icon-item:hover {
         background: rgba(255,255,255,0.12);
         color: #60A5FA; transform: scale(1.08);
     }
-    .glass-icon-item.active {
-        background: rgba(96,165,250,0.12);
+    .mini-icon-item.active {
+        background: rgba(96,165,250,0.15);
         color: #60A5FA;
     }
-    .glass-icon-item.active::before {
+    .mini-icon-item.active::before {
         content: ''; position: absolute;
         left: -14px; top: 50%; transform: translateY(-50%);
         width: 3px; height: 18px;
         background: #60A5FA; border-radius: 0 3px 3px 0;
     }
-    .glass-icon-spacer { flex: 1; min-height: 30px; }
-    .glass-icon-item.glass-logout { color: rgba(248,113,113,0.50); }
-    .glass-icon-item.glass-logout:hover {
-        background: rgba(239,68,68,0.10); color: #F87171;
+    .mini-spacer { flex: 1; min-height: 40px; }
+    .mini-icon-item.mini-logout { color: rgba(248,113,113,0.60); }
+    .mini-icon-item.mini-logout:hover {
+        background: rgba(239,68,68,0.12); color: #F87171;
     }
-    .glass-icon-tip {
+    .mini-tip {
         position: absolute; left: 54px; top: 50%;
         transform: translateY(-50%);
-        background: rgba(15,23,42,0.94);
+        background: rgba(15,23,42,0.95);
         backdrop-filter: blur(8px);
         color: #E2E8F0; padding: 4px 10px;
         border-radius: 6px; font-size: 11px; font-weight: 500;
         white-space: nowrap; opacity: 0; pointer-events: none;
         transition: opacity 0.15s ease;
-        border: 1px solid rgba(255,255,255,0.08);
-        font-family: 'Inter', system-ui, sans-serif;
+        border: 1px solid rgba(255,255,255,0.10);
     }
-    .glass-icon-item:hover .glass-icon-tip { opacity: 1; }
+    .mini-icon-item:hover .mini-tip { opacity: 1; }
 
     /* ================================================================ */
-    /*  TOGGLE BUTTON                                                    */
+    /*  HEADER TOGGLE BUTTON                                            */
     /* ================================================================ */
-    .glass-toggle {
-        display: flex; justify-content: flex-end;
-        padding: 12px 14px 4px;
+    .glass-header-controls {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 4px 4px 12px 4px;
     }
-    section[data-testid="stSidebar"].mini-variant .glass-toggle {
-        justify-content: center; padding: 12px 0 4px;
+    section[data-testid="stSidebar"].mini-variant .glass-header-controls {
+        justify-content: center; padding: 4px 0 10px;
     }
     .glass-toggle-btn {
-        width: 36px; height: 36px; border-radius: 8px;
-        background: rgba(255,255,255,0.07);
+        width: 32px; height: 32px; border-radius: 8px;
+        background: rgba(255,255,255,0.06);
         border: 1px solid rgba(255,255,255,0.10);
         color: rgba(255,255,255,0.65);
         cursor: pointer;
         display: flex; align-items: center; justify-content: center;
-        font-size: 18px;
-        transition: all 0.2s ease;
+        font-size: 16px; transition: all 0.2s ease;
         -webkit-user-select: none; user-select: none;
     }
     .glass-toggle-btn:hover {
-        background: rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.15);
         color: #fff; transform: scale(1.06);
-        box-shadow: 0 0 12px rgba(255,255,255,0.06);
     }
 
     /* ================================================================ */
-    /*  TYPOGRAPHY & INTERACTIVE WIDGETS                                 */
+    /*  STREAMLIT WIDGETS RESTYLING (PURE FACENOTE TILES)               */
     /* ================================================================ */
     section[data-testid="stSidebar"],
     section[data-testid="stSidebar"] p,
     section[data-testid="stSidebar"] span,
     section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] div {
+    section[data-testid="stSidebar"] div {
         color: #FFFFFF !important;
     }
-    section[data-testid="stSidebar"] [data-testid="stCaption"],
-    section[data-testid="stSidebar"] small {
-        color: rgba(255,255,255,0.55) !important;
+
+    /* Hide standard radio header text */
+    section[data-testid="stSidebar"] [role="radiogroup"] > label:first-child {
+        display: none !important;
     }
 
-    /* Radio Tiles */
+    /* Radio option tiles matching Facenote menu items */
     section[data-testid="stSidebar"] [role="radiogroup"] label {
         padding: 10px 14px !important;
         border-radius: 10px !important;
-        margin-bottom: 3px !important;
+        margin-bottom: 4px !important;
         transition: background 0.2s ease, transform 0.15s ease !important;
         border: 1px solid transparent !important;
         position: relative;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
     }
     section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
-        background: rgba(255, 255, 255, 0.12) !important;
-        transform: translateX(3px);
+        background: rgba(255, 255, 255, 0.10) !important;
+        transform: translateX(4px);
     }
     section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-        background: rgba(96, 165, 250, 0.14) !important;
-        border-color: rgba(96, 165, 250, 0.22) !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
+        font-weight: 600 !important;
     }
     section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::after {
         content: '';
         position: absolute; right: 12px; top: 50%;
         transform: translateY(-50%);
-        width: 7px; height: 7px;
+        width: 6px; height: 6px;
         background: #60A5FA; border-radius: 50%;
-        box-shadow: 0 0 10px rgba(96,165,250,0.6);
+        box-shadow: 0 0 10px rgba(96,165,250,0.8);
+    }
+    section[data-testid="stSidebar"] [data-baseweb="radio"] > div:first-child {
+        display: none !important;
     }
 
     /* Selectbox & Inputs */
@@ -258,12 +298,15 @@ def inject_glassmorphism_theme():
         background: rgba(255,255,255,0.06) !important;
         border: 1px solid rgba(255,255,255,0.12) !important;
         color: #fff !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         transition: all 0.2s ease !important;
+        padding: 10px 14px !important;
+        font-weight: 500 !important;
     }
     section[data-testid="stSidebar"] .stButton button:hover {
-        background: rgba(255,255,255,0.14) !important;
-        border-color: rgba(255,255,255,0.22) !important;
+        background: rgba(239,68,68,0.15) !important;
+        border-color: rgba(239,68,68,0.30) !important;
+        color: #F87171 !important;
         transform: translateY(-1px) !important;
     }
     section[data-testid="stSidebar"] hr {
@@ -310,28 +353,51 @@ def inject_glassmorphism_theme():
 </script>
 """, unsafe_allow_html=True)
 
-    # Sidebar Header Controls & Icon Column
+    # Sidebar Header & User Profile (Expanded View HTML)
     st.sidebar.markdown("""
-    <div class="glass-toggle">
-        <div class="glass-toggle-btn" title="Toggle Sidebar">☰</div>
+    <div class="sidebar-expanded-content">
+        <div class="glass-header-controls">
+            <div class="sidebar-brand-title">SAPA YANFASKES</div>
+            <div class="glass-toggle-btn" title="Toggle Sidebar">☰</div>
+        </div>
+        <div class="sidebar-user-card">
+            <div class="user-avatar-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <div class="user-info">
+                <div class="user-name">admin <span class="user-arrow">⌵</span></div>
+                <div class="user-role">Admin SAPA Yanfaskes</div>
+            </div>
+        </div>
+        <div class="glass-divider"></div>
+        <div class="glass-section-label">MENU</div>
     </div>
     """, unsafe_allow_html=True)
 
+    # Icon Column (Mini-Variant Collapsed View HTML)
     st.sidebar.markdown("""
     <div class="glass-icons">
-        <div class="glass-icon-logo">S</div>
-        <div class="glass-icon-avatar">A</div>
-        <div class="glass-icon-divider"></div>
-        <div class="glass-icon-label">MENU</div>
-        <div class="glass-icon-item active">
-            <span>🏠</span><span class="glass-icon-tip">Home</span>
+        <div class="mini-logo">S</div>
+        <div class="mini-avatar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
         </div>
-        <div class="glass-icon-item">
-            <span>⚙️</span><span class="glass-icon-tip">Setting</span>
+        <div class="mini-divider"></div>
+        <div class="mini-label">MENU</div>
+        <div class="mini-icon-item active">
+            <span>🏠</span><span class="mini-tip">Home</span>
         </div>
-        <div class="glass-icon-spacer"></div>
-        <div class="glass-icon-item glass-logout">
-            <span>🚪</span><span class="glass-icon-tip">Logout</span>
+        <div class="mini-icon-item">
+            <span>⚙️</span><span class="mini-tip">Setting</span>
+        </div>
+        <div class="mini-spacer"></div>
+        <div class="mini-icon-item mini-logout">
+            <span>🚪</span><span class="mini-tip">Logout</span>
         </div>
     </div>
     """, unsafe_allow_html=True)

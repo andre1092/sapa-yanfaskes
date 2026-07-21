@@ -30,16 +30,12 @@ check_authentication()
 inject_glassmorphism_theme()
 
 # --- 4. SIDEBAR CONTROLS & NAVIGATION ---
-st.sidebar.markdown("## 🏥 SAPA YANFASKES")
-st.sidebar.caption("Saluran Analisis Performa & Akselerasi")
-st.sidebar.write("---")
-
 nav_selection = st.sidebar.radio(
-    "📍 Navigasi Utama:",
+    "Pilih Menu",
     ["🏠 Home", "⚙️ Setting"],
-    key="main_nav_selector"
+    key="main_nav_selector",
+    label_visibility="collapsed"
 )
-st.sidebar.write("---")
 
 df_raw = None
 base_cache_key = ""
