@@ -769,6 +769,7 @@
 
         function getSlotLabels(chartType) {
             switch (chartType) {
+                // A. Kategori Standar (Cartesian Charts)
                 case 'Column Chart':
                 case 'Bar Chart':
                     return { slot1: 'Category (Kategori)', slot2: 'Value (Nilai)', slot3: 'Breakdown/Legend (Warna)' };
@@ -779,29 +780,58 @@
                     return { slot1: 'Shared Axis (Sumbu Bersama)', slot2: 'Bar Series (Nilai Batang)', slot3: 'Line Series (Nilai Garis)' };
                 case 'Waterfall Chart':
                     return { slot1: 'Category (Tahapan)', slot2: 'Delta/Value (Nilai Perubahan)', slot3: null };
+
+                // B. Kategori Proporsi & Hierarki
                 case 'Pie Chart':
                     return { slot1: 'Slice Label (Label Potongan)', slot2: 'Slice Size (Ukuran Potongan)', slot3: null };
                 case 'Sunburst & Treemap':
                     return { slot1: 'Hierarchy Levels (Level 1, 2..)', slot2: 'Size (Ukuran Busur/Kotak)', slot3: null };
+
+                // C. Kategori Statistik & Distribusi
                 case 'XY Scatter Chart':
                     return { slot1: 'X Value (Nilai X - Angka)', slot2: 'Y Value (Nilai Y - Angka)', slot3: null };
                 case 'Histogram & Pareto':
                     return { slot1: 'Data Source (Data Mentah)', slot2: 'Otomatis (Frequency)', slot3: 'Bin Size (Ukuran Rentang)' };
                 case 'Box and Whisker':
                     return { slot1: 'Category (Grup)', slot2: 'Input Values (Data Mentah)', slot3: 'Otomatis (Quartiles)' };
+
+                // D. Kategori Data Grid
                 case 'Table':
                     return { slot1: 'Selected Columns (Pilih Kolom: A, B, C...)', slot2: null, slot3: null };
                 case 'Pivot Table':
                     return { slot1: 'Rows (Baris)', slot2: 'Columns (Kolom)', slot3: 'Values (Nilai/Isi)' };
+
+                // E. Kategori Khusus (Complex)
                 case 'Radar Chart':
-                    return { slot1: 'Metrics/Axes (Indikator/Sudut)', slot2: 'Scores/Values (Skor Nilai)', slot3: null };
+                    return { slot1: 'Category (Sudut Jaringan)', slot2: 'Metric (Jarak ke Pusat)', slot3: null };
                 case 'Stock Chart':
-                    return { slot1: 'Timeline (Waktu)', slot2: 'High/Low/Close (Nilai Fluktuasi)', slot3: null };
+                    return { slot1: 'Date (X)', slot2: 'Open, High, Low, Close (Perlu 4 Slot Y)', slot3: null };
                 case 'Surface Chart':
-                    return { slot1: 'X Axis (Dimensi 1)', slot2: 'Y Axis (Dimensi 2)', slot3: 'Z Elevation (Tinggi 3D)' };
+                    return { slot1: 'X Coordinates', slot2: 'Y Coordinates', slot3: 'Z Value (Tinggi Permukaan)' };
+
                 default:
-                    return { slot1: 'Category / Axis (Sumbu X)', slot2: 'Value / Metric (Sumbu Y)', slot3: 'Breakdown / Series' };
+                    return { slot1: 'Category / Axis', slot2: 'Value / Metric', slot3: 'Breakdown / Series' };
             }
+        }
+
+        function getSlotOptions(chartType, slotNum) {
+            if (chartType === 'Stock Chart') {
+                if (slotNum === 1) return ['Tanggal Pelayanan (Daily)', 'Bulan Pelayanan', 'Minggu Ke-'];
+                if (slotNum === 2) return ['Nilai Buka (Open)', 'Nilai Tertinggi (High)', 'Nilai Terendah (Low)', 'Nilai Tutup (Close)'];
+            }
+            if (chartType === 'Radar Chart') {
+                if (slotNum === 1) return ['Mutu Layanan', 'Kecepatan Pelayanan', 'Kepuasan Peserta', 'Respon Waktu', 'Ketersediaan Bed'];
+                if (slotNum === 2) return ['Skor Indeks (0-100)', 'Capaian Pemanfaatan (%)', 'Total Antrean'];
+            }
+            if (chartType === 'Surface Chart') {
+                if (slotNum === 1) return ['Jam Pelayanan (08.00-16.00)', 'Tanggal Pelayanan', 'Kabupaten/Kota'];
+                if (slotNum === 2) return ['Hari Dalam Seminggu', 'Poli / Spesialisasi', 'Jenis Faskes'];
+                if (slotNum === 3) return ['Volume Antrean (Kepadatan 3D)', 'Waktu Tunggu (Menit)', 'Capaian (%)'];
+            }
+            
+            if (slotNum === 1) return ['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'];
+            if (slotNum === 2) return ['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'];
+            if (slotNum === 3) return ['Kepemilikan Faskes', 'Garis Tren Kedua', 'Sub-Kategori Area', 'Auto-Bin Interval'];
         }
 
         function toggleSlot3Opt(id, opt) {
@@ -853,13 +883,14 @@
 
                         // SLOT 1
                         if (slots.slot1) {
+                            const opts1 = getSlotOptions(w.chartType, 1);
                             html += `
                                 <div style="margin-bottom:12px;">
                                     <label style="display:block; font-size:11px; color:#38BDF8; font-weight:800; margin-bottom:5px;">
                                         📌 ${slots.slot1}:
                                     </label>
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                                        ${['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'].map(dim => `
+                                        ${opts1.map(dim => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
                                                 <input type="checkbox" ${w.xAxis.includes(dim) ? 'checked' : ''} onchange="toggleXAxis(${w.id}, '${dim}')" style="accent-color:#38BDF8;"> ${dim}
                                             </label>
@@ -871,13 +902,14 @@
 
                         // SLOT 2
                         if (slots.slot2) {
+                            const opts2 = getSlotOptions(w.chartType, 2);
                             html += `
                                 <div style="margin-bottom:12px;">
                                     <label style="display:block; font-size:11px; color:#10B981; font-weight:800; margin-bottom:5px;">
                                         📊 ${slots.slot2}:
                                     </label>
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                                        ${['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'].map(met => `
+                                        ${opts2.map(met => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
                                                 <input type="checkbox" ${w.yAxis.includes(met) ? 'checked' : ''} onchange="toggleYAxis(${w.id}, '${met}')" style="accent-color:#10B981;"> ${met}
                                             </label>
@@ -889,13 +921,14 @@
 
                         // SLOT 3 (OPSIONAL)
                         if (slots.slot3) {
+                            const opts3 = getSlotOptions(w.chartType, 3);
                             html += `
                                 <div style="margin-bottom:12px;">
                                     <label style="display:block; font-size:11px; color:#F59E0B; font-weight:800; margin-bottom:5px;">
                                         🎨 ${slots.slot3}:
                                     </label>
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                                        ${['Kepemilikan Faskes', 'Garis Tren Kedua', 'Sub-Kategori Area', 'Auto-Bin Interval'].map(opt => `
+                                        ${opts3.map(opt => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
                                                 <input type="checkbox" ${w.slot3Opts && w.slot3Opts.includes(opt) ? 'checked' : ''} onchange="toggleSlot3Opt(${w.id}, '${opt}')" style="accent-color:#F59E0B;"> ${opt}
                                             </label>

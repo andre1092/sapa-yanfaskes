@@ -100,13 +100,13 @@ def render_settings_page():
                 elif chart_type == "Pivot Table":
                     return {"slot1": "Rows (Baris)", "slot2": "Columns (Kolom)", "slot3": "Values (Nilai/Isi)"}
                 elif chart_type == "Radar Chart":
-                    return {"slot1": "Metrics/Axes (Indikator/Sudut)", "slot2": "Scores/Values (Skor Nilai)", "slot3": None}
+                    return {"slot1": "Category (Sudut Jaringan)", "slot2": "Metric (Jarak ke Pusat)", "slot3": None}
                 elif chart_type == "Stock Chart":
-                    return {"slot1": "Timeline (Waktu)", "slot2": "High/Low/Close (Nilai Fluktuasi)", "slot3": None}
+                    return {"slot1": "Date (X)", "slot2": "Open, High, Low, Close (Perlu 4 Slot Y)", "slot3": None}
                 elif chart_type == "Surface Chart":
-                    return {"slot1": "X Axis (Dimensi 1)", "slot2": "Y Axis (Dimensi 2)", "slot3": "Z Elevation (Tinggi 3D)"}
+                    return {"slot1": "X Coordinates", "slot2": "Y Coordinates", "slot3": "Z Value (Tinggi Permukaan)"}
                 else:
-                    return {"slot1": "Category / Axis (Sumbu X)", "slot2": "Value / Metric (Sumbu Y)", "slot3": "Breakdown / Series"}
+                    return {"slot1": "Category / Axis", "slot2": "Value / Metric", "slot3": "Breakdown / Series"}
 
             p_col1, p_col2, p_col3 = st.columns(3)
             with p_col1:
