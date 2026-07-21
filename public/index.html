@@ -853,6 +853,141 @@
             `).join('');
         }
 
+        function updateLivePreviewCanvas() {
+            const grid = document.getElementById('preview-grid');
+            if (!grid) return;
+
+            if (puzzleWidgets.length === 0) {
+                grid.innerHTML = '<div style="color:#94A3B8; text-align:center; padding:30px; grid-column:1/-1;">Belum ada widget puzzle. Klik "+ Tambah Widget Puzzle" di atas.</div>';
+                return;
+            }
+
+            grid.innerHTML = puzzleWidgets.map((w, idx) => `
+                <div style="background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.35); border-radius:12px; padding:16px; min-height:300px; display:flex; flex-direction:column;">
+                    <div style="font-size:13px; font-weight:800; color:#38BDF8; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>🧩 ${w.title || ('Widget ' + (idx + 1))}</span>
+                        <span style="color:#A7F3D0; font-size:10px; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); padding:2px 8px; border-radius:4px; font-weight:700;">${w.chartType}</span>
+                    </div>
+                    <div id="preview-plot-${w.id}" style="width:100%; flex:1; min-height:240px;"></div>
+                </div>
+            `).join('');
+
+            setTimeout(() => {
+                puzzleWidgets.forEach(w => {
+                    renderPlotlyOrHtmlPreview(w);
+                });
+            }, 50);
+        }
+
+        function renderPlotlyOrHtmlPreview(w) {
+            const containerId = 'preview-plot-' + w.id;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const isDark = true;
+            const paperBg = 'rgba(0,0,0,0)';
+            const fontColor = '#CBD5E1';
+
+            if (w.chartType === "Table" || w.chartType === "Pivot Table") {
+                container.innerHTML = `
+                    <div style="overflow-x:auto; max-height:220px; font-size:11px;">
+                        <table style="width:100%; border-collapse:collapse; color:#E2E8F0;">
+                            <thead>
+                                <tr style="background:rgba(56,189,248,0.15); border-bottom:1px solid rgba(56,189,248,0.3); text-align:left; color:#38BDF8;">
+                                    <th style="padding:6px;">Tanggal</th>
+                                    <th style="padding:6px;">Kabupaten/Kota</th>
+                                    <th style="padding:6px;">Jenis Faskes</th>
+                                    <th style="padding:6px;">Total Antrean</th>
+                                    <th style="padding:6px;">Capaian (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:5px;">2026-07-01</td><td style="padding:5px;">Kota Surabaya</td><td style="padding:5px;">RSUD Pusat</td><td style="padding:5px;">3,420</td><td style="padding:5px; color:#34D399;">94.2%</td></tr>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:5px;">2026-07-01</td><td style="padding:5px;">Kab. Sidoarjo</td><td style="padding:5px;">RS Swasta</td><td style="padding:5px;">2,810</td><td style="padding:5px; color:#34D399;">91.8%</td></tr>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:5px;">2026-07-01</td><td style="padding:5px;">Kab. Gresik</td><td style="padding:5px;">Klinik Utama</td><td style="padding:5px;">1,950</td><td style="padding:5px; color:#34D399;">89.5%</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                return;
+            }
+
+            if (w.chartType === "Pie Chart") {
+                Plotly.newPlot(containerId, [{
+                    labels: ['RSU Pusat', 'RSUD Daerah', 'Klinik Utama', 'RS Swasta'],
+                    values: [42, 31, 17, 10],
+                    type: 'pie',
+                    textinfo: w.showLabels ? 'percent+label' : 'none',
+                    hoverinfo: 'label+value+percent',
+                    marker: { colors: ['#0EA5E9', '#10B981', '#F59E0B', '#8B5CF6'] }
+                }], {
+                    showlegend: w.showLegend,
+                    legend: { font: { color: fontColor }, orientation: w.legendPos === 'Bottom' ? 'h' : 'v' },
+                    paper_bgcolor: paperBg, plot_bgcolor: paperBg,
+                    margin: { l: 20, r: 20, t: 20, b: 20 }
+                }, { responsive: true });
+                return;
+            }
+
+            if (w.chartType === "Bar Chart") {
+                Plotly.newPlot(containerId, [{
+                    x: [94.2, 91.8, 89.5, 87.2, 85.0],
+                    y: ['Surabaya', 'Sidoarjo', 'Gresik', 'Malang', 'Kediri'],
+                    type: 'bar', orientation: 'h',
+                    marker: { color: '#10B981' }
+                }], {
+                    showlegend: w.showLegend,
+                    paper_bgcolor: paperBg, plot_bgcolor: paperBg,
+                    font: { color: fontColor }, margin: { l: 70, r: 20, t: 20, b: 30 }
+                }, { responsive: true });
+                return;
+            }
+
+            if (w.chartType === "Combo Chart") {
+                Plotly.newPlot(containerId, [
+                    { x: ['Surabaya', 'Sidoarjo', 'Gresik', 'Malang'], y: [3200, 2800, 2100, 1900], type: 'bar', name: 'Total Antrean', marker: { color: '#0EA5E9' } },
+                    { x: ['Surabaya', 'Sidoarjo', 'Gresik', 'Malang'], y: [94.2, 91.8, 89.5, 87.2], type: 'scatter', mode: 'lines+markers', yaxis: 'y2', name: 'Capaian %', line: { color: '#F59E0B', width: 3 } }
+                ], {
+                    yaxis: { title: 'Total Antrean', titlefont: { color: '#0EA5E9' } },
+                    yaxis2: { title: 'Capaian %', overlaying: 'y', side: 'right', titlefont: { color: '#F59E0B' } },
+                    showlegend: w.showLegend,
+                    paper_bgcolor: paperBg, plot_bgcolor: paperBg,
+                    font: { color: fontColor }, margin: { l: 40, r: 40, t: 20, b: 30 }
+                }, { responsive: true });
+                return;
+            }
+
+            if (w.chartType === "Radar Chart") {
+                Plotly.newPlot(containerId, [{
+                    type: 'scatterpolar',
+                    r: [88, 92, 85, 90, 94, 88],
+                    theta: ['Antrol', 'BPJS Satu', 'Waktu Tunggu', 'Rujukan', 'Kepuasan', 'Antrol'],
+                    fill: 'toself',
+                    marker: { color: '#38BDF8' }
+                }], {
+                    polar: { radialaxis: { visible: true, range: [0, 100], color: '#94A3B8' }, bgcolor: 'rgba(0,0,0,0)' },
+                    showlegend: w.showLegend, paper_bgcolor: paperBg, font: { color: fontColor },
+                    margin: { l: 30, r: 30, t: 30, b: 30 }
+                }, { responsive: true });
+                return;
+            }
+
+            // Default Line / Column / Area Chart
+            Plotly.newPlot(containerId, [{
+                x: ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'Mei 2026', 'Jun 2026'],
+                y: [82.5, 84.1, 87.3, 88.9, 91.2, 94.5],
+                type: (w.chartType === 'Column Chart' || w.chartType === 'Histogram & Pareto') ? 'bar' : 'scatter',
+                fill: w.chartType === 'Area Chart' ? 'tozeroy' : undefined,
+                mode: 'lines+markers',
+                line: { color: '#38BDF8', width: 3 },
+                name: w.title
+            }], {
+                showlegend: w.showLegend,
+                paper_bgcolor: paperBg, plot_bgcolor: paperBg,
+                font: { color: fontColor }, margin: { l: 30, r: 30, t: 20, b: 30 }
+            }, { responsive: true });
+        }
+
         function initPuzzleStudio() {
             const url = document.getElementById('builder-sheets-url').value;
             const menuTitle = document.getElementById('builder-menu-title').value || 'Dashboard FKRTL';
@@ -864,27 +999,7 @@
             document.getElementById('puzzle-studio-canvas').style.display = 'block';
 
             renderPuzzleStudio();
-
-            // Render Preview Plots
-            Plotly.newPlot('puzzle-chart-preview1', [{
-                x: ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'Mei 2026', 'Jun 2026'],
-                y: [82.5, 84.1, 87.3, 88.9, 91.2, 94.5],
-                type: 'scatter', mode: 'lines+markers', line: {color: '#38BDF8', width: 3}, name: 'Capaian (%)'
-            }], {
-                title: {text: '<b>Tren Pemanfaatan Antrol (Line Chart)</b>', font: {color: '#FFF', size: 13}},
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-                font: {color: '#94A3B8'}, margin: {l:30,r:30,t:30,b:30}
-            }, {responsive: true});
-
-            Plotly.newPlot('puzzle-chart-preview2', [{
-                x: ['Kota Surabaya', 'Kab. Sidoarjo', 'Kab. Gresik', 'Kota Malang', 'Kota Kediri'],
-                y: [94.2, 91.8, 89.5, 87.2, 85.0],
-                type: 'bar', marker: {color: '#10B981'}, name: 'Capaian per Area'
-            }], {
-                title: {text: '<b>Capaian per Kabupaten/Kota (Bar Chart)</b>', font: {color: '#FFF', size: 13}},
-                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-                font: {color: '#94A3B8'}, margin: {l:30,r:30,t:30,b:30}
-            }, {responsive: true});
+            updateLivePreviewCanvas();
         }
 
         function addPuzzleWidget() {
@@ -902,11 +1017,13 @@
                 labelType: "Persentase (%)"
             });
             renderPuzzleStudio();
+            updateLivePreviewCanvas();
         }
 
         function deletePuzzleWidget(id) {
             puzzleWidgets = puzzleWidgets.filter(w => w.id !== id);
             renderPuzzleStudio();
+            updateLivePreviewCanvas();
         }
 
         function updateWidgetChartType(id, chartType) {
@@ -914,21 +1031,95 @@
             if (w) {
                 w.chartType = chartType;
                 w.aiSuggestion = AI_SUGGESTIONS[chartType] || "✨ AI Suggestion: Kustomisasi jenis visualisasi data terkonfigurasi.";
+                
+                // Auto adapt defaults for chart type change
+                if (chartType === "Pie Chart") {
+                    w.title = "Proporsi Pemanfaatan per Tipe Faskes";
+                    w.xAxis = ["Jenis Faskes"];
+                    w.yAxis = ["Total Antrean"];
+                } else if (chartType === "Line Chart" || chartType === "Area Chart") {
+                    w.title = "Tren Capaian Pemanfaatan Bulanan";
+                    w.xAxis = ["Tanggal Pelayanan"];
+                    w.yAxis = ["Capaian Pemanfaatan (%)"];
+                } else if (chartType === "Bar Chart" || chartType === "Column Chart") {
+                    w.title = "Capaian per Kabupaten/Kota";
+                    w.xAxis = ["Kabupaten/Kota"];
+                    w.yAxis = ["Capaian Pemanfaatan (%)"];
+                } else if (chartType === "Table" || chartType === "Pivot Table") {
+                    w.title = "Rekapitulasi Tabel Data Polars";
+                    w.xAxis = ["Tanggal Pelayanan", "Kabupaten/Kota"];
+                    w.yAxis = ["Total Antrean", "Waktu Tunggu (Menit)"];
+                }
+                
                 renderPuzzleStudio();
+                updateLivePreviewCanvas();
             }
         }
 
         function autoGenerateAIConfig(id) {
             const w = puzzleWidgets.find(item => item.id === id);
-            if (w) {
-                alert('✨ AI Auto-Generate: Konfigurasi Sumbu X, Sumbu Y, Legenda, dan Label otomatis dioptimalkan untuk jenis chart "' + w.chartType + '"!');
-                renderPuzzleStudio();
+            if (!w) return;
+
+            // Smart AI Auto-Config based on selected chart type
+            if (w.chartType === "Pie Chart") {
+                w.title = "Proporsi Pemanfaatan per Tipe Faskes";
+                w.xAxis = ["Jenis Faskes"];
+                w.yAxis = ["Total Antrean"];
+                w.showLegend = true;
+                w.legendPos = "Right";
+                w.showLabels = true;
+                w.labelType = "Persentase (%)";
+            } else if (w.chartType === "Line Chart" || w.chartType === "Area Chart") {
+                w.title = "Tren Capaian Pemanfaatan Bulanan (2026)";
+                w.xAxis = ["Tanggal Pelayanan"];
+                w.yAxis = ["Capaian Pemanfaatan (%)"];
+                w.showLegend = true;
+                w.legendPos = "Top";
+                w.showLabels = true;
+                w.labelType = "Persentase (%)";
+            } else if (w.chartType === "Bar Chart" || w.chartType === "Column Chart") {
+                w.title = "Perbandingan Capaian per Wilayah Kabupaten/Kota";
+                w.xAxis = ["Kabupaten/Kota"];
+                w.yAxis = ["Capaian Pemanfaatan (%)"];
+                w.showLegend = true;
+                w.legendPos = "Bottom";
+                w.showLabels = true;
+                w.labelType = "Persentase (%)";
+            } else if (w.chartType === "Table" || w.chartType === "Pivot Table") {
+                w.title = "Rekapitulasi Matrik Data Polars";
+                w.xAxis = ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes"];
+                w.yAxis = ["Total Antrean", "Waktu Tunggu (Menit)"];
+                w.showLegend = false;
+                w.showLabels = true;
+                w.labelType = "Angka Absolut";
+            } else if (w.chartType === "Combo Chart") {
+                w.title = "Combo Analisis: Antrean (Bar) & Capaian % (Line)";
+                w.xAxis = ["Kabupaten/Kota"];
+                w.yAxis = ["Total Antrean", "Capaian Pemanfaatan (%)"];
+                w.showLegend = true;
+                w.legendPos = "Right";
+                w.showLabels = true;
+                w.labelType = "Persentase (%)";
+            } else {
+                w.title = "Visualisasi AI " + w.chartType;
+                w.xAxis = ["Kabupaten/Kota"];
+                w.yAxis = ["Capaian Pemanfaatan (%)"];
+                w.showLegend = true;
+                w.showLabels = true;
             }
+
+            w.aiSuggestion = AI_SUGGESTIONS[w.chartType] || "✨ AI Auto-Generate Config berhasil diterapkan.";
+            
+            renderPuzzleStudio();
+            updateLivePreviewCanvas();
         }
 
         function updateWidgetTitle(id, title) {
             const w = puzzleWidgets.find(item => item.id === id);
-            if (w) w.title = title;
+            if (w) {
+                w.title = title;
+                updateLivePreviewCanvas();
+            }
         }
 
         function toggleXAxis(id, dim) {
@@ -936,6 +1127,7 @@
             if (w) {
                 if (w.xAxis.includes(dim)) w.xAxis = w.xAxis.filter(x => x !== dim);
                 else w.xAxis.push(dim);
+                updateLivePreviewCanvas();
             }
         }
 
@@ -944,27 +1136,40 @@
             if (w) {
                 if (w.yAxis.includes(met)) w.yAxis = w.yAxis.filter(y => y !== met);
                 else w.yAxis.push(met);
+                updateLivePreviewCanvas();
             }
         }
 
         function toggleWidgetLegend(id, val) {
             const w = puzzleWidgets.find(item => item.id === id);
-            if (w) w.showLegend = val;
+            if (w) {
+                w.showLegend = val;
+                updateLivePreviewCanvas();
+            }
         }
 
         function updateLegendPos(id, pos) {
             const w = puzzleWidgets.find(item => item.id === id);
-            if (w) w.legendPos = pos;
+            if (w) {
+                w.legendPos = pos;
+                updateLivePreviewCanvas();
+            }
         }
 
         function toggleWidgetLabels(id, val) {
             const w = puzzleWidgets.find(item => item.id === id);
-            if (w) w.showLabels = val;
+            if (w) {
+                w.showLabels = val;
+                updateLivePreviewCanvas();
+            }
         }
 
         function updateLabelType(id, type) {
             const w = puzzleWidgets.find(item => item.id === id);
-            if (w) w.labelType = type;
+            if (w) {
+                w.labelType = type;
+                updateLivePreviewCanvas();
+            }
         }
 
         function publishCustomMenu() {
