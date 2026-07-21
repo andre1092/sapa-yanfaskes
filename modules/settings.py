@@ -117,11 +117,11 @@ def render_settings_page():
                 
                 s1_labels = get_slot_labels_py(c_type1)
                 if s1_labels["slot1"]:
-                    st.multiselect(f"📌 Slot 1: {s1_labels['slot1']}", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan"], key="c_x1")
+                    st.multiselect(f"📌 {s1_labels['slot1']}:", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan"], key="c_x1")
                 if s1_labels["slot2"]:
-                    st.multiselect(f"📊 Slot 2: {s1_labels['slot2']}", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y1")
+                    st.multiselect(f"📊 {s1_labels['slot2']}:", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y1")
                 if s1_labels["slot3"]:
-                    st.multiselect(f"🎨 Slot 3 (Opsional): {s1_labels['slot3']}", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_1")
+                    st.multiselect(f"🎨 {s1_labels['slot3']}:", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_1")
 
                 c_leg1 = st.checkbox("Tampilkan Legenda", value=True, key="leg1")
                 c_leg_pos1 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=0, key="leg_pos1")
@@ -136,11 +136,11 @@ def render_settings_page():
                 
                 s2_labels = get_slot_labels_py(c_type2)
                 if s2_labels["slot1"]:
-                    st.multiselect(f"📌 Slot 1: {s2_labels['slot1']}", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Kabupaten/Kota"], key="c_x2")
+                    st.multiselect(f"📌 {s2_labels['slot1']}:", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Kabupaten/Kota"], key="c_x2")
                 if s2_labels["slot2"]:
-                    st.multiselect(f"📊 Slot 2: {s2_labels['slot2']}", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y2")
+                    st.multiselect(f"📊 {s2_labels['slot2']}:", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y2")
                 if s2_labels["slot3"]:
-                    st.multiselect(f"🎨 Slot 3 (Opsional): {s2_labels['slot3']}", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_2")
+                    st.multiselect(f"🎨 {s2_labels['slot3']}:", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_2")
 
                 c_leg2 = st.checkbox("Tampilkan Legenda", value=True, key="leg2")
                 c_leg_pos2 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=1, key="leg_pos2")
@@ -155,11 +155,11 @@ def render_settings_page():
                 
                 s3_labels = get_slot_labels_py(c_type3)
                 if s3_labels["slot1"]:
-                    st.multiselect(f"📌 Slot 1: {s3_labels['slot1']}", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan", "Kabupaten/Kota"], key="c_x3")
+                    st.multiselect(f"📌 {s3_labels['slot1']}:", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan", "Kabupaten/Kota"], key="c_x3")
                 if s3_labels["slot2"]:
-                    st.multiselect(f"📊 Slot 2: {s3_labels['slot2']}", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Total Antrean"], key="c_y3")
+                    st.multiselect(f"📊 {s3_labels['slot2']}:", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Total Antrean"], key="c_y3")
                 if s3_labels["slot3"]:
-                    st.multiselect(f"🎨 Slot 3 (Opsional): {s3_labels['slot3']}", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_3")
+                    st.multiselect(f"🎨 {s3_labels['slot3']}:", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_3")
 
                 c_leg3 = st.checkbox("Tampilkan Legenda", value=False, key="leg3")
                 c_leg_pos3 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=0, key="leg_pos3")

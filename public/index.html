@@ -854,8 +854,10 @@
                         // SLOT 1
                         if (slots.slot1) {
                             html += `
-                                <div style="margin-bottom:10px;">
-                                    <label style="display:block; font-size:11px; color:#38BDF8; font-weight:700; margin-bottom:4px;">📌 Slot 1: ${slots.slot1}</label>
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:11px; color:#38BDF8; font-weight:800; margin-bottom:5px;">
+                                        📌 ${slots.slot1}:
+                                    </label>
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
                                         ${['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'].map(dim => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
@@ -870,8 +872,10 @@
                         // SLOT 2
                         if (slots.slot2) {
                             html += `
-                                <div style="margin-bottom:10px;">
-                                    <label style="display:block; font-size:11px; color:#10B981; font-weight:700; margin-bottom:4px;">📊 Slot 2: ${slots.slot2}</label>
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:11px; color:#10B981; font-weight:800; margin-bottom:5px;">
+                                        📊 ${slots.slot2}:
+                                    </label>
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
                                         ${['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'].map(met => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
@@ -886,8 +890,10 @@
                         // SLOT 3 (OPSIONAL)
                         if (slots.slot3) {
                             html += `
-                                <div style="margin-bottom:10px;">
-                                    <label style="display:block; font-size:11px; color:#F59E0B; font-weight:700; margin-bottom:4px;">🎨 Slot 3 (Opsional): ${slots.slot3}</label>
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:11px; color:#F59E0B; font-weight:800; margin-bottom:5px;">
+                                        🎨 ${slots.slot3}:
+                                    </label>
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
                                         ${['Kepemilikan Faskes', 'Garis Tren Kedua', 'Sub-Kategori Area', 'Auto-Bin Interval'].map(opt => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
