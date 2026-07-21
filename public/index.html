@@ -497,6 +497,70 @@
                     </div>
                 </div>
 
+                <!-- MODULE: KEAMANAN & LOG AKTIVITAS (SECURITY & AUDIT LOGS) -->
+                <div class="glass-panel" style="margin-top:20px;">
+                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">🛡️ Keamanan & Log Aktivitas (Security & Audit Logs)</h2>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        
+                        <!-- 1. AUDIT TRAIL LOGS -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#10B981; margin-bottom:12px;">📜 1. Audit Trail (Log Digital)</h3>
+                            
+                            <table style="width:100%; border-collapse:collapse; font-size:11px; color:#E2E8F0; margin-bottom:14px;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid var(--glass-border); text-align:left; color:#94A3B8;">
+                                        <th style="padding:4px;">Waktu</th>
+                                        <th style="padding:4px;">User</th>
+                                        <th style="padding:4px;">Aktivitas</th>
+                                        <th style="padding:4px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:6px 4px;">21/07 21:40</td>
+                                        <td style="padding:6px 4px;">admin</td>
+                                        <td style="padding:6px 4px;">LOGIN_SSO</td>
+                                        <td style="padding:6px 4px; color:#34D399;">🟢 SUCCESS</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:6px 4px;">21/07 21:41</td>
+                                        <td style="padding:6px 4px;">admin</td>
+                                        <td style="padding:6px 4px;">FETCH_POLARS</td>
+                                        <td style="padding:6px 4px; color:#34D399;">🟢 SUCCESS</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:6px 4px;">21/07 21:43</td>
+                                        <td style="padding:6px 4px;">unknown</td>
+                                        <td style="padding:6px 4px;">UNAUTHORIZED</td>
+                                        <td style="padding:6px 4px; color:#F87171;">🔴 BLOCKED</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <button onclick="alert('📥 Rekap Audit Logs (.CSV) Berhasil Diunduh!')" style="background:rgba(255,255,255,0.08); border:1px solid var(--glass-border); color:white; padding:8px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; width:100%;">📥 Unduh Rekap Audit Logs (.CSV)</button>
+                        </div>
+
+                        <!-- 2. IP WHITELISTS & 3. DATA ENCRYPTION -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#10B981; margin-bottom:10px;">🌐 2. IP Whitelisting (Subnet Kantor)</h3>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:12px; color:#E2E8F0; display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" checked style="accent-color:#10B981;"> Aktifkan Pembatasan IP Whitelist
+                                </label>
+                            </div>
+                            <div style="font-size:11px; color:#94A3B8; margin-bottom:12px;">Allowed: <code>180.252.0.0/16 (BPJS Pusat)</code>, <code>10.120.4.0/24</code></div>
+
+                            <h3 style="font-size:15px; font-weight:700; color:#10B981; margin-top:14px; margin-bottom:10px;">🔐 3. Data Encryption Standards</h3>
+                            <div style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); border-radius:8px; padding:10px; font-size:12px; color:#A7F3D0; margin-bottom:10px;">
+                                🔒 <b>AES-256 GCM</b> (Data At Rest) + <b>TLS 1.3</b> (In Transit)<br>
+                                🔄 Rotasi Kunci Otomatis (Setiap 90 Hari)
+                            </div>
+                            <div style="font-size:11px; color:#34D399; font-weight:700;">🟢 Standar Keamanan: GRADE A+ SECURITY COMPLIANCE</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PROFILE CARD -->
                 <div class="glass-panel">
                     <h3 style="font-size:16px; font-weight:700; margin-bottom:10px;">👤 Profil User Executiv</h3>
