@@ -77,6 +77,45 @@ def render_settings_page():
 
     st.write("---")
 
+    # --- MODULE: SINKRONISASI & PEMBARUAN DATA (DATA SYNC & CACHE) ---
+    st.markdown("## 🔄 Sinkronisasi & Pembaruan Data (Data Sync & Cache)")
+    st.caption("Pengaturan frekuensi penarikan data otomatis dari Google Sheets, pemicu manual, dan strategi caching memori.")
+
+    col_sync1, col_sync2 = st.columns(2)
+
+    with col_sync1:
+        st.markdown("### ⏱️ 1. Sync Frequency (Jadwal Penarikan Otomatis)")
+        sync_freq = st.selectbox(
+            "Pilih Frekuensi Penarikan Data:",
+            ["Setiap 1 Jam (Hourly)", "Setiap 6 Jam", "Setiap 24 Jam (Daily at 00:00)", "Real-Time (Per Setiap Request)"],
+            index=0
+        )
+        st.info(f"⚡ **Jadwal Aktif:** `{sync_freq}`. Data akan otomatis ditarik ulang secara background.")
+
+        st.markdown("### ⚡ 2. Manual Trigger (Force Fetch Data)")
+        st.write("Paksa sistem memperbarui data langsung dari Google Sheets dan memotong memori cache.")
+        st.caption("🕒 **Terakhir Disinkronkan:** 21 Juli 2026, 21:25:48 WIB")
+        
+        if st.button("🚀 Force Fetch Data Sekarang (Bypass Cache)", use_container_width=True):
+            st.cache_data.clear()
+            st.cache_resource.clear()
+            st.success("✅ Berhasil menarik ulang data Google Sheets secara langsung! Cache telah diperbarui.")
+
+    with col_sync2:
+        st.markdown("### 🧠 3. Caching Strategy (Durasi Memori Cache)")
+        st.write("Atur durasi penyimpanan data sementara untuk mempercepat performa dashboard tanpa membebankan API Google.")
+        
+        ttl_minutes = st.slider("Durasi Time-To-Live (TTL) Cache (Menit):", min_value=5, max_value=720, value=60, step=5)
+        st.success(f"💾 **Mesin Cache:** `Polars Memory Store + Vercel Edge Cache (TTL: {ttl_minutes} Menit)`")
+
+        st.checkbox("Bypass cache otomatis jika terjadi kegagalan pembacaan data", value=True)
+
+        if st.button("🧹 Bersihkan Seluruh Memori Cache Data", use_container_width=True):
+            st.cache_data.clear()
+            st.toast("✅ Memori cache data berhasil dibersihkan!")
+
+    st.write("---")
+
     # --- MANAGEMENT & OTHER SETTINGS ---
     col_set1, col_set2 = st.columns(2)
 

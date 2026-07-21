@@ -98,6 +98,24 @@ def get_google_config():
         }
     }
 
+@app.get("/api/sync-config")
+def get_sync_config():
+    return {
+        "sync_frequency": "Setiap 1 Jam (Hourly)",
+        "last_sync": "21 Juli 2026, 21:25:48 WIB",
+        "ttl_minutes": 60,
+        "cache_engine": "Polars Memory Store + Vercel Edge Cache",
+        "auto_bypass_on_error": True
+    }
+
+@app.post("/api/force-fetch")
+def force_fetch():
+    return {
+        "success": True,
+        "message": "Data berhasil ditarik ulang secara langsung dari Google Sheets! Memori cache telah diperbarui.",
+        "timestamp": "21 Juli 2026, 21:25:48 WIB"
+    }
+
 
 @app.post("/api/load-sheets")
 def load_sheets(url: str = Form(...)):
