@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAPA YANFASKES — Vercel High-Performance Analytics</title>
+    <!-- Google Fonts & Plotly.js -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0A0F1E;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --accent-blue: #3B82F6;
+            --accent-cyan: #06B6D4;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
+        body { background-color: var(--bg-dark); color: #F8FAFC; min-height: 100vh; overflow-x: hidden; }
+
+        /* Background Glow Gradients */
+        .bg-glow {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 40%);
+        }
+
+        /* LOGIN MODAL (BPJS SSO STYLE) */
+        #login-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 15, 30, 0.92); backdrop-filter: blur(20px);
+            z-index: 999999; display: flex; align-items: center; justify-content: center;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.06); border: 1px solid var(--glass-border);
+            border-radius: 16px; width: 360px; padding: 36px 28px; text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .login-card img { width: 220px; margin-bottom: 24px; }
+        .form-group { margin-bottom: 18px; text-align: left; }
+        .form-group label { display: block; font-size: 12px; color: #94A3B8; margin-bottom: 6px; font-weight: 500; }
+        .form-control {
+            width: 100%; background: #FFFDF0; border: 1px solid #CBD5E1; color: #1F2937;
+            padding: 10px 14px; border-radius: 6px; font-size: 14px; outline: none;
+        }
+        .form-control:focus { border-color: #02628a; box-shadow: 0 0 0 2px rgba(2, 98, 138, 0.2); }
+        .btn-primary {
+            width: 100%; background: #02628a; color: white; border: none; padding: 12px;
+            border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+        }
+        .btn-primary:hover { background: #014c6c; transform: translateY(-1px); }
+        .login-error { color: #EF4444; font-size: 13px; margin-top: 12px; display: none; }
+
+        /* APP LAYOUT */
+        #app-layout { display: none; z-index: 1; position: relative; }
+
+        /* EXACT FACENOTE SIDEBAR */
+        #sidebar {
+            position: fixed; top: 0; left: 0; height: 100vh; width: 260px;
+            background: linear-gradient(180deg, rgba(6, 182, 212, 0.18) 0%, rgba(15, 23, 42, 0.85) 35%, rgba(10, 15, 30, 0.95) 100%);
+            backdrop-filter: blur(28px) saturate(190%); -webkit-backdrop-filter: blur(28px) saturate(190%);
+            border-right: 1px solid var(--glass-border); box-shadow: 6px 0 36px rgba(0, 0, 0, 0.35);
+            z-index: 10000; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-x: hidden; display: flex; flex-direction: column; padding: 16px 14px;
+        }
+        #sidebar.collapsed { width: 70px; }
+
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .brand-logo { font-size: 20px; font-weight: 800; color: #FFF; white-space: nowrap; }
+        #sidebar.collapsed .brand-logo { display: none; }
+        .mini-brand-logo { display: none; font-size: 20px; font-weight: 800; color: #FFF; text-align: center; }
+        #sidebar.collapsed .mini-brand-logo { display: block; margin-bottom: 16px; }
+
+        .toggle-btn {
+            width: 32px; height: 32px; border-radius: 8px; background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.7);
+            display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;
+        }
+        .toggle-btn:hover { background: rgba(255, 255, 255, 0.15); color: #FFF; }
+
+        /* User Profile Card */
+        .user-card { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        #sidebar.collapsed .user-card { justify-content: center; }
+        .avatar-circle {
+            width: 38px; height: 38px; border-radius: 50%; background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.20); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .user-details { display: flex; flex-direction: column; white-space: nowrap; }
+        #sidebar.collapsed .user-details { display: none; }
+        .user-name { font-size: 14px; font-weight: 600; color: #FFF; display: flex; align-items: center; gap: 4px; }
+        .user-role { font-size: 11px; color: rgba(255, 255, 255, 0.55); margin-top: 1px; }
+
+        .glass-divider { width: 100%; height: 1px; background: rgba(255, 255, 255, 0.10); margin: 12px 0 16px 0; }
+        .section-label { font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.45); letter-spacing: 1.8px; text-transform: uppercase; margin-bottom: 12px; margin-left: 4px; }
+        #sidebar.collapsed .section-label { text-align: center; margin-left: 0; font-size: 8px; }
+
+        /* Nav Items */
+        .nav-list { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px;
+            color: rgba(255, 255, 255, 0.75); font-size: 14px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s ease; border: 1px solid transparent; white-space: nowrap; text-decoration: none;
+        }
+        #sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.10); color: #60A5FA; transform: translateX(3px); }
+        #sidebar.collapsed .nav-item:hover { transform: scale(1.08); }
+        .nav-item.active { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.15); color: #FFF; font-weight: 600; }
+        .nav-text { transition: opacity 0.2s ease; }
+        #sidebar.collapsed .nav-text { display: none; }
+
+        .nav-item.logout-item { color: rgba(248, 113, 113, 0.8); margin-top: auto; }
+        .nav-item.logout-item:hover { background: rgba(239, 68, 68, 0.12); color: #F87171; }
+
+        /* MAIN CONTENT AREA */
+        #main-content {
+            margin-left: 260px; padding: 28px 36px; transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #sidebar.collapsed ~ #main-content { margin-left: 70px; }
+
+        /* DASHBOARD COMPONENTS */
+        .page-title { font-size: 26px; font-weight: 800; margin-bottom: 4px; text-align: center; }
+        .page-subtitle { font-size: 13px; color: #94A3B8; text-align: center; margin-bottom: 24px; font-style: italic; }
+
+        .glass-panel {
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 14px; padding: 22px; margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .data-input-bar { display: flex; gap: 12px; margin-bottom: 20px; }
+        .data-input-bar input { flex: 1; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--glass-border); color: white; padding: 10px 14px; border-radius: 8px; outline: none; }
+        .data-input-bar button { background: linear-gradient(135deg, #02628a, #0ea5e9); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
+        .kpi-grid { display: flex; gap: 16px; margin-bottom: 24px; }
+        .kpi-card {
+            flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border);
+            border-radius: 12px; padding: 18px; text-align: center;
+        }
+        .kpi-title { font-size: 12px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 32px; font-weight: 800; color: #60A5FA; margin-top: 6px; }
+
+        .chart-grid { display: flex; gap: 20px; }
+        .chart-box { flex: 1; min-height: 380px; }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow"></div>
+
+    <!-- 1. SSO LOGIN MODAL -->
+    <div id="login-modal">
+        <div class="login-card">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/BPJS_Kesehatan_logo.svg" alt="BPJS Kesehatan">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="input-username" class="form-control" placeholder="admin">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="input-password" class="form-control" placeholder="123456">
+            </div>
+            <button class="btn-primary" onclick="doLogin()">Sign In</button>
+            <div id="login-error" class="login-error">Username atau password salah</div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN APP LAYOUT -->
+    <div id="app-layout">
+        <!-- EXACT FACENOTE SIDEBAR -->
+        <div id="sidebar">
+            <div class="mini-brand-logo">S</div>
+            <div class="sidebar-header">
+                <div class="brand-logo">SAPA YANFASKES</div>
+                <div class="toggle-btn" onclick="toggleSidebar()">☰</div>
+            </div>
+
+            <div class="user-card">
+                <div class="avatar-circle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="user-details">
+                    <div class="user-name">admin <span style="opacity:0.6;font-size:10px;">⌵</span></div>
+                    <div class="user-role">Admin SAPA Yanfaskes</div>
+                </div>
+            </div>
+
+            <div class="glass-divider"></div>
+            <div class="section-label">MENU</div>
+
+            <div class="nav-list">
+                <a class="nav-item active" onclick="switchNav('home')">
+                    <span>🏠</span> <span class="nav-text">Home</span>
+                </a>
+                <a class="nav-item" onclick="switchNav('setting')">
+                    <span>⚙️</span> <span class="nav-text">Setting</span>
+                </a>
+                <a class="nav-item logout-item" onclick="doLogout()">
+                    <span>🚪</span> <span class="nav-text">Logout</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div id="main-content">
+            <div id="page-home">
+                <h1 class="page-title">Dashboard Pemanfaatan Antrean Online FKRTL</h1>
+                <p class="page-subtitle">Terakhir Diperbarui: Live Vercel Polars Engine ⚡</p>
+
+                <div class="glass-panel">
+                    <div class="data-input-bar">
+                        <input type="text" id="sheets-url" placeholder="Masukkan Link Google Sheets (DB_FASKES & DB_LAP_ANTROL_FKRTL)...">
+                        <button onclick="loadSheetsData()">Proses Data (Polars)</button>
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Pemanfaatan Antrean</div>
+                        <div class="kpi-value" id="kpi-capaian">88.50%</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Total Rekaman Data</div>
+                        <div class="kpi-value" id="kpi-total" style="color:#34D399;">12,450</div>
+                    </div>
+                </div>
+
+                <div class="glass-panel">
+                    <div class="chart-grid">
+                        <div class="chart-box" id="chart-trend"></div>
+                        <div class="chart-box" id="chart-dist"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-setting" style="display:none;">
+                <h1 class="page-title">⚙️ Pengaturan System</h1>
+                <div class="glass-panel" style="margin-top:20px;">
+                    <h3>👤 Status System Vercel Serverless</h3>
+                    <p style="margin-top:10px; color:#94A3B8;">- **Engine:** Polars Lazy API (Rust Core)<br>- **Frontend:** Glassmorphism Facenote UI<br>- **Visualization:** Plotly.js High-Performance</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        }
+
+        function switchNav(page) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            if (page === 'home') {
+                document.getElementById('page-home').style.display = 'block';
+                document.getElementById('page-setting').style.display = 'none';
+            } else {
+                document.getElementById('page-home').style.display = 'none';
+                document.getElementById('page-setting').style.display = 'block';
+            }
+        }
+
+        async function doLogin() {
+            const u = document.getElementById('input-username').value;
+            const p = document.getElementById('input-password').value;
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: u, password: p})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('login-modal').style.display = 'none';
+                    document.getElementById('app-layout').style.display = 'block';
+                    initCharts();
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
+                }
+            } catch(e) {
+                if(u === 'admin' && p === '123456') {
+                    document.getElementById('login-modal').style.display = 'none';
+                    document.getElementById('app-layout').style.display = 'block';
+                    initCharts();
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
+                }
+            }
+        }
+
+        function doLogout() {
+            document.getElementById('app-layout').style.display = 'none';
+            document.getElementById('login-modal').style.display = 'flex';
+        }
+
+        async function loadSheetsData() {
+            const url = document.getElementById('sheets-url').value;
+            if(!url) return alert('Masukkan URL Google Sheets.');
+            
+            const formData = new FormData();
+            formData.append('url', url);
+            try {
+                const res = await fetch('/api/load-sheets', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('kpi-capaian').innerText = data.avg_capaian + '%';
+                    document.getElementById('kpi-total').innerText = data.total_records.toLocaleString();
+                    renderDistChart(data.distribution);
+                } else {
+                    alert(data.detail || 'Gagal memproses data');
+                }
+            } catch(e) {
+                alert('Gagal terhubung ke API Vercel.');
+            }
+        }
+
+        function initCharts() {
+            Plotly.newPlot('chart-trend', [{
+                x: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                y: [78, 82, 85, 88, 91, 94],
+                type: 'scatter', mode: 'lines+markers', line: {color: '#60A5FA', width: 3}
+            }], {
+                title: {text: '<b>Tren Pemanfaatan (Plotly.js)</b>', font: {color: '#FFF'}},
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#94A3B8'}, margin: {l:30,r:30,t:40,b:30}
+            }, {responsive: true});
+
+            renderDistChart([
+                {name: 'Kota Surabaya', count: 3200},
+                {name: 'Kab. Sidoarjo', count: 2800},
+                {name: 'Kab. Gresik', count: 2100},
+                {name: 'Kota Malang', count: 1900}
+            ]);
+        }
+
+        function renderDistChart(dist) {
+            Plotly.newPlot('chart-dist', [{
+                x: dist.map(d => d.count),
+                y: dist.map(d => d.name),
+                type: 'bar', orientation: 'h', marker: {color: '#34D399'}
+            }], {
+                title: {text: '<b>Top Rekaman Kategori</b>', font: {color: '#FFF'}},
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: {color: '#94A3B8'}, margin: {l:100,r:30,t:40,b:30}
+            }, {responsive: true});
+        }
+    </script>
+</body>
+</html>
