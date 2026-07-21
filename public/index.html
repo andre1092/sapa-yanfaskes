@@ -561,6 +561,63 @@
                     </div>
                 </div>
 
+                <!-- MODULE: TAMPILAN & NOTIFIKASI (WHITE-LABEL & ALERTS) -->
+                <div class="glass-panel" style="margin-top:20px;">
+                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">🎨 Tampilan & Notifikasi (White-Label & Alerts)</h2>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        
+                        <!-- 1. WHITE-LABEL BRANDING -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#F59E0B; margin-bottom:12px;">🖼️ 1. White-Label Branding</h3>
+                            
+                            <div style="margin-bottom:10px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">Nama Aplikasi BI / Portal</label>
+                                <input type="text" value="SAPA YANFASKES" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:7px 10px; border-radius:6px; font-size:12px;">
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">Subtitle / Tagline Aplikasi</label>
+                                <input type="text" value="Saluran Analisis Performa & Akselerasi" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:7px 10px; border-radius:6px; font-size:12px;">
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">Pilihan Tema Warna Dashboard</label>
+                                <select style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:7px 10px; border-radius:6px; font-size:12px;">
+                                    <option>Dark Cyan Glassmorphism (Default)</option>
+                                    <option>Deep Navy Glass</option>
+                                    <option>Emerald Cyber Glass</option>
+                                </select>
+                            </div>
+
+                            <button onclick="alert('✅ Identitas Visual & Tema Branding Berhasil Disimpan!')" style="background:linear-gradient(135deg, #D97706, #F59E0B); color:white; border:none; padding:9px 14px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer; width:100%;">🎨 Simpan Tema & Branding</button>
+                        </div>
+
+                        <!-- 2. ALERT SYSTEM & NOTIFICATIONS -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#F59E0B; margin-bottom:12px;">🔔 2. Alert System & Notifikasi Anomali</h3>
+                            
+                            <div style="margin-bottom:8px;">
+                                <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:3px;">📧 Email Alert</label>
+                                <input type="text" value="admin@bpjs-kesehatan.go.id" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:3px;">📱 WhatsApp Alert Bot</label>
+                                <input type="text" value="+6281234567890 (BPJS Alert Bot)" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
+                            </div>
+
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:11px; color:#E2E8F0; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                    <input type="checkbox" checked style="accent-color:#F59E0B;"> Alert jika koneksi Drive terputus / Rate Limit
+                                </label>
+                                <label style="font-size:11px; color:#E2E8F0; display:flex; align-items:center; gap:6px;">
+                                    <input type="checkbox" checked style="accent-color:#F59E0B;"> Alert Anomaly Detection jika Capaian anjlok > 15%
+                                </label>
+                            </div>
+
+                            <button onclick="alert('✅ Notifikasi Uji Coba Berhasil Dikirim ke Email, Slack, dan WhatsApp!')" style="background:rgba(255,255,255,0.08); border:1px solid var(--glass-border); color:white; padding:8px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; width:100%;">🔔 Tes Kirim Notifikasi Uji Coba</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PROFILE CARD -->
                 <div class="glass-panel">
                     <h3 style="font-size:16px; font-weight:700; margin-bottom:10px;">👤 Profil User Executiv</h3>

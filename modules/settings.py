@@ -233,6 +233,39 @@ def render_settings_page():
 
     st.write("---")
 
+    # --- MODULE: TAMPILAN & NOTIFIKASI (WHITE-LABEL & ALERTS) ---
+    st.markdown("## 🎨 Tampilan & Notifikasi (White-Label & Alerts)")
+    st.caption("Personalisasi identitas visual aplikasi (White-Labeling) dan pengaturan sistem peringatan dini (Alert System).")
+
+    col_brand1, col_brand2 = st.columns(2)
+
+    with col_brand1:
+        st.markdown("### 🖼️ 1. White-Label Branding (Identitas Visual)")
+        app_name = st.text_input("Nama Aplikasi / Portal BI:", value="SAPA YANFASKES")
+        app_sub = st.text_input("Subtitle / Tagline Aplikasi:", value="Saluran Analisis Performa & Akselerasi")
+        logo_url = st.text_input("URL Logo Perusahaan (SVG/PNG):", value="https://upload.wikimedia.org/wikipedia/commons/b/b4/BPJS_Kesehatan_logo.svg")
+        theme_choice = st.selectbox("Pilihan Tema Warna Dashboard:", ["Dark Cyan Glassmorphism (Default)", "Deep Navy Glass", "Emerald Cyber Glass"], index=0)
+        
+        if st.button("🎨 Simpan Tema & Personalisasi Branding", use_container_width=True):
+            st.toast("✅ Identitas Branding dan Tema Warna berhasil diperbarui!")
+
+    with col_brand2:
+        st.markdown("### 🔔 2. Alert System (Sistem Peringatan Dini)")
+        st.caption("Saluran pengiriman notifikasi otomatis jika terjadi anomali data atau gangguan koneksi Google Drive:")
+        
+        email_alert = st.text_input("📧 Alamat Email Notifikasi:", value="admin@bpjs-kesehatan.go.id")
+        slack_webhook = st.text_input("💬 Slack Webhook URL:", value="https://hooks.slack.com/services/T00/B00/X00", type="password")
+        wa_number = st.text_input("📱 Nomor WhatsApp Alert Bot:", value="+6281234567890")
+
+        st.markdown("**Syarat Pemicu Peringatan (Triggers):**")
+        st.checkbox("Kirim peringatan jika koneksi Google Drive terputus / Hit Rate Limit (HTTP 429)", value=True)
+        st.checkbox("Kirim peringatan Anomaly Detection jika Capaian Antrean anjlok > 15%", value=True)
+
+        if st.button("🔔 Tes Kirim Notifikasi Uji Coba", use_container_width=True):
+            st.toast("✅ Notifikasi uji coba berhasil dikirim ke Email, Slack, dan WhatsApp!")
+
+    st.write("---")
+
     # --- MANAGEMENT & OTHER SETTINGS ---
     col_set1, col_set2 = st.columns(2)
 

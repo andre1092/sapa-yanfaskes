@@ -176,6 +176,26 @@ def get_security_logs():
         }
     }
 
+@app.get("/api/branding-alerts")
+def get_branding_alerts():
+    return {
+        "branding": {
+            "app_name": "SAPA YANFASKES",
+            "tagline": "Saluran Analisis Performa & Akselerasi",
+            "logo_url": "https://upload.wikimedia.org/wikipedia/commons/b/b4/BPJS_Kesehatan_logo.svg",
+            "theme": "Dark Cyan Glassmorphism"
+        },
+        "alerts": {
+            "email": "admin@bpjs-kesehatan.go.id",
+            "slack_webhook": "https://hooks.slack.com/services/T00/B00/X00",
+            "wa_bot": "+6281234567890",
+            "triggers": {
+                "drive_disconnected": True,
+                "anomaly_drop_pct": 15.0
+            }
+        }
+    }
+
 
 @app.post("/api/load-sheets")
 def load_sheets(url: str = Form(...)):
