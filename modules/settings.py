@@ -116,6 +116,47 @@ def render_settings_page():
 
     st.write("---")
 
+    # --- MODULE: MANAJEMEN PENGGUNA & HAK AKSES (USER & RBAC) ---
+    st.markdown("## 👥 Manajemen Pengguna & Hak Akses (User & RBAC)")
+    st.caption("Kontrol akses pengguna, perizinan berbasis peran (RBAC), Row-Level Security (RLS), dan penyediaan akun pengguna.")
+
+    col_rbac1, col_rbac2 = st.columns(2)
+
+    with col_rbac1:
+        st.markdown("### 🛡️ 1. Role-Based Access Control (RBAC)")
+        st.info("""
+        **Peran Pengguna Terdefinisi:**
+        - 👑 **Super Admin:** Akses Penuh (Setting, Integrasi, User Management, Full Dashboard)
+        - 📊 **Data Analyst:** Akses Dashboard, Filter Lanjutan, dan Ekspor Data
+        - 👁️ **Executive Viewer:** Akses View Only Ringkasan Eksekutif KPI
+        """)
+
+        st.markdown("### 🔒 2. Row-Level Security (RLS)")
+        st.checkbox("Aktifkan Row-Level Security (RLS) Filter Otomatis saat user login", value=True)
+        rls_col = st.selectbox("Kolom Acuan Filter RLS:", ["Kabupaten", "Cabang", "Kepemilikan", "Kelas_RS"], index=0)
+        st.caption(f"⚡ **RLS Engine:** `Polars Lazy Filter (pl.col('{rls_col}') == user.allowed_scope)`")
+
+    with col_rbac2:
+        st.markdown("### 👤 3. User Provisioning (Daftar Akun Dashboard)")
+        
+        # User Data Table
+        users_data = [
+            {"Username": "admin", "Nama": "Administrator Utama", "Role": "Super Admin", "Scope RLS": "Semua Wilayah", "Status": "🟢 AKTIF"},
+            {"Username": "analyst_jatim", "Nama": "Analyst BPJS Jatim", "Role": "Data Analyst", "Scope RLS": "Provinsi Jawa Timur", "Status": "🟢 AKTIF"},
+            {"Username": "viewer_surabaya", "Nama": "Eksekutif Surabaya", "Role": "Executive Viewer", "Scope RLS": "Kota Surabaya", "Status": "🟢 AKTIF"}
+        ]
+        st.dataframe(users_data, use_container_width=True)
+
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+            if st.button("➕ Tambah Pengguna Baru", use_container_width=True):
+                st.toast("Form Tambah Pengguna Baru Siap.")
+        with col_u2:
+            if st.button("✏️ Edit Hak Akses & RLS", use_container_width=True):
+                st.toast("Form Edit Hak Akses Siap.")
+
+    st.write("---")
+
     # --- MANAGEMENT & OTHER SETTINGS ---
     col_set1, col_set2 = st.columns(2)
 

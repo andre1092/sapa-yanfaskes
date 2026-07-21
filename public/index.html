@@ -348,6 +348,82 @@
                     </div>
                 </div>
 
+                <!-- MODULE: MANAJEMEN PENGGUNA & HAK AKSES (USER & RBAC) -->
+                <div class="glass-panel" style="margin-top:20px;">
+                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">👥 Manajemen Pengguna & Hak Akses (User & RBAC)</h2>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        
+                        <!-- 1. RBAC & 2. RLS CONFIGURATION -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#A78BFA; margin-bottom:12px;">🛡️ 1. Role-Based Access Control (RBAC)</h3>
+                            <div style="background:rgba(167,139,250,0.12); border:1px solid rgba(167,139,250,0.3); border-radius:8px; padding:12px; font-size:12px; color:#DDD6FE; margin-bottom:16px; line-height:1.6;">
+                                👑 <b>Super Admin:</b> Akses Penuh (Full Dashboard & Setting)<br>
+                                📊 <b>Data Analyst:</b> Akses Dashboard, Filter & Ekspor Data<br>
+                                👁️ <b>Executive Viewer:</b> Read-only Ringkasan KPI
+                            </div>
+
+                            <h3 style="font-size:15px; font-weight:700; color:#A78BFA; margin-bottom:12px;">🔒 2. Row-Level Security (RLS)</h3>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:13px; color:#E2E8F0; display:flex; align-items:center; gap:8px;">
+                                    <input type="checkbox" checked style="accent-color:#8B5CF6;"> Aktifkan RLS Filter Otomatis saat login
+                                </label>
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:4px;">Kolom Acuan Filter RLS Data</label>
+                                <select style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:13px;">
+                                    <option>Kabupaten (Wilayah Area)</option>
+                                    <option>Cabang</option>
+                                    <option>Kepemilikan Faskes</option>
+                                    <option>Kelas_RS</option>
+                                </select>
+                            </div>
+                            <div style="font-size:11px; color:#94A3B8;">⚡ RLS Engine: <code>Polars Lazy Filter (pl.col('Kabupaten') == user.scope)</code></div>
+                        </div>
+
+                        <!-- 3. USER PROVISIONING TABLE -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:20px;">
+                            <h3 style="font-size:15px; font-weight:700; color:#A78BFA; margin-bottom:12px;">👤 3. User Provisioning (Daftar Akun)</h3>
+                            
+                            <table style="width:100%; border-collapse:collapse; font-size:12px; color:#E2E8F0; margin-bottom:16px;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid var(--glass-border); text-align:left; color:#94A3B8;">
+                                        <th style="padding:6px;">User</th>
+                                        <th style="padding:6px;">Role</th>
+                                        <th style="padding:6px;">Scope RLS</th>
+                                        <th style="padding:6px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:8px 6px;"><b>admin</b></td>
+                                        <td style="padding:8px 6px; color:#FCD34D;">Super Admin</td>
+                                        <td style="padding:8px 6px;">Semua</td>
+                                        <td style="padding:8px 6px; color:#34D399;">🟢 AKTIF</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:8px 6px;"><b>analyst_jatim</b></td>
+                                        <td style="padding:8px 6px; color:#60A5FA;">Data Analyst</td>
+                                        <td style="padding:8px 6px;">Jawa Timur</td>
+                                        <td style="padding:8px 6px; color:#34D399;">🟢 AKTIF</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:8px 6px;"><b>viewer_surabaya</b></td>
+                                        <td style="padding:8px 6px; color:#93C5FD;">Executive Viewer</td>
+                                        <td style="padding:8px 6px;">Surabaya</td>
+                                        <td style="padding:8px 6px; color:#34D399;">🟢 AKTIF</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div style="display:flex; gap:10px;">
+                                <button onclick="alert('➕ Form Tambah User Baru Siap.')" style="flex:1; background:linear-gradient(135deg, #7C3AED, #8B5CF6); color:white; border:none; padding:9px 12px; border-radius:6px; font-weight:600; font-size:12px; cursor:pointer;">➕ Tambah User</button>
+                                <button onclick="alert('✏️ Form Edit Hak Akses & RLS Siap.')" style="flex:1; background:rgba(255,255,255,0.08); border:1px solid var(--glass-border); color:white; padding:9px 12px; border-radius:6px; font-weight:600; font-size:12px; cursor:pointer;">✏️ Edit Role/RLS</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- PROFILE CARD -->
                 <div class="glass-panel">
                     <h3 style="font-size:16px; font-weight:700; margin-bottom:10px;">👤 Profil User Executiv</h3>

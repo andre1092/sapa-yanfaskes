@@ -116,6 +116,23 @@ def force_fetch():
         "timestamp": "21 Juli 2026, 21:25:48 WIB"
     }
 
+@app.get("/api/users-config")
+def get_users_config():
+    return {
+        "roles": [
+            {"name": "Super Admin", "permissions": "Full Access"},
+            {"name": "Data Analyst", "permissions": "Dashboard & Data Export"},
+            {"name": "Executive Viewer", "permissions": "View Only KPI Summary"}
+        ],
+        "rls_enabled": True,
+        "rls_column": "Kabupaten",
+        "users": [
+            {"username": "admin", "name": "Administrator Utama", "role": "Super Admin", "rls_scope": "All", "status": "Active"},
+            {"username": "analyst_jatim", "name": "Analyst BPJS Jatim", "role": "Data Analyst", "rls_scope": "Jawa Timur", "status": "Active"},
+            {"username": "viewer_surabaya", "name": "Eksekutif Surabaya", "role": "Executive Viewer", "rls_scope": "Kota Surabaya", "status": "Active"}
+        ]
+    }
+
 
 @app.post("/api/load-sheets")
 def load_sheets(url: str = Form(...)):
