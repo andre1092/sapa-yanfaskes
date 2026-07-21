@@ -81,22 +81,106 @@ def login(req: LoginRequest):
         return {"success": True, "token": "admin-sapa-token-2026", "user": {"name": "admin", "role": "Admin SAPA Yanfaskes"}}
     raise HTTPException(status_code=401, detail="Username atau password salah.")
 
-@app.get("/api/google-config")
-def get_google_config():
-    return {
-        "oauth_status": "Connected",
-        "account": "admin@bpjs-kesehatan.go.id",
-        "client_id": "9876543210-sapa-yanfaskes.apps.googleusercontent.com",
-        "target_folder": "1A2b3C4d5E6f7G8h9I0j-SAPA_Yanfaskes_Data",
-        "allowed_sheets": ["DB_FASKES", "DB_LAP_ANTROL_FKRTL"],
-        "rate_limiter": {
-            "current_usage": 42,
-            "max_quota": 100,
-            "status": "HEALTHY",
-            "backoff_enabled": True,
-            "delay_seconds": 0.5
-        }
-    }
+class AIConfigPayload(BaseModel):
+    chartType: Optional[str] = "Pie Chart"
+    columns: Optional[list] = []
+
+@app.post("/api/generate_ai_config")
+def generate_ai_config(req: AIConfigPayload):
+    chart_type = req.chartType or "Pie Chart"
+    
+    if chart_type == "Pie Chart":
+        suggestions = [
+            {
+                "title": "Proporsi Antrean per Jenis Faskes",
+                "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Persentase (%)" }
+            },
+            {
+                "title": "Persentase Kunjungan per Poli",
+                "config_payload": { "xAxis": ["Poli / Spesialisasi"], "yAxis": ["Total Antrean"], "legend": "Bottom", "labels": "Persentase (%)" }
+            },
+            {
+                "title": "Sebaran Wilayah Asal Pasien",
+                "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Angka Absolut" }
+            }
+        ]
+    elif chart_type in ["Line Chart", "Area Chart"]:
+        suggestions = [
+            {
+                "title": "Tren Capaian Pemanfaatan Bulanan",
+                "config_payload": { "xAxis": ["Tanggal Pelayanan"], "yAxis": ["Capaian Pemanfaatan (%)"], "legend": "Top", "labels": "Persentase (%)" }
+            },
+            {
+                "title": "Volume Antrean Pasien Harian",
+                "config_payload": { "xAxis": ["Tanggal Pelayanan"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Angka Absolut" }
+            },
+            {
+                "title": "Evaluasi Waktu Tunggu Pelayanan",
+                "config_payload": { "xAxis": ["Tanggal Pelayanan"], "yAxis": ["Waktu Tunggu (Menit)"], "legend": "Bottom", "labels": "Angka Absolut" }
+            }
+        ]
+    elif chart_type in ["Bar Chart", "Column Chart"]:
+        suggestions = [
+            {
+                "title": "Perbandingan Capaian per Wilayah",
+                "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Capaian Pemanfaatan (%)"], "legend": "Bottom", "labels": "Persentase (%)" }
+            },
+            {
+                "title": "Total Antrean per Tipe Faskes",
+                "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Angka Absolut" }
+            },
+            {
+                "title": "Kapasitas Jumlah Faskes Aktif",
+                "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Jumlah Faskes"], "legend": "Top", "labels": "Angka Absolut" }
+            }
+        ]
+    elif chart_type in ["Combo Chart"]:
+        suggestions = [
+            {
+                "title": "Analisis Dual: Total Antrean & Capaian (%)",
+                "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Total Antrean", "Capaian Pemanfaatan (%)"], "legend": "Right", "labels": "Persentase (%)" }
+            },
+            {
+                "title": "Antrean vs Waktu Tunggu Pelayanan",
+                "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean", "Waktu Tunggu (Menit)"], "legend": "Bottom", "labels": "Angka Absolut" }
+            },
+            {
+                "title": "Kapasitas Faskes vs Capaian Pemanfaatan",
+                "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Jumlah Faskes", "Capaian Pemanfaatan (%)"], "legend": "Top", "labels": "Persentase (%)" }
+            }
+        ]
+    elif chart_type in ["Table", "Pivot Table"]:
+        suggestions = [
+            {
+                "title": "Rekapitulasi Matrik Data Polars",
+                "config_payload": { "xAxis": ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes"], "yAxis": ["Total Antrean", "Capaian Pemanfaatan (%)"], "legend": "None", "labels": "Angka Absolut" }
+            },
+            {
+                "title": "Peta Wilayah & Kapasitas Layanan",
+                "config_payload": { "xAxis": ["Kabupaten/Kota", "Poli / Spesialisasi"], "yAxis": ["Waktu Tunggu (Menit)", "Jumlah Faskes"], "legend": "None", "labels": "Angka Absolut" }
+            },
+            {
+                "title": "Audit Kinerja Faskes Antrol",
+                "config_payload": { "xAxis": ["Jenis Faskes", "Poli / Spesialisasi"], "yAxis": ["Total Antrean", "Waktu Tunggu (Menit)"], "legend": "None", "labels": "Angka Absolut" }
+            }
+        ]
+    else:
+        suggestions = [
+            {
+                "title": f"Analisis Utama {chart_type}",
+                "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Capaian Pemanfaatan (%)"], "legend": "Right", "labels": "Persentase (%)" }
+            },
+            {
+                "title": f"Sebaran Antrean {chart_type}",
+                "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean"], "legend": "Bottom", "labels": "Angka Absolut" }
+            },
+            {
+                "title": f"Struktur Hirarki {chart_type}",
+                "config_payload": { "xAxis": ["Poli / Spesialisasi"], "yAxis": ["Waktu Tunggu (Menit)"], "legend": "Top", "labels": "Angka Absolut" }
+            }
+        ]
+    
+    return {"suggestions": suggestions}
 
 @app.get("/api/sync-config")
 def get_sync_config():

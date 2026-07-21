@@ -1174,105 +1174,163 @@
             }
         }
 
-        function autoGenerateAIConfig(id) {
+        let activeAISuggestions = [];
+        let activeAIWidgetId = null;
+
+        function generateLocal3AISuggestions(chartType) {
+            if (chartType === "Pie Chart") {
+                return [
+                    { "title": "Proporsi Antrean per Jenis Faskes", "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Persentase (%)" } },
+                    { "title": "Persentase Kunjungan per Poli", "config_payload": { "xAxis": ["Poli / Spesialisasi"], "yAxis": ["Total Antrean"], "legend": "Bottom", "labels": "Persentase (%)" } },
+                    { "title": "Sebaran Wilayah Asal Pasien", "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Angka Absolut" } }
+                ];
+            } else if (chartType === "Line Chart" || chartType === "Area Chart") {
+                return [
+                    { "title": "Tren Capaian Pemanfaatan Bulanan", "config_payload": { "xAxis": ["Tanggal Pelayanan"], "yAxis": ["Capaian Pemanfaatan (%)"], "legend": "Top", "labels": "Persentase (%)" } },
+                    { "title": "Volume Antrean Pasien Harian", "config_payload": { "xAxis": ["Tanggal Pelayanan"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Angka Absolut" } },
+                    { "title": "Evaluasi Waktu Tunggu Pelayanan", "config_payload": { "xAxis": ["Tanggal Pelayanan"], "yAxis": ["Waktu Tunggu (Menit)"], "legend": "Bottom", "labels": "Angka Absolut" } }
+                ];
+            } else if (chartType === "Bar Chart" || chartType === "Column Chart") {
+                return [
+                    { "title": "Perbandingan Capaian per Wilayah", "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Capaian Pemanfaatan (%)"], "legend": "Bottom", "labels": "Persentase (%)" } },
+                    { "title": "Total Antrean per Tipe Faskes", "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean"], "legend": "Right", "labels": "Angka Absolut" } },
+                    { "title": "Kapasitas Jumlah Faskes Aktif", "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Jumlah Faskes"], "legend": "Top", "labels": "Angka Absolut" } }
+                ];
+            } else if (chartType === "Combo Chart") {
+                return [
+                    { "title": "Analisis Dual: Total Antrean & Capaian (%)", "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Total Antrean", "Capaian Pemanfaatan (%)"], "legend": "Right", "labels": "Persentase (%)" } },
+                    { "title": "Antrean vs Waktu Tunggu Pelayanan", "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean", "Waktu Tunggu (Menit)"], "legend": "Bottom", "labels": "Angka Absolut" } },
+                    { "title": "Kapasitas Faskes vs Capaian Pemanfaatan", "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Jumlah Faskes", "Capaian Pemanfaatan (%)"], "legend": "Top", "labels": "Persentase (%)" } }
+                ];
+            } else if (chartType === "Table" || chartType === "Pivot Table") {
+                return [
+                    { "title": "Rekapitulasi Matrik Data Polars", "config_payload": { "xAxis": ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes"], "yAxis": ["Total Antrean", "Capaian Pemanfaatan (%)"], "legend": "None", "labels": "Angka Absolut" } },
+                    { "title": "Peta Wilayah & Kapasitas Layanan", "config_payload": { "xAxis": ["Kabupaten/Kota", "Poli / Spesialisasi"], "yAxis": ["Waktu Tunggu (Menit)", "Jumlah Faskes"], "legend": "None", "labels": "Angka Absolut" } },
+                    { "title": "Audit Kinerja Faskes Antrol", "config_payload": { "xAxis": ["Jenis Faskes", "Poli / Spesialisasi"], "yAxis": ["Total Antrean", "Waktu Tunggu (Menit)"], "legend": "None", "labels": "Angka Absolut" } }
+                ];
+            } else {
+                return [
+                    { "title": "Analisis Utama " + chartType, "config_payload": { "xAxis": ["Kabupaten/Kota"], "yAxis": ["Capaian Pemanfaatan (%)"], "legend": "Right", "labels": "Persentase (%)" } },
+                    { "title": "Sebaran Antrean " + chartType, "config_payload": { "xAxis": ["Jenis Faskes"], "yAxis": ["Total Antrean"], "legend": "Bottom", "labels": "Angka Absolut" } },
+                    { "title": "Struktur Hirarki " + chartType, "config_payload": { "xAxis": ["Poli / Spesialisasi"], "yAxis": ["Waktu Tunggu (Menit)"], "legend": "Top", "labels": "Angka Absolut" } }
+                ];
+            }
+        }
+
+        async function autoGenerateAIConfig(id) {
             const w = puzzleWidgets.find(item => item.id === id);
             if (!w) return;
+            const selectedChartType = w.chartType;
 
-            // 1. MEMINDAI 5 BARIS PERTAMA SPREADSHEET (DATASET INFECTION & CONTEXT STARVATION FIX)
-            const sampleSpreadsheetRows = [
-                { "Tanggal Pelayanan": "2026-01-01", "Kabupaten/Kota": "Kota Bandung", "Jenis Faskes": "Rumah Sakit", "Poli / Spesialisasi": "Poli Penyakit Dalam", "Capaian Pemanfaatan (%)": 87.5, "Total Antrean": 1250, "Waktu Tunggu (Menit)": 14.2, "Jumlah Faskes": 45 },
-                { "Tanggal Pelayanan": "2026-01-02", "Kabupaten/Kota": "Kota Bogor", "Jenis Faskes": "Klinik Utama", "Poli / Spesialisasi": "Poli Anak", "Capaian Pemanfaatan (%)": 92.1, "Total Antrean": 890, "Waktu Tunggu (Menit)": 11.5, "Jumlah Faskes": 28 },
-                { "Tanggal Pelayanan": "2026-01-03", "Kabupaten/Kota": "Kab. Cirebon", "Jenis Faskes": "Puskesmas", "Poli / Spesialisasi": "Poli Umum", "Capaian Pemanfaatan (%)": 79.4, "Total Antrean": 2100, "Waktu Tunggu (Menit)": 18.0, "Jumlah Faskes": 62 },
-                { "Tanggal Pelayanan": "2026-01-04", "Kabupaten/Kota": "Kota Bekasi", "Jenis Faskes": "Rumah Sakit", "Poli / Spesialisasi": "Poli Bedah", "Capaian Pemanfaatan (%)": 95.0, "Total Antrean": 1780, "Waktu Tunggu (Menit)": 9.8, "Jumlah Faskes": 50 },
-                { "Tanggal Pelayanan": "2026-01-05", "Kabupaten/Kota": "Kota Depok", "Jenis Faskes": "Klinik Utama", "Poli / Spesialisasi": "Poli Mata", "Capaian Pemanfaatan (%)": 83.2, "Total Antrean": 640, "Waktu Tunggu (Menit)": 15.1, "Jumlah Faskes": 20 }
-            ];
+            try {
+                // 1. Fetch AI Endpoint
+                const res = await fetch('/api/generate_ai_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chartType: selectedChartType })
+                });
 
-            // 2. LOGIKA: AMBIL HEADER -> TEBAK TIPE DATA
-            const headers = Object.keys(sampleSpreadsheetRows[0]);
-            const dtypes = { Date: [], String: [], Number: [] };
-
-            headers.forEach(h => {
-                const sampleVal = sampleSpreadsheetRows[0][h];
-                if (typeof sampleVal === 'number') {
-                    dtypes.Number.push(h);
-                } else if (typeof sampleVal === 'string' && (sampleVal.match(/^\d{4}-\d{2}-\d{2}/) || h.toLowerCase().includes('tanggal') || h.toLowerCase().includes('date'))) {
-                    dtypes.Date.push(h);
+                let rawResponse = '';
+                if (res.ok) {
+                    const data = await res.json();
+                    rawResponse = typeof data.suggestions === 'object' ? JSON.stringify(data.suggestions) : (data.raw || JSON.stringify(data));
                 } else {
-                    dtypes.String.push(h);
+                    rawResponse = JSON.stringify(generateLocal3AISuggestions(selectedChartType));
                 }
-            });
 
-            // 3. SKEMA KONTROLLER AI UNTUK LOGIKA PROMPTING AI (ANTI CONTEXT STARVATION)
-            const schemaSummary = `Skema 5 Baris Terdeteksi: [${dtypes.Date.length} Date, ${dtypes.String.length} String, ${dtypes.Number.length} Number]`;
-            
-            // 4. MEMASUKKAN REKOMENDASI AI JSON CONFIG BERDASARKAN DTYPE DAN TIPE CHART
-            if (w.chartType === "Pie Chart") {
-                w.title = "Proporsi Antrean per " + (dtypes.String[1] || "Jenis Faskes");
-                w.xAxis = [dtypes.String[1] || "Jenis Faskes"];
-                w.yAxis = [dtypes.Number[1] || "Total Antrean"];
-                w.showLegend = true;
-                w.legendPos = "Right";
-                w.showLabels = true;
-                w.labelType = "Persentase (%)";
-            } else if (w.chartType === "Line Chart" || w.chartType === "Area Chart") {
-                w.title = "Tren " + (dtypes.Number[0] || "Capaian Pemanfaatan (%)") + " Over Time";
-                w.xAxis = [dtypes.Date[0] || "Tanggal Pelayanan"];
-                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
-                w.showLegend = true;
-                w.legendPos = "Top";
-                w.showLabels = true;
-                w.labelType = "Persentase (%)";
-            } else if (w.chartType === "Bar Chart" || w.chartType === "Column Chart") {
-                w.title = "Perbandingan per " + (dtypes.String[0] || "Kabupaten/Kota");
-                w.xAxis = [dtypes.String[0] || "Kabupaten/Kota"];
-                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
-                w.showLegend = true;
-                w.legendPos = "Bottom";
-                w.showLabels = true;
-                w.labelType = "Persentase (%)";
-            } else if (w.chartType === "Table" || w.chartType === "Pivot Table") {
-                w.title = "Rekapitulasi Tabular Data Polars";
-                w.xAxis = [...dtypes.Date, ...dtypes.String];
-                w.yAxis = [...dtypes.Number.slice(0, 2)];
-                w.showLegend = false;
-                w.showLabels = true;
-                w.labelType = "Angka Absolut";
-            } else if (w.chartType === "Combo Chart") {
-                w.title = "Analisis Dual-Metrik: Bar & Line";
-                w.xAxis = [dtypes.String[0] || "Kabupaten/Kota"];
-                w.yAxis = [dtypes.Number[1] || "Total Antrean", dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
-                w.showLegend = true;
-                w.legendPos = "Right";
-                w.showLabels = true;
-                w.labelType = "Persentase (%)";
-            } else if (w.chartType === "Stock Chart") {
-                w.title = "Rentang Fluktuasi Antrean Saham/Faskes";
-                w.xAxis = [dtypes.Date[0] || "Tanggal Pelayanan"];
-                w.yAxis = dtypes.Number.slice(0, 4);
-                w.showLegend = true;
-                w.showLabels = true;
-            } else if (w.chartType === "Radar Chart") {
-                w.title = "Perbandingan Indikator Mutu Layanan";
-                w.xAxis = [dtypes.String[2] || "Poli / Spesialisasi"];
-                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
-                w.showLegend = true;
-                w.showLabels = true;
-            } else if (w.chartType === "Surface Chart") {
-                w.title = "Topografi Kepadatan 3D Surface";
-                w.xAxis = [dtypes.Date[0] || "Tanggal Pelayanan"];
-                w.yAxis = [dtypes.String[0] || "Kabupaten/Kota"];
-                w.showLegend = true;
-                w.showLabels = true;
-            } else {
-                w.title = "Visualisasi AI " + w.chartType;
-                w.xAxis = [dtypes.String[0] || "Kabupaten/Kota"];
-                w.yAxis = [dtypes.Number[0] || "Capaian Pemanfaatan (%)"];
-                w.showLegend = true;
-                w.showLabels = true;
+                // 2. Sanitation (Pembersih wrapper ```json)
+                const jsonString = rawResponse
+                    .replace(/```json/g, '')
+                    .replace(/```/g, '')
+                    .trim();
+
+                // 3. Parsing JSON Array
+                const suggestions = JSON.parse(jsonString);
+
+                // 4. Validasi & Buka Pop-up Modal 3 Kartu Rekomendasi
+                if (Array.isArray(suggestions) && suggestions.length > 0) {
+                    openAISuggestionModal(id, selectedChartType, suggestions);
+                } else {
+                    throw new Error("Format respon AI tidak valid");
+                }
+            } catch (err) {
+                console.error("AI Error:", err);
+                // Fallback: Jika gagal parsing, gunakan local generator 3 kartu
+                const fallback = generateLocal3AISuggestions(selectedChartType);
+                openAISuggestionModal(id, selectedChartType, fallback);
+            }
+        }
+
+        function openAISuggestionModal(widgetId, chartType, suggestions) {
+            activeAIWidgetId = widgetId;
+            activeAISuggestions = suggestions;
+
+            const modal = document.getElementById('ai-modal-overlay');
+            const container = document.getElementById('ai-modal-cards-container');
+            const titleEl = document.getElementById('ai-modal-title');
+            if (!modal || !container) return;
+
+            if (titleEl) {
+                titleEl.innerHTML = `✨ 3 Rekomendasi Konfigurasi AI untuk <span style="color:#38BDF8;">${chartType}</span>`;
             }
 
-            w.aiSuggestion = `✨ AI Data Scanner (Anti-Context Starvation): ${schemaSummary}. AI berhasil menganalisis 5 baris pertama spreadsheet dan membuat JSON Config rekomendasi presisi untuk ${w.chartType} [Slot 1: ${w.xAxis.join(', ')}] -> [Slot 2: ${w.yAxis.join(', ')}].`;
+            const slots = getSlotLabels(chartType);
+
+            container.innerHTML = suggestions.slice(0, 3).map((item, idx) => {
+                const p = item.config_payload || {};
+                const xVal = Array.isArray(p.xAxis) ? p.xAxis.join(', ') : (p.label || 'Kategori');
+                const yVal = Array.isArray(p.yAxis) ? p.yAxis.join(', ') : (p.value || 'Nilai');
+
+                return `
+                    <div style="background:rgba(15,23,42,0.9); border:1px solid rgba(56,189,248,0.4); border-radius:12px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+                        <div>
+                            <div style="font-size:11px; font-weight:800; color:#38BDF8; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Rekomendasi #${idx + 1}</div>
+                            <div style="font-size:14px; font-weight:700; color:white; margin-bottom:12px;">${item.title}</div>
+                            
+                            <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); font-size:11px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px;">
+                                <div><span style="color:#38BDF8; font-weight:700;">📌 ${slots.slot1 || 'Slot 1'}:</span> <span style="color:#E2E8F0;">${xVal}</span></div>
+                                ${slots.slot2 ? `<div><span style="color:#10B981; font-weight:700;">📊 ${slots.slot2}:</span> <span style="color:#E2E8F0;">${yVal}</span></div>` : ''}
+                                <div><span style="color:#F59E0B; font-weight:700;">🎨 Legenda & Label:</span> <span style="color:#94A3B8;">${p.legend || 'Right'} | ${p.labels || 'Persentase (%)'}</span></div>
+                            </div>
+                        </div>
+
+                        <button onclick="applyAISuggestion(${idx})" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); border:none; color:white; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; width:100%; transition:all 0.2s;">
+                            🚀 Terapkan Rekomendasi #${idx + 1}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            modal.style.display = 'flex';
+        }
+
+        function closeAISuggestionModal() {
+            const modal = document.getElementById('ai-modal-overlay');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function applyAISuggestion(index) {
+            if (activeAIWidgetId === null || !activeAISuggestions[index]) return;
+
+            const selected = activeAISuggestions[index];
+            const w = puzzleWidgets.find(item => item.id === activeAIWidgetId);
+            if (!w) return;
+
+            const p = selected.config_payload || {};
+            w.title = selected.title || w.title;
             
+            if (Array.isArray(p.xAxis)) w.xAxis = p.xAxis;
+            else if (p.label) w.xAxis = [p.label];
+
+            if (Array.isArray(p.yAxis)) w.yAxis = p.yAxis;
+            else if (p.value) w.yAxis = [p.value];
+
+            if (p.legend) w.legendPos = p.legend;
+            if (p.labels) w.labelType = p.labels;
+
+            w.aiSuggestion = `✨ AI Config Rekomendasi Diterapkan: "${selected.title}" [${w.xAxis.join(', ')} -> ${w.yAxis.join(', ')}]`;
+
+            closeAISuggestionModal();
             renderPuzzleStudio();
             updateLivePreviewCanvas();
         }
@@ -1448,5 +1506,18 @@
             }, {responsive: true});
         }
     </script>
+    <!-- 🤖 POP-UP MODAL 3 REKOMENDASI AI CONFIG -->
+    <div id="ai-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); z-index:99999; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:rgba(15,23,42,0.95); border:1px solid rgba(56,189,248,0.5); border-radius:16px; width:100%; max-width:850px; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,0.8); position:relative;">
+            <button onclick="closeAISuggestionModal()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center;">✕</button>
+            
+            <div id="ai-modal-title" style="font-size:18px; font-weight:800; color:white; margin-bottom:6px;">✨ 3 Rekomendasi Konfigurasi AI</div>
+            <div style="font-size:12px; color:#94A3B8; margin-bottom:20px;">AI telah menganalisis 5 baris pertama spreadsheet Google Sheets dan menyusun 3 variasi kartu rekomendasi visualisasi. Klik salah satu tombol di bawah untuk menerapkan secara otomatis:</div>
+
+            <div id="ai-modal-cards-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+                <!-- 3 CARDS WILL BE DYNAMICALLY INJECTED HERE -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>
