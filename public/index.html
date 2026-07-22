@@ -199,6 +199,9 @@
                 <a class="nav-item active" onclick="switchNav('home')">
                     <span>🏠</span> <span class="nav-text">Home</span>
                 </a>
+                <a class="nav-item" id="nav-fkrtl" onclick="switchNav('fkrtl_antrol')">
+                    <span>📊</span> <span class="nav-text">Dashboard FKRTL</span>
+                </a>
                 <a class="nav-item" onclick="switchNav('setting')">
                     <span>⚙️</span> <span class="nav-text">Setting</span>
                 </a>
@@ -237,6 +240,155 @@
                         <div class="chart-box" id="chart-trend"></div>
                         <div class="chart-box" id="chart-dist"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- PAGE: DASHBOARD FKRTL > PEMANFAATAN ANTROL (100% UI MATCH SCREENSHOT) -->
+            <div id="page-fkrtl-antrol" style="display:none;">
+                <div style="background:#F8FAFC; border-radius:16px; padding:24px; color:#1E293B; box-shadow:0 10px 40px rgba(0,0,0,0.4); margin-bottom:24px;">
+                    
+                    <!-- MAIN TITLE -->
+                    <h1 style="font-size:22px; font-weight:800; text-align:center; color:#1E293B; margin-bottom:20px; letter-spacing:0.5px;">
+                        Pemanfaatan Sistem Antrean Online FKRTL
+                    </h1>
+
+                    <!-- GRID LAYOUT: LEFT SIDEBAR FILTERS & RIGHT VISUALIZATIONS -->
+                    <div style="display:flex; gap:18px; align-items:flex-start;">
+                        
+                        <!-- LEFT PANEL: SCORECARD & DROPDOWN FILTERS -->
+                        <div style="width:230px; flex-shrink:0; display:flex; flex-direction:column; gap:12px;">
+                            
+                            <!-- RED TIMESTAMP BADGE -->
+                            <div style="border:1px solid #CBD5E1; background:#FFF; border-radius:4px; padding:6px 10px; font-size:11px; color:#DC2626; font-style:italic; font-weight:600; text-align:left;">
+                                Last Update : 2026-07-22 04:54:00
+                            </div>
+
+                            <!-- MAIN SCORECARD CARD -->
+                            <div style="border:1px solid #94A3B8; background:#FFF; border-radius:6px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.05);">
+                                <div style="background:#477DA5; color:white; padding:8px; text-align:center;">
+                                    <div style="font-size:15px; font-weight:700;">Pemanfaatan</div>
+                                    <div style="font-size:11px; font-style:italic; opacity:0.9;">Periode Juli 2026</div>
+                                </div>
+                                <div style="padding:16px 8px; text-align:center; background:#FFF;">
+                                    <div style="font-size:36px; font-weight:800; color:#1E293B; font-family:'Inter', sans-serif;">66,78%</div>
+                                </div>
+                            </div>
+
+                            <!-- 8 DROPDOWN FILTERS CONTAINER -->
+                            <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:10px; font-size:11px;">
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Tahun</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>2026</option>
+                                        <option>2025</option>
+                                        <option>2024</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Bulan</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>Juli 2026</option>
+                                        <option>Juni 2026</option>
+                                        <option>Mei 2026</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kepwil</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>07</option>
+                                        <option>(All)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kantor Cabang</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>JEMBER (1310)</option>
+                                        <option>(All)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Jenis PPK</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>(All)</option>
+                                        <option>RS Swasta</option>
+                                        <option>RSUD</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kelas Faskes(Menkes)</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>(All)</option>
+                                        <option>Kelas A</option>
+                                        <option>Kelas B</option>
+                                        <option>Kelas C</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Sumber Antrean</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>Mobile JKN</option>
+                                        <option>(All)</option>
+                                        <option>Faskes Layan</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Validasi Poli</label>
+                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>Include</option>
+                                        <option>Exclude</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- KETERANGAN BOX -->
+                            <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:10px; font-size:10px; color:#64748B; line-height:1.4;">
+                                <div style="font-weight:700; color:#334155; margin-bottom:4px;">Keterangan :</div>
+                                <div>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama dengan SEP Terbit</div>
+                                <div style="margin-top:4px;">- Poli Exclude adalah HIV, HDL, INF, IGD, ICU, 043, 060, KDN, 168, RDT, NUK, KEM, RAT, UGD</div>
+                            </div>
+
+                        </div>
+
+                        <!-- RIGHT MAIN AREA: 3 PLOTLY CHARTS -->
+                        <div style="flex:1; display:flex; flex-direction:column; gap:16px;">
+                            
+                            <!-- TOP CHART: TREN PERBULAN -->
+                            <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                                <div style="font-size:14px; font-weight:700; text-align:center; color:#334155; margin-bottom:8px;">Tren Perbulan</div>
+                                <div id="chart-fkrtl-trend" style="width:100%; height:260px;"></div>
+                            </div>
+
+                            <!-- BOTTOM GRID: 2 SUB-CHARTS (FASKES & POLI TUJUAN) -->
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                                
+                                <!-- BOTTOM LEFT: FASKES -->
+                                <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                                    <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:8px;">Faskes</div>
+                                    <div id="chart-fkrtl-faskes" style="width:100%; height:360px;"></div>
+                                </div>
+
+                                <!-- BOTTOM RIGHT: POLI TUJUAN -->
+                                <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                        <div style="font-size:13px; font-weight:700; color:#334155;">Poli Tujuan</div>
+                                        <span style="font-size:12px; color:#64748B; cursor:pointer;" title="Sort Filter">📊</span>
+                                    </div>
+                                    <div id="chart-fkrtl-poli" style="width:100%; height:360px;"></div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
 
@@ -798,13 +950,98 @@
         function switchNav(page) {
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            
+            document.getElementById('page-home').style.display = 'none';
+            document.getElementById('page-fkrtl-antrol').style.display = 'none';
+            document.getElementById('page-setting').style.display = 'none';
+
             if (page === 'home') {
                 document.getElementById('page-home').style.display = 'block';
-                document.getElementById('page-setting').style.display = 'none';
-            } else {
-                document.getElementById('page-home').style.display = 'none';
+            } else if (page === 'fkrtl_antrol') {
+                document.getElementById('page-fkrtl-antrol').style.display = 'block';
+                renderFKRTLAntrolDashboard();
+            } else if (page === 'setting') {
                 document.getElementById('page-setting').style.display = 'block';
             }
+        }
+
+        function renderFKRTLAntrolDashboard() {
+            const fontColor = '#334155';
+            const barColor = '#477DA5';
+
+            // 1. TREN PERBULAN (Column Chart)
+            Plotly.newPlot('chart-fkrtl-trend', [{
+                x: ['Jan 26', 'Feb 26', 'Mar 26', 'Apr 26', 'Mei 26', 'Jun 26', 'Jul 26'],
+                y: [56.65, 57.84, 61.47, 62.92, 64.21, 66.16, 66.78],
+                type: 'bar',
+                text: ['56,65%', '57,84%', '61,47%', '62,92%', '64,21%', '66,16%', '66,78%'],
+                textposition: 'outside',
+                marker: { color: barColor }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: fontColor, size: 11 },
+                yaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 80], ticksuffix: '%' },
+                xaxis: { showgrid: false },
+                margin: { l: 40, r: 20, t: 30, b: 30 }
+            }, { responsive: true, displayModeBar: false });
+
+            // 2. FASKES (Horizontal Bar Chart)
+            const faskesNames = [
+                'RS BINA SEHAT (1329R007)', 'RSU BALADHIKA HUSADA JEM..', 'RS UTAMA HUSADA (0189R017)',
+                'RS WIJAYA KUSUMA (0188R00..', 'RS GIGI DAN MULUT UNIV. JE..', 'RSU SRIKANDI IBI (0189R012)',
+                'RS BHAYANGKARA LUMAJANG..', 'RS DJATIROTO (0188R006)', 'RS CITRA HUSADA (0189R008)',
+                'RS MITRA MEDIKA (0191R005)', 'SILOAM JEMBER (0189R015)', 'RSU MUHAMMADIYAH LUMAJ..',
+                'RSU UNMUH JEMBER (0189R0..', 'RS PERKEBUNAN PTPN X (018..'
+            ].reverse();
+            const faskesValues = [
+                94.29, 92.25, 91.25, 90.22, 84.23, 81.17, 79.23, 78.94, 78.52, 78.41, 75.99, 75.03, 71.82, 69.74
+            ].reverse();
+
+            Plotly.newPlot('chart-fkrtl-faskes', [{
+                x: faskesValues,
+                y: faskesNames,
+                type: 'bar',
+                orientation: 'h',
+                text: faskesValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
+                textposition: 'inside',
+                insidetextanchor: 'middle',
+                marker: { color: barColor }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: fontColor, size: 9 },
+                xaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100] },
+                margin: { l: 150, r: 10, t: 10, b: 20 }
+            }, { responsive: true, displayModeBar: false });
+
+            // 3. POLI TUJUAN (Horizontal Bar Chart)
+            const poliNames = [
+                'GIGI ORTHODONTI (GO..', 'GIGI ENDODONSI (GND)', 'GIGI BEDAH MULUT (B..', 'GIGI PEDODONTIS (KO..',
+                'GIGI PROSTHODONTI (..', 'GIGI PENYAKIT MULUT ..', 'GIGI PERIODONTI (GPR)', 'PENYAKIT DALAM (INT)',
+                'REHABILITASI MEDIK (I..', 'BEDAH ONKOLOGI (017)', 'JANTUNG DAN PEMBU..', 'THT-KL (THT)',
+                'OBGYN (OBG)', 'ORTHOPEDI (ORT)', 'SARAF (SAR)', 'KULIT KELAMIN (KLT)', 'UROLOGI (URO)', 'ANAK (ANA)'
+            ].reverse();
+            const poliValues = [
+                100.00, 87.27, 83.66, 82.69, 81.32, 80.70, 74.23, 71.68, 68.64, 68.00, 67.85, 67.25, 67.11, 66.91, 66.21, 66.20, 66.14, 63.42
+            ].reverse();
+
+            Plotly.newPlot('chart-fkrtl-poli', [{
+                x: poliValues,
+                y: poliNames,
+                type: 'bar',
+                orientation: 'h',
+                text: poliValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
+                textposition: 'inside',
+                insidetextanchor: 'middle',
+                marker: { color: barColor }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: fontColor, size: 9 },
+                xaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100] },
+                margin: { l: 140, r: 10, t: 10, b: 20 }
+            }, { responsive: true, displayModeBar: false });
         }
 
         let puzzleWidgets = [
