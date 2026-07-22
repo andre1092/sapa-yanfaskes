@@ -311,11 +311,11 @@
                                 </div>
                             </div>
 
-                            <!-- 8 DROPDOWN FILTERS CONTAINER -->
+                            <!-- 7 DROPDOWN FILTERS CONTAINER -->
                             <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:10px; font-size:11px;">
                                 <div>
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Tahun</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                    <select id="flt-tahun" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
                                         <option>2026</option>
                                         <option>2025</option>
                                         <option>2024</option>
@@ -324,16 +324,20 @@
 
                                 <div>
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Bulan</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
-                                        <option>Juli 2026</option>
-                                        <option>Juni 2026</option>
-                                        <option>Mei 2026</option>
+                                    <select id="flt-bulan" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>Juli</option>
+                                        <option>Juni</option>
+                                        <option>Mei</option>
+                                        <option>April</option>
+                                        <option>Maret</option>
+                                        <option>Februari</option>
+                                        <option>Januari</option>
                                     </select>
                                 </div>
 
                                 <div>
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kepwil</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                    <select id="flt-kepwil" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
                                         <option>07</option>
                                         <option>(All)</option>
                                     </select>
@@ -341,45 +345,40 @@
 
                                 <div>
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kantor Cabang</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
-                                        <option>JEMBER (1310)</option>
+                                    <select id="flt-cabang" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>JEMBER</option>
+                                        <option>LUMAJANG</option>
+                                        <option>BANYUWANGI</option>
                                         <option>(All)</option>
                                     </select>
                                 </div>
 
                                 <div>
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Jenis PPK</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                    <select id="flt-jenis-ppk" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
                                         <option>(All)</option>
                                         <option>RS Swasta</option>
                                         <option>RSUD</option>
+                                        <option>Klinik Utama</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kelas Faskes(Menkes)</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kelas Faskes</label>
+                                    <select id="flt-kelas-faskes" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
                                         <option>(All)</option>
                                         <option>Kelas A</option>
                                         <option>Kelas B</option>
                                         <option>Kelas C</option>
+                                        <option>Kelas D</option>
                                     </select>
                                 </div>
 
                                 <div>
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Sumber Antrean</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                    <select id="flt-sumber" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
                                         <option>Mobile JKN</option>
-                                        <option>(All)</option>
-                                        <option>Faskes Layan</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Validasi Poli</label>
-                                    <select style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
-                                        <option>Include</option>
-                                        <option>Exclude</option>
+                                        <option>All Sumber</option>
                                     </select>
                                 </div>
                             </div>
@@ -402,7 +401,7 @@
                                 <div id="chart-fkrtl-trend" style="width:100%; height:260px;"></div>
                             </div>
 
-                            <!-- BOTTOM GRID: 2 SUB-CHARTS (FASKES & POLI TUJUAN) -->
+                            <!-- BOTTOM GRID: 2 SUB-CHARTS (FASKES & SUMBER) -->
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                                 
                                 <!-- BOTTOM LEFT: FASKES -->
@@ -411,13 +410,13 @@
                                     <div id="chart-fkrtl-faskes" style="width:100%; height:360px;"></div>
                                 </div>
 
-                                <!-- BOTTOM RIGHT: POLI TUJUAN -->
+                                <!-- BOTTOM RIGHT: SUMBER (MOBILE JKN VS ALL SUMBER) -->
                                 <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                        <div style="font-size:13px; font-weight:700; color:#334155;">Poli Tujuan</div>
+                                        <div style="font-size:13px; font-weight:700; color:#334155;">Sumber</div>
                                         <span style="font-size:12px; color:#64748B; cursor:pointer;" title="Sort Filter">📊</span>
                                     </div>
-                                    <div id="chart-fkrtl-poli" style="width:100%; height:360px;"></div>
+                                    <div id="chart-fkrtl-sumber" style="width:100%; height:360px;"></div>
                                 </div>
 
                             </div>
@@ -1143,32 +1142,47 @@
                 margin: { l: 150, r: 10, t: 10, b: 20 }
             }, { responsive: true, displayModeBar: false });
 
-            // 3. POLI TUJUAN (Horizontal Bar Chart)
-            const poliNames = [
-                'GIGI ORTHODONTI (GO..', 'GIGI ENDODONSI (GND)', 'GIGI BEDAH MULUT (B..', 'GIGI PEDODONTIS (KO..',
-                'GIGI PROSTHODONTI (..', 'GIGI PENYAKIT MULUT ..', 'GIGI PERIODONTI (GPR)', 'PENYAKIT DALAM (INT)',
-                'REHABILITASI MEDIK (I..', 'BEDAH ONKOLOGI (017)', 'JANTUNG DAN PEMBU..', 'THT-KL (THT)',
-                'OBGYN (OBG)', 'ORTHOPEDI (ORT)', 'SARAF (SAR)', 'KULIT KELAMIN (KLT)', 'UROLOGI (URO)', 'ANAK (ANA)'
-            ].reverse();
-            const poliValues = [
-                100.00, 87.27, 83.66, 82.69, 81.32, 80.70, 74.23, 71.68, 68.64, 68.00, 67.85, 67.25, 67.11, 66.91, 66.21, 66.20, 66.14, 63.42
+            // 3. SUMBER (Horizontal Grouped Bar Chart: Mobile JKN vs All Sumber)
+            const topFaskesSumber = [
+                'RS BINA SEHAT', 'RSU BALADHIKA HUSADA', 'RS UTAMA HUSADA', 'RS WIJAYA KUSUMA',
+                'RS GIGI DAN MULUT', 'RSU SRIKANDI IBI', 'RS BHAYANGKARA', 'RS DJATIROTO',
+                'RS CITRA HUSADA', 'RS MITRA MEDIKA'
             ].reverse();
 
-            Plotly.newPlot('chart-fkrtl-poli', [{
-                x: poliValues,
-                y: poliNames,
-                type: 'bar',
-                orientation: 'h',
-                text: poliValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
-                textposition: 'inside',
-                insidetextanchor: 'middle',
-                marker: { color: barColor }
-            }], {
+            const mobileJknValues = [94.29, 92.25, 91.25, 90.22, 84.23, 81.17, 79.23, 78.94, 78.52, 78.41].reverse();
+            const allSumberValues = [98.50, 96.10, 94.80, 93.50, 89.10, 85.40, 82.90, 81.50, 80.80, 80.20].reverse();
+
+            Plotly.newPlot('chart-fkrtl-sumber', [
+                {
+                    x: mobileJknValues,
+                    y: topFaskesSumber,
+                    name: 'Mobile JKN',
+                    type: 'bar',
+                    orientation: 'h',
+                    text: mobileJknValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
+                    textposition: 'inside',
+                    insidetextanchor: 'middle',
+                    marker: { color: '#0EA5E9' }
+                },
+                {
+                    x: allSumberValues,
+                    y: topFaskesSumber,
+                    name: 'All Sumber',
+                    type: 'bar',
+                    orientation: 'h',
+                    text: allSumberValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
+                    textposition: 'inside',
+                    insidetextanchor: 'middle',
+                    marker: { color: '#34D399' }
+                }
+            ], {
+                barmode: 'group',
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 font: { color: fontColor, size: 9 },
-                xaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100] },
-                margin: { l: 140, r: 10, t: 10, b: 20 }
+                legend: { orientation: 'h', y: 1.15, x: 0.15 },
+                xaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100], ticksuffix: '%' },
+                margin: { l: 140, r: 10, t: 30, b: 20 }
             }, { responsive: true, displayModeBar: false });
         }
 
