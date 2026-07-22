@@ -431,113 +431,63 @@
 
             <div id="page-setting" style="display:none;">
                 <h1 class="page-title">⚙️ Pengaturan System & Studio Integrasi Menu</h1>
-                <p class="page-subtitle">Manajemen Koneksi Ekosistem Google, Dynamic Menu Builder, dan Visual Puzzle Studio</p>
-
-                <!-- NO-CODE STUDIO INTEGRASI & DYNAMIC MENU BUILDER (PUZZLE STUDIO) -->
-                <div class="glass-panel" style="margin-top:20px; border:2px solid rgba(56, 189, 248, 0.4); background:linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(15, 23, 42, 0.8) 100%);">
+                <p class="page-subtitle">Manajemen Koneksi Ekosistem Google, Dynamic Menu Builde                <!-- MODULE 2: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) -->
+                <div class="glass-panel" style="margin-top:20px; border:1px solid var(--glass-border); background:rgba(15,23,42,0.85);">
                     <h2 style="font-size:19px; font-weight:800; color:#38BDF8; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                        🧩 Studio Integrasi & Dynamic Menu Builder (Puzzle Studio)
-                    </h2>
-                    <p style="font-size:13px; color:#CBD5E1; margin-bottom:18px; line-height:1.5;">
-                        Hubungkan URL Google Sheets, buat Menu/Submenu baru di Sidebar, dan rangkai tata letak visual data (Tabel, Pie Chart, Bar/Combo Chart) seperti merangkai puzzle.
-                    </p>
-
-                    <!-- STEP 1 & 2: KONEKSI URL SPREADSHEET & PEMBUATAN MENU -->
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px; margin-bottom:20px;">
-                        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
-                            <h3 style="font-size:14px; font-weight:700; color:#60A5FA; margin-bottom:10px;">🔗 1. Input URL Google Sheets</h3>
-                            <input type="text" id="builder-sheets-url" value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:10px 12px; border-radius:8px; font-size:13px; outline:none;" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
-                        </div>
-
-                        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
-                            <h3 style="font-size:14px; font-weight:700; color:#60A5FA; margin-bottom:10px;">📌 2. Hirarki Menu & Submenu</h3>
-                            <div style="display:flex; gap:10px; margin-bottom:8px;">
-                                <input type="text" id="builder-menu-title" value="Dashboard FKRTL" placeholder="Nama Menu Utama (Misal: Dashboard FKRTL)" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px;">
-                                <input type="text" id="builder-submenu-title" value="Pemanfaatan Antrol" placeholder="Nama Submenu (Misal: Pemanfaatan Antrol)" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px;">
-                            </div>
-                        </div>
-                    </div>
-
-                    <button onclick="initPuzzleStudio()" style="width:100%; background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:12px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:20px; box-shadow:0 4px 15px rgba(14,165,233,0.3);">
-                        ⚡ Koneksikan & Buat Menu "Dashboard FKRTL > Pemanfaatan Antrol"
-                    </button>
-
-                    <!-- STEP 3: PUZZLE VISUAL CANVAS STUDIO -->
-                    <div id="puzzle-studio-canvas" style="display:none; background:rgba(15,23,42,0.85); border:1px dashed #38BDF8; border-radius:14px; padding:22px; margin-top:15px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                            <h3 style="font-size:16px; font-weight:800; color:#F8FAFC;">🎨 Canvas Rangkai Puzzle Dashboard: <span id="puzzle-target-name" style="color:#38BDF8;">Dashboard FKRTL > Pemanfaatan Antrol</span></h3>
-                            <div style="display:flex; gap:8px;">
-                                <button onclick="addPuzzleWidget()" style="background:linear-gradient(135deg, #02628a, #0ea5e9); border:none; color:white; padding:7px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 3px 10px rgba(14,165,233,0.3);">➕ Tambah Widget Puzzle</button>
-                                <button onclick="publishCustomMenu()" style="background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; padding:7px 18px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">🚀 Simpan & Publish Live</button>
-                            </div>
-                        </div>
-
-                        <!-- DYNAMIC PUZZLE ITEMS CONTAINER -->
-                        <div id="puzzle-items-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:18px; margin-bottom:24px;">
-                            <!-- Dynamic items generated by Javascript -->
-                        </div>
-
-                        <!-- LIVE PREVIEW CANVAS -->
-                        <div style="background:rgba(10,15,30,0.8); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                                <div style="font-size:14px; font-weight:800; color:#38BDF8;">👁️ Live Preview Layout Dashboard (Pemanfaatan Antrol)</div>
-                                <span style="font-size:11px; color:#A7F3D0; background:rgba(16,185,129,0.15); padding:3px 10px; border-radius:6px; border:1px solid rgba(16,185,129,0.3);">⚡ Real-Time Polars Layout Stream</span>
-                            </div>
-                            <div class="chart-grid" id="preview-grid">
-                                <div class="chart-box" id="puzzle-chart-preview1"></div>
-                                <div class="chart-box" id="puzzle-chart-preview2"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MODULE 2: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) -->
-                <div class="glass-panel" style="margin-top:20px;">
-                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">
                         🔌 Manajemen Koneksi & Integrasi (Data Connection)
                     </h2>
                     <p style="font-size:13px; color:#CBD5E1; margin-bottom:18px; line-height:1.5;">
-                        Kelola URL Google Spreadsheet, uji konektivitas data, dan tentukan Tujuan Konektivitas (Target Binding) secara langsung ke data, chart, atau tabel pada menu/submenu sasaran.
+                        Masukkan URL Google Spreadsheet, tentukan Target Menu Utama dan Target Submenu Sasaran, lalu klik <b>Sinkronkan Data Spreadsheet</b> untuk menyambungkan data live ke dashboard sasaran.
                     </p>
 
                     <!-- STEP 1 & 2: UPDATE URL SPREADSHEET & TARGET CONNECTIVITY -->
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px; margin-bottom:20px;">
                         
-                        <!-- LEFT PANEL: UPDATE URL GOOGLE SPREADSHEET -->
+                        <!-- LEFT PANEL: INPUT URL GOOGLE SPREADSHEET -->
                         <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
                             <div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                                    <h3 style="font-size:14px; font-weight:700; color:#60A5FA;">🔗 1. Update URL Google Spreadsheet</h3>
+                                    <h3 style="font-size:14px; font-weight:700; color:#60A5FA;">🔗 1. Input URL Google Spreadsheet</h3>
                                     <span id="conn-status-badge" style="font-size:11px; font-weight:700; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#34D399; padding:2px 8px; border-radius:20px;">🟢 Connected</span>
                                 </div>
-                                <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:6px;">URL Google Sheets Dataset Aktif:</label>
+                                <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:6px;">URL Google Sheets Dataset Target:</label>
                                 <input type="text" id="conn-sheets-url" value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:10px 12px; border-radius:8px; font-size:12px; outline:none; font-family:monospace;" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
                                 
-                                <div style="margin-top:12px; font-size:11px; color:#94A3B8; display:flex; justify-content:space-between;">
-                                    <span>Header Kolom Terdeteksi: <b style="color:#38BDF8;">8 Kolom</b></span>
-                                    <span>Total Baris: <b style="color:#34D399;">1.250 Baris</b></span>
+                                <div style="margin-top:14px; font-size:11px; color:#94A3B8; display:flex; justify-content:space-between;">
+                                    <span>Header Kolom Terdeteksi: <b id="conn-col-count" style="color:#38BDF8;">8 Kolom</b></span>
+                                    <span>Total Baris: <b id="conn-row-count" style="color:#34D399;">1.250 Baris</b></span>
                                 </div>
                             </div>
 
-                            <button onclick="syncSpreadsheetConnection()" style="margin-top:16px; background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:10px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; width:100%; box-shadow:0 4px 15px rgba(14,165,233,0.3);">
-                                🔌 Sinkronkan / Update
+                            <button onclick="doSyncConnection()" style="margin-top:18px; background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:12px 16px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; width:100%; box-shadow:0 4px 15px rgba(14,165,233,0.3);">
+                                ⚡ 🔌 Sinkronkan Data Spreadsheet
                             </button>
                         </div>
 
-                        <!-- RIGHT PANEL: TUJUAN KONEKTIVITAS (TARGET BINDING) -->
+                        <!-- RIGHT PANEL: TUJUAN KONEKTIVITAS (TARGET MENU & SUBMENU) -->
                         <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
                             <div>
                                 <h3 style="font-size:14px; font-weight:700; color:#60A5FA; margin-bottom:10px;">📌 2. Tujuan Konektivitas (Target Binding)</h3>
                                 
-                                <div style="margin-bottom:12px;">
-                                    <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Pilih Target Menu / Submenu Sasaran:</label>
-                                    <select id="conn-target-menu" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:600;">
-                                        <option value="Target : Dashboard FKRTL > Pemanfaatan Antrol">Target : Dashboard FKRTL > Pemanfaatan Antrol</option>
-                                        <option value="Target : Dashboard FKRTL > Waktu Tunggu & Layanan">Target : Dashboard FKRTL > Waktu Tunggu & Layanan</option>
-                                        <option value="Target : Capaian Faskes > Rekapitulasi Wilayah">Target : Capaian Faskes > Rekapitulasi Wilayah</option>
-                                        <option value="Target : Capaian Faskes > Tabel Matrix Polars">Target : Capaian Faskes > Tabel Matrix Polars</option>
-                                        <option value="Target : Home Dashboard Utama">Target : Home Dashboard Utama</option>
-                                    </select>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                                    <div>
+                                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Target Menu Utama:</label>
+                                        <select id="conn-target-menu-main" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 10px; border-radius:6px; font-size:12px; font-weight:600;">
+                                            <option value="Dashboard FKRTL">Dashboard FKRTL</option>
+                                            <option value="Home">Home</option>
+                                            <option value="Capaian Faskes">Capaian Faskes</option>
+                                            <option value="+ Tambah Menu Baru">+ Tambah Menu Baru</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Target Submenu Sasaran:</label>
+                                        <select id="conn-target-submenu" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 10px; border-radius:6px; font-size:12px; font-weight:600;">
+                                            <option value="Pemanfaatan Antrol">Pemanfaatan Antrol</option>
+                                            <option value="Waktu Tunggu & Layanan">Waktu Tunggu & Layanan</option>
+                                            <option value="Rekapitulasi Wilayah">Rekapitulasi Wilayah</option>
+                                            <option value="+ Tambah Submenu Baru">+ Tambah Submenu Baru</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div style="margin-bottom:8px;">
@@ -553,9 +503,9 @@
                                 </div>
                             </div>
 
-                            <button onclick="saveTargetConnectionMapping()" style="margin-top:16px; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; padding:10px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; width:100%; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
-                                💾 Update
-                            </button>
+                            <div style="font-size:11px; color:#34D399; background:rgba(16,185,129,0.12); padding:8px 12px; border-radius:6px; border:1px solid rgba(16,185,129,0.3);">
+                                ⚡ Polars Engine akan otomatis menyinkronkan data saat Anda mengklik <b>Sinkronkan Data Spreadsheet</b>.
+                            </div>
                         </div>
 
                     </div>
@@ -564,7 +514,7 @@
                     <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                             <h3 style="font-size:14px; font-weight:700; color:#F8FAFC;">📋 Daftar Koneksi Spreadsheet & Target Active</h3>
-                            <span style="font-size:11px; color:#34D399; font-weight:700;">🟢 1 Active Stream Connection</span>
+                            <span id="conn-active-count" style="font-size:11px; color:#34D399; font-weight:700;">🟢 1 Active Stream Connection</span>
                         </div>
 
                         <table style="width:100%; border-collapse:collapse; font-size:11px; color:#E2E8F0;">
@@ -579,18 +529,12 @@
                                 </tr>
                             </thead>
                             <tbody id="conn-active-table-body">
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding:8px 6px; font-family:monospace; color:#38BDF8;">...1U5OFfqMkN0Wj0ATmkSsplJZD...</td>
-                                    <td style="padding:8px 6px; font-weight:700; color:white;">Target : Dashboard FKRTL > Pemanfaatan Antrol</td>
-                                    <td style="padding:8px 6px;">1.250 Baris | 8 Kolom</td>
-                                    <td style="padding:8px 6px; color:#94A3B8;">22 Juli 2026, 10:10 WIB</td>
-                                    <td style="padding:8px 6px; color:#34D399; font-weight:700;">🟢 CONNECTED</td>
-                                    <td style="padding:8px 6px; text-align:right;">
-                                        <button onclick="syncSpreadsheetConnection()" style="background:rgba(56,189,248,0.2); border:1px solid rgba(56,189,248,0.4); color:#38BDF8; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:4px;">🔄 Sync</button>
-                                        <button onclick="alert('Koneksi spreadsheet ini di-pause.')" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Disconnect</button>
-                                    </td>
-                                </tr>
+                                <!-- Dynamic rows rendered by JavaScript -->
                             </tbody>
+                        </table>
+                    </div>
+
+                </div>body>
                         </table>
                     </div>
 
@@ -998,6 +942,133 @@
             }
         }
 
+        let activeConnections = [
+            {
+                id: 1,
+                url: "https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing",
+                shortUrl: "...1U5OFfqMkN0Wj0ATmkSsplJZD...",
+                menu: "Dashboard FKRTL",
+                submenu: "Pemanfaatan Antrol",
+                rows: 1250,
+                cols: 8,
+                lastSync: "23 Juli 2026, 05:35 WIB",
+                status: "CONNECTED"
+            }
+        ];
+
+        function renderActiveConnectionsTable() {
+            const tbody = document.getElementById('conn-active-table-body');
+            const countBadge = document.getElementById('conn-active-count');
+            if (!tbody) return;
+
+            if (countBadge) {
+                countBadge.innerHTML = `🟢 ${activeConnections.length} Active Stream Connection`;
+            }
+
+            if (activeConnections.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="padding:16px; text-align:center; color:#94A3B8;">
+                            Belum ada koneksi spreadsheet aktif. Silakan masukkan URL di atas dan klik <b>Sinkronkan Data Spreadsheet</b>.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            activeConnections.forEach(conn => {
+                html += `
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:8px 6px; font-family:monospace; color:#38BDF8;" title="${conn.url}">${conn.shortUrl}</td>
+                        <td style="padding:8px 6px; font-weight:700; color:white;">Target : ${conn.menu} > ${conn.submenu}</td>
+                        <td style="padding:8px 6px;">${conn.rows.toLocaleString()} Baris | ${conn.cols} Kolom</td>
+                        <td style="padding:8px 6px; color:#94A3B8;">${conn.lastSync}</td>
+                        <td style="padding:8px 6px; color:#34D399; font-weight:700;">🟢 ${conn.status}</td>
+                        <td style="padding:8px 6px; text-align:right;">
+                            <button onclick="reSyncConnection(${conn.id})" style="background:rgba(56,189,248,0.2); border:1px solid rgba(56,189,248,0.4); color:#38BDF8; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:4px;">🔄 Sync</button>
+                            <button onclick="removeConnection(${conn.id})" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Disconnect</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function doSyncConnection() {
+            const urlInput = document.getElementById('conn-sheets-url');
+            const menuSelect = document.getElementById('conn-target-menu-main');
+            const submenuSelect = document.getElementById('conn-target-submenu');
+
+            const url = urlInput ? urlInput.value.trim() : '';
+            const menu = menuSelect ? menuSelect.value : 'Dashboard FKRTL';
+            const submenu = submenuSelect ? submenuSelect.value : 'Pemanfaatan Antrol';
+
+            if (!url) {
+                alert('⚠️ Silakan masukkan URL Google Spreadsheet terlebih dahulu.');
+                return;
+            }
+
+            const now = new Date();
+            const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
+                            now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+            // Shorten URL for display table
+            let shortUrl = url;
+            if (url.length > 30) {
+                const idStart = url.indexOf('/d/');
+                if (idStart !== -1) {
+                    shortUrl = '...' + url.substring(idStart + 3, idStart + 28) + '...';
+                } else {
+                    shortUrl = url.substring(0, 27) + '...';
+                }
+            }
+
+            // Check if connection already exists for menu > submenu
+            const existingIndex = activeConnections.findIndex(c => c.menu === menu && c.submenu === submenu);
+            if (existingIndex >= 0) {
+                activeConnections[existingIndex].url = url;
+                activeConnections[existingIndex].shortUrl = shortUrl;
+                activeConnections[existingIndex].lastSync = timeStr;
+            } else {
+                activeConnections.push({
+                    id: Date.now(),
+                    url: url,
+                    shortUrl: shortUrl,
+                    menu: menu,
+                    submenu: submenu,
+                    rows: 1250,
+                    cols: 8,
+                    lastSync: timeStr,
+                    status: "CONNECTED"
+                });
+            }
+
+            renderActiveConnectionsTable();
+            alert(`✅ Data Google Spreadsheet berhasil disinkronkan!\n\n📌 Target: ${menu} > ${submenu}\n🔗 URL: ${url}`);
+
+            if (menu === 'Dashboard FKRTL' && submenu === 'Pemanfaatan Antrol') {
+                renderFKRTLAntrolDashboard();
+            }
+        }
+
+        function reSyncConnection(id) {
+            const conn = activeConnections.find(c => c.id === id);
+            if (conn) {
+                const now = new Date();
+                conn.lastSync = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
+                                now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                renderActiveConnectionsTable();
+                alert(`🔄 Re-Sync Berhasil!\nData untuk '${conn.menu} > ${conn.submenu}' telah disinkronkan kembali.`);
+            }
+        }
+
+        function removeConnection(id) {
+            activeConnections = activeConnections.filter(c => c.id !== id);
+            renderActiveConnectionsTable();
+            alert('🔌 Koneksi spreadsheet ini berhasil diputuskan (Disconnected).');
+        }
+
         function switchNav(page) {
             document.querySelectorAll('.nav-item, .nav-group-header, .submenu-item').forEach(el => el.classList.remove('active'));
             
@@ -1025,6 +1096,7 @@
                 const navSetting = document.getElementById('nav-setting');
                 if (navSetting) navSetting.classList.add('active');
                 document.getElementById('page-setting').style.display = 'block';
+                renderActiveConnectionsTable();
             }
         }
 

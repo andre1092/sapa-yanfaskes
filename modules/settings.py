@@ -26,33 +26,35 @@ def render_settings_page():
         col_c1, col_c2 = st.columns(2)
         
         with col_c1:
-            st.markdown("#### 🔗 1. Update URL Google Spreadsheet")
+            st.markdown("#### 🔗 1. Input URL Google Spreadsheet")
             st.markdown("<span style='font-size:11px; background:rgba(16,185,129,0.2); color:#34D399; padding:2px 8px; border-radius:12px; font-weight:bold;'>🟢 Connected</span>", unsafe_allow_html=True)
             
             sheets_url_conn = st.text_input(
-                "URL Google Sheets Dataset Aktif:",
+                "URL Google Sheets Dataset Target:",
                 value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing",
                 placeholder="https://docs.google.com/spreadsheets/d/.../edit",
                 key="conn_sheets_url_input"
             )
             st.caption("Header Terdeteksi: **8 Kolom** | Total Baris: **1.250 Baris**")
             
-            if st.button("🔌 Sinkronkan / Update", key="btn_sync_conn", use_container_width=True):
-                st.success("🔌 Sinkronkan / Update Berhasil! URL Google Spreadsheet terhubung secara live ke engine Polars.")
+            if st.button("⚡ 🔌 Sinkronkan Data Spreadsheet", key="btn_sync_conn", use_container_width=True):
+                st.success("✅ Data Google Spreadsheet berhasil disinkronkan secara live ke menu sasaran!")
 
         with col_c2:
             st.markdown("#### 📌 2. Tujuan Konektivitas (Target Binding)")
-            target_menu_conn = st.selectbox(
-                "Pilih Target Menu / Submenu Sasaran:",
-                options=[
-                    "Target : Dashboard FKRTL > Pemanfaatan Antrol",
-                    "Target : Dashboard FKRTL > Waktu Tunggu & Layanan",
-                    "Target : Capaian Faskes > Rekapitulasi Wilayah",
-                    "Target : Capaian Faskes > Tabel Matrix Polars",
-                    "Target : Home Dashboard Utama"
-                ],
-                key="conn_target_menu_select"
-            )
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                target_menu_main = st.selectbox(
+                    "Target Menu Utama:",
+                    options=["Dashboard FKRTL", "Home", "Capaian Faskes", "+ Tambah Menu Baru"],
+                    key="conn_target_menu_main"
+                )
+            with col_m2:
+                target_submenu = st.selectbox(
+                    "Target Submenu Sasaran:",
+                    options=["Pemanfaatan Antrol", "Waktu Tunggu & Layanan", "Rekapitulasi Wilayah", "+ Tambah Submenu Baru"],
+                    key="conn_target_submenu"
+                )
             
             st.multiselect(
                 "Jenis Komponen Sasaran Integrasi:",
@@ -60,18 +62,15 @@ def render_settings_page():
                 default=["Visualisasi Chart", "Tabel Data Matrix"],
                 key="conn_target_components"
             )
-            
-            if st.button("💾 Update", key="btn_save_conn", use_container_width=True):
-                st.success(f"💾 Update Berhasil! Tujuan Konektivitas telah diperbarui ke: '{target_menu_conn}'.")
 
     st.markdown("---")
     st.markdown("#### 📋 Daftar Koneksi Spreadsheet & Target Active")
     st.caption("🟢 **1 Active Stream Connection**")
     
-    st.markdown("""
+    st.markdown(f"""
     | Spreadsheet URL / Source | Tujuan Konektivitas (Target Menu) | Baris / Kolom | Terakhir Sync | Status |
     | :--- | :--- | :--- | :--- | :--- |
-    | `...1U5OFfqMkN0Wj0ATmkSsplJZD...` | **Target : Dashboard FKRTL > Pemanfaatan Antrol** | 1.250 Baris \| 8 Kolom | 22 Juli 2026, 10:10 WIB | 🟢 **CONNECTED** |
+    | `...1U5OFfqMkN0Wj0ATmkSsplJZD...` | **Target : {target_menu_main} > {target_submenu}** | 1.250 Baris \| 8 Kolom | 23 Juli 2026, 05:35 WIB | 🟢 **CONNECTED** |
     """)
 
     st.write("---")
