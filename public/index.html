@@ -814,24 +814,193 @@
             }
         }
 
+        let activeExcelWidgetId = null;
+        let activeExcelFieldName = null;
+        let currentSheetHeaders = [
+            "Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi",
+            "Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)", "Jumlah Faskes",
+            "Kode PPK", "Biaya Klaim (Rp)"
+        ];
+
         function getSlotOptions(chartType, slotNum) {
-            if (chartType === 'Stock Chart') {
-                if (slotNum === 1) return ['Tanggal Pelayanan (Daily)', 'Bulan Pelayanan', 'Minggu Ke-'];
-                if (slotNum === 2) return ['Nilai Buka (Open)', 'Nilai Tertinggi (High)', 'Nilai Terendah (Low)', 'Nilai Tutup (Close)'];
+            // Read all column headers dynamically (anti-hallucination)
+            if (currentSheetHeaders && currentSheetHeaders.length > 0) {
+                return currentSheetHeaders;
             }
-            if (chartType === 'Radar Chart') {
-                if (slotNum === 1) return ['Mutu Layanan', 'Kecepatan Pelayanan', 'Kepuasan Peserta', 'Respon Waktu', 'Ketersediaan Bed'];
-                if (slotNum === 2) return ['Skor Indeks (0-100)', 'Capaian Pemanfaatan (%)', 'Total Antrean'];
+            return ['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi', 'Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'];
+        }
+
+        function applyExcelFormat(val, fmt) {
+            if (val === null || val === undefined) return '';
+            if (!fmt) return String(val);
+
+            const cat = fmt.category || 'General';
+            const dec = fmt.decimalPlaces !== undefined ? parseInt(fmt.decimalPlaces) : 2;
+            const sym = fmt.symbol || 'Rp';
+            const num = parseFloat(val);
+            const isNum = !isNaN(num);
+
+            switch (cat) {
+                case 'General':
+                    return String(val);
+
+                case 'Number':
+                    if (!isNum) return String(val);
+                    let nStr = num.toFixed(dec);
+                    if (fmt.thousandsSep) {
+                        const parts = nStr.split('.');
+                        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        nStr = parts.join(',');
+                    }
+                    return nStr;
+
+                case 'Currency':
+                    if (!isNum) return String(val);
+                    let cStr = Math.abs(num).toFixed(dec);
+                    const cParts = cStr.split('.');
+                    cParts[0] = cParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    cStr = cParts.join(',');
+                    return num < 0 ? `-${sym} ${cStr}` : `${sym} ${cStr}`;
+
+                case 'Accounting':
+                    if (!isNum) return String(val);
+                    let aStr = Math.abs(num).toFixed(dec);
+                    const aParts = aStr.split('.');
+                    aParts[0] = aParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    aStr = aParts.join(',');
+                    return `${sym}\t${aStr}`;
+
+                case 'Date':
+                    const d = new Date(val);
+                    if (isNaN(d.getTime())) return String(val);
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    const mNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+                    
+                    if (fmt.dateFormat === 'DD MMMM YYYY') return `${day} ${mNames[d.getMonth()]} ${year}`;
+                    if (fmt.dateFormat === 'YYYY-MM-DD') return `${year}-${month}-${day}`;
+                    if (fmt.dateFormat === 'DD-MMM-YY') return `${day}-${mNames[d.getMonth()].slice(0,3)}-${String(year).slice(-2)}`;
+                    return `${day}/${month}/${year}`;
+
+                case 'Time':
+                    const t = new Date(val);
+                    if (isNaN(t.getTime())) return String(val);
+                    return `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+
+                case 'Percentage':
+                    if (!isNum) return String(val);
+                    const pct = (num <= 1 && num >= 0) ? num * 100 : num;
+                    return pct.toFixed(dec) + '%';
+
+                case 'Fraction':
+                    if (!isNum) return String(val);
+                    return `${Math.round(num * 2)}/2`;
+
+                case 'Scientific':
+                    if (!isNum) return String(val);
+                    return num.toExponential(dec).toUpperCase();
+
+                case 'Text':
+                    return String(val);
+
+                case 'Special':
+                    if (fmt.specialType === 'Zip Code') return String(val).padStart(5, '0');
+                    if (fmt.specialType === 'Phone Number') return '+62 ' + String(val);
+                    return String(val);
+
+                case 'Custom':
+                    if (!fmt.customMask) return String(val);
+                    return fmt.customMask.replace(/#/g, val);
+
+                default:
+                    return String(val);
             }
-            if (chartType === 'Surface Chart') {
-                if (slotNum === 1) return ['Jam Pelayanan (08.00-16.00)', 'Tanggal Pelayanan', 'Kabupaten/Kota'];
-                if (slotNum === 2) return ['Hari Dalam Seminggu', 'Poli / Spesialisasi', 'Jenis Faskes'];
-                if (slotNum === 3) return ['Volume Antrean (Kepadatan 3D)', 'Waktu Tunggu (Menit)', 'Capaian (%)'];
+        }
+
+        function openExcelFormatModal(widgetId, fieldName) {
+            activeExcelWidgetId = widgetId;
+            activeExcelFieldName = fieldName;
+
+            const w = puzzleWidgets.find(item => item.id === widgetId);
+            if (!w) return;
+            if (!w.fieldFormats) w.fieldFormats = {};
+            const currentFmt = w.fieldFormats[fieldName] || { category: 'General' };
+
+            const modal = document.getElementById('excel-format-modal-overlay');
+            const fieldTitle = document.getElementById('excel-modal-field-title');
+            if (!modal || !fieldTitle) return;
+
+            fieldTitle.innerText = `⚙️ Format Cells Microsoft Excel (${fieldName})`;
+
+            document.getElementById('excel-cat-select').value = currentFmt.category || 'General';
+            document.getElementById('excel-dec-input').value = currentFmt.decimalPlaces !== undefined ? currentFmt.decimalPlaces : 2;
+            document.getElementById('excel-sym-select').value = currentFmt.symbol || 'Rp';
+            document.getElementById('excel-sep-check').checked = !!currentFmt.thousandsSep;
+            document.getElementById('excel-date-fmt').value = currentFmt.dateFormat || 'DD/MM/YYYY';
+            document.getElementById('excel-custom-mask').value = currentFmt.customMask || '#,##0 "Antrean"';
+
+            updateExcelModalPreview();
+            modal.style.display = 'flex';
+        }
+
+        function closeExcelFormatModal() {
+            const modal = document.getElementById('excel-format-modal-overlay');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function updateExcelModalPreview() {
+            const cat = document.getElementById('excel-cat-select').value;
+            const dec = parseInt(document.getElementById('excel-dec-input').value) || 0;
+            const sym = document.getElementById('excel-sym-select').value;
+            const sep = document.getElementById('excel-sep-check').checked;
+            const dateFmt = document.getElementById('excel-date-fmt').value;
+            const customMask = document.getElementById('excel-custom-mask').value;
+
+            const fmtObj = {
+                category: cat,
+                decimalPlaces: dec,
+                symbol: sym,
+                thousandsSep: sep,
+                dateFormat: dateFmt,
+                customMask: customMask
+            };
+
+            const sampleVal = (cat === 'Percentage') ? 0.875 : ((cat === 'Date') ? '2026-07-21' : 1250.5);
+            const formatted = applyExcelFormat(sampleVal, fmtObj);
+
+            const previewEl = document.getElementById('excel-sample-preview');
+            if (previewEl) {
+                previewEl.innerText = formatted;
             }
-            
-            if (slotNum === 1) return ['Tanggal Pelayanan', 'Kabupaten/Kota', 'Jenis Faskes', 'Poli / Spesialisasi'];
-            if (slotNum === 2) return ['Capaian Pemanfaatan (%)', 'Total Antrean', 'Waktu Tunggu (Menit)', 'Jumlah Faskes'];
-            if (slotNum === 3) return ['Kepemilikan Faskes', 'Garis Tren Kedua', 'Sub-Kategori Area', 'Auto-Bin Interval'];
+        }
+
+        function saveExcelFormatSettings() {
+            if (activeExcelWidgetId === null || !activeExcelFieldName) return;
+
+            const w = puzzleWidgets.find(item => item.id === activeExcelWidgetId);
+            if (!w) return;
+            if (!w.fieldFormats) w.fieldFormats = {};
+
+            const cat = document.getElementById('excel-cat-select').value;
+            const dec = parseInt(document.getElementById('excel-dec-input').value) || 0;
+            const sym = document.getElementById('excel-sym-select').value;
+            const sep = document.getElementById('excel-sep-check').checked;
+            const dateFmt = document.getElementById('excel-date-fmt').value;
+            const customMask = document.getElementById('excel-custom-mask').value;
+
+            w.fieldFormats[activeExcelFieldName] = {
+                category: cat,
+                decimalPlaces: dec,
+                symbol: sym,
+                thousandsSep: sep,
+                dateFormat: dateFmt,
+                customMask: customMask
+            };
+
+            closeExcelFormatModal();
+            renderPuzzleStudio();
+            updateLivePreviewCanvas();
         }
 
         function toggleSlot3Opt(id, opt) {
@@ -867,7 +1036,7 @@
                     <!-- 2. AI SUGGESTION BY AI -->
                     <div style="background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.3); border-radius:8px; padding:8px 10px; font-size:11px; color:#7DD3FC; margin-bottom:10px; line-height:1.4;">
                         ${w.aiSuggestion || AI_SUGGESTIONS[w.chartType] || ''}
-                        <button onclick="autoGenerateAIConfig(${w.id})" style="margin-top:6px; background:linear-gradient(135deg, #0ea5e9, #0284c7); border:none; color:white; padding:4px 8px; border-radius:4px; font-size:10px; font-weight:700; cursor:pointer; width:100%;">✨ Auto-Generate Config by AI</button>
+                        <button id="ai-btn-${w.id}" onclick="autoGenerateAIConfig(${w.id})" style="margin-top:6px; background:linear-gradient(135deg, #0ea5e9, #0284c7); border:none; color:white; padding:4px 8px; border-radius:4px; font-size:10px; font-weight:700; cursor:pointer; width:100%;">✨ Auto-Generate Config by AI</button>
                     </div>
 
                     <!-- 3. INPUT JUDUL CHART -->
@@ -876,7 +1045,7 @@
                         <input type="text" value="${w.title}" onchange="updateWidgetTitle(${w.id}, this.value)" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
                     </div>
 
-                    <!-- DYNAMIC SLOT LABELS BASED ON CHEAT SHEET -->
+                    <!-- DYNAMIC SLOT LABELS BASED ON CHEAT SHEET & DYNAMIC HEADERS -->
                     ${(() => {
                         const slots = getSlotLabels(w.chartType);
                         let html = '';
@@ -892,7 +1061,9 @@
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
                                         ${opts1.map(dim => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                                <input type="checkbox" ${w.xAxis.includes(dim) ? 'checked' : ''} onchange="toggleXAxis(${w.id}, '${dim}')" style="accent-color:#38BDF8;"> ${dim}
+                                                <input type="checkbox" ${w.xAxis.includes(dim) ? 'checked' : ''} onchange="toggleXAxis(${w.id}, '${dim}')" style="accent-color:#38BDF8;"> 
+                                                <span>${dim}</span>
+                                                <span onclick="event.preventDefault(); openExcelFormatModal(${w.id}, '${dim}')" title="Excel Format Cells (${dim})" style="color:#F59E0B; cursor:pointer; font-size:10px; padding:0 2px; font-weight:bold;">⚙️</span>
                                             </label>
                                         `).join('')}
                                     </div>
@@ -911,7 +1082,9 @@
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
                                         ${opts2.map(met => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                                <input type="checkbox" ${w.yAxis.includes(met) ? 'checked' : ''} onchange="toggleYAxis(${w.id}, '${met}')" style="accent-color:#10B981;"> ${met}
+                                                <input type="checkbox" ${w.yAxis.includes(met) ? 'checked' : ''} onchange="toggleYAxis(${w.id}, '${met}')" style="accent-color:#10B981;"> 
+                                                <span>${met}</span>
+                                                <span onclick="event.preventDefault(); openExcelFormatModal(${w.id}, '${met}')" title="Excel Format Cells (${met})" style="color:#F59E0B; cursor:pointer; font-size:10px; padding:0 2px; font-weight:bold;">⚙️</span>
                                             </label>
                                         `).join('')}
                                     </div>
@@ -930,7 +1103,9 @@
                                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
                                         ${opts3.map(opt => `
                                             <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:4px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                                <input type="checkbox" ${w.slot3Opts && w.slot3Opts.includes(opt) ? 'checked' : ''} onchange="toggleSlot3Opt(${w.id}, '${opt}')" style="accent-color:#F59E0B;"> ${opt}
+                                                <input type="checkbox" ${w.slot3Opts && w.slot3Opts.includes(opt) ? 'checked' : ''} onchange="toggleSlot3Opt(${w.id}, '${opt}')" style="accent-color:#F59E0B;"> 
+                                                <span>${opt}</span>
+                                                <span onclick="event.preventDefault(); openExcelFormatModal(${w.id}, '${opt}')" title="Excel Format Cells (${opt})" style="color:#F59E0B; cursor:pointer; font-size:10px; padding:0 2px; font-weight:bold;">⚙️</span>
                                             </label>
                                         `).join('')}
                                     </div>
@@ -1639,6 +1814,83 @@
 
             <div id="ai-modal-cards-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
                 <!-- 3 CARDS WILL BE DYNAMICALLY INJECTED HERE -->
+            </div>
+        </div>
+    <!-- ⚙️ POP-UP MODAL EXCEL FORMAT CELLS (12 CATEGORIES) -->
+    <div id="excel-format-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); z-index:999999; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:rgba(15,23,42,0.98); border:1px solid rgba(56,189,248,0.5); border-radius:16px; width:100%; max-width:600px; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,0.9); position:relative;">
+            <button onclick="closeExcelFormatModal()" style="position:absolute; top:16px; right:16px; background:rgba(255,255,255,0.1); border:none; color:white; border-radius:50%; width:28px; height:28px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center;">✕</button>
+            
+            <div id="excel-modal-field-title" style="font-size:16px; font-weight:800; color:#38BDF8; margin-bottom:16px;">⚙️ Format Cells Microsoft Excel</div>
+
+            <!-- LIVE SAMPLE PREVIEW BOX -->
+            <div style="background:rgba(0,0,0,0.4); border:1px solid rgba(56,189,248,0.3); border-radius:10px; padding:14px; margin-bottom:20px; text-align:center;">
+                <div style="font-size:10px; color:#94A3B8; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Contoh Tampilan Nilai (Sample Preview):</div>
+                <div id="excel-sample-preview" style="font-size:22px; font-weight:800; color:#34D399; font-family:monospace;">1,250.50</div>
+            </div>
+
+            <!-- 12 EXCEL CATEGORIES DROPDOWN -->
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px; font-weight:700;">Kategori Format Cell Excel:</label>
+                <select id="excel-cat-select" onchange="updateExcelModalPreview()" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:600;">
+                    <option value="General">General (Format standar polos)</option>
+                    <option value="Number">Number (Angka desimal & separator)</option>
+                    <option value="Currency">Currency (Mata uang Rp, $, €, ¥)</option>
+                    <option value="Accounting">Accounting (Format akuntansi sejajar)</option>
+                    <option value="Date">Date (Format Tanggal Excel)</option>
+                    <option value="Time">Time (Format Waktu HH:MM:SS)</option>
+                    <option value="Percentage">Percentage (Persentase %)</option>
+                    <option value="Fraction">Fraction (Pecahan 1/2, 1/4)</option>
+                    <option value="Scientific">Scientific (Notasi Eksponensial 1.25E+03)</option>
+                    <option value="Text">Text (Teks mentah tanpa format)</option>
+                    <option value="Special">Special (Zip Code, Phone, NIK/Faskes)</option>
+                    <option value="Custom">Custom (Pola Masking Khusus)</option>
+                </select>
+            </div>
+
+            <!-- DETAILED FORMAT CONTROLS -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; background:rgba(0,0,0,0.2); padding:14px; border-radius:10px; border:1px solid var(--glass-border); margin-bottom:20px;">
+                <div>
+                    <label style="display:block; font-size:11px; color:#E2E8F0; margin-bottom:4px;">Tempat Desimal (Decimal Places):</label>
+                    <input type="number" id="excel-dec-input" value="2" min="0" max="6" onchange="updateExcelModalPreview()" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:11px; color:#E2E8F0; margin-bottom:4px;">Simbol Mata Uang (Currency):</label>
+                    <select id="excel-sym-select" onchange="updateExcelModalPreview()" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
+                        <option value="Rp">Rp (Rupiah Indonesia)</option>
+                        <option value="$">$ (US Dollar)</option>
+                        <option value="€">€ (Euro)</option>
+                        <option value="¥">¥ (Yen)</option>
+                    </select>
+                </div>
+
+                <div style="grid-column: 1 / -1;">
+                    <label style="font-size:11px; color:#E2E8F0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="excel-sep-check" onchange="updateExcelModalPreview()" style="accent-color:#38BDF8;" checked> Gunakan Separator Ribuan Titik/Koma (1.000)
+                    </label>
+                </div>
+
+                <div style="grid-column: 1 / -1;">
+                    <label style="display:block; font-size:11px; color:#E2E8F0; margin-bottom:4px;">Format Tanggal (Date Format):</label>
+                    <select id="excel-date-fmt" onchange="updateExcelModalPreview()" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;">
+                        <option value="DD/MM/YYYY">DD/MM/YYYY (21/07/2026)</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD (2026-07-21)</option>
+                        <option value="DD MMMM YYYY">DD MMMM YYYY (21 Juli 2026)</option>
+                        <option value="DD-MMM-YY">DD-MMM-YY (21-Jul-26)</option>
+                    </select>
+                </div>
+
+                <div style="grid-column: 1 / -1;">
+                    <label style="display:block; font-size:11px; color:#E2E8F0; margin-bottom:4px;">Custom Masking Pattern:</label>
+                    <input type="text" id="excel-custom-mask" value='#,##0 "Antrean"' onchange="updateExcelModalPreview()" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:6px 10px; border-radius:6px; font-size:12px;" placeholder='#,##0 "Antrean"'>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="closeExcelFormatModal()" style="background:rgba(255,255,255,0.1); border:1px solid var(--glass-border); color:white; padding:8px 16px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">Batal</button>
+                <button onclick="saveExcelFormatSettings()" style="background:linear-gradient(135deg, #10b981, #059669); border:none; color:white; padding:8px 20px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px rgba(16,185,129,0.3);">💾 Simpan Format Cell Excel</button>
             </div>
         </div>
     </div>
