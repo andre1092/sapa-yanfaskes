@@ -36,9 +36,6 @@ def render_settings_page():
                 key="conn_sheets_url_input"
             )
             st.caption("Header Terdeteksi: **8 Kolom** | Total Baris: **1.250 Baris**")
-            
-            if st.button("⚡ 🔌 Sinkronkan Data Spreadsheet", key="btn_sync_conn", use_container_width=True):
-                st.success("✅ Data Google Spreadsheet berhasil disinkronkan secara live ke menu sasaran!")
 
         with col_c2:
             st.markdown("#### 📌 2. Tujuan Konektivitas (Target Binding)")
@@ -62,6 +59,9 @@ def render_settings_page():
                 default=["Visualisasi Chart", "Tabel Data Matrix"],
                 key="conn_target_components"
             )
+
+        if st.button("⚡ 🔌 Sinkronkan Data Spreadsheet", key="btn_sync_conn", use_container_width=True):
+            st.success(f"✅ Data Google Spreadsheet berhasil disinkronkan ke '{target_menu_main} > {target_submenu}'!")
 
     st.markdown("---")
     st.markdown("#### 📋 Daftar Koneksi Spreadsheet & Target Active")
