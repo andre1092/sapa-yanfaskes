@@ -116,6 +116,30 @@
         .nav-item.logout-item { color: rgba(248, 113, 113, 0.8); margin-top: auto; }
         .nav-item.logout-item:hover { background: rgba(239, 68, 68, 0.12); color: #F87171; }
 
+        /* SUBMENU STYLING */
+        .nav-group { display: flex; flex-direction: column; }
+        .nav-group-header {
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 10px;
+            color: rgba(255, 255, 255, 0.85); font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s ease; border: 1px solid transparent; white-space: nowrap;
+        }
+        #sidebar.collapsed .nav-group-header { justify-content: center; padding: 10px 0; }
+        .nav-group-header:hover { background: rgba(255, 255, 255, 0.10); color: #60A5FA; transform: translateX(3px); }
+        .nav-group-header.active { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.15); color: #FFF; font-weight: 700; }
+        
+        .submenu-list {
+            display: flex; flex-direction: column; gap: 2px; padding-left: 26px; margin-top: 4px; margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+        #sidebar.collapsed .submenu-list { padding-left: 0; }
+        .submenu-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px;
+            color: rgba(255, 255, 255, 0.7); font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s ease; border: 1px solid transparent; white-space: nowrap; text-decoration: none;
+        }
+        .submenu-item:hover { background: rgba(255, 255, 255, 0.10); color: #38BDF8; transform: translateX(3px); }
+        .submenu-item.active { background: rgba(56, 189, 248, 0.25); border-color: rgba(56, 189, 248, 0.4); color: #38BDF8; font-weight: 700; }
+
         /* MAIN CONTENT AREA */
         #main-content {
             margin-left: 260px; padding: 28px 36px; transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -196,13 +220,26 @@
             <div class="section-label">MENU</div>
 
             <div class="nav-list">
-                <a class="nav-item active" onclick="switchNav('home')">
+                <a class="nav-item active" id="nav-home" onclick="switchNav('home')">
                     <span>🏠</span> <span class="nav-text">Home</span>
                 </a>
-                <a class="nav-item" id="nav-fkrtl" onclick="switchNav('fkrtl_antrol')">
-                    <span>📊</span> <span class="nav-text">Dashboard FKRTL</span>
-                </a>
-                <a class="nav-item" onclick="switchNav('setting')">
+
+                <!-- MENU UTAMA DENGAN SUBMENU DROPDOWN -->
+                <div class="nav-group">
+                    <div class="nav-group-header" id="nav-header-fkrtl" onclick="toggleSubmenu('fkrtl-submenu')">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span>📊</span> <span class="nav-text">Dashboard FKRTL</span>
+                        </div>
+                        <span class="nav-text submenu-arrow" id="arrow-fkrtl" style="font-size:10px; transition:transform 0.2s ease;">▼</span>
+                    </div>
+                    <div class="submenu-list" id="fkrtl-submenu" style="display:flex;">
+                        <a class="submenu-item" id="nav-sub-antrol" onclick="switchNav('fkrtl_antrol')">
+                            <span>📈</span> <span class="nav-text">Pemanfaatan Antrol</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a class="nav-item" id="nav-setting" onclick="switchNav('setting')">
                     <span>⚙️</span> <span class="nav-text">Setting</span>
                 </a>
                 <a class="nav-item logout-item" onclick="doLogout()">
@@ -947,20 +984,46 @@
             document.getElementById('sidebar').classList.toggle('collapsed');
         }
 
+        function toggleSubmenu(id) {
+            const el = document.getElementById(id);
+            const arrow = document.getElementById('arrow-fkrtl');
+            if (el) {
+                if (el.style.display === 'none') {
+                    el.style.display = 'flex';
+                    if (arrow) arrow.style.transform = 'rotate(0deg)';
+                } else {
+                    el.style.display = 'none';
+                    if (arrow) arrow.style.transform = 'rotate(-90deg)';
+                }
+            }
+        }
+
         function switchNav(page) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            document.querySelectorAll('.nav-item, .nav-group-header, .submenu-item').forEach(el => el.classList.remove('active'));
             
             document.getElementById('page-home').style.display = 'none';
             document.getElementById('page-fkrtl-antrol').style.display = 'none';
             document.getElementById('page-setting').style.display = 'none';
 
             if (page === 'home') {
+                const navHome = document.getElementById('nav-home');
+                if (navHome) navHome.classList.add('active');
                 document.getElementById('page-home').style.display = 'block';
             } else if (page === 'fkrtl_antrol') {
+                const headerFkrtl = document.getElementById('nav-header-fkrtl');
+                const subAntrol = document.getElementById('nav-sub-antrol');
+                const submenuList = document.getElementById('fkrtl-submenu');
+                const arrow = document.getElementById('arrow-fkrtl');
+                if (headerFkrtl) headerFkrtl.classList.add('active');
+                if (subAntrol) subAntrol.classList.add('active');
+                if (submenuList) submenuList.style.display = 'flex';
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+
                 document.getElementById('page-fkrtl-antrol').style.display = 'block';
                 renderFKRTLAntrolDashboard();
             } else if (page === 'setting') {
+                const navSetting = document.getElementById('nav-setting');
+                if (navSetting) navSetting.classList.add('active');
                 document.getElementById('page-setting').style.display = 'block';
             }
         }
