@@ -18,162 +18,61 @@ def render_settings_page():
     st.caption("Manajemen akun eksekutif, Studio Integrasi Menu, No-Code Puzzle Studio, dan 6 Modul Setting.")
     st.write("---")
 
-    # --- NO-CODE STUDIO INTEGRASI & DYNAMIC MENU BUILDER (PUZZLE STUDIO) ---
-    st.markdown("## 🧩 Studio Integrasi & Dynamic Menu Builder (Puzzle Studio)")
-    st.caption("Hubungkan URL Google Sheets, buat Menu/Submenu di Sidebar, dan rangkai layout visual data (Tabel, Pie, Bar/Combo Chart) seperti puzzle.")
+    # --- MODUL: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) ---
+    st.markdown("## 🔌 Manajemen Koneksi & Integrasi (Data Connection)")
+    st.caption("Kelola URL Google Spreadsheet, uji konektivitas data, dan tentukan Tujuan Konektivitas (Target Binding) secara langsung ke data, chart, atau tabel pada menu/submenu sasaran.")
 
     with st.container():
-        st.markdown("#### 🔗 1. Input URL Spreadsheet & Buat Menu Baru")
-        sheets_url_builder = st.text_input(
-            "Masukkan URL Google Sheets Target:",
-            value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing",
-            placeholder="https://docs.google.com/spreadsheets/d/.../edit"
-        )
+        col_c1, col_c2 = st.columns(2)
+        
+        with col_c1:
+            st.markdown("#### 🔗 1. Update URL Google Spreadsheet")
+            st.markdown("<span style='font-size:11px; background:rgba(16,185,129,0.2); color:#34D399; padding:2px 8px; border-radius:12px; font-weight:bold;'>🟢 Connected</span>", unsafe_allow_html=True)
+            
+            sheets_url_conn = st.text_input(
+                "URL Google Sheets Dataset Aktif:",
+                value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing",
+                placeholder="https://docs.google.com/spreadsheets/d/.../edit",
+                key="conn_sheets_url_input"
+            )
+            st.caption("Header Terdeteksi: **8 Kolom** | Total Baris: **1.250 Baris**")
+            
+            if st.button("🔌 Sinkronkan / Update", key="btn_sync_conn", use_container_width=True):
+                st.success("🔌 Sinkronkan / Update Berhasil! URL Google Spreadsheet terhubung secara live ke engine Polars.")
 
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            menu_name = st.text_input("Nama Menu Utama (Sejajar Home):", value="Dashboard FKRTL")
-        with col_m2:
-            submenu_name = st.text_input("Nama Submenu (Di Bawah Menu Utama):", value="Pemanfaatan Antrol")
+        with col_c2:
+            st.markdown("#### 📌 2. Tujuan Konektivitas (Target Binding)")
+            target_menu_conn = st.selectbox(
+                "Pilih Target Menu / Submenu Sasaran:",
+                options=[
+                    "Target : Dashboard FKRTL > Pemanfaatan Antrol",
+                    "Target : Dashboard FKRTL > Waktu Tunggu & Layanan",
+                    "Target : Capaian Faskes > Rekapitulasi Wilayah",
+                    "Target : Capaian Faskes > Tabel Matrix Polars",
+                    "Target : Home Dashboard Utama"
+                ],
+                key="conn_target_menu_select"
+            )
+            
+            st.multiselect(
+                "Jenis Komponen Sasaran Integrasi:",
+                options=["Visualisasi Chart", "Tabel Data Matrix", "KPI Scorecard Metric"],
+                default=["Visualisasi Chart", "Tabel Data Matrix"],
+                key="conn_target_components"
+            )
+            
+            if st.button("💾 Update", key="btn_save_conn", use_container_width=True):
+                st.success(f"💾 Update Berhasil! Tujuan Konektivitas telah diperbarui ke: '{target_menu_conn}'.")
 
-        if st.button(f"⚡ Koneksikan & Buat Menu '{menu_name} > {submenu_name}'", use_container_width=True):
-            st.session_state['puzzle_studio_active'] = True
-            st.success(f"✅ Berhasil menghubungkan URL! Silakan rangkai komponen puzzle di bawah untuk menu '{menu_name} > {submenu_name}'.")
-
-        if st.session_state.get('puzzle_studio_active', True):
-            st.markdown("---")
-            col_st_head, col_st_btn = st.columns([3, 1])
-            with col_st_head:
-                st.markdown(f"### 🎨 Studio Canvas Visual Puzzle: `{menu_name} > {submenu_name}`")
-            with col_st_btn:
-                if st.button("➕ Tambah Widget Puzzle", use_container_width=True):
-                    st.toast("➕ Widget Puzzle Baru ditambahkan ke Canvas Studio!")
-
-            # 16 Chart Types
-            chart_options = [
-                "Table", "Pivot Table", "Column Chart", "Bar Chart", "Line Chart", 
-                "Pie Chart", "Area Chart", "XY Scatter Chart", "Combo Chart", "Radar Chart", 
-                "Stock Chart", "Surface Chart", "Waterfall Chart", "Histogram & Pareto", 
-                "Box and Whisker", "Sunburst & Treemap"
-            ]
-
-            ai_suggestions_map = {
-                "Table": "✨ AI Suggestion: Menampilkan seluruh struktur data tabular mentah Polars secara lengkap.",
-                "Pivot Table": "✨ AI Suggestion: Rekomendasi matrik agregasi otomatis multi-dimensi X & Y.",
-                "Column Chart": "✨ AI Suggestion: Sangat baik untuk perbandingan antar kategori faskes secara vertikal.",
-                "Bar Chart": "✨ AI Suggestion: Ideal untuk perbandingan capaian per wilayah Kabupaten/Kota secara horizontal.",
-                "Line Chart": "✨ AI Suggestion: Paling tepat untuk tren waktu bulanan Capaian Pemanfaatan Antrol.",
-                "Pie Chart": "✨ AI Suggestion: Proporsi pembagian jenis faskes (RS vs Klinik Utama).",
-                "Area Chart": "✨ AI Suggestion: Akumulasi total antrean kumulatif dari bulan ke bulan.",
-                "XY Scatter Chart": "✨ AI Suggestion: Korelasi antara Waktu Tunggu Pelayanan vs Capaian Pemanfaatan.",
-                "Combo Chart": "✨ AI Suggestion: Kombinasi Bar (Total Antrean) & Line (Capaian %) secara paralel.",
-                "Radar Chart": "✨ AI Suggestion: Analisis komparasi 5 indikator mutu layanan antar Kantor Cabang.",
-                "Stock Chart": "✨ AI Suggestion: Rentang statistik fluktuasi antrean (Minimum, Maximum, Average).",
-                "Surface Chart": "✨ AI Suggestion: Topografi 3D kepadatan antrean per jam & per hari.",
-                "Waterfall Chart": "✨ AI Suggestion: Melacak akumulasi penambahan & pengurangan rujukan antrean.",
-                "Histogram & Pareto": "✨ AI Suggestion: Mengidentifikasi 80/20 bottleneck waktu tunggu terbesar.",
-                "Box and Whisker": "✨ AI Suggestion: Distribusi pencilan (outliers) waktu pelayanan faskes.",
-                "Sunburst & Treemap": "✨ AI Suggestion: Hirarki multi-level (Provinsi -> Kabupaten -> Faskes -> Poli)."
-            }
-
-            def get_slot_labels_py(chart_type):
-                if chart_type in ["Column Chart", "Bar Chart"]:
-                    return {"slot1": "Category (Kategori)", "slot2": "Value (Nilai)", "slot3": "Breakdown/Legend (Warna)"}
-                elif chart_type in ["Line Chart", "Area Chart"]:
-                    return {"slot1": "Time/Axis (Waktu/Sumbu)", "slot2": "Value (Nilai)", "slot3": "Secondary Value (Garis Kedua)"}
-                elif chart_type == "Combo Chart":
-                    return {"slot1": "Shared Axis (Sumbu Bersama)", "slot2": "Bar Series (Nilai Batang)", "slot3": "Line Series (Nilai Garis)"}
-                elif chart_type == "Waterfall Chart":
-                    return {"slot1": "Category (Tahapan)", "slot2": "Delta/Value (Nilai Perubahan)", "slot3": None}
-                elif chart_type == "Pie Chart":
-                    return {"slot1": "Slice Label (Label Potongan)", "slot2": "Slice Size (Ukuran Potongan)", "slot3": None}
-                elif chart_type == "Sunburst & Treemap":
-                    return {"slot1": "Hierarchy Levels (Level 1, 2..)", "slot2": "Size (Ukuran Busur/Kotak)", "slot3": None}
-                elif chart_type == "XY Scatter Chart":
-                    return {"slot1": "X Value (Nilai X - Angka)", "slot2": "Y Value (Nilai Y - Angka)", "slot3": None}
-                elif chart_type == "Histogram & Pareto":
-                    return {"slot1": "Data Source (Data Mentah)", "slot2": "Otomatis (Frequency)", "slot3": "Bin Size (Ukuran Rentang)"}
-                elif chart_type == "Box and Whisker":
-                    return {"slot1": "Category (Grup)", "slot2": "Input Values (Data Mentah)", "slot3": "Otomatis (Quartiles)"}
-                elif chart_type == "Table":
-                    return {"slot1": "Selected Columns (Pilih Kolom: A, B, C...)", "slot2": None, "slot3": None}
-                elif chart_type == "Pivot Table":
-                    return {"slot1": "Rows (Baris)", "slot2": "Columns (Kolom)", "slot3": "Values (Nilai/Isi)"}
-                elif chart_type == "Radar Chart":
-                    return {"slot1": "Category (Sudut Jaringan)", "slot2": "Metric (Jarak ke Pusat)", "slot3": None}
-                elif chart_type == "Stock Chart":
-                    return {"slot1": "Date (X)", "slot2": "Open, High, Low, Close (Perlu 4 Slot Y)", "slot3": None}
-                elif chart_type == "Surface Chart":
-                    return {"slot1": "X Coordinates", "slot2": "Y Coordinates", "slot3": "Z Value (Tinggi Permukaan)"}
-                else:
-                    return {"slot1": "Category / Axis", "slot2": "Value / Metric", "slot3": "Breakdown / Series"}
-
-            p_col1, p_col2, p_col3 = st.columns(3)
-            with p_col1:
-                st.markdown("#### 🧩 Puzzle Item 1 ❌")
-                c_type1 = st.selectbox("Jenis Chart / Visualisasi:", chart_options, index=4, key="c_type1")
-                st.info(ai_suggestions_map[c_type1])
-                st.text_input("Judul Chart:", value="Tren Capaian Pemanfaatan Antrol 2026", key="c_title1")
-                
-                s1_labels = get_slot_labels_py(c_type1)
-                if s1_labels["slot1"]:
-                    st.multiselect(f"📌 {s1_labels['slot1']}:", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan"], key="c_x1")
-                if s1_labels["slot2"]:
-                    st.multiselect(f"📊 {s1_labels['slot2']}:", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y1")
-                if s1_labels["slot3"]:
-                    st.multiselect(f"🎨 {s1_labels['slot3']}:", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_1")
-
-                c_leg1 = st.checkbox("Tampilkan Legenda", value=True, key="leg1")
-                c_leg_pos1 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=0, key="leg_pos1")
-                c_lbl1 = st.checkbox("Tampilkan Label Data", value=True, key="lbl1")
-                c_lbl_fmt1 = st.selectbox("Format Label:", ["Persentase (%)", "Angka Absolut", "Mata Uang (Rp)", "Custom Formula"], index=0, key="lbl_fmt1")
-
-            with p_col2:
-                st.markdown("#### 🧩 Puzzle Item 2 ❌")
-                c_type2 = st.selectbox("Jenis Chart / Visualisasi:", chart_options, index=3, key="c_type2")
-                st.info(ai_suggestions_map[c_type2])
-                st.text_input("Judul Chart:", value="Capaian per Kabupaten/Kota", key="c_title2")
-                
-                s2_labels = get_slot_labels_py(c_type2)
-                if s2_labels["slot1"]:
-                    st.multiselect(f"📌 {s2_labels['slot1']}:", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Kabupaten/Kota"], key="c_x2")
-                if s2_labels["slot2"]:
-                    st.multiselect(f"📊 {s2_labels['slot2']}:", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Capaian Pemanfaatan (%)"], key="c_y2")
-                if s2_labels["slot3"]:
-                    st.multiselect(f"🎨 {s2_labels['slot3']}:", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_2")
-
-                c_leg2 = st.checkbox("Tampilkan Legenda", value=True, key="leg2")
-                c_leg_pos2 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=1, key="leg_pos2")
-                c_lbl2 = st.checkbox("Tampilkan Label Data", value=True, key="lbl2")
-                c_lbl_fmt2 = st.selectbox("Format Label:", ["Persentase (%)", "Angka Absolut", "Mata Uang (Rp)", "Custom Formula"], index=0, key="lbl_fmt2")
-
-            with p_col3:
-                st.markdown("#### 🧩 Puzzle Item 3 ❌")
-                c_type3 = st.selectbox("Jenis Chart / Visualisasi:", chart_options, index=0, key="c_type3")
-                st.info(ai_suggestions_map[c_type3])
-                st.text_input("Judul Chart:", value="Tabel Rekapitulasi Data Polars", key="c_title3")
-                
-                s3_labels = get_slot_labels_py(c_type3)
-                if s3_labels["slot1"]:
-                    st.multiselect(f"📌 {s3_labels['slot1']}:", ["Tanggal Pelayanan", "Kabupaten/Kota", "Jenis Faskes", "Poli / Spesialisasi"], default=["Tanggal Pelayanan", "Kabupaten/Kota"], key="c_x3")
-                if s3_labels["slot2"]:
-                    st.multiselect(f"📊 {s3_labels['slot2']}:", ["Capaian Pemanfaatan (%)", "Total Antrean", "Waktu Tunggu (Menit)"], default=["Total Antrean"], key="c_y3")
-                if s3_labels["slot3"]:
-                    st.multiselect(f"🎨 {s3_labels['slot3']}:", ["Kepemilikan Faskes", "Garis Tren Kedua", "Sub-Kategori Area"], default=[], key="c_s3_3")
-
-                c_leg3 = st.checkbox("Tampilkan Legenda", value=False, key="leg3")
-                c_leg_pos3 = st.selectbox("Posisi Legenda:", ["Kanan (Right)", "Bawah (Bottom)", "Atas (Top)", "Kiri (Left)"], index=0, key="leg_pos3")
-                c_lbl3 = st.checkbox("Tampilkan Label Data", value=True, key="lbl3")
-                c_lbl_fmt3 = st.selectbox("Format Label:", ["Persentase (%)", "Angka Absolut", "Mata Uang (Rp)", "Custom Formula"], index=1, key="lbl_fmt3")
-
-            col_pub1, col_pub2 = st.columns(2)
-            with col_pub1:
-                if st.button("💾 Simpan Draft Layout Puzzle", use_container_width=True):
-                    st.toast("✅ Draft layout puzzle tersimpan.")
-            with col_pub2:
-                if st.button(f"🚀 Publish Live Menu '{menu_name}'", use_container_width=True):
-                    st.balloons()
-                    st.success(f"🎉 SUKSES: Menu '{menu_name}' dengan Submenu '{submenu_name}' telah PUBLISH secara LIVE di Sidebar!")
+    st.markdown("---")
+    st.markdown("#### 📋 Daftar Koneksi Spreadsheet & Target Active")
+    st.caption("🟢 **1 Active Stream Connection**")
+    
+    st.markdown("""
+    | Spreadsheet URL / Source | Tujuan Konektivitas (Target Menu) | Baris / Kolom | Terakhir Sync | Status |
+    | :--- | :--- | :--- | :--- | :--- |
+    | `...1U5OFfqMkN0Wj0ATmkSsplJZD...` | **Target : Dashboard FKRTL > Pemanfaatan Antrol** | 1.250 Baris \| 8 Kolom | 22 Juli 2026, 10:10 WIB | 🟢 **CONNECTED** |
+    """)
 
     st.write("---")
 

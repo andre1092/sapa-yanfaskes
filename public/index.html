@@ -302,9 +302,114 @@
                     </div>
                 </div>
 
-                <!-- MODULE: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) -->
+                <!-- MODULE 2: MANAJEMEN KONEKSI & INTEGRASI (DATA CONNECTION) -->
                 <div class="glass-panel" style="margin-top:20px;">
-                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">🔌 Manajemen Koneksi & Integrasi (Data Connection)</h2>
+                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">
+                        🔌 Manajemen Koneksi & Integrasi (Data Connection)
+                    </h2>
+                    <p style="font-size:13px; color:#CBD5E1; margin-bottom:18px; line-height:1.5;">
+                        Kelola URL Google Spreadsheet, uji konektivitas data, dan tentukan Tujuan Konektivitas (Target Binding) secara langsung ke data, chart, atau tabel pada menu/submenu sasaran.
+                    </p>
+
+                    <!-- STEP 1 & 2: UPDATE URL SPREADSHEET & TARGET CONNECTIVITY -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px; margin-bottom:20px;">
+                        
+                        <!-- LEFT PANEL: UPDATE URL GOOGLE SPREADSHEET -->
+                        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h3 style="font-size:14px; font-weight:700; color:#60A5FA;">🔗 1. Update URL Google Spreadsheet</h3>
+                                    <span id="conn-status-badge" style="font-size:11px; font-weight:700; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4); color:#34D399; padding:2px 8px; border-radius:20px;">🟢 Connected</span>
+                                </div>
+                                <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:6px;">URL Google Sheets Dataset Aktif:</label>
+                                <input type="text" id="conn-sheets-url" value="https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; padding:10px 12px; border-radius:8px; font-size:12px; outline:none; font-family:monospace;" placeholder="https://docs.google.com/spreadsheets/d/.../edit">
+                                
+                                <div style="margin-top:12px; font-size:11px; color:#94A3B8; display:flex; justify-content:space-between;">
+                                    <span>Header Kolom Terdeteksi: <b style="color:#38BDF8;">8 Kolom</b></span>
+                                    <span>Total Baris: <b style="color:#34D399;">1.250 Baris</b></span>
+                                </div>
+                            </div>
+
+                            <button onclick="syncSpreadsheetConnection()" style="margin-top:16px; background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:10px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; width:100%; box-shadow:0 4px 15px rgba(14,165,233,0.3);">
+                                🔌 Sinkronkan / Update
+                            </button>
+                        </div>
+
+                        <!-- RIGHT PANEL: TUJUAN KONEKTIVITAS (TARGET BINDING) -->
+                        <div style="background:rgba(15,23,42,0.7); border:1px solid var(--glass-border); border-radius:12px; padding:20px; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div>
+                                <h3 style="font-size:14px; font-weight:700; color:#60A5FA; margin-bottom:10px;">📌 2. Tujuan Konektivitas (Target Binding)</h3>
+                                
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Pilih Target Menu / Submenu Sasaran:</label>
+                                    <select id="conn-target-menu" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 12px; border-radius:6px; font-size:12px; font-weight:600;">
+                                        <option value="Target : Dashboard FKRTL > Pemanfaatan Antrol">Target : Dashboard FKRTL > Pemanfaatan Antrol</option>
+                                        <option value="Target : Dashboard FKRTL > Waktu Tunggu & Layanan">Target : Dashboard FKRTL > Waktu Tunggu & Layanan</option>
+                                        <option value="Target : Capaian Faskes > Rekapitulasi Wilayah">Target : Capaian Faskes > Rekapitulasi Wilayah</option>
+                                        <option value="Target : Capaian Faskes > Tabel Matrix Polars">Target : Capaian Faskes > Tabel Matrix Polars</option>
+                                        <option value="Target : Home Dashboard Utama">Target : Home Dashboard Utama</option>
+                                    </select>
+                                </div>
+
+                                <div style="margin-bottom:8px;">
+                                    <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Jenis Komponen Sasaran Integrasi:</label>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                        <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:6px 10px; border-radius:6px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                            <input type="checkbox" checked style="accent-color:#38BDF8;"> Visualisasi Chart
+                                        </label>
+                                        <label style="font-size:11px; color:#E2E8F0; background:rgba(255,255,255,0.06); padding:6px 10px; border-radius:6px; border:1px solid var(--glass-border); display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                            <input type="checkbox" checked style="accent-color:#38BDF8;"> Tabel Data Matrix
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="saveTargetConnectionMapping()" style="margin-top:16px; background:linear-gradient(135deg, #10B981, #059669); color:white; border:none; padding:10px 14px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; width:100%; box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                                💾 Update
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <!-- ACTIVE CONNECTIONS SUMMARY TABLE -->
+                    <div style="background:rgba(15,23,42,0.6); border:1px solid var(--glass-border); border-radius:12px; padding:18px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                            <h3 style="font-size:14px; font-weight:700; color:#F8FAFC;">📋 Daftar Koneksi Spreadsheet & Target Active</h3>
+                            <span style="font-size:11px; color:#34D399; font-weight:700;">🟢 1 Active Stream Connection</span>
+                        </div>
+
+                        <table style="width:100%; border-collapse:collapse; font-size:11px; color:#E2E8F0;">
+                            <thead>
+                                <tr style="border-bottom:1px solid var(--glass-border); text-align:left; color:#94A3B8;">
+                                    <th style="padding:6px;">Spreadsheet URL / Source</th>
+                                    <th style="padding:6px;">Tujuan Konektivitas (Target Menu)</th>
+                                    <th style="padding:6px;">Baris / Kolom</th>
+                                    <th style="padding:6px;">Terakhir Sync</th>
+                                    <th style="padding:6px;">Status</th>
+                                    <th style="padding:6px; text-align:right;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="conn-active-table-body">
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding:8px 6px; font-family:monospace; color:#38BDF8;">...1U5OFfqMkN0Wj0ATmkSsplJZD...</td>
+                                    <td style="padding:8px 6px; font-weight:700; color:white;">Target : Dashboard FKRTL > Pemanfaatan Antrol</td>
+                                    <td style="padding:8px 6px;">1.250 Baris | 8 Kolom</td>
+                                    <td style="padding:8px 6px; color:#94A3B8;">22 Juli 2026, 10:10 WIB</td>
+                                    <td style="padding:8px 6px; color:#34D399; font-weight:700;">🟢 CONNECTED</td>
+                                    <td style="padding:8px 6px; text-align:right;">
+                                        <button onclick="syncSpreadsheetConnection()" style="background:rgba(56,189,248,0.2); border:1px solid rgba(56,189,248,0.4); color:#38BDF8; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:4px;">🔄 Sync</button>
+                                        <button onclick="alert('Koneksi spreadsheet ini di-pause.')" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Disconnect</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <!-- MODULE: OTORISASI OAUTH & GOOGLE WORKSPACE STORAGE -->
+                <div class="glass-panel" style="margin-top:20px;">
+                    <h2 style="font-size:18px; font-weight:700; color:#F8FAFC; margin-bottom:16px;">🔑 Otorisasi OAuth & Google Workspace Storage</h2>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                         
