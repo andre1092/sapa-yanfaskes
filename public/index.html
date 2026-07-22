@@ -1142,49 +1142,33 @@
                 margin: { l: 150, r: 10, t: 10, b: 20 }
             }, { responsive: true, displayModeBar: false });
 
-            // 3. SUMBER (Horizontal Grouped Bar Chart: Mobile JKN vs All Sumber)
-            const topFaskesSumber = [
-                'RS BINA SEHAT', 'RSU BALADHIKA HUSADA', 'RS UTAMA HUSADA', 'RS WIJAYA KUSUMA',
-                'RS GIGI DAN MULUT', 'RSU SRIKANDI IBI', 'RS BHAYANGKARA', 'RS DJATIROTO',
-                'RS CITRA HUSADA', 'RS MITRA MEDIKA'
-            ].reverse();
+            // 3. SUMBER (Vertical Column Bar Chart — 100% Matching "Tren Perbulan" Style!)
+            const sumberCategories = ['Mobile JKN', 'All Sumber'];
+            const sumberCapais = [66.78, 74.52];
 
-            const mobileJknValues = [94.29, 92.25, 91.25, 90.22, 84.23, 81.17, 79.23, 78.94, 78.52, 78.41].reverse();
-            const allSumberValues = [98.50, 96.10, 94.80, 93.50, 89.10, 85.40, 82.90, 81.50, 80.80, 80.20].reverse();
-
-            Plotly.newPlot('chart-fkrtl-sumber', [
-                {
-                    x: mobileJknValues,
-                    y: topFaskesSumber,
-                    name: 'Mobile JKN',
-                    type: 'bar',
-                    orientation: 'h',
-                    text: mobileJknValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
-                    textposition: 'inside',
-                    insidetextanchor: 'middle',
-                    marker: { color: '#0EA5E9' }
-                },
-                {
-                    x: allSumberValues,
-                    y: topFaskesSumber,
-                    name: 'All Sumber',
-                    type: 'bar',
-                    orientation: 'h',
-                    text: allSumberValues.map(v => v.toFixed(2).replace('.', ',') + '%'),
-                    textposition: 'inside',
-                    insidetextanchor: 'middle',
-                    marker: { color: '#34D399' }
-                }
-            ], {
-                barmode: 'group',
+            Plotly.newPlot('chart-fkrtl-sumber', [{
+                x: sumberCategories,
+                y: sumberCapais,
+                type: 'bar',
+                text: sumberCapais.map(v => v.toFixed(2).replace('.', ',') + '%'),
+                textposition: 'outside',
+                marker: { color: ['#477DA5', '#38BDF8'] }
+            }], {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: fontColor, size: 9 },
-                legend: { orientation: 'h', y: 1.15, x: 0.15 },
-                xaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100], ticksuffix: '%' },
-                margin: { l: 140, r: 10, t: 30, b: 20 }
+                font: { color: fontColor, size: 11 },
+                yaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100], ticksuffix: '%' },
+                xaxis: { showgrid: false },
+                margin: { l: 40, r: 20, t: 30, b: 30 }
             }, { responsive: true, displayModeBar: false });
         }
+
+        // Attach dynamic live re-render on filter changes
+        document.addEventListener('change', (e) => {
+            if (e.target && e.target.id && e.target.id.startsWith('flt-')) {
+                renderFKRTLAntrolDashboard();
+            }
+        });
 
         let puzzleWidgets = [
             {
