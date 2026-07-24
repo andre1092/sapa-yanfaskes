@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <!-- SheetJS for Native Uncorrupted XLSX Generation -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS with Full Cell Styling Support for XLSX -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 
     <style>
         :root {
@@ -1565,15 +1565,69 @@
                 return;
             }
 
-            const headers = ['Kdppk', 'Faskes', 'All Sumber (Target 95%)', 'Mobile JKN (Target 80%)'];
-            const rows = data.map(r => [
-                r.kdppk,
-                r.faskes,
-                r.allSumberStr,
-                r.mobileJknStr
-            ]);
+            // Thin Border Style
+            const thinBorder = {
+                top: { style: "thin", color: { rgb: "CBD5E1" } },
+                bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+                left: { style: "thin", color: { rgb: "CBD5E1" } },
+                right: { style: "thin", color: { rgb: "CBD5E1" } }
+            };
 
-            const wsData = [headers, ...rows];
+            // Royal Blue Header Style
+            const headerStyleLeft = {
+                fill: { fgColor: { rgb: "2563EB" } },
+                font: { color: { rgb: "FFFFFF" }, bold: true, name: "Calibri", sz: 11 },
+                alignment: { wrapText: true, vertical: "center", horizontal: "left" },
+                border: thinBorder
+            };
+
+            const headerStyleCenter = {
+                fill: { fgColor: { rgb: "2563EB" } },
+                font: { color: { rgb: "FFFFFF" }, bold: true, name: "Calibri", sz: 11 },
+                alignment: { wrapText: true, vertical: "center", horizontal: "center" },
+                border: thinBorder
+            };
+
+            // Data Cell Styles
+            const cellTextLeft = {
+                font: { name: "Calibri", sz: 11, color: { rgb: "1E293B" } },
+                alignment: { vertical: "center", horizontal: "left" },
+                border: thinBorder
+            };
+
+            const cellPassRight = {
+                fill: { fgColor: { rgb: "C6F6D5" } }, // Soft Light Green
+                font: { color: { rgb: "15803D" }, bold: true, name: "Calibri", sz: 11 }, // Dark Green
+                alignment: { vertical: "center", horizontal: "right" },
+                border: thinBorder
+            };
+
+            const cellFailRight = {
+                fill: { fgColor: { rgb: "FED7D7" } }, // Soft Light Red
+                font: { color: { rgb: "B91C1C" }, bold: true, name: "Calibri", sz: 11 }, // Dark Red
+                alignment: { vertical: "center", horizontal: "right" },
+                border: thinBorder
+            };
+
+            // Matrix of Styled Cell Objects
+            const wsData = [
+                [
+                    { v: "Kdppk", s: headerStyleLeft },
+                    { v: "Faskes", s: headerStyleLeft },
+                    { v: "All Sumber\n(Target 95%)", s: headerStyleCenter },
+                    { v: "Mobile JKN\n(Target 80%)", s: headerStyleCenter }
+                ]
+            ];
+
+            data.forEach(r => {
+                wsData.push([
+                    { v: r.kdppk, s: cellTextLeft },
+                    { v: r.faskes, s: cellTextLeft },
+                    { v: r.allSumberStr, s: r.allSumberPass ? cellPassRight : cellFailRight },
+                    { v: r.mobileJknStr, s: r.mobileJknPass ? cellPassRight : cellFailRight }
+                ]);
+            });
+
             const ws = XLSX.utils.aoa_to_sheet(wsData);
 
             // Column Widths
@@ -1582,6 +1636,11 @@
                 { wch: 48 },
                 { wch: 25 },
                 { wch: 25 }
+            ];
+
+            // Header Row Height for Wrap Text
+            ws['!rows'] = [
+                { hpt: 32 }
             ];
 
             const wb = XLSX.utils.book_new();
