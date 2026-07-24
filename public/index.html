@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- SheetJS for Native Uncorrupted XLSX Generation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
         :root {
@@ -1558,56 +1560,39 @@
         }
 
         function exportAsXLSX(data) {
-            let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="utf-8">
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Pemanfaatan Antrol</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-<style>
-  th { background-color: #2563EB; color: #FFFFFF; font-weight: bold; padding: 10px; border: 1px solid #1E40AF; text-align: center; font-family: sans-serif; }
-  td { padding: 8px; border: 1px solid #CBD5E1; font-family: sans-serif; font-size: 11pt; }
-  .pass { background-color: #D1FAE5; color: #047857; font-weight: bold; text-align: right; }
-  .fail { background-color: #FEE2E2; color: #B91C1C; font-weight: bold; text-align: right; }
-</style>
-</head>
-<body>
-<table border="1">
-  <thead>
-    <tr>
-      <th>Kdppk</th>
-      <th>Faskes</th>
-      <th>All Sumber<br>(Target 95%)</th>
-      <th>Mobile JKN<br>(Target 80%)</th>
-    </tr>
-  </thead>
-  <tbody>`;
+            if (typeof XLSX === 'undefined') {
+                alert('⚠️ Library Excel SheetJS sedang dimuat, silakan coba beberapa detik lagi.');
+                return;
+            }
 
-            data.forEach(r => {
-                const allClass = r.allSumberPass ? 'pass' : 'fail';
-                const mobClass = r.mobileJknPass ? 'pass' : 'fail';
-                tableHtml += `
-    <tr>
-      <td>${r.kdppk}</td>
-      <td>${r.faskes}</td>
-      <td class="${allClass}">${r.allSumberStr}</td>
-      <td class="${mobClass}">${r.mobileJknStr}</td>
-    </tr>`;
-            });
+            const headers = ['Kdppk', 'Faskes', 'All Sumber (Target 95%)', 'Mobile JKN (Target 80%)'];
+            const rows = data.map(r => [
+                r.kdppk,
+                r.faskes,
+                r.allSumberStr,
+                r.mobileJknStr
+            ]);
 
-            tableHtml += `
-  </tbody>
-</table>
-</body>
-</html>`;
+            const wsData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-            const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `Pemanfaatan_Antrol_FKRTL_${Date.now()}.xlsx`;
-            link.click();
+            // Column Widths
+            ws['!cols'] = [
+                { wch: 14 },
+                { wch: 48 },
+                { wch: 25 },
+                { wch: 25 }
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Pemanfaatan Antrol');
+
+            XLSX.writeFile(wb, `Pemanfaatan_Antrol_FKRTL_${Date.now()}.xlsx`);
         }
 
         function exportAsJPEG(data) {
             const rowHeight = 30;
-            const headerHeight = 46;
+            const headerHeight = 52;
             const padding = 20;
             const width = 840;
             const height = headerHeight + (data.length * rowHeight) + (padding * 2);
@@ -1629,18 +1614,28 @@
             ctx.fillStyle = '#2563EB'; // Royal Blue
             ctx.fillRect(padding, padding, width - (padding * 2), headerHeight);
 
-            // Header Texts
+            // Header Texts (Wrap Text 2 lines for Target Columns)
             ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 12px sans-serif';
             ctx.textBaseline = 'middle';
 
+            // Kdppk & Faskes
+            ctx.font = 'bold 12px sans-serif';
             ctx.textAlign = 'left';
             ctx.fillText('Kdppk', colX[0] + 10, padding + (headerHeight / 2));
             ctx.fillText('Faskes', colX[1] + 10, padding + (headerHeight / 2));
 
+            // All Sumber (Wrap Text Line 1 & Line 2)
             ctx.textAlign = 'center';
-            ctx.fillText('All Sumber (Target 95%)', colX[2] + (colWidths[2] / 2), padding + (headerHeight / 2));
-            ctx.fillText('Mobile JKN (Target 80%)', colX[3] + (colWidths[3] / 2), padding + (headerHeight / 2));
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText('All Sumber', colX[2] + (colWidths[2] / 2), padding + 18);
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('(Target 95%)', colX[2] + (colWidths[2] / 2), padding + 35);
+
+            // Mobile JKN (Wrap Text Line 1 & Line 2)
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText('Mobile JKN', colX[3] + (colWidths[3] / 2), padding + 18);
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText('(Target 80%)', colX[3] + (colWidths[3] / 2), padding + 35);
 
             // Rows
             let y = padding + headerHeight;
