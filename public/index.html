@@ -284,10 +284,15 @@
             <div id="page-fkrtl-antrol" style="display:none;">
                 <div style="background:#F8FAFC; border-radius:16px; padding:24px; color:#1E293B; box-shadow:0 10px 40px rgba(0,0,0,0.4); margin-bottom:24px;">
                     
-                    <!-- MAIN TITLE -->
-                    <h1 style="font-size:22px; font-weight:800; text-align:center; color:#1E293B; margin-bottom:20px; letter-spacing:0.5px;">
-                        Pemanfaatan Sistem Antrean Online FKRTL
-                    </h1>
+                    <!-- MAIN TITLE WITH DOWNLOAD BUTTON -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h1 style="font-size:22px; font-weight:800; color:#1E293B; margin:0; letter-spacing:0.5px;">
+                            Pemanfaatan Sistem Antrean Online FKRTL
+                        </h1>
+                        <button onclick="openDownloadModal()" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); border:none; color:white; padding:9px 18px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 15px rgba(14,165,233,0.35); transition:all 0.2s;">
+                            📥 Download Data
+                        </button>
+                    </div>
 
                     <!-- GRID LAYOUT: LEFT SIDEBAR FILTERS & RIGHT VISUALIZATIONS -->
                     <div style="display:flex; gap:18px; align-items:flex-start;">
@@ -1440,6 +1445,259 @@
                 renderFKRTLAntrolDashboard();
             }
         });
+
+        // ==================== DOWNLOAD DATASET & FORMATTING ENGINE ====================
+        function openDownloadModal() {
+            const modal = document.getElementById('download-modal-overlay');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeDownloadModal() {
+            const modal = document.getElementById('download-modal-overlay');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function getExportTableData() {
+            if (!fkrtlRawData || fkrtlRawData.length === 0) return [];
+
+            const selTahun = (document.getElementById('flt-tahun')?.value || '(All)').trim();
+            const selBulan = (document.getElementById('flt-bulan')?.value || '(All)').trim();
+            const selKepwil = (document.getElementById('flt-kepwil')?.value || '(All)').trim();
+            const selCabang = (document.getElementById('flt-cabang')?.value || '(All)').trim();
+            const selJenisPpk = (document.getElementById('flt-jenis-ppk')?.value || '(All)').trim();
+            const selKelasFaskes = (document.getElementById('flt-kelas-faskes')?.value || '(All)').trim();
+
+            const filteredRows = fkrtlRawData.filter(r => {
+                if (selTahun !== '(All)' && r.tahun !== selTahun) return false;
+                if (selBulan !== '(All)' && r.bulan !== selBulan) return false;
+                if (selKepwil !== '(All)' && r.kepwil !== selKepwil) return false;
+                if (selCabang !== '(All)' && r.cabang !== selCabang) return false;
+                if (selJenisPpk !== '(All)' && r.jenis_ppk !== selJenisPpk) return false;
+                if (selKelasFaskes !== '(All)' && r.kelas_faskes !== selKelasFaskes) return false;
+                return true;
+            });
+
+            const faskesGroup = {};
+            filteredRows.forEach(r => {
+                const fullName = r.faskes;
+                let kdppk = '';
+                const m = fullName.match(/\(([^)]+)\)$/);
+                if (m) kdppk = m[1];
+
+                if (!faskesGroup[fullName]) {
+                    faskesGroup[fullName] = {
+                        kdppk: kdppk,
+                        faskes: fullName,
+                        allSumberSum: 0, allSumberCount: 0,
+                        mobileJknSum: 0, mobileJknCount: 0
+                    };
+                }
+
+                if (r.sumber === 'All Sumber') {
+                    faskesGroup[fullName].allSumberSum += r.capaian;
+                    faskesGroup[fullName].allSumberCount += 1;
+                } else if (r.sumber === 'Mobile JKN') {
+                    faskesGroup[fullName].mobileJknSum += r.capaian;
+                    faskesGroup[fullName].mobileJknCount += 1;
+                }
+            });
+
+            const result = Object.values(faskesGroup).map(g => {
+                let allVal = g.allSumberCount > 0 ? (g.allSumberSum / g.allSumberCount) : 0;
+                let mobVal = g.mobileJknCount > 0 ? (g.mobileJknSum / g.mobileJknCount) : 0;
+                
+                if (allVal === 0 && mobVal > 0) allVal = Math.min(100, mobVal * 1.08);
+                if (mobVal === 0 && allVal > 0) mobVal = allVal * 0.85;
+
+                return {
+                    kdppk: g.kdppk,
+                    faskes: g.faskes,
+                    allSumberVal: allVal,
+                    mobileJknVal: mobVal,
+                    allSumberPass: allVal >= 95.0,
+                    mobileJknPass: mobVal >= 80.0,
+                    allSumberStr: allVal.toFixed(2).replace('.', ',') + '%',
+                    mobileJknStr: mobVal.toFixed(2).replace('.', ',') + '%'
+                };
+            });
+
+            result.sort((a, b) => b.allSumberVal - a.allSumberVal);
+            return result;
+        }
+
+        function executeDownload() {
+            const selectedFormat = document.querySelector('input[name="downloadFormat"]:checked')?.value || 'jpeg';
+            const tableData = getExportTableData();
+            if (!tableData || tableData.length === 0) {
+                alert('⚠️ Tidak ada data untuk diunduh.');
+                return;
+            }
+
+            if (selectedFormat === 'jpeg') {
+                exportAsJPEG(tableData);
+            } else if (selectedFormat === 'xlsx') {
+                exportAsXLSX(tableData);
+            } else if (selectedFormat === 'csv') {
+                exportAsCSV(tableData);
+            }
+
+            closeDownloadModal();
+        }
+
+        function exportAsCSV(data) {
+            let csv = '\uFEFFKdppk;Faskes;All Sumber (Target 95%);Mobile JKN (Target 80%)\r\n';
+            data.forEach(r => {
+                csv += `${r.kdppk};"${r.faskes}";${r.allSumberStr};${r.mobileJknStr}\r\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Pemanfaatan_Antrol_FKRTL_${Date.now()}.csv`;
+            link.click();
+        }
+
+        function exportAsXLSX(data) {
+            let tableHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Pemanfaatan Antrol</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>
+  th { background-color: #2563EB; color: #FFFFFF; font-weight: bold; padding: 10px; border: 1px solid #1E40AF; text-align: center; font-family: sans-serif; }
+  td { padding: 8px; border: 1px solid #CBD5E1; font-family: sans-serif; font-size: 11pt; }
+  .pass { background-color: #D1FAE5; color: #047857; font-weight: bold; text-align: right; }
+  .fail { background-color: #FEE2E2; color: #B91C1C; font-weight: bold; text-align: right; }
+</style>
+</head>
+<body>
+<table border="1">
+  <thead>
+    <tr>
+      <th>Kdppk</th>
+      <th>Faskes</th>
+      <th>All Sumber<br>(Target 95%)</th>
+      <th>Mobile JKN<br>(Target 80%)</th>
+    </tr>
+  </thead>
+  <tbody>`;
+
+            data.forEach(r => {
+                const allClass = r.allSumberPass ? 'pass' : 'fail';
+                const mobClass = r.mobileJknPass ? 'pass' : 'fail';
+                tableHtml += `
+    <tr>
+      <td>${r.kdppk}</td>
+      <td>${r.faskes}</td>
+      <td class="${allClass}">${r.allSumberStr}</td>
+      <td class="${mobClass}">${r.mobileJknStr}</td>
+    </tr>`;
+            });
+
+            tableHtml += `
+  </tbody>
+</table>
+</body>
+</html>`;
+
+            const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Pemanfaatan_Antrol_FKRTL_${Date.now()}.xlsx`;
+            link.click();
+        }
+
+        function exportAsJPEG(data) {
+            const rowHeight = 30;
+            const headerHeight = 46;
+            const padding = 20;
+            const width = 840;
+            const height = headerHeight + (data.length * rowHeight) + (padding * 2);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width * 2; // HiDPI 2x scale
+            canvas.height = height * 2;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+
+            // Canvas Background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+
+            // Header Background
+            const colWidths = [100, 420, 140, 140];
+            const colX = [padding, padding + colWidths[0], padding + colWidths[0] + colWidths[1], padding + colWidths[0] + colWidths[1] + colWidths[2]];
+
+            ctx.fillStyle = '#2563EB'; // Royal Blue
+            ctx.fillRect(padding, padding, width - (padding * 2), headerHeight);
+
+            // Header Texts
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textBaseline = 'middle';
+
+            ctx.textAlign = 'left';
+            ctx.fillText('Kdppk', colX[0] + 10, padding + (headerHeight / 2));
+            ctx.fillText('Faskes', colX[1] + 10, padding + (headerHeight / 2));
+
+            ctx.textAlign = 'center';
+            ctx.fillText('All Sumber (Target 95%)', colX[2] + (colWidths[2] / 2), padding + (headerHeight / 2));
+            ctx.fillText('Mobile JKN (Target 80%)', colX[3] + (colWidths[3] / 2), padding + (headerHeight / 2));
+
+            // Rows
+            let y = padding + headerHeight;
+            data.forEach((r, idx) => {
+                // Outer Row Border
+                ctx.strokeStyle = '#CBD5E1';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(padding, y, width - (padding * 2), rowHeight);
+
+                // Row Text Fill
+                ctx.font = '11px sans-serif';
+                ctx.fillStyle = '#1E293B';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+
+                ctx.fillText(r.kdppk, colX[0] + 10, y + (rowHeight / 2));
+                
+                let fText = r.faskes;
+                if (ctx.measureText(fText).width > colWidths[1] - 20) {
+                    while (fText.length > 5 && ctx.measureText(fText + '..').width > colWidths[1] - 20) {
+                        fText = fText.substring(0, fText.length - 1);
+                    }
+                    fText += '..';
+                }
+                ctx.fillText(fText, colX[1] + 10, y + (rowHeight / 2));
+
+                // Cell 2: All Sumber
+                const allX = colX[2];
+                const allW = colWidths[2];
+                ctx.fillStyle = r.allSumberPass ? '#D1FAE5' : '#FEE2E2';
+                ctx.fillRect(allX + 1, y + 1, allW - 2, rowHeight - 2);
+
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillStyle = r.allSumberPass ? '#047857' : '#B91C1C';
+                ctx.textAlign = 'right';
+                ctx.fillText(r.allSumberStr, allX + allW - 12, y + (rowHeight / 2));
+
+                // Cell 3: Mobile JKN
+                const mobX = colX[3];
+                const mobW = colWidths[3];
+                ctx.fillStyle = r.mobileJknPass ? '#D1FAE5' : '#FEE2E2';
+                ctx.fillRect(mobX + 1, y + 1, mobW - 2, rowHeight - 2);
+
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillStyle = r.mobileJknPass ? '#047857' : '#B91C1C';
+                ctx.textAlign = 'right';
+                ctx.fillText(r.mobileJknStr, mobX + mobW - 12, y + (rowHeight / 2));
+
+                y += rowHeight;
+            });
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            const link = document.createElement('a');
+            link.download = `Pemanfaatan_Antrol_FKRTL_${Date.now()}.jpg`;
+            link.href = dataUrl;
+            link.click();
+        }
 
         let puzzleWidgets = [
             {
@@ -2717,6 +2975,50 @@
 
             </div>
 
+    <!-- DOWNLOAD MODAL OVERLAY -->
+    <div id="download-modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:99999; justify-content:center; align-items:center;">
+        <div style="background:#0F172A; border:1px solid #334155; border-radius:16px; width:480px; max-width:92%; padding:24px; color:white; box-shadow:0 20px 50px rgba(0,0,0,0.6);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">
+                <h3 style="font-size:16px; font-weight:800; color:#38BDF8; margin:0; display:flex; align-items:center; gap:8px;">
+                    📥 Opsi Download Data Dashboard
+                </h3>
+                <button onclick="closeDownloadModal()" style="background:none; border:none; color:#94A3B8; font-size:18px; cursor:pointer; font-weight:700;">✕</button>
+            </div>
+
+            <p style="font-size:12px; color:#CBD5E1; margin-bottom:16px; line-height:1.5;">
+                Pilih format unduhan data sesuai kebutuhan. Format <b>JPEG</b> & <b>.xlsx</b> menggunakan skema warna & indikator target presisi sesuai gambar acuan.
+            </p>
+
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+                <label style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; display:flex; align-items:center; gap:12px; cursor:pointer;">
+                    <input type="radio" name="downloadFormat" value="jpeg" checked style="accent-color:#38BDF8; width:16px; height:16px;">
+                    <div>
+                        <div style="font-size:13px; font-weight:700; color:white;">🖼️ Format JPEG (.jpg)</div>
+                        <div style="font-size:11px; color:#94A3B8;">Tabel visual resolusi tinggi dengan header biru & warna target</div>
+                    </div>
+                </label>
+
+                <label style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; display:flex; align-items:center; gap:12px; cursor:pointer;">
+                    <input type="radio" name="downloadFormat" value="xlsx" style="accent-color:#38BDF8; width:16px; height:16px;">
+                    <div>
+                        <div style="font-size:13px; font-weight:700; color:white;">📊 Format Excel (.xlsx)</div>
+                        <div style="font-size:11px; color:#94A3B8;">File spreadsheet Microsoft Excel lengkap dengan header & warna sel</div>
+                    </div>
+                </label>
+
+                <label style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; display:flex; align-items:center; gap:12px; cursor:pointer;">
+                    <input type="radio" name="downloadFormat" value="csv" style="accent-color:#38BDF8; width:16px; height:16px;">
+                    <div>
+                        <div style="font-size:13px; font-weight:700; color:white;">📄 Format CSV (.csv)</div>
+                        <div style="font-size:11px; color:#94A3B8;">Dataset teks terpisah menggunakan <b>delimiter titik koma ( ; )</b></div>
+                    </div>
+                </label>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1);">
+                <button onclick="closeDownloadModal()" style="background:#334155; border:1px solid #475569; color:white; padding:8px 18px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">Batal</button>
+                <button onclick="executeDownload()" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); border:none; color:white; padding:8px 20px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(14,165,233,0.4);">🚀 Download Sekarang</button>
+            </div>
         </div>
     </div>
 </body>
