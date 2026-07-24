@@ -354,9 +354,17 @@
                                     <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kantor Cabang</label>
                                     <select id="flt-cabang" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
                                         <option>JEMBER</option>
-                                        <option>LUMAJANG</option>
-                                        <option>BANYUWANGI</option>
                                         <option>(All)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:2px;">Kabupaten</label>
+                                    <select id="flt-kabupaten" style="width:100%; border:1px solid #94A3B8; border-radius:4px; padding:4px 6px; font-size:11px; color:#1E293B; background:#FFF;">
+                                        <option>(All)</option>
+                                        <option>Jember</option>
+                                        <option>Lumajang</option>
+                                        <option>Bondowoso</option>
                                     </select>
                                 </div>
 
@@ -411,10 +419,12 @@
                             <!-- BOTTOM GRID: 2 SUB-CHARTS (FASKES & SUMBER) -->
                             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                                 
-                                <!-- BOTTOM LEFT: FASKES -->
-                                <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
-                                    <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:8px;">Faskes</div>
-                                    <div id="chart-fkrtl-faskes" style="width:100%; height:360px;"></div>
+                                <!-- BOTTOM LEFT: FASKES (SCROLLABLE CONTAINER) -->
+                                <div style="background:#FFF; border:1px solid #CBD5E1; border-radius:6px; padding:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03); max-height:400px; display:flex; flex-direction:column;">
+                                    <div style="font-size:13px; font-weight:700; color:#334155; margin-bottom:8px; flex-shrink:0;">Faskes</div>
+                                    <div style="flex:1; overflow-y:auto; overflow-x:hidden; padding-right:4px;">
+                                        <div id="chart-fkrtl-faskes" style="width:100%;"></div>
+                                    </div>
                                 </div>
 
                                 <!-- BOTTOM RIGHT: SUMBER (MOBILE JKN VS ALL SUMBER) -->
@@ -1190,7 +1200,8 @@
                         fkrtlFaskesMap[kd] = {
                             Jenis_PPK: f.Jenis_PPK ? f.Jenis_PPK.trim() : 'Rumah Sakit',
                             Kelas_RS: kls,
-                            Nama: f.Nama_FKRTL ? f.Nama_FKRTL.trim() : ''
+                            Nama: f.Nama_FKRTL ? f.Nama_FKRTL.trim() : '',
+                            Kabupaten: f.Kabupaten ? f.Kabupaten.trim() : ''
                         };
                     }
                 });
@@ -1215,7 +1226,7 @@
                     const capVal = parseFloat(capStr) || 0;
 
                     const kdppk = (r.Kdppk || '').trim();
-                    const fInfo = fkrtlFaskesMap[kdppk] || { Jenis_PPK: 'Rumah Sakit', Kelas_RS: 'Kelas C' };
+                    const fInfo = fkrtlFaskesMap[kdppk] || { Jenis_PPK: 'Rumah Sakit', Kelas_RS: 'Kelas C', Kabupaten: '' };
 
                     let cab = (r.Cabang || '').split(' (')[0].trim();
                     let kdkr = (r.Kdkr || '').trim();
@@ -1227,6 +1238,7 @@
                         bulan_num: mNum,
                         kepwil: kdkr,
                         cabang: cab,
+                        kabupaten: fInfo.Kabupaten,
                         faskes: (r.Faskes || '').trim(),
                         sumber: (r.Sumber || '').trim(),
                         jenis_ppk: fInfo.Jenis_PPK,
@@ -1257,6 +1269,7 @@
 
             const kepwils = getUnique(fkrtlRawData.map(r => r.kepwil));
             const cabangs = getUnique(fkrtlRawData.map(r => r.cabang));
+            const kabupatens = getUnique(fkrtlRawData.map(r => r.kabupaten));
             const jenisPpks = getUnique(fkrtlRawData.map(r => r.jenis_ppk));
             const kelasFaskes = getUnique(fkrtlRawData.map(r => r.kelas_faskes));
             const sumbers = getUnique(fkrtlRawData.map(r => r.sumber));
@@ -1279,6 +1292,7 @@
             setSelectOptions('flt-bulan', ['(All)', ...presentMonths], 'Juli');
             setSelectOptions('flt-kepwil', ['(All)', ...kepwils], '07');
             setSelectOptions('flt-cabang', ['(All)', ...cabangs], 'JEMBER');
+            setSelectOptions('flt-kabupaten', ['(All)', ...kabupatens], '(All)');
             setSelectOptions('flt-jenis-ppk', ['(All)', ...jenisPpks], '(All)');
             setSelectOptions('flt-kelas-faskes', ['(All)', ...kelasFaskes], '(All)');
             setSelectOptions('flt-sumber', ['(All)', ...sumbers], '(All)');
@@ -1294,6 +1308,7 @@
             const selBulan = (document.getElementById('flt-bulan')?.value || '(All)').trim();
             const selKepwil = (document.getElementById('flt-kepwil')?.value || '(All)').trim();
             const selCabang = (document.getElementById('flt-cabang')?.value || '(All)').trim();
+            const selKabupaten = (document.getElementById('flt-kabupaten')?.value || '(All)').trim();
             const selJenisPpk = (document.getElementById('flt-jenis-ppk')?.value || '(All)').trim();
             const selKelasFaskes = (document.getElementById('flt-kelas-faskes')?.value || '(All)').trim();
             const selSumber = (document.getElementById('flt-sumber')?.value || '(All)').trim();
@@ -1303,6 +1318,7 @@
                 if (selBulan !== '(All)' && r.bulan !== selBulan) return false;
                 if (selKepwil !== '(All)' && r.kepwil !== selKepwil) return false;
                 if (selCabang !== '(All)' && r.cabang !== selCabang) return false;
+                if (selKabupaten !== '(All)' && r.kabupaten !== selKabupaten) return false;
                 if (selJenisPpk !== '(All)' && r.jenis_ppk !== selJenisPpk) return false;
                 if (selKelasFaskes !== '(All)' && r.kelas_faskes !== selKelasFaskes) return false;
                 if (selSumber !== '(All)' && r.sumber !== selSumber) return false;
@@ -1333,6 +1349,7 @@
                 if (selTahun !== '(All)' && r.tahun !== selTahun) return false;
                 if (selKepwil !== '(All)' && r.kepwil !== selKepwil) return false;
                 if (selCabang !== '(All)' && r.cabang !== selCabang) return false;
+                if (selKabupaten !== '(All)' && r.kabupaten !== selKabupaten) return false;
                 if (selJenisPpk !== '(All)' && r.jenis_ppk !== selJenisPpk) return false;
                 if (selKelasFaskes !== '(All)' && r.kelas_faskes !== selKelasFaskes) return false;
                 if (selSumber !== '(All)' && r.sumber !== selSumber) return false;
@@ -1369,11 +1386,10 @@
                 margin: { l: 40, r: 20, t: 30, b: 30 }
             }, { responsive: true, displayModeBar: false });
 
-            // 3. FASKES (Horizontal Bar Chart)
+            // 3. FASKES (Horizontal Bar Chart — FULL LIST SCROLLABLE)
             const faskesGroup = {};
             filteredRows.forEach(r => {
                 let name = r.faskes;
-                if (name.length > 30) name = name.substring(0, 27) + '..';
                 if (!faskesGroup[name]) faskesGroup[name] = { sum: 0, count: 0 };
                 faskesGroup[name].sum += r.capaian;
                 faskesGroup[name].count += 1;
@@ -1385,10 +1401,11 @@
             }));
 
             faskesList.sort((a, b) => b.val - a.val);
-            faskesList = faskesList.slice(0, 14).reverse();
+            faskesList.reverse();
 
             const faskesNames = faskesList.map(item => item.name);
             const faskesValues = faskesList.map(item => parseFloat(item.val.toFixed(2)));
+            const dynamicChartHeight = Math.max(360, faskesList.length * 28 + 40);
 
             Plotly.newPlot('chart-fkrtl-faskes', [{
                 x: faskesValues.length > 0 ? faskesValues : [69.74, 71.82, 75.03, 75.99, 78.41, 78.52, 78.94, 79.23, 81.17, 84.23, 90.22, 91.25, 92.25, 94.29],
@@ -1400,11 +1417,12 @@
                 insidetextanchor: 'middle',
                 marker: { color: barColor }
             }], {
+                height: dynamicChartHeight,
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 font: { color: fontColor, size: 9 },
                 xaxis: { showgrid: true, gridcolor: '#E2E8F0', range: [0, 100] },
-                margin: { l: 150, r: 10, t: 10, b: 20 }
+                margin: { l: 180, r: 15, t: 10, b: 20 }
             }, { responsive: true, displayModeBar: false });
 
             // 4. SUMBER (Vertical Column Bar Chart — Mobile JKN vs All Sumber)
@@ -1466,6 +1484,7 @@
             const selBulan = (document.getElementById('flt-bulan')?.value || '(All)').trim();
             const selKepwil = (document.getElementById('flt-kepwil')?.value || '(All)').trim();
             const selCabang = (document.getElementById('flt-cabang')?.value || '(All)').trim();
+            const selKabupaten = (document.getElementById('flt-kabupaten')?.value || '(All)').trim();
             const selJenisPpk = (document.getElementById('flt-jenis-ppk')?.value || '(All)').trim();
             const selKelasFaskes = (document.getElementById('flt-kelas-faskes')?.value || '(All)').trim();
 
@@ -1474,6 +1493,7 @@
                 if (selBulan !== '(All)' && r.bulan !== selBulan) return false;
                 if (selKepwil !== '(All)' && r.kepwil !== selKepwil) return false;
                 if (selCabang !== '(All)' && r.cabang !== selCabang) return false;
+                if (selKabupaten !== '(All)' && r.kabupaten !== selKabupaten) return false;
                 if (selJenisPpk !== '(All)' && r.jenis_ppk !== selJenisPpk) return false;
                 if (selKelasFaskes !== '(All)' && r.kelas_faskes !== selKelasFaskes) return false;
                 return true;
