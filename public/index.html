@@ -1037,7 +1037,7 @@
             }
 
             renderActiveConnectionsTable();
-            alert(`✅ Data Google Spreadsheet berhasil disinkronkan!\n\n📌 Target: ${menu} > ${submenu}\n🔗 URL: ${url}`);
+            alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${menu} > ${submenu}.`);
 
             if (menu === 'Dashboard FKRTL' && submenu === 'Pemanfaatan Antrol') {
                 renderFKRTLAntrolDashboard();
@@ -1047,11 +1047,24 @@
         function reSyncConnection(id) {
             const conn = activeConnections.find(c => c.id === id);
             if (conn) {
+                const urlInput = document.getElementById('conn-sheets-url');
+                const menuSelect = document.getElementById('conn-target-menu-main');
+                const submenuSelect = document.getElementById('conn-target-submenu');
+
+                if (urlInput) urlInput.value = conn.url;
+                if (menuSelect) menuSelect.value = conn.menu;
+                if (submenuSelect) submenuSelect.value = conn.submenu;
+
                 const now = new Date();
                 conn.lastSync = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
                                 now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
                 renderActiveConnectionsTable();
-                alert(`🔄 Re-Sync Berhasil!\nData untuk '${conn.menu} > ${conn.submenu}' telah disinkronkan kembali.`);
+
+                if (conn.menu === 'Dashboard FKRTL' && conn.submenu === 'Pemanfaatan Antrol') {
+                    renderFKRTLAntrolDashboard();
+                }
+
+                alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${conn.menu} > ${conn.submenu}.`);
             }
         }
 
