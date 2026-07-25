@@ -3112,10 +3112,14 @@
         function createNumberedIcon(number) {
             return L.divIcon({
                 className: 'custom-numbered-marker',
-                html: '<div style="background:#2563EB; color:white; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:Inter,sans-serif; border:2px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.4);">' + number + '</div>',
-                iconSize: [26, 26],
-                iconAnchor: [13, 13],
-                popupAnchor: [0, -16]
+                html: '<div style="position:relative; width:36px; height:44px;">' +
+                        '<div style="position:absolute; bottom:0; left:14px; width:8px; height:8px; background:#EF4444; border:2px solid white; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.5);"></div>' +
+                        '<div style="position:absolute; bottom:6px; left:17px; width:2px; height:20px; background:#2563EB; border:0.5px solid white;"></div>' +
+                        '<div style="position:absolute; top:0; left:4px; width:28px; height:28px; background:#2563EB; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; font-family:Inter,sans-serif; border:2px solid white; box-shadow:0 3px 8px rgba(0,0,0,0.4);">' + number + '</div>' +
+                      '</div>',
+                iconSize: [36, 44],
+                iconAnchor: [18, 44],
+                popupAnchor: [0, -44]
             });
         }
 
@@ -3416,9 +3420,9 @@
                 const startX = 60;
 
                 const mapAreaX = startX;
-                const mapAreaY = 160;
+                const mapAreaY = 210;
                 const mapAreaW = fullWidth;
-                const mapAreaH = 1900;
+                const mapAreaH = 1860;
 
                 const scaleX = (mapAreaW - 8) / containerW;
                 const scaleY = (mapAreaH - 8) / containerH;
@@ -3438,8 +3442,8 @@
                     cx = Math.max(minBadgeX, Math.min(maxBadgeX, cx));
                     cy = Math.max(minBadgeY, Math.min(maxBadgeY, cy));
 
-                    let badgeY = cy - 45;
-                    if (badgeY < minBadgeY) badgeY = cy + 45;
+                    let badgeY = cy - 50;
+                    if (badgeY < minBadgeY) badgeY = cy + 50;
 
                     return { ...item, origX: cx, origY: cy, x: cx, y: badgeY };
                 });
@@ -3471,34 +3475,34 @@
                 ctx.fillStyle = '#F8FAFC';
                 ctx.fillRect(0, 0, 3840, 2160);
 
-                // 5. Draw 4K Layout Header Box (Width 3720px)
+                // 5. Draw 4K Layout Header Box (Width 3720px, Height 160px)
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(startX, 30, fullWidth, 125);
+                ctx.fillRect(startX, 30, fullWidth, 160);
                 ctx.strokeStyle = '#CBD5E1';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(startX, 30, fullWidth, 125);
+                ctx.lineWidth = 3.5;
+                ctx.strokeRect(startX, 30, fullWidth, 160);
 
-                // Header Title
+                // Header Title - Large 72px Font!
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 54px Inter, sans-serif';
-                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 35, 88);
+                ctx.font = 'extrabold 72px Inter, sans-serif';
+                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 40, 105);
 
-                // Header Subtitle
+                // Header Subtitle - Large 40px Font!
                 ctx.fillStyle = '#02628A';
-                ctx.font = 'bold 34px Inter, sans-serif';
-                ctx.fillText(subtitleText, startX + 35, 132);
+                ctx.font = 'bold 40px Inter, sans-serif';
+                ctx.fillText(subtitleText, startX + 40, 162);
 
                 // Header Right Branding
                 ctx.fillStyle = '#02628A';
-                ctx.font = 'extrabold 46px Inter, sans-serif';
+                ctx.font = 'extrabold 54px Inter, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 35, 82);
+                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 40, 96);
                 ctx.fillStyle = '#64748B';
-                ctx.font = 'bold 24px Inter, sans-serif';
-                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 35, 124);
+                ctx.font = 'bold 30px Inter, sans-serif';
+                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 40, 150);
                 ctx.textAlign = 'left';
 
-                // 6. Draw 4K Map Canvas Area (3720px x 1880px)
+                // 6. Draw 4K Map Canvas Area (3720px x 1860px)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
                 ctx.strokeStyle = '#CBD5E1';
@@ -3514,7 +3518,7 @@
                 // Draw 16:9 map tiles
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
 
-                // 7. Cluster & De-conflict Markers with Multi-Ring Spiral Spiderfy + 20-Pass Repulsion
+                // 7. Cluster & De-conflict Markers with Multi-Ring Spiral Spiderfy + 25-Pass Dual Repulsion
                 const clusters = [];
                 const visited = new Set();
 
@@ -3545,19 +3549,21 @@
                         cluster.forEach((item, idx) => {
                             // Golden Ratio spiral angle spread (137.5 deg)
                             const angle = (idx * 2.39996) - (Math.PI / 2);
-                            // Concentric expanding spiral radius (110px, 140px, 170px, 200px...)
-                            const R = 110 + (idx * 30);
+                            // Concentric expanding spiral radius (120px, 155px, 190px, 225px...)
+                            const R = 120 + (idx * 35);
                             item.x = avgX + R * Math.cos(angle);
                             item.y = avgY + R * Math.sin(angle);
                         });
                     }
                 });
 
-                // 20-Pass Pairwise Repulsion Loop (Guarantees zero badge overlapping with min 82px separation)
+                // 25-Pass Dual Repulsion Loop (Badge vs Badge >= 84px AND Badge vs Red Pin Dot >= 60px)
                 const badgeRadius = 32; // 64px diameter badge in 4K
-                const minAllowedDist = 82; // 64px badge + 18px clear gap
+                const minBadgeDist = 84; // 64px badge + 20px clear gap between badges
+                const minPinDist = 60;   // 64px badge + red pin dot separation
 
-                for (let pass = 0; pass < 20; pass++) {
+                for (let pass = 0; pass < 25; pass++) {
+                    // Pass A: Badge vs Badge Repulsion
                     for (let i = 0; i < projected.length; i++) {
                         for (let j = i + 1; j < projected.length; j++) {
                             const p1 = projected[i];
@@ -3566,14 +3572,34 @@
                             const dy = p2.y - p1.y;
                             const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
 
-                            if (dist < minAllowedDist) {
-                                const overlap = (minAllowedDist - dist) / 2;
+                            if (dist < minBadgeDist) {
+                                const overlap = (minBadgeDist - dist) / 2;
                                 const nx = dx / dist;
                                 const ny = dy / dist;
                                 p1.x -= nx * overlap;
                                 p1.y -= ny * overlap;
                                 p2.x += nx * overlap;
                                 p2.y += ny * overlap;
+                            }
+                        }
+                    }
+
+                    // Pass B: Badge vs Red Pin Dot Repulsion (Pushes badges away from ALL red coordinate dots!)
+                    for (let i = 0; i < projected.length; i++) {
+                        for (let j = 0; j < projected.length; j++) {
+                            const p1 = projected[i];
+                            const pinX = projected[j].origX;
+                            const pinY = projected[j].origY;
+                            const dx = p1.x - pinX;
+                            const dy = p1.y - pinY;
+                            const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
+
+                            if (dist < minPinDist) {
+                                const overlap = minPinDist - dist;
+                                const nx = dx / dist;
+                                const ny = dy / dist;
+                                p1.x += nx * overlap;
+                                p1.y += ny * overlap;
                             }
                         }
                     }
