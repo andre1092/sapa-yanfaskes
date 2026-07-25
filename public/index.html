@@ -294,18 +294,24 @@
             <!-- PAGE: PROFIL FASKES (MAP VIEW) -->
             <div id="page-profil-faskes" style="display:none;">
                 <div style="background:#F8FAFC; border-radius:16px; padding:24px; color:#1E293B; box-shadow:0 10px 40px rgba(0,0,0,0.4); margin-bottom:24px;">
-                    <!-- FILTER BAR (KABUPATEN & JENIS FASKES) -->
+                    <!-- FILTER BAR (KABUPATEN, JENIS FASKES & TIPE FASKES) -->
                     <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
                         <div>
                             <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Kabupaten:</label>
-                            <select id="flt-profil-kabupaten" onchange="applyProfilFaskesFilter()" style="width:240px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                            <select id="flt-profil-kabupaten" onchange="applyProfilFaskesFilter()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
                                 <option value="(All)">(All) Semua Kabupaten</option>
                             </select>
                         </div>
                         <div>
                             <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Jenis Faskes:</label>
-                            <select id="flt-profil-jenis-faskes" onchange="applyProfilFaskesFilter()" style="width:240px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                            <select id="flt-profil-jenis-faskes" onchange="applyProfilFaskesFilter()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
                                 <option value="(All)">(All) Semua Jenis Faskes</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Tipe Faskes:</label>
+                            <select id="flt-profil-tipe-faskes" onchange="applyProfilFaskesFilter()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                                <option value="(All)">(All) Semua Tipe Faskes</option>
                             </select>
                         </div>
                     </div>
@@ -3164,8 +3170,8 @@
                 rows.forEach(row => {
                     const link = row['Link Gmaps'] || '';
                     const nmppk = row['NMPPK'] || '';
-                    const jenisFaskes = row['Jenis Faskes'] || '';
-                    const tipeFaskes = row['TIPEFASKES'] || '';
+                    const jenisFaskes = row['Jenis Faskes'] || row['JENISFASKES'] || '';
+                    const tipeFaskes = row['NMTYPEPPK'] || row['TIPEFASKES'] || row['Tipe Faskes'] || row['NMTIPE'] || '';
                     const kabupaten = row['NMDATI2'] || '';
                     const kecamatan = row['NMKEC'] || '';
                     const alamat = row['NMJLNPPK'] || '';
@@ -3188,7 +3194,7 @@
                     });
                 });
 
-                // Populate filter dropdowns (Kabupaten & Jenis Faskes)
+                // Populate filter dropdowns (Kabupaten, Jenis Faskes, Tipe Faskes)
                 populateProfilFilters();
 
                 // Apply filter (defaults to "(All)")
@@ -3230,20 +3236,38 @@
                 });
                 jenisSelect.innerHTML = html;
             }
+
+            // Populate Tipe Faskes (from NMTYPEPPK)
+            const tipeSelect = document.getElementById('flt-profil-tipe-faskes');
+            if (tipeSelect) {
+                const tipeSet = new Set();
+                profilFaskesAllData.forEach(d => {
+                    if (d.tipeFaskes) tipeSet.add(d.tipeFaskes);
+                });
+                const sortedTipe = Array.from(tipeSet).sort();
+                let html = '<option value="(All)">(All) Semua Tipe Faskes</option>';
+                sortedTipe.forEach(t => {
+                    html += '<option value="' + t + '">' + t + '</option>';
+                });
+                tipeSelect.innerHTML = html;
+            }
         }
 
         function applyProfilFaskesFilter() {
             const kabSelect = document.getElementById('flt-profil-kabupaten');
             const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
+            const tipeSelect = document.getElementById('flt-profil-tipe-faskes');
 
             const selectedKab = kabSelect ? kabSelect.value : '(All)';
             const selectedJenis = jenisSelect ? jenisSelect.value : '(All)';
+            const selectedTipe = tipeSelect ? tipeSelect.value : '(All)';
 
-            // Filter data by both Kabupaten and Jenis Faskes
+            // Filter data by Kabupaten, Jenis Faskes, and Tipe Faskes
             const filtered = profilFaskesAllData.filter(d => {
                 const matchKab = (selectedKab === '(All)' || d.kabupaten === selectedKab);
                 const matchJenis = (selectedJenis === '(All)' || d.jenisFaskes === selectedJenis);
-                return matchKab && matchJenis;
+                const matchTipe = (selectedTipe === '(All)' || d.tipeFaskes === selectedTipe);
+                return matchKab && matchJenis && matchTipe;
             });
 
             // Renumber from 1
@@ -3269,7 +3293,7 @@
                     '<div style="font-family:Inter,sans-serif; min-width:200px;">' +
                     '<div style="font-size:14px; font-weight:700; color:#1E293B; margin-bottom:6px;">' + item.num + '. ' + item.nmppk + '</div>' +
                     '<div style="font-size:12px; color:#475569; line-height:1.6;">' +
-                    '<b>Jenis:</b> ' + item.jenisFaskes + ' — ' + item.tipeFaskes + '<br>' +
+                    '<b>Jenis:</b> ' + item.jenisFaskes + (item.tipeFaskes ? (' — ' + item.tipeFaskes) : '') + '<br>' +
                     '<b>Kabupaten:</b> ' + item.kabupaten + '<br>' +
                     '<b>Kecamatan:</b> ' + item.kecamatan + '<br>' +
                     '<b>Alamat:</b> ' + item.alamat + '<br>' +
@@ -3356,14 +3380,26 @@
             try {
                 const kabSelect = document.getElementById('flt-profil-kabupaten');
                 const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
+                const tipeSelect = document.getElementById('flt-profil-tipe-faskes');
                 const kabVal = kabSelect ? kabSelect.value : '(All)';
                 const jenisVal = jenisSelect ? jenisSelect.value : '(All)';
+                const tipeVal = tipeSelect ? tipeSelect.value : '(All)';
 
-                let jenisLabel = (jenisVal && jenisVal !== '(All)') ? jenisVal : 'Fasilitas Kesehatan';
+                let jenisLabel = (jenisVal && jenisVal !== '(All)') ? jenisVal : '';
+                let tipeLabel = (tipeVal && tipeVal !== '(All)') ? tipeVal : '';
                 let kabLabel = (kabVal && kabVal !== '(All)') ? kabVal : '';
 
-                let titleText = `Peta Sebaran ${jenisLabel} ${kabLabel}`.replace(/\s+/g, ' ').trim();
-                let subtitleText = `Total ${jenisLabel} : ${profilFaskesData.length} Faskes`;
+                let mainTypeLabel = 'Fasilitas Kesehatan';
+                if (jenisLabel && tipeLabel) {
+                    mainTypeLabel = `${jenisLabel} (${tipeLabel})`;
+                } else if (jenisLabel) {
+                    mainTypeLabel = jenisLabel;
+                } else if (tipeLabel) {
+                    mainTypeLabel = tipeLabel;
+                }
+
+                let titleText = `Peta Sebaran ${mainTypeLabel} ${kabLabel}`.replace(/\s+/g, ' ').trim();
+                let subtitleText = `Total ${mainTypeLabel} : ${profilFaskesData.length} Faskes`;
 
                 // 1. Temporarily resize container to 16:9 aspect ratio for map capture
                 const currentW = mapEl.clientWidth || 1000;
