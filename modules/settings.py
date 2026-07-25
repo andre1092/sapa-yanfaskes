@@ -43,7 +43,7 @@ def render_settings_page():
             with col_m1:
                 target_menu_main = st.selectbox(
                     "Target Menu Utama:",
-                    options=["Dashboard FKRTL", "Home", "Capaian Faskes", "+ Tambah Menu Baru"],
+                    options=["Dashboard FKRTL", "Profil Faskes", "Home", "Capaian Faskes", "+ Tambah Menu Baru"],
                     key="conn_target_menu_main"
                 )
             with col_m2:

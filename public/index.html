@@ -226,6 +226,10 @@
                     <span>🏠</span> <span class="nav-text">Home</span>
                 </a>
 
+                <a class="nav-item" id="nav-profil-faskes" onclick="switchNav('profil_faskes')">
+                    <span>🏥</span> <span class="nav-text">Profil Faskes</span>
+                </a>
+
                 <!-- MENU UTAMA DENGAN SUBMENU DROPDOWN -->
                 <div class="nav-group">
                     <div class="nav-group-header" id="nav-header-fkrtl" onclick="toggleSubmenu('fkrtl-submenu')">
@@ -280,6 +284,10 @@
                         <div class="chart-box" id="chart-dist"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- PAGE: PROFIL FASKES (EMPTY PAGE CONTENT) -->
+            <div id="page-profil-faskes" style="display:none;">
             </div>
 
             <!-- PAGE: DASHBOARD FKRTL > PEMANFAATAN ANTROL (100% UI MATCH SCREENSHOT) -->
@@ -486,6 +494,7 @@
                                         <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Target Menu Utama:</label>
                                         <select id="conn-target-menu-main" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 10px; border-radius:6px; font-size:12px; font-weight:600;">
                                             <option value="Dashboard FKRTL">Dashboard FKRTL</option>
+                                            <option value="Profil Faskes">Profil Faskes</option>
                                             <option value="Home">Home</option>
                                             <option value="Capaian Faskes">Capaian Faskes</option>
                                             <option value="+ Tambah Menu Baru">+ Tambah Menu Baru</option>
@@ -1096,6 +1105,7 @@
             document.querySelectorAll('.nav-item, .nav-group-header, .submenu-item').forEach(el => el.classList.remove('active'));
             
             document.getElementById('page-home').style.display = 'none';
+            if (document.getElementById('page-profil-faskes')) document.getElementById('page-profil-faskes').style.display = 'none';
             document.getElementById('page-fkrtl-antrol').style.display = 'none';
             document.getElementById('page-setting').style.display = 'none';
 
@@ -1103,6 +1113,10 @@
                 const navHome = document.getElementById('nav-home');
                 if (navHome) navHome.classList.add('active');
                 document.getElementById('page-home').style.display = 'block';
+            } else if (page === 'profil_faskes') {
+                const navProfil = document.getElementById('nav-profil-faskes');
+                if (navProfil) navProfil.classList.add('active');
+                document.getElementById('page-profil-faskes').style.display = 'block';
             } else if (page === 'fkrtl_antrol') {
                 const headerFkrtl = document.getElementById('nav-header-fkrtl');
                 const subAntrol = document.getElementById('nav-sub-antrol');
