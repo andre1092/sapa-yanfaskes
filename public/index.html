@@ -3329,7 +3329,7 @@
         }
 
                 // ==========================================
-        // EXPORT PROFIL FASKES MAP & LEGEND (JPEG 4960x3508)
+        // EXPORT PROFIL FASKES MAP & LEGEND (JPEG 4960x3508 - QGIS EXPORT MODE)
         // ==========================================
         async function exportProfilFaskesMapJPEG() {
             const btn = document.getElementById('btn-export-map');
@@ -3343,7 +3343,7 @@
             const mapEl = document.getElementById('profil-faskes-map');
             if (!mapEl) throw new Error('Map container not found');
 
-            // Save original styles
+            // Save original container styles
             const origHeight = mapEl.style.height;
             const origMinHeight = mapEl.style.minHeight;
             const origWidth = mapEl.style.width;
@@ -3361,32 +3361,37 @@
                 let titleText = `Peta Sebaran ${jenisLabel} ${kabLabel}`.replace(/\s+/g, ' ').trim();
                 let subtitleText = `Total ${jenisLabel} : ${profilFaskesData.length} Faskes`;
 
-                // 1. Temporarily resize container height to match 1.6 aspect ratio of export map area (4800:3000)
+                // 1. Temporarily resize container to 1.6 aspect ratio (16:10) for QGIS-style map rendering
                 const currentW = mapEl.clientWidth || 1000;
-                const targetH = Math.round(currentW / 1.6); // Exact 1.6 aspect ratio (16:10)
+                const targetH = Math.round(currentW / 1.6);
 
                 mapEl.style.height = `${targetH}px`;
                 mapEl.style.minHeight = `${targetH}px`;
 
-                // Force Leaflet to recalculate container size & render tiles proportionally
+                // Force Leaflet to recalculate container bounds & tiles
                 if (profilFaskesMap) {
                     profilFaskesMap.invalidateSize({ animate: false });
                 }
 
-                // Wait 300ms for Leaflet tiles to load at exact 1.6 aspect ratio
+                // Wait 300ms for tiles
                 await new Promise(r => setTimeout(r, 300));
 
-                // Temporarily hide Leaflet DOM marker pane & popups
+                // 2. Temporarily hide web controls (+/- zoom, attribution, marker pane) for pure GIS canvas (QGIS style)
+                const zoomControl = mapEl.querySelector('.leaflet-control-zoom');
+                const attribControl = mapEl.querySelector('.leaflet-control-attribution');
                 const markerPane = mapEl.querySelector('.leaflet-marker-pane');
                 const popupPane = mapEl.querySelector('.leaflet-popup-pane');
+
+                if (zoomControl) zoomControl.style.display = 'none';
+                if (attribControl) attribControl.style.display = 'none';
                 if (markerPane) markerPane.style.display = 'none';
                 if (popupPane) popupPane.style.display = 'none';
 
-                // 2. Capture map tiles at 3x scale with html2canvas
+                // 3. Capture pure map canvas at 3.5x scale
                 const mapCanvas = await html2canvas(mapEl, {
                     useCORS: true,
                     allowTaint: true,
-                    scale: 3,
+                    scale: 3.5,
                     logging: false
                 });
 
@@ -3409,22 +3414,24 @@
                     const pt = profilFaskesMap.latLngToContainerPoint([item.lat, item.lng]);
                     const cx = mapAreaX + 4 + (pt.x * scaleX);
                     const cy = mapAreaY + 4 + (pt.y * scaleY);
-                    return { ...item, origX: cx, origY: cy, x: cx, y: cy - 55 };
+                    return { ...item, origX: cx, origY: cy, x: cx, y: cy - 50 };
                 });
 
-                // Restore Leaflet container style & markers IMMEDIATELY
+                // Restore Leaflet container styles & web controls IMMEDIATELY
                 mapEl.style.height = origHeight;
                 mapEl.style.minHeight = origMinHeight;
                 mapEl.style.width = origWidth;
 
-                if (markerPane) markerPane.style.display = 'block';
-                if (popupPane) popupPane.style.display = 'block';
+                if (zoomControl) zoomControl.style.display = '';
+                if (attribControl) attribControl.style.display = '';
+                if (markerPane) markerPane.style.display = '';
+                if (popupPane) popupPane.style.display = '';
 
                 if (profilFaskesMap) {
                     profilFaskesMap.invalidateSize({ animate: false });
                 }
 
-                // 3. Create target high-res canvas: 4960 x 3508 (Landscape A3)
+                // 4. Create target high-res canvas: 4960 x 3508 (Landscape A3 QGIS export)
                 const canvas = document.createElement('canvas');
                 canvas.width = 4960;
                 canvas.height = 3508;
@@ -3434,7 +3441,7 @@
                 ctx.fillStyle = '#F8FAFC';
                 ctx.fillRect(0, 0, 4960, 3508);
 
-                // 4. Draw Header Box (Width 4800px, X = 80 to 4880)
+                // 5. Draw QGIS Layout Header Box (Width 4800px)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(startX, 50, fullWidth, 240);
                 ctx.strokeStyle = '#CBD5E1';
@@ -3444,34 +3451,34 @@
                 // Header Title
                 ctx.fillStyle = '#1E293B';
                 ctx.font = 'extrabold 64px Inter, sans-serif';
-                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 40, 140);
+                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 40, 135);
 
                 // Header Subtitle
                 ctx.fillStyle = '#02628A';
-                ctx.font = 'bold 44px Inter, sans-serif';
-                ctx.fillText(subtitleText, startX + 40, 220);
+                ctx.font = 'bold 42px Inter, sans-serif';
+                ctx.fillText(subtitleText, startX + 40, 215);
 
                 // Header Right Branding
                 ctx.fillStyle = '#02628A';
                 ctx.font = 'extrabold 56px Inter, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 40, 140);
+                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 40, 135);
                 ctx.fillStyle = '#64748B';
                 ctx.font = 'bold 32px Inter, sans-serif';
-                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 40, 210);
+                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 40, 205);
                 ctx.textAlign = 'left';
 
-                // 5. Draw EXTENDED MAP AREA (Exact same width = 4800px, Height = 3000px)
+                // 6. Draw QGIS Extended Map Canvas (Width 4800px, Height 3000px)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
                 ctx.strokeStyle = '#CBD5E1';
                 ctx.lineWidth = 4.5;
                 ctx.strokeRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
 
-                // Draw map tiles with PERFECT 1:1 ASPECT RATIO (Zero stretch / cemet!)
+                // Draw map tiles with PERFECT 1:1 ASPECT RATIO (QGIS Proportional Tiles)
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
 
-                // 6. Cluster & De-conflict Markers with Callout Lines
+                // 7. Cluster & De-conflict Markers with QGIS-style Callout Lines
                 const clusters = [];
                 const visited = new Set();
 
@@ -3485,7 +3492,7 @@
                         const dx = item.origX - projected[j].origX;
                         const dy = item.origY - projected[j].origY;
                         const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 130) {
+                        if (dist < 120) {
                             cluster.push(projected[j]);
                             visited.add(j);
                         }
@@ -3498,7 +3505,7 @@
                     if (cluster.length > 1) {
                         const avgX = cluster.reduce((sum, c) => sum + c.origX, 0) / cluster.length;
                         const avgY = cluster.reduce((sum, c) => sum + c.origY, 0) / cluster.length;
-                        const R = Math.max(160, 100 + cluster.length * 18);
+                        const R = Math.max(150, 90 + cluster.length * 16);
 
                         cluster.forEach((item, idx) => {
                             const angle = (idx / cluster.length) * 2 * Math.PI - (Math.PI / 2);
@@ -3508,8 +3515,8 @@
                     }
                 });
 
-                // Secondary Collision Pass (Ensure NO TWO BADGES EVER TOUCH, min 90px dist)
-                const badgeRadius = 40; // 80px diameter badge
+                // Secondary Anti-Collision Pass (Min distance 85px between any two badges)
+                const badgeRadius = 38; // 76px diameter badge
                 for (let pass = 0; pass < 5; pass++) {
                     for (let i = 0; i < projected.length; i++) {
                         for (let j = i + 1; j < projected.length; j++) {
@@ -3518,7 +3525,7 @@
                             const dx = p2.x - p1.x;
                             const dy = p2.y - p1.y;
                             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            const minDist = 90;
+                            const minDist = 85;
 
                             if (dist < minDist) {
                                 const overlap = (minDist - dist) / 2;
@@ -3533,45 +3540,45 @@
                     }
                 }
 
-                // Render Callout Lines, Pin Dots, and Badges
+                // Render QGIS Callout Lines, Point Feature Dots, and Number Badges
                 projected.forEach(item => {
-                    // White outer glow stroke for Callout Line
+                    // White outer line glow
                     ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 10;
+                    ctx.lineWidth = 9;
                     ctx.beginPath();
                     ctx.moveTo(item.origX, item.origY);
                     ctx.lineTo(item.x, item.y);
                     ctx.stroke();
 
-                    // Main Blue Callout Line
+                    // Main Blue Callout Vector Line
                     ctx.strokeStyle = '#2563EB';
-                    ctx.lineWidth = 6.5;
+                    ctx.lineWidth = 5.5;
                     ctx.beginPath();
                     ctx.moveTo(item.origX, item.origY);
                     ctx.lineTo(item.x, item.y);
                     ctx.stroke();
 
-                    // Red Location Pin Dot at true coordinate
+                    // Red QGIS Point Feature Dot at true coordinate
                     ctx.fillStyle = '#EF4444';
                     ctx.beginPath();
-                    ctx.arc(item.origX, item.origY, 12, 0, 2 * Math.PI);
+                    ctx.arc(item.origX, item.origY, 11, 0, 2 * Math.PI);
                     ctx.fill();
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 3.5;
                     ctx.stroke();
 
-                    // Numbered Blue Badge Circle at callout position
+                    // Numbered Blue Circle Badge at callout position
                     ctx.fillStyle = '#2563EB';
                     ctx.beginPath();
                     ctx.arc(item.x, item.y, badgeRadius, 0, 2 * Math.PI);
                     ctx.fill();
                     ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 5;
+                    ctx.lineWidth = 4.5;
                     ctx.stroke();
 
                     // Number Text inside Circle
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 40px Inter, sans-serif';
+                    ctx.font = 'bold 38px Inter, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(item.num.toString(), item.x, item.y);
@@ -3579,50 +3586,50 @@
                     ctx.textBaseline = 'alphabetic';
                 });
 
-                // 7. Draw Compass & Scale Bar (Bottom-Left Corner)
-                const compX = mapAreaX + 120;
-                const compY = mapAreaY + mapAreaH - 140;
+                // 8. Draw QGIS-style Compass & Scale Bar (Bottom-Left Corner)
+                const compX = mapAreaX + 110;
+                const compY = mapAreaY + mapAreaH - 130;
 
                 // Compass Rose Circle
                 ctx.fillStyle = '#FFFFFF';
                 ctx.shadowColor = 'rgba(0,0,0,0.25)';
-                ctx.shadowBlur = 18;
+                ctx.shadowBlur = 16;
                 ctx.beginPath();
-                ctx.arc(compX, compY, 65, 0, 2 * Math.PI);
+                ctx.arc(compX, compY, 60, 0, 2 * Math.PI);
                 ctx.fill();
                 ctx.shadowColor = 'transparent';
                 ctx.strokeStyle = '#1E293B';
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 3.5;
                 ctx.stroke();
 
                 // North Label 'N'
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 36px Inter, sans-serif';
+                ctx.font = 'extrabold 34px Inter, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('N', compX, compY - 74);
+                ctx.fillText('N', compX, compY - 68);
 
                 // North Arrowhead
                 ctx.fillStyle = '#EF4444'; // Red
                 ctx.beginPath();
-                ctx.moveTo(compX, compY - 45);
+                ctx.moveTo(compX, compY - 40);
                 ctx.lineTo(compX, compY);
-                ctx.lineTo(compX + 16, compY + 10);
+                ctx.lineTo(compX + 14, compY + 8);
                 ctx.closePath();
                 ctx.fill();
 
                 ctx.fillStyle = '#1E293B'; // Dark
                 ctx.beginPath();
-                ctx.moveTo(compX, compY - 45);
+                ctx.moveTo(compX, compY - 40);
                 ctx.lineTo(compX, compY);
-                ctx.lineTo(compX - 16, compY + 10);
+                ctx.lineTo(compX - 14, compY + 8);
                 ctx.closePath();
                 ctx.fill();
 
                 ctx.fillStyle = '#94A3B8'; // Bottom needle
                 ctx.beginPath();
-                ctx.moveTo(compX, compY + 40);
-                ctx.lineTo(compX - 10, compY + 5);
-                ctx.lineTo(compX + 10, compY + 5);
+                ctx.moveTo(compX, compY + 36);
+                ctx.lineTo(compX - 9, compY + 4);
+                ctx.lineTo(compX + 9, compY + 4);
                 ctx.closePath();
                 ctx.fill();
                 ctx.textAlign = 'left';
@@ -3635,7 +3642,7 @@
                     const metersPerPx = totalMeters / containerW;
 
                     let scaleMeters = 5000;
-                    const targetPx = 250;
+                    const targetPx = 240;
                     const testM = metersPerPx * targetPx;
 
                     if (testM < 800) scaleMeters = 500;
@@ -3649,116 +3656,116 @@
                     const scaleBarPx = (scaleMeters / (metersPerPx || 1)) * scaleX;
                     const scaleStr = scaleMeters >= 1000 ? `${scaleMeters / 1000} km` : `${scaleMeters} m`;
 
-                    const scaleXPos = compX + 100;
-                    const scaleYPos = compY + 16;
+                    const scaleXPos = compX + 90;
+                    const scaleYPos = compY + 14;
 
                     // Scale Card Background
                     ctx.fillStyle = '#FFFFFF';
                     ctx.shadowColor = 'rgba(0,0,0,0.2)';
-                    ctx.shadowBlur = 14;
-                    ctx.fillRect(scaleXPos, scaleYPos - 45, scaleBarPx + 60, 78);
+                    ctx.shadowBlur = 12;
+                    ctx.fillRect(scaleXPos, scaleYPos - 42, scaleBarPx + 50, 72);
                     ctx.shadowColor = 'transparent';
                     ctx.strokeStyle = '#CBD5E1';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(scaleXPos, scaleYPos - 45, scaleBarPx + 60, 78);
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeRect(scaleXPos, scaleYPos - 42, scaleBarPx + 50, 72);
 
                     // Scale Bar Line & Ticks
                     ctx.strokeStyle = '#1E293B';
-                    ctx.lineWidth = 5.5;
+                    ctx.lineWidth = 5;
                     ctx.beginPath();
-                    ctx.moveTo(scaleXPos + 30, scaleYPos);
-                    ctx.lineTo(scaleXPos + 30 + scaleBarPx, scaleYPos);
-                    ctx.moveTo(scaleXPos + 30, scaleYPos - 10);
-                    ctx.lineTo(scaleXPos + 30, scaleYPos + 10);
-                    ctx.moveTo(scaleXPos + 30 + scaleBarPx, scaleYPos - 10);
-                    ctx.lineTo(scaleXPos + 30 + scaleBarPx, scaleYPos + 10);
-                    ctx.moveTo(scaleXPos + 30 + (scaleBarPx / 2), scaleYPos - 6);
-                    ctx.lineTo(scaleXPos + 30 + (scaleBarPx / 2), scaleYPos + 6);
+                    ctx.moveTo(scaleXPos + 25, scaleYPos);
+                    ctx.lineTo(scaleXPos + 25 + scaleBarPx, scaleYPos);
+                    ctx.moveTo(scaleXPos + 25, scaleYPos - 9);
+                    ctx.lineTo(scaleXPos + 25, scaleYPos + 9);
+                    ctx.moveTo(scaleXPos + 25 + scaleBarPx, scaleYPos - 9);
+                    ctx.lineTo(scaleXPos + 25 + scaleBarPx, scaleYPos + 9);
+                    ctx.moveTo(scaleXPos + 25 + (scaleBarPx / 2), scaleYPos - 5);
+                    ctx.lineTo(scaleXPos + 25 + (scaleBarPx / 2), scaleYPos + 5);
                     ctx.stroke();
 
                     // Scale Bar Text
                     ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 26px Inter, sans-serif';
+                    ctx.font = 'bold 24px Inter, sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText('0', scaleXPos + 30, scaleYPos - 15);
-                    ctx.fillText(scaleStr, scaleXPos + 30 + scaleBarPx, scaleYPos - 15);
+                    ctx.fillText('0', scaleXPos + 25, scaleYPos - 13);
+                    ctx.fillText(scaleStr, scaleXPos + 25 + scaleBarPx, scaleYPos - 13);
                     ctx.textAlign = 'left';
                 }
 
-                // 8. Draw SMART FLOATING LEGEND CARD
+                // 9. Draw QGIS-style SMART FLOATING LEGEND CARD
                 const count = profilFaskesData.length;
                 let legCols = 1;
                 if (count > 12) legCols = 2;
                 if (count > 28) legCols = 3;
                 if (count > 50) legCols = 4;
 
-                const colW = 740; // 740px per column
+                const colW = 730;
                 const legW = Math.min(mapAreaW - 200, (legCols * colW) + 80);
                 const itemsPerCol = Math.ceil(count / legCols);
 
-                const itemRowH = 84;
-                const legH = Math.min(2000, Math.max(280, 150 + (itemsPerCol * itemRowH)));
+                const itemRowH = 80;
+                const legH = Math.min(2000, Math.max(260, 140 + (itemsPerCol * itemRowH)));
 
-                let legX = mapAreaX + mapAreaW - legW - 60;
-                let legY = mapAreaY + mapAreaH - legH - 60;
+                let legX = mapAreaX + mapAreaW - legW - 50;
+                let legY = mapAreaY + mapAreaH - legH - 50;
 
                 // Smart Check: Avoid covering markers or callouts
                 const isCoveringMarker = projected.some(item => {
-                    return (item.x >= legX - 50 && item.x <= legX + legW + 50 &&
-                            item.y >= legY - 50 && item.y <= legY + legH + 50) ||
-                           (item.origX >= legX - 50 && item.origX <= legX + legW + 50 &&
-                            item.origY >= legY - 50 && item.origY <= legY + legH + 50);
+                    return (item.x >= legX - 40 && item.x <= legX + legW + 40 &&
+                            item.y >= legY - 40 && item.y <= legY + legH + 40) ||
+                           (item.origX >= legX - 40 && item.origX <= legX + legW + 40 &&
+                            item.origY >= legY - 40 && item.origY <= legY + legH + 40);
                 });
 
                 if (isCoveringMarker) {
-                    legY = mapAreaY + 50; // Float at top-right if bottom-right has markers
+                    legY = mapAreaY + 40; // Float at top-right if bottom-right has markers
                 }
 
                 // Floating Card Background
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-                ctx.shadowBlur = 36;
+                ctx.shadowBlur = 32;
                 ctx.beginPath();
-                if (ctx.roundRect) ctx.roundRect(legX, legY, legW, legH, 28);
+                if (ctx.roundRect) ctx.roundRect(legX, legY, legW, legH, 24);
                 else ctx.fillRect(legX, legY, legW, legH);
                 ctx.fill();
                 ctx.shadowColor = 'transparent';
                 ctx.strokeStyle = '#CBD5E1';
-                ctx.lineWidth = 4.5;
+                ctx.lineWidth = 4;
                 ctx.beginPath();
-                if (ctx.roundRect) ctx.roundRect(legX, legY, legW, legH, 28);
+                if (ctx.roundRect) ctx.roundRect(legX, legY, legW, legH, 24);
                 else ctx.strokeRect(legX, legY, legW, legH);
                 ctx.stroke();
 
-                // Legend Header (LARGE FONT)
+                // Legend Header
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 48px Inter, sans-serif';
-                ctx.fillText('📋 LEGENDA FASKES', legX + 40, legY + 70);
+                ctx.font = 'extrabold 44px Inter, sans-serif';
+                ctx.fillText('📋 LEGENDA FASKES', legX + 35, legY + 65);
 
                 ctx.fillStyle = '#2563EB';
-                ctx.font = 'bold 38px Inter, sans-serif';
+                ctx.font = 'bold 36px Inter, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(`${count} Faskes`, legX + legW - 40, legY + 70);
+                ctx.fillText(`${count} Faskes`, legX + legW - 35, legY + 65);
                 ctx.textAlign = 'left';
 
                 // Legend Header Divider
                 ctx.strokeStyle = '#E2E8F0';
-                ctx.lineWidth = 3.5;
+                ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(legX + 40, legY + 102);
-                ctx.lineTo(legX + legW - 40, legY + 102);
+                ctx.moveTo(legX + 35, legY + 95);
+                ctx.lineTo(legX + legW - 35, legY + 95);
                 ctx.stroke();
 
-                // Draw Legend Items (LARGE FONT 36px Name, 28px Subtext)
+                // Draw Legend Items
                 profilFaskesData.forEach((item, idx) => {
                     const cIdx = Math.floor(idx / itemsPerCol);
                     const rIdx = idx % itemsPerCol;
 
-                    const ix = legX + 40 + (cIdx * colW);
-                    const iy = legY + 135 + (rIdx * itemRowH);
+                    const ix = legX + 35 + (cIdx * colW);
+                    const iy = legY + 125 + (rIdx * itemRowH);
 
                     // Number Badge Circle in Legend
-                    const circleR = 22; // 44px diameter circle
+                    const circleR = 20;
                     const circleX = ix + circleR;
                     const circleY = iy + circleR + 2;
 
@@ -3772,30 +3779,30 @@
 
                     // Number Text inside Circle
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 24px Inter, sans-serif';
+                    ctx.font = 'bold 22px Inter, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(item.num.toString(), circleX, circleY);
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'alphabetic';
 
-                    // Faskes Name Text (LARGE 36px BOLD FONT!)
-                    const tx = ix + (circleR * 2) + 16;
+                    // Faskes Name Text
+                    const tx = ix + (circleR * 2) + 14;
                     ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 36px Inter, sans-serif';
+                    ctx.font = 'bold 34px Inter, sans-serif';
                     let nameText = item.nmppk;
-                    const maxTextW = colW - (circleR * 2) - 40;
+                    const maxTextW = colW - (circleR * 2) - 36;
                     if (ctx.measureText(nameText).width > maxTextW) {
                         while (nameText.length > 3 && ctx.measureText(nameText + '...').width > maxTextW) {
                             nameText = nameText.substring(0, nameText.length - 1);
                         }
                         nameText += '...';
                     }
-                    ctx.fillText(nameText, tx, iy + 28);
+                    ctx.fillText(nameText, tx, iy + 26);
 
-                    // Subtext (LARGE 28px MEDIUM FONT!)
+                    // Subtext
                     ctx.fillStyle = '#64748B';
-                    ctx.font = '600 28px Inter, sans-serif';
+                    ctx.font = '600 26px Inter, sans-serif';
                     let subText = item.tipeFaskes + ' • ' + item.kabupaten;
                     if (ctx.measureText(subText).width > maxTextW) {
                         while (subText.length > 3 && ctx.measureText(subText + '...').width > maxTextW) {
@@ -3803,19 +3810,19 @@
                         }
                         subText += '...';
                     }
-                    ctx.fillText(subText, tx, iy + 64);
+                    ctx.fillText(subText, tx, iy + 60);
                 });
 
-                // 9. Footer Info
+                // 10. Footer Info
                 const now = new Date();
                 const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
                                 now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
 
                 ctx.fillStyle = '#64748B';
                 ctx.font = '600 24px Inter, sans-serif';
-                ctx.fillText(`Diunduh dari SAPA YANFASKES pada ${timeStr}   |   Resolusi: 4960 x 3508 (Landscape A3)`, 120, 3455);
+                ctx.fillText(`Diunduh dari SAPA YANFASKES pada ${timeStr}   |   Resolusi: 4960 x 3508 (Landscape A3 - QGIS Export Mode)`, 120, 3455);
 
-                // 10. Convert to DataURL & Trigger Download
+                // 11. Convert to DataURL & Trigger Download
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 const a = document.createElement('a');
                 const cleanFileTitle = titleText.replace(/[^a-zA-Z0-9]/g, '_');
@@ -3829,11 +3836,22 @@
                 console.error('Error generating map JPEG:', err);
                 alert('Gagal mendownload peta: ' + err.message);
             } finally {
-                // Ensure original container style is restored
+                // Ensure original container style & controls are restored
                 if (mapEl) {
                     mapEl.style.height = origHeight;
                     mapEl.style.minHeight = origMinHeight;
                     mapEl.style.width = origWidth;
+
+                    const zoomControl = mapEl.querySelector('.leaflet-control-zoom');
+                    const attribControl = mapEl.querySelector('.leaflet-control-attribution');
+                    const markerPane = mapEl.querySelector('.leaflet-marker-pane');
+                    const popupPane = mapEl.querySelector('.leaflet-popup-pane');
+
+                    if (zoomControl) zoomControl.style.display = '';
+                    if (attribControl) attribControl.style.display = '';
+                    if (markerPane) markerPane.style.display = '';
+                    if (popupPane) popupPane.style.display = '';
+
                     if (profilFaskesMap) profilFaskesMap.invalidateSize({ animate: false });
                 }
                 if (btn) {
