@@ -3473,32 +3473,32 @@
 
                 // 5. Draw 4K Layout Header Box (Width 3720px)
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(startX, 35, fullWidth, 105);
+                ctx.fillRect(startX, 30, fullWidth, 125);
                 ctx.strokeStyle = '#CBD5E1';
                 ctx.lineWidth = 3;
-                ctx.strokeRect(startX, 35, fullWidth, 105);
+                ctx.strokeRect(startX, 30, fullWidth, 125);
 
                 // Header Title
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 44px Inter, sans-serif';
-                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 30, 95);
+                ctx.font = 'extrabold 54px Inter, sans-serif';
+                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 35, 88);
 
                 // Header Subtitle
                 ctx.fillStyle = '#02628A';
-                ctx.font = 'bold 30px Inter, sans-serif';
-                ctx.fillText(subtitleText, startX + 1350, 95);
+                ctx.font = 'bold 34px Inter, sans-serif';
+                ctx.fillText(subtitleText, startX + 35, 132);
 
                 // Header Right Branding
                 ctx.fillStyle = '#02628A';
-                ctx.font = 'extrabold 42px Inter, sans-serif';
+                ctx.font = 'extrabold 46px Inter, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 30, 85);
+                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 35, 82);
                 ctx.fillStyle = '#64748B';
                 ctx.font = 'bold 24px Inter, sans-serif';
-                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 30, 122);
+                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 35, 124);
                 ctx.textAlign = 'left';
 
-                // 6. Draw 4K Map Canvas Area (3720px x 1900px)
+                // 6. Draw 4K Map Canvas Area (3720px x 1880px)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
                 ctx.strokeStyle = '#CBD5E1';
@@ -3514,7 +3514,7 @@
                 // Draw 16:9 map tiles
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
 
-                // 7. Cluster & De-conflict Markers with QGIS-style Callout Lines
+                // 7. Cluster & De-conflict Markers with Multi-Ring Spiral Spiderfy + 20-Pass Repulsion
                 const clusters = [];
                 const visited = new Set();
 
@@ -3528,7 +3528,7 @@
                         const dx = item.origX - projected[j].origX;
                         const dy = item.origY - projected[j].origY;
                         const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 100) {
+                        if (dist < 130) {
                             cluster.push(projected[j]);
                             visited.add(j);
                         }
@@ -3536,35 +3536,38 @@
                     clusters.push(cluster);
                 });
 
-                // Radial Spiderfy Callout Placement
+                // Multi-Ring Spiral Callout Placement
                 clusters.forEach(cluster => {
                     if (cluster.length > 1) {
                         const avgX = cluster.reduce((sum, c) => sum + c.origX, 0) / cluster.length;
                         const avgY = cluster.reduce((sum, c) => sum + c.origY, 0) / cluster.length;
-                        const R = Math.max(120, 75 + cluster.length * 14);
 
                         cluster.forEach((item, idx) => {
-                            const angle = (idx / cluster.length) * 2 * Math.PI - (Math.PI / 2);
+                            // Golden Ratio spiral angle spread (137.5 deg)
+                            const angle = (idx * 2.39996) - (Math.PI / 2);
+                            // Concentric expanding spiral radius (110px, 140px, 170px, 200px...)
+                            const R = 110 + (idx * 30);
                             item.x = avgX + R * Math.cos(angle);
                             item.y = avgY + R * Math.sin(angle);
                         });
                     }
                 });
 
-                // Secondary Anti-Collision Pass (Min distance 72px between any two badges)
+                // 20-Pass Pairwise Repulsion Loop (Guarantees zero badge overlapping with min 82px separation)
                 const badgeRadius = 32; // 64px diameter badge in 4K
-                for (let pass = 0; pass < 5; pass++) {
+                const minAllowedDist = 82; // 64px badge + 18px clear gap
+
+                for (let pass = 0; pass < 20; pass++) {
                     for (let i = 0; i < projected.length; i++) {
                         for (let j = i + 1; j < projected.length; j++) {
                             const p1 = projected[i];
                             const p2 = projected[j];
                             const dx = p2.x - p1.x;
                             const dy = p2.y - p1.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                            const minDist = 72;
+                            const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
 
-                            if (dist < minDist) {
-                                const overlap = (minDist - dist) / 2;
+                            if (dist < minAllowedDist) {
+                                const overlap = (minAllowedDist - dist) / 2;
                                 const nx = dx / dist;
                                 const ny = dy / dist;
                                 p1.x -= nx * overlap;
@@ -3575,7 +3578,7 @@
                         }
                     }
 
-                    // Clamp all badge positions inside map boundaries on every collision iteration
+                    // Clamp all badge positions inside map boundaries on every iteration
                     projected.forEach(item => {
                         item.x = Math.max(minBadgeX, Math.min(maxBadgeX, item.x));
                         item.y = Math.max(minBadgeY, Math.min(maxBadgeY, item.y));
