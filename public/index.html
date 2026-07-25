@@ -3343,10 +3343,14 @@
             const mapEl = document.getElementById('profil-faskes-map');
             if (!mapEl) throw new Error('Map container not found');
 
-            // Save original container styles
+            // Save original container styles & bounds
             const origHeight = mapEl.style.height;
             const origMinHeight = mapEl.style.minHeight;
             const origWidth = mapEl.style.width;
+            let origBounds = null;
+            if (profilFaskesMap) {
+                try { origBounds = profilFaskesMap.getBounds(); } catch(e) {}
+            }
 
             try {
                 // Read selected filters
@@ -3368,13 +3372,21 @@
                 mapEl.style.height = `${targetH}px`;
                 mapEl.style.minHeight = `${targetH}px`;
 
-                // Force Leaflet to recalculate container bounds & tiles
+                // Force Leaflet to recalculate container bounds & FIT ALL MARKERS SAFELY INSIDE
                 if (profilFaskesMap) {
                     profilFaskesMap.invalidateSize({ animate: false });
+                    if (profilFaskesData && profilFaskesData.length > 0) {
+                        const validPoints = profilFaskesData.filter(d => d.lat && d.lng);
+                        if (validPoints.length > 0) {
+                            const bounds = L.latLngBounds(validPoints.map(d => [d.lat, d.lng]));
+                            profilFaskesMap.fitBounds(bounds, { padding: [80, 80], animate: false });
+                            profilFaskesMap.invalidateSize({ animate: false });
+                        }
+                    }
                 }
 
-                // Wait 300ms for tiles
-                await new Promise(r => setTimeout(r, 300));
+                // Wait 400ms for tiles to load for updated bounds
+                await new Promise(r => setTimeout(r, 400));
 
                 // 2. Temporarily hide web controls (+/- zoom, attribution, marker pane) for pure GIS canvas (QGIS style)
                 const zoomControl = mapEl.querySelector('.leaflet-control-zoom');
@@ -3410,11 +3422,25 @@
                 const scaleX = (mapAreaW - 8) / containerW;
                 const scaleY = (mapAreaH - 8) / containerH;
 
+                // Define strict boundary limits to keep callout badges & pins 100% inside map box
+                const minBadgeX = mapAreaX + 60;
+                const maxBadgeX = mapAreaX + mapAreaW - 60;
+                const minBadgeY = mapAreaY + 60;
+                const maxBadgeY = mapAreaY + mapAreaH - 60;
+
                 const projected = profilFaskesData.map(item => {
                     const pt = profilFaskesMap.latLngToContainerPoint([item.lat, item.lng]);
-                    const cx = mapAreaX + 4 + (pt.x * scaleX);
-                    const cy = mapAreaY + 4 + (pt.y * scaleY);
-                    return { ...item, origX: cx, origY: cy, x: cx, y: cy - 50 };
+                    let cx = mapAreaX + 4 + (pt.x * scaleX);
+                    let cy = mapAreaY + 4 + (pt.y * scaleY);
+
+                    // Clamp true coordinates inside map area boundaries
+                    cx = Math.max(minBadgeX, Math.min(maxBadgeX, cx));
+                    cy = Math.max(minBadgeY, Math.min(maxBadgeY, cy));
+
+                    let badgeY = cy - 50;
+                    if (badgeY < minBadgeY) badgeY = cy + 50;
+
+                    return { ...item, origX: cx, origY: cy, x: cx, y: badgeY };
                 });
 
                 // Restore Leaflet container styles & web controls IMMEDIATELY
@@ -3428,6 +3454,9 @@
                 if (popupPane) popupPane.style.display = '';
 
                 if (profilFaskesMap) {
+                    if (origBounds) {
+                        try { profilFaskesMap.fitBounds(origBounds, { animate: false }); } catch(e) {}
+                    }
                     profilFaskesMap.invalidateSize({ animate: false });
                 }
 
@@ -3538,6 +3567,12 @@
                             }
                         }
                     }
+
+                    // Clamp all badge positions inside map boundaries on every collision iteration
+                    projected.forEach(item => {
+                        item.x = Math.max(minBadgeX, Math.min(maxBadgeX, item.x));
+                        item.y = Math.max(minBadgeY, Math.min(maxBadgeY, item.y));
+                    });
                 }
 
                 // Render QGIS Callout Lines, Point Feature Dots, and Number Badges
