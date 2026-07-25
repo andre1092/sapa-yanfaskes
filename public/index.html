@@ -14,6 +14,8 @@
     <!-- Leaflet.js Map Library -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- html2canvas for Map JPEG Export -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -308,10 +310,17 @@
                         </div>
                     </div>
 
-                    <h1 style="font-size:22px; font-weight:800; color:#1E293B; margin:0 0 4px 0; letter-spacing:0.5px;">
-                        🏥 Peta Sebaran Fasilitas Kesehatan (Faskes)
-                    </h1>
-                    <p style="font-size:13px; color:#64748B; margin:0 0 16px 0;">Data lokasi faskes terkoneksi langsung dari Google Spreadsheet</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                        <div>
+                            <h1 style="font-size:22px; font-weight:800; color:#1E293B; margin:0 0 4px 0; letter-spacing:0.5px;">
+                                🏥 Peta Sebaran Fasilitas Kesehatan (Faskes)
+                            </h1>
+                            <p style="font-size:13px; color:#64748B; margin:0;">Data lokasi faskes terkoneksi langsung dari Google Spreadsheet</p>
+                        </div>
+                        <button id="btn-export-map" onclick="exportProfilFaskesMapJPEG()" style="background:linear-gradient(135deg, #02628a, #0ea5e9); color:white; border:none; padding:10px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(14,165,233,0.3); transition:all 0.2s ease;">
+                            📥 Download Peta & Legenda (JPEG 4960x3508)
+                        </button>
+                    </div>
 
                     <div style="display:flex; gap:16px; flex-wrap:wrap;">
                         <!-- MAP CONTAINER -->
@@ -3334,6 +3343,214 @@
             });
             const countEl = document.getElementById('legend-count');
             if (countEl) countEl.textContent = visibleCount + ' faskes';
+        }
+
+        // ==========================================
+        // EXPORT PROFIL FASKES MAP & LEGEND (JPEG 4960x3508)
+        // ==========================================
+        async function exportProfilFaskesMapJPEG() {
+            const btn = document.getElementById('btn-export-map');
+            const originalBtnText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = '⏳ Generating JPEG (4960x3508)...';
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+            }
+
+            try {
+                // 1. Capture Leaflet map container using html2canvas
+                const mapEl = document.getElementById('profil-faskes-map');
+                if (!mapEl) throw new Error('Map container not found');
+
+                if (profilFaskesMap) profilFaskesMap.invalidateSize();
+
+                const mapCanvas = await html2canvas(mapEl, {
+                    useCORS: true,
+                    allowTaint: true,
+                    scale: 2,
+                    logging: false
+                });
+
+                // 2. Create target canvas: 4960 x 3508 (Landscape)
+                const canvas = document.createElement('canvas');
+                canvas.width = 4960;
+                canvas.height = 3508;
+                const ctx = canvas.getContext('2d');
+
+                // Fill background
+                ctx.fillStyle = '#F8FAFC';
+                ctx.fillRect(0, 0, 4960, 3508);
+
+                // 3. Draw Header Box
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(80, 60, 4800, 260);
+                ctx.strokeStyle = '#CBD5E1';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(80, 60, 4800, 260);
+
+                // Header Title
+                ctx.fillStyle = '#1E293B';
+                ctx.font = 'bold 56px Inter, sans-serif';
+                ctx.fillText('🏥 PETA SEBARAN FASILITAS KESEHATAN (FASKES)', 120, 150);
+
+                // Header Subtitle & Filter Info
+                const kabSelect = document.getElementById('flt-profil-kabupaten');
+                const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
+                const kabVal = kabSelect ? kabSelect.value : '(All)';
+                const jenisVal = jenisSelect ? jenisSelect.value : '(All)';
+
+                ctx.fillStyle = '#475569';
+                ctx.font = '600 32px Inter, sans-serif';
+                ctx.fillText(`Kabupaten: ${kabVal}   •   Jenis Faskes: ${jenisVal}   •   Total: ${profilFaskesData.length} Faskes`, 120, 240);
+
+                // Header Right Branding
+                ctx.fillStyle = '#02628A';
+                ctx.font = 'extrabold 48px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('SAPA YANFASKES', 4840, 150);
+                ctx.fillStyle = '#64748B';
+                ctx.font = '600 30px Inter, sans-serif';
+                ctx.fillText('BPJS KESEHATAN', 4840, 220);
+                ctx.textAlign = 'left';
+
+                // 4. Draw Map (Left Area: 80px to 3300px)
+                const mapAreaX = 80;
+                const mapAreaY = 360;
+                const mapAreaW = 3220;
+                const mapAreaH = 3000;
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
+                ctx.strokeStyle = '#CBD5E1';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
+
+                ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
+
+                // 5. Draw Legend Panel (Right Area: 3340px to 4880px)
+                const legendAreaX = 3340;
+                const legendAreaY = 360;
+                const legendAreaW = 1540;
+                const legendAreaH = 3000;
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(legendAreaX, legendAreaY, legendAreaW, legendAreaH);
+                ctx.strokeStyle = '#CBD5E1';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(legendAreaX, legendAreaY, legendAreaW, legendAreaH);
+
+                // Legend Title
+                ctx.fillStyle = '#1E293B';
+                ctx.font = 'bold 44px Inter, sans-serif';
+                ctx.fillText('📋 LEGENDA FASKES', legendAreaX + 40, legendAreaY + 70);
+
+                ctx.fillStyle = '#2563EB';
+                ctx.font = 'bold 32px Inter, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${profilFaskesData.length} faskes`, legendAreaX + legendAreaW - 40, legendAreaY + 70);
+                ctx.textAlign = 'left';
+
+                // Legend Divider
+                ctx.strokeStyle = '#E2E8F0';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(legendAreaX + 40, legendAreaY + 100);
+                ctx.lineTo(legendAreaX + legendAreaW - 40, legendAreaY + 100);
+                ctx.stroke();
+
+                // Draw Legend Items
+                const count = profilFaskesData.length;
+                let numCols = 1;
+                if (count > 34) numCols = 2;
+                if (count > 68) numCols = 3;
+
+                const colWidth = (legendAreaW - 80) / numCols;
+                const itemsPerCol = Math.ceil(count / numCols);
+                const startY = legendAreaY + 140;
+                const rowHeight = Math.min(80, (legendAreaH - 180) / Math.max(itemsPerCol, 1));
+
+                profilFaskesData.forEach((item, index) => {
+                    const colIndex = Math.floor(index / itemsPerCol);
+                    const rowIndex = index % itemsPerCol;
+
+                    const itemX = legendAreaX + 40 + (colIndex * colWidth);
+                    const itemY = startY + (rowIndex * rowHeight);
+
+                    // Number Badge Circle
+                    const circleRadius = 18;
+                    const circleX = itemX + circleRadius;
+                    const circleY = itemY + circleRadius + 2;
+
+                    ctx.fillStyle = '#2563EB';
+                    ctx.beginPath();
+                    ctx.arc(circleX, circleY, circleRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // Number Text inside circle
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 20px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(item.num.toString(), circleX, circleY);
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'alphabetic';
+
+                    // Faskes Name
+                    const textX = itemX + (circleRadius * 2) + 16;
+                    ctx.fillStyle = '#1E293B';
+                    ctx.font = 'bold 24px Inter, sans-serif';
+                    let nameText = item.nmppk;
+                    const maxTextW = colWidth - (circleRadius * 2) - 30;
+                    if (ctx.measureText(nameText).width > maxTextW) {
+                        while (nameText.length > 3 && ctx.measureText(nameText + '...').width > maxTextW) {
+                            nameText = nameText.substring(0, nameText.length - 1);
+                        }
+                        nameText += '...';
+                    }
+                    ctx.fillText(nameText, textX, itemY + 22);
+
+                    // Subtext (Tipe & Kabupaten)
+                    ctx.fillStyle = '#64748B';
+                    ctx.font = '500 19px Inter, sans-serif';
+                    let subText = item.tipeFaskes + ' • ' + item.kabupaten;
+                    if (ctx.measureText(subText).width > maxTextW) {
+                        while (subText.length > 3 && ctx.measureText(subText + '...').width > maxTextW) {
+                            subText = subText.substring(0, subText.length - 1);
+                        }
+                        subText += '...';
+                    }
+                    ctx.fillText(subText, textX, itemY + 46);
+                });
+
+                // 6. Draw Footer Info
+                const now = new Date();
+                const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
+                                now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+                ctx.fillStyle = '#64748B';
+                ctx.font = '600 24px Inter, sans-serif';
+                ctx.fillText(`Diunduh dari SAPA YANFASKES pada ${timeStr}   |   Resolusi: 4960 x 3508 (Landscape A3)`, 120, 3450);
+
+                // 7. Convert to DataURL and Trigger Download
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                const a = document.createElement('a');
+                const cleanKab = kabVal.replace(/[^a-zA-Z0-9]/g, '_');
+                a.download = `Peta_Sebaran_Faskes_${cleanKab}_4960x3508.jpg`;
+                a.href = dataUrl;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+            } catch(err) {
+                console.error('Error generating map JPEG:', err);
+                alert('Gagal mendownload peta: ' + err.message);
+            } finally {
+                if (btn) {
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+            }
         }
 
         function checkSessionOnLoad() {
