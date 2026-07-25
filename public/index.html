@@ -292,6 +292,14 @@
             <!-- PAGE: PROFIL FASKES (MAP VIEW) -->
             <div id="page-profil-faskes" style="display:none;">
                 <div style="background:#F8FAFC; border-radius:16px; padding:24px; color:#1E293B; box-shadow:0 10px 40px rgba(0,0,0,0.4); margin-bottom:24px;">
+                    <!-- KABUPATEN FILTER -->
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Kabupaten:</label>
+                        <select id="flt-profil-kabupaten" onchange="applyProfilFaskesFilter()" style="width:280px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                            <option value="(All)">(All) Semua Kabupaten</option>
+                        </select>
+                    </div>
+
                     <h1 style="font-size:22px; font-weight:800; color:#1E293B; margin:0 0 4px 0; letter-spacing:0.5px;">
                         🏥 Peta Sebaran Fasilitas Kesehatan (Faskes)
                     </h1>
@@ -521,7 +529,7 @@
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; margin-bottom:12px;">
                                     <div>
                                         <label style="display:block; font-size:11px; color:#94A3B8; margin-bottom:4px;">Target Menu Utama:</label>
-                                        <select id="conn-target-menu-main" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 10px; border-radius:6px; font-size:12px; font-weight:600;">
+                                        <select id="conn-target-menu-main" onchange="updateSubmenuOptions()" style="width:100%; background:rgba(10,15,30,0.9); border:1px solid var(--glass-border); color:white; padding:8px 10px; border-radius:6px; font-size:12px; font-weight:600;">
                                             <option value="Dashboard FKRTL">Dashboard FKRTL</option>
                                             <option value="Profil Faskes">Profil Faskes</option>
                                             <option value="Home">Home</option>
@@ -1095,9 +1103,13 @@
 
             if (menu === 'Dashboard FKRTL' && submenu === 'Pemanfaatan Antrol') {
                 loadLiveFKRTLDataset(url).then(() => renderFKRTLAntrolDashboard());
+            } else if (menu === 'Profil Faskes') {
+                profilFaskesSheetUrl = url;
+                reloadProfilFaskesData();
             }
 
-            alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${menu} > ${submenu}.`);
+            const targetLabel = submenu === '— (Halaman Utama)' ? menu : (menu + ' > ' + submenu);
+            alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${targetLabel}.`);
         }
 
         function reSyncConnection(id) {
@@ -1118,9 +1130,13 @@
 
                 if (conn.menu === 'Dashboard FKRTL' && conn.submenu === 'Pemanfaatan Antrol') {
                     loadLiveFKRTLDataset(conn.url).then(() => renderFKRTLAntrolDashboard());
+                } else if (conn.menu === 'Profil Faskes') {
+                    profilFaskesSheetUrl = conn.url;
+                    reloadProfilFaskesData();
                 }
 
-                alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${conn.menu} > ${conn.submenu}.`);
+                const reSyncLabel = conn.submenu === '— (Halaman Utama)' ? conn.menu : (conn.menu + ' > ' + conn.submenu);
+                alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${reSyncLabel}.`);
             }
         }
 
@@ -2930,12 +2946,43 @@
         }
 
         // ==========================================
+        // SETTINGS - DYNAMIC SUBMENU OPTIONS
+        // ==========================================
+        const menusWithoutSubmenu = ['Profil Faskes', 'Home'];
+
+        function updateSubmenuOptions() {
+            const menuSelect = document.getElementById('conn-target-menu-main');
+            const submenuSelect = document.getElementById('conn-target-submenu');
+            if (!menuSelect || !submenuSelect) return;
+
+            const selectedMenu = menuSelect.value;
+
+            if (menusWithoutSubmenu.includes(selectedMenu)) {
+                submenuSelect.innerHTML = '<option value="— (Halaman Utama)">— (Halaman Utama)</option>';
+                submenuSelect.disabled = true;
+                submenuSelect.style.opacity = '0.6';
+            } else {
+                submenuSelect.disabled = false;
+                submenuSelect.style.opacity = '1';
+                if (selectedMenu === 'Dashboard FKRTL') {
+                    submenuSelect.innerHTML = '<option value="Pemanfaatan Antrol">Pemanfaatan Antrol</option>' +
+                        '<option value="Waktu Tunggu & Layanan">Waktu Tunggu & Layanan</option>' +
+                        '<option value="Rekapitulasi Wilayah">Rekapitulasi Wilayah</option>' +
+                        '<option value="+ Tambah Submenu Baru">+ Tambah Submenu Baru</option>';
+                } else {
+                    submenuSelect.innerHTML = '<option value="+ Tambah Submenu Baru">+ Tambah Submenu Baru</option>';
+                }
+            }
+        }
+
+        // ==========================================
         // PROFIL FASKES - MAP INITIALIZATION
         // ==========================================
         let profilFaskesMap = null;
         let profilFaskesMarkers = [];
-        let profilFaskesData = [];
-        const PROFIL_FASKES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/118-bQDYWFwEjCsA0yvIjTdLqu9bF18XChOZQyGD04i4/gviz/tq?tqx=out:csv';
+        let profilFaskesData = [];       // currently displayed (filtered)
+        let profilFaskesAllData = [];     // all raw parsed data
+        let profilFaskesSheetUrl = 'https://docs.google.com/spreadsheets/d/118-bQDYWFwEjCsA0yvIjTdLqu9bF18XChOZQyGD04i4/gviz/tq?tqx=out:csv';
 
         function parseCSVRow(row) {
             const result = [];
@@ -3011,7 +3058,7 @@
         }
 
         async function initProfilFaskesMap() {
-            // Prevent re-initialization
+            // Prevent re-initialization if map already exists
             if (profilFaskesMap) {
                 profilFaskesMap.invalidateSize();
                 return;
@@ -3032,14 +3079,17 @@
                 maxZoom: 19
             }).addTo(profilFaskesMap);
 
-            // Fetch data from spreadsheet
+            // Load and render data
+            await loadProfilFaskesSpreadsheetData();
+        }
+
+        async function loadProfilFaskesSpreadsheetData() {
             try {
-                const res = await fetch(PROFIL_FASKES_SHEET_URL);
+                const res = await fetch(profilFaskesSheetUrl);
                 const csvText = await res.text();
                 const rows = parseCSV(csvText);
 
-                profilFaskesData = [];
-                let num = 1;
+                profilFaskesAllData = [];
 
                 rows.forEach(row => {
                     const link = row['Link Gmaps'] || '';
@@ -3055,8 +3105,7 @@
                     const coords = extractCoordsFromGmapsLink(link);
                     if (!coords) return;
 
-                    profilFaskesData.push({
-                        num: num,
+                    profilFaskesAllData.push({
                         nmppk: nmppk,
                         lat: coords.lat,
                         lng: coords.lng,
@@ -3067,44 +3116,100 @@
                         alamat: alamat,
                         gmapsLink: link
                     });
-                    num++;
                 });
 
-                // Add markers to map
-                const bounds = [];
-                profilFaskesData.forEach(item => {
-                    const marker = L.marker([item.lat, item.lng], {
-                        icon: createNumberedIcon(item.num)
-                    }).addTo(profilFaskesMap);
+                // Populate kabupaten filter dropdown
+                populateProfilKabupatenFilter();
 
-                    marker.bindPopup(
-                        '<div style="font-family:Inter,sans-serif; min-width:200px;">' +
-                        '<div style="font-size:14px; font-weight:700; color:#1E293B; margin-bottom:6px;">' + item.num + '. ' + item.nmppk + '</div>' +
-                        '<div style="font-size:12px; color:#475569; line-height:1.6;">' +
-                        '<b>Jenis:</b> ' + item.jenisFaskes + ' — ' + item.tipeFaskes + '<br>' +
-                        '<b>Kabupaten:</b> ' + item.kabupaten + '<br>' +
-                        '<b>Kecamatan:</b> ' + item.kecamatan + '<br>' +
-                        '<b>Alamat:</b> ' + item.alamat + '<br>' +
-                        '<a href="' + item.gmapsLink + '" target="_blank" style="color:#2563EB; text-decoration:none; font-weight:600;">📍 Buka di Google Maps</a>' +
-                        '</div></div>'
-                    );
-
-                    profilFaskesMarkers.push(marker);
-                    bounds.push([item.lat, item.lng]);
-                });
-
-                // Fit map to bounds
-                if (bounds.length > 0) {
-                    profilFaskesMap.fitBounds(bounds, { padding: [30, 30] });
-                }
-
-                // Build legend
-                renderFaskesLegend(profilFaskesData);
+                // Apply filter (defaults to "(All)")
+                applyProfilFaskesFilter();
 
             } catch (err) {
                 console.error('Error loading Profil Faskes data:', err);
                 document.getElementById('legend-list').innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px 0;">Gagal memuat data faskes. Periksa koneksi internet.</div>';
             }
+        }
+
+        function populateProfilKabupatenFilter() {
+            const select = document.getElementById('flt-profil-kabupaten');
+            if (!select) return;
+
+            const kabSet = new Set();
+            profilFaskesAllData.forEach(d => {
+                if (d.kabupaten) kabSet.add(d.kabupaten);
+            });
+
+            const sortedKabs = Array.from(kabSet).sort();
+            let html = '<option value="(All)">(All) Semua Kabupaten</option>';
+            sortedKabs.forEach(k => {
+                html += '<option value="' + k + '">' + k + '</option>';
+            });
+            select.innerHTML = html;
+        }
+
+        function applyProfilFaskesFilter() {
+            const kabSelect = document.getElementById('flt-profil-kabupaten');
+            const selectedKab = kabSelect ? kabSelect.value : '(All)';
+
+            // Filter data
+            let filtered;
+            if (selectedKab === '(All)') {
+                filtered = profilFaskesAllData.slice();
+            } else {
+                filtered = profilFaskesAllData.filter(d => d.kabupaten === selectedKab);
+            }
+
+            // Renumber from 1
+            profilFaskesData = filtered.map((item, idx) => ({
+                ...item,
+                num: idx + 1
+            }));
+
+            // Clear existing markers
+            profilFaskesMarkers.forEach(m => {
+                if (profilFaskesMap) profilFaskesMap.removeLayer(m);
+            });
+            profilFaskesMarkers = [];
+
+            // Add new markers
+            const bounds = [];
+            profilFaskesData.forEach(item => {
+                const marker = L.marker([item.lat, item.lng], {
+                    icon: createNumberedIcon(item.num)
+                }).addTo(profilFaskesMap);
+
+                marker.bindPopup(
+                    '<div style="font-family:Inter,sans-serif; min-width:200px;">' +
+                    '<div style="font-size:14px; font-weight:700; color:#1E293B; margin-bottom:6px;">' + item.num + '. ' + item.nmppk + '</div>' +
+                    '<div style="font-size:12px; color:#475569; line-height:1.6;">' +
+                    '<b>Jenis:</b> ' + item.jenisFaskes + ' — ' + item.tipeFaskes + '<br>' +
+                    '<b>Kabupaten:</b> ' + item.kabupaten + '<br>' +
+                    '<b>Kecamatan:</b> ' + item.kecamatan + '<br>' +
+                    '<b>Alamat:</b> ' + item.alamat + '<br>' +
+                    '<a href="' + item.gmapsLink + '" target="_blank" style="color:#2563EB; text-decoration:none; font-weight:600;">📍 Buka di Google Maps</a>' +
+                    '</div></div>'
+                );
+
+                profilFaskesMarkers.push(marker);
+                bounds.push([item.lat, item.lng]);
+            });
+
+            // Fit map to bounds
+            if (bounds.length > 0) {
+                profilFaskesMap.fitBounds(bounds, { padding: [30, 30] });
+            }
+
+            // Clear search input
+            const searchInput = document.getElementById('legend-search');
+            if (searchInput) searchInput.value = '';
+
+            // Build legend
+            renderFaskesLegend(profilFaskesData);
+        }
+
+        async function reloadProfilFaskesData() {
+            if (!profilFaskesMap) return;
+            await loadProfilFaskesSpreadsheetData();
         }
 
         function renderFaskesLegend(data) {
