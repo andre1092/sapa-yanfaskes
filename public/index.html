@@ -331,7 +331,7 @@
                         <div style="width:340px; min-width:280px;">
                             <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px; padding:16px; height:560px; display:flex; flex-direction:column;">
                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                                    <h3 style="font-size:15px; font-weight:700; color:#1E293B; margin:0;">📋 Legenda Faskes</h3>
+                                    <h3 style="font-size:15px; font-weight:700; color:#1E293B; margin:0;">📋 Legenda</h3>
                                     <span id="legend-count" style="font-size:12px; color:#64748B; background:#F1F5F9; padding:2px 8px; border-radius:10px;">0 faskes</span>
                                 </div>
                                 <input type="text" id="legend-search" placeholder="🔍 Cari faskes..." style="width:100%; padding:8px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; margin-bottom:10px; outline:none; background:#F8FAFC; color:#1E293B; box-sizing:border-box;" oninput="filterLegend(this.value)">
@@ -3313,12 +3313,10 @@
 
             let html = '';
             data.forEach(item => {
-                html += '<div class="legend-item" data-num="' + item.num + '" onclick="focusMarker(' + item.num + ')" style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background 0.15s ease; border-bottom:1px solid #F1F5F9;" onmouseenter="this.style.background=\'#EFF6FF\'" onmouseleave="this.style.background=\'transparent\'">' +
-                    '<div style="min-width:26px; height:26px; background:#2563EB; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">' + item.num + '</div>' +
-                    '<div style="flex:1; min-width:0;">' +
-                    '<div style="font-weight:600; color:#1E293B; font-size:12px; word-wrap:break-word;">' + item.nmppk + '</div>' +
-                    '<div style="font-size:11px; color:#94A3B8; margin-top:2px;">' + item.tipeFaskes + ' • ' + item.kabupaten + '</div>' +
-                    '</div></div>';
+                html += '<div class="legend-item" data-num="' + item.num + '" onclick="focusMarker(' + item.num + ')" style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px; cursor:pointer; transition:background 0.15s ease; border-bottom:1px solid #F1F5F9;" onmouseenter="this.style.background=\'#EFF6FF\'" onmouseleave="this.style.background=\'transparent\'">' +
+                    '<div style="min-width:24px; height:24px; background:#2563EB; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">' + item.num + '</div>' +
+                    '<div style="flex:1; min-width:0; font-weight:600; color:#1E293B; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + item.nmppk + '</div>' +
+                    '</div>';
             });
             legendList.innerHTML = html;
         }
@@ -3482,24 +3480,25 @@
                 ctx.lineWidth = 3.5;
                 ctx.strokeRect(startX, 30, fullWidth, 160);
 
-                // Header Title - Large 72px Font!
+                // Header Title - CENTERED, BOLD, 64px Arial Font!
+                ctx.textAlign = 'center';
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 72px Inter, sans-serif';
-                ctx.fillText(`🏥 ${titleText.toUpperCase()}`, startX + 40, 105);
+                ctx.font = 'bold 64px Arial, sans-serif';
+                ctx.fillText(titleText, 1920, 95);
 
-                // Header Subtitle - Large 40px Font!
-                ctx.fillStyle = '#02628A';
-                ctx.font = 'bold 40px Inter, sans-serif';
-                ctx.fillText(subtitleText, startX + 40, 162);
+                // Header Subtitle - CENTERED, NORMAL (NOT BOLD), 38px Arial Font!
+                ctx.fillStyle = '#475569';
+                ctx.font = 'normal 38px Arial, sans-serif';
+                ctx.fillText(subtitleText, 1920, 150);
 
                 // Header Right Branding
                 ctx.fillStyle = '#02628A';
-                ctx.font = 'extrabold 54px Inter, sans-serif';
+                ctx.font = 'extrabold 44px Arial, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 40, 96);
+                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 40, 92);
                 ctx.fillStyle = '#64748B';
-                ctx.font = 'bold 30px Inter, sans-serif';
-                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 40, 150);
+                ctx.font = 'bold 24px Arial, sans-serif';
+                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 40, 140);
                 ctx.textAlign = 'left';
 
                 // 6. Draw 4K Map Canvas Area (3720px x 1860px)
@@ -3557,10 +3556,10 @@
                     }
                 });
 
-                // 25-Pass Dual Repulsion Loop (Badge vs Badge >= 84px AND Badge vs Red Pin Dot >= 60px)
+                // 25-Pass Dual Repulsion Loop (Badge vs Badge >= 84px AND Badge vs Red Pin Dot >= 65px)
                 const badgeRadius = 32; // 64px diameter badge in 4K
                 const minBadgeDist = 84; // 64px badge + 20px clear gap between badges
-                const minPinDist = 60;   // 64px badge + red pin dot separation
+                const minPinDist = 65;   // 64px badge + red pin dot separation
 
                 for (let pass = 0; pass < 25; pass++) {
                     // Pass A: Badge vs Badge Repulsion
@@ -3611,25 +3610,28 @@
                     });
                 }
 
-                // Render Callout Lines, Point Feature Dots, and Number Badges
+                // Render Layer 1: White outer line glow
                 projected.forEach(item => {
-                    // White outer line glow
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 8;
                     ctx.beginPath();
                     ctx.moveTo(item.origX, item.origY);
                     ctx.lineTo(item.x, item.y);
                     ctx.stroke();
+                });
 
-                    // Main Blue Callout Vector Line
+                // Render Layer 2: Main Blue Callout Vector Line
+                projected.forEach(item => {
                     ctx.strokeStyle = '#2563EB';
-                    ctx.lineWidth = 4.5;
+                    ctx.lineWidth = 4;
                     ctx.beginPath();
                     ctx.moveTo(item.origX, item.origY);
                     ctx.lineTo(item.x, item.y);
                     ctx.stroke();
+                });
 
-                    // Red Point Feature Dot at true coordinate
+                // Render Layer 3: Red Point Feature Dot at true coordinate
+                projected.forEach(item => {
                     ctx.fillStyle = '#EF4444';
                     ctx.beginPath();
                     ctx.arc(item.origX, item.origY, 9, 0, 2 * Math.PI);
@@ -3637,8 +3639,10 @@
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 3;
                     ctx.stroke();
+                });
 
-                    // Numbered Blue Circle Badge at callout position
+                // Render Layer 4: Numbered Blue Circle Badges (ON TOP OF EVERYTHING)
+                projected.forEach(item => {
                     ctx.fillStyle = '#2563EB';
                     ctx.beginPath();
                     ctx.arc(item.x, item.y, badgeRadius, 0, 2 * Math.PI);
@@ -3649,7 +3653,7 @@
 
                     // Number Text inside Circle
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 30px Inter, sans-serif';
+                    ctx.font = 'bold 30px Arial, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(item.num.toString(), item.x, item.y);
@@ -3675,7 +3679,7 @@
 
                 // North Label 'N'
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 26px Inter, sans-serif';
+                ctx.font = 'extrabold 26px Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('N', compX, compY - 52);
 
@@ -3756,26 +3760,26 @@
 
                     // Scale Bar Text
                     ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 18px Inter, sans-serif';
+                    ctx.font = 'bold 18px Arial, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText('0', scaleXPos + 20, scaleYPos - 10);
                     ctx.fillText(scaleStr, scaleXPos + 20 + scaleBarPx, scaleYPos - 10);
                     ctx.textAlign = 'left';
                 }
 
-                // 9. Draw 4K SMART FLOATING LEGEND CARD
+                // 9. Draw 4K SMART FLOATING LEGEND CARD (Compact & Fitting)
                 const count = profilFaskesData.length;
                 let legCols = 1;
                 if (count > 12) legCols = 2;
                 if (count > 28) legCols = 3;
                 if (count > 50) legCols = 4;
 
-                const colW = 560;
-                const legW = Math.min(mapAreaW - 150, (legCols * colW) + 60);
+                const colW = 500;
+                const legW = Math.min(mapAreaW - 150, (legCols * colW) + 50);
                 const itemsPerCol = Math.ceil(count / legCols);
 
-                const itemRowH = 62;
-                const legH = Math.min(1300, Math.max(220, 110 + (itemsPerCol * itemRowH)));
+                const itemRowH = 48; // Clean 1-line per faskes
+                const legH = Math.min(1200, Math.max(180, 95 + (itemsPerCol * itemRowH)));
 
                 let legX = mapAreaX + mapAreaW - legW - 40;
                 let legY = mapAreaY + mapAreaH - legH - 40;
@@ -3808,35 +3812,35 @@
                 else ctx.strokeRect(legX, legY, legW, legH);
                 ctx.stroke();
 
-                // Legend Header
+                // Legend Header - "📋 LEGENDA"
                 ctx.fillStyle = '#1E293B';
-                ctx.font = 'extrabold 34px Inter, sans-serif';
-                ctx.fillText('📋 LEGENDA FASKES', legX + 25, legY + 48);
+                ctx.font = 'bold 32px Arial, sans-serif';
+                ctx.fillText('📋 LEGENDA', legX + 25, legY + 44);
 
                 ctx.fillStyle = '#2563EB';
-                ctx.font = 'bold 28px Inter, sans-serif';
+                ctx.font = 'bold 26px Arial, sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(`${count} Faskes`, legX + legW - 25, legY + 48);
+                ctx.fillText(`${count} Faskes`, legX + legW - 25, legY + 44);
                 ctx.textAlign = 'left';
 
                 // Legend Header Divider
                 ctx.strokeStyle = '#E2E8F0';
-                ctx.lineWidth = 2.5;
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(legX + 25, legY + 70);
-                ctx.lineTo(legX + legW - 25, legY + 70);
+                ctx.moveTo(legX + 25, legY + 62);
+                ctx.lineTo(legX + legW - 25, legY + 62);
                 ctx.stroke();
 
-                // Draw Legend Items
+                // Draw Legend Items (FASKES NAME ONLY - No subtext!)
                 profilFaskesData.forEach((item, idx) => {
                     const cIdx = Math.floor(idx / itemsPerCol);
                     const rIdx = idx % itemsPerCol;
 
                     const ix = legX + 25 + (cIdx * colW);
-                    const iy = legY + 95 + (rIdx * itemRowH);
+                    const iy = legY + 80 + (rIdx * itemRowH);
 
                     // Number Badge Circle in Legend
-                    const circleR = 16;
+                    const circleR = 14;
                     const circleX = ix + circleR;
                     const circleY = iy + circleR + 2;
 
@@ -3850,17 +3854,17 @@
 
                     // Number Text inside Circle
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.font = 'bold 18px Inter, sans-serif';
+                    ctx.font = 'bold 16px Arial, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(item.num.toString(), circleX, circleY);
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'alphabetic';
 
-                    // Faskes Name Text
+                    // Faskes Name Text ONLY
                     const tx = ix + (circleR * 2) + 12;
                     ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 26px Inter, sans-serif';
+                    ctx.font = 'bold 24px Arial, sans-serif';
                     let nameText = item.nmppk;
                     const maxTextW = colW - (circleR * 2) - 30;
                     if (ctx.measureText(nameText).width > maxTextW) {
@@ -3869,19 +3873,7 @@
                         }
                         nameText += '...';
                     }
-                    ctx.fillText(nameText, tx, iy + 20);
-
-                    // Subtext
-                    ctx.fillStyle = '#64748B';
-                    ctx.font = '600 20px Inter, sans-serif';
-                    let subText = item.tipeFaskes + ' • ' + item.kabupaten;
-                    if (ctx.measureText(subText).width > maxTextW) {
-                        while (subText.length > 3 && ctx.measureText(subText + '...').width > maxTextW) {
-                            subText = subText.substring(0, subText.length - 1);
-                        }
-                        subText += '...';
-                    }
-                    ctx.fillText(subText, tx, iy + 46);
+                    ctx.fillText(nameText, tx, iy + 22);
                 });
 
                 // Restore Canvas Context Clip
