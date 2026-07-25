@@ -1011,6 +1011,41 @@
             }
         ];
 
+        function formatGoogleSheetsCsvUrl(rawUrl) {
+            if (!rawUrl) return '';
+            let cleanUrl = rawUrl.trim();
+            if (cleanUrl.includes('/gviz/tq?tqx=out:csv')) {
+                return cleanUrl;
+            }
+            const match = cleanUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) {
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv`;
+            }
+            return cleanUrl;
+        }
+
+        function saveActiveConnections() {
+            try {
+                localStorage.setItem('sapa_active_connections', JSON.stringify(activeConnections));
+            } catch(e) {
+                console.error('Failed to save activeConnections:', e);
+            }
+        }
+
+        function loadActiveConnections() {
+            try {
+                const stored = localStorage.getItem('sapa_active_connections');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        activeConnections = parsed;
+                    }
+                }
+            } catch(e) {
+                console.error('Failed to load activeConnections:', e);
+            }
+        }
+
         function renderActiveConnectionsTable() {
             const tbody = document.getElementById('conn-active-table-body');
             const countBadge = document.getElementById('conn-active-count');
@@ -1033,10 +1068,14 @@
 
             let html = '';
             activeConnections.forEach(conn => {
+                const targetDisplay = (conn.submenu === '— (Halaman Utama)' || !conn.submenu) 
+                    ? `Target : ${conn.menu}` 
+                    : `Target : ${conn.menu} > ${conn.submenu}`;
+
                 html += `
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                         <td style="padding:8px 6px; font-family:monospace; color:#38BDF8;" title="${conn.url}">${conn.shortUrl}</td>
-                        <td style="padding:8px 6px; font-weight:700; color:white;">Target : ${conn.menu} > ${conn.submenu}</td>
+                        <td style="padding:8px 6px; font-weight:700; color:white;">${targetDisplay}</td>
                         <td style="padding:8px 6px;">${conn.rows.toLocaleString()} Baris | ${conn.cols} Kolom</td>
                         <td style="padding:8px 6px; color:#94A3B8;">${conn.lastSync}</td>
                         <td style="padding:8px 6px; color:#34D399; font-weight:700;">🟢 ${conn.status}</td>
@@ -1099,16 +1138,18 @@
                 });
             }
 
+            saveActiveConnections();
             renderActiveConnectionsTable();
 
             if (menu === 'Dashboard FKRTL' && submenu === 'Pemanfaatan Antrol') {
                 loadLiveFKRTLDataset(url).then(() => renderFKRTLAntrolDashboard());
             } else if (menu === 'Profil Faskes') {
-                profilFaskesSheetUrl = url;
+                profilFaskesSheetUrl = formatGoogleSheetsCsvUrl(url);
+                localStorage.setItem('sapa_profil_faskes_url', profilFaskesSheetUrl);
                 reloadProfilFaskesData();
             }
 
-            const targetLabel = submenu === '— (Halaman Utama)' ? menu : (menu + ' > ' + submenu);
+            const targetLabel = (submenu === '— (Halaman Utama)' || !submenu) ? menu : (menu + ' > ' + submenu);
             alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${targetLabel}.`);
         }
 
@@ -1126,22 +1167,26 @@
                 const now = new Date();
                 conn.lastSync = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
                                 now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                
+                saveActiveConnections();
                 renderActiveConnectionsTable();
 
                 if (conn.menu === 'Dashboard FKRTL' && conn.submenu === 'Pemanfaatan Antrol') {
                     loadLiveFKRTLDataset(conn.url).then(() => renderFKRTLAntrolDashboard());
                 } else if (conn.menu === 'Profil Faskes') {
-                    profilFaskesSheetUrl = conn.url;
+                    profilFaskesSheetUrl = formatGoogleSheetsCsvUrl(conn.url);
+                    localStorage.setItem('sapa_profil_faskes_url', profilFaskesSheetUrl);
                     reloadProfilFaskesData();
                 }
 
-                const reSyncLabel = conn.submenu === '— (Halaman Utama)' ? conn.menu : (conn.menu + ' > ' + conn.submenu);
+                const reSyncLabel = (conn.submenu === '— (Halaman Utama)' || !conn.submenu) ? conn.menu : (conn.menu + ' > ' + conn.submenu);
                 alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${reSyncLabel}.`);
             }
         }
 
         function removeConnection(id) {
             activeConnections = activeConnections.filter(c => c.id !== id);
+            saveActiveConnections();
             renderActiveConnectionsTable();
             alert('🔌 Koneksi spreadsheet ini berhasil diputuskan (Disconnected).');
         }
@@ -3085,7 +3130,11 @@
 
         async function loadProfilFaskesSpreadsheetData() {
             try {
-                const res = await fetch(profilFaskesSheetUrl);
+                const savedUrl = localStorage.getItem('sapa_profil_faskes_url');
+                if (savedUrl) profilFaskesSheetUrl = savedUrl;
+
+                const targetFetchUrl = formatGoogleSheetsCsvUrl(profilFaskesSheetUrl);
+                const res = await fetch(targetFetchUrl);
                 const csvText = await res.text();
                 const rows = parseCSV(csvText);
 
@@ -3260,6 +3309,30 @@
             });
             const countEl = document.getElementById('legend-count');
             if (countEl) countEl.textContent = visibleCount + ' faskes';
+        }
+
+        function checkSessionOnLoad() {
+            loadActiveConnections();
+            renderActiveConnectionsTable();
+
+            const savedProfilUrl = localStorage.getItem('sapa_profil_faskes_url');
+            if (savedProfilUrl) profilFaskesSheetUrl = savedProfilUrl;
+
+            const isLoggedIn = localStorage.getItem('sapa_is_logged_in') === 'true';
+            if (isLoggedIn) {
+                const loginModal = document.getElementById('login-modal');
+                const appLayout = document.getElementById('app-layout');
+                if (loginModal) loginModal.style.display = 'none';
+                if (appLayout) appLayout.style.display = 'block';
+                const savedPage = localStorage.getItem('sapa_active_page') || 'home';
+                switchNav(savedPage);
+                setTimeout(initCharts, 50);
+            } else {
+                const loginModal = document.getElementById('login-modal');
+                const appLayout = document.getElementById('app-layout');
+                if (loginModal) loginModal.style.display = 'flex';
+                if (appLayout) appLayout.style.display = 'none';
+            }
         }
 
         document.addEventListener('DOMContentLoaded', checkSessionOnLoad);
