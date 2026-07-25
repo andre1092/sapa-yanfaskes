@@ -3507,14 +3507,14 @@
                 // Draw 16:9 map tiles
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
 
-                // Watermark Text in Center of Map (Grey opacity 70%)
+                // Watermark Text at Bottom-Center INSIDE the Map Canvas (Slate grey opacity 85%)
                 ctx.save();
                 ctx.textAlign = 'center';
-                ctx.fillStyle = 'rgba(100, 116, 139, 0.7)';
-                ctx.font = 'bold 34px Arial, sans-serif';
-                ctx.fillText('SAPA Yanfaskes', mapAreaX + (mapAreaW / 2), mapAreaY + (mapAreaH / 2) - 15);
-                ctx.font = 'normal 24px Arial, sans-serif';
-                ctx.fillText('Powered by BPJS Kesehatan Cabang Jember', mapAreaX + (mapAreaW / 2), mapAreaY + (mapAreaH / 2) + 25);
+                ctx.fillStyle = 'rgba(51, 65, 85, 0.85)';
+                ctx.font = 'bold 36px Arial, sans-serif';
+                ctx.fillText('SAPA Yanfaskes', 1920, 1965);
+                ctx.font = 'normal 26px Arial, sans-serif';
+                ctx.fillText('Powered by BPJS Kesehatan Cabang Jember', 1920, 2002);
                 ctx.restore();
 
                 // 7. Cluster & De-conflict Markers with Multi-Ring Spiral Spiderfy + 25-Pass Dual Repulsion
@@ -3879,16 +3879,7 @@
                 // Restore Canvas Context Clip
                 ctx.restore();
 
-                // 10. Footer Info
-                const now = new Date();
-                const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
-                                now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-
-                ctx.fillStyle = '#64748B';
-                ctx.font = '600 18px Inter, sans-serif';
-                ctx.fillText(`Diunduh dari SAPA YANFASKES pada ${timeStr}   |   Resolusi: 3840 x 2160 (Landscape 4K 16:9)`, 80, 2125);
-
-                // 11. Convert to DataURL & Trigger Download
+                // 10. Convert to DataURL & Trigger Download
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 const a = document.createElement('a');
                 const cleanFileTitle = titleText.replace(/[^a-zA-Z0-9]/g, '_');
