@@ -3053,13 +3053,59 @@
         }
 
         // ==========================================
-        // PROFIL FASKES - MAP INITIALIZATION
+        // PROFIL FASKES - MAP INITIALIZATION & COLOR CODING
         // ==========================================
         let profilFaskesMap = null;
         let profilFaskesMarkers = [];
         let profilFaskesData = [];       // currently displayed (filtered)
         let profilFaskesAllData = [];     // all raw parsed data
         let profilFaskesSheetUrl = 'https://docs.google.com/spreadsheets/d/118-bQDYWFwEjCsA0yvIjTdLqu9bF18XChOZQyGD04i4/gviz/tq?tqx=out:csv';
+
+        const TIPE_COLOR_MAP = {
+            'RS Type A': '#DC2626',
+            'RS Type B': '#EA580C',
+            'RS Type C': '#2563EB',
+            'RS Type D': '#059669',
+            'RS Swasta Setara Type A': '#DC2626',
+            'RS Swasta Setara Type B': '#EA580C',
+            'RS Swasta Setara Type C': '#2563EB',
+            'RS Swasta Setara Type D': '#059669',
+            'Klinik Pratama': '#D97706',
+            'Klinik Rawat Inap': '#0D9488',
+            'Klinik Non Rawat Inap': '#0284C7',
+            'Puskesmas': '#16A34A',
+            'Dokter Prakter Perorangan': '#8B5CF6',
+            'Dokter Gigi': '#EC4899',
+            'Khusus Gigi dan Mulut': '#BE185D',
+            'Khusus Paru': '#7C3AED'
+        };
+
+        function getTipeFaskesColor(tipe) {
+            if (!tipe) return '#2563EB';
+            if (TIPE_COLOR_MAP[tipe]) return TIPE_COLOR_MAP[tipe];
+
+            let hash = 0;
+            for (let i = 0; i < tipe.length; i++) {
+                hash = tipe.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const h = Math.abs(hash) % 360;
+            return `hsl(${h}, 70%, 42%)`;
+        }
+
+        function createNumberedIcon(number, tipeFaskes) {
+            const badgeColor = getTipeFaskesColor(tipeFaskes);
+            return L.divIcon({
+                className: 'custom-numbered-marker',
+                html: '<div style="position:relative; width:36px; height:44px;">' +
+                        '<div style="position:absolute; bottom:0; left:14px; width:8px; height:8px; background:#EF4444; border:2px solid white; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.5);"></div>' +
+                        '<div style="position:absolute; bottom:6px; left:17px; width:2px; height:20px; background:' + badgeColor + '; border:0.5px solid white;"></div>' +
+                        '<div style="position:absolute; top:0; left:4px; width:28px; height:28px; background:' + badgeColor + '; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; font-family:Inter,sans-serif; border:2px solid white; box-shadow:0 3px 8px rgba(0,0,0,0.4);">' + number + '</div>' +
+                      '</div>',
+                iconSize: [36, 44],
+                iconAnchor: [18, 44],
+                popupAnchor: [0, -44]
+            });
+        }
 
         function parseCSVRow(row) {
             const result = [];
@@ -3111,7 +3157,6 @@
 
         function extractCoordsFromGmapsLink(link) {
             if (!link) return null;
-            // Format: https://www.google.com/maps/search/?api=1&query=LAT,LNG
             const match = link.match(/query=([^&]+)/);
             if (!match) return null;
             const parts = match[1].split(',');
@@ -3119,27 +3164,11 @@
             const lat = parseFloat(parts[0]);
             const lng = parseFloat(parts[1]);
             if (isNaN(lat) || isNaN(lng)) return null;
-            // Basic validation for Indonesian coordinates
             if (lat < -15 || lat > 10 || lng < 90 || lng > 145) return null;
             return { lat, lng };
         }
 
-        function createNumberedIcon(number) {
-            return L.divIcon({
-                className: 'custom-numbered-marker',
-                html: '<div style="position:relative; width:36px; height:44px;">' +
-                        '<div style="position:absolute; bottom:0; left:14px; width:8px; height:8px; background:#EF4444; border:2px solid white; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.5);"></div>' +
-                        '<div style="position:absolute; bottom:6px; left:17px; width:2px; height:20px; background:#2563EB; border:0.5px solid white;"></div>' +
-                        '<div style="position:absolute; top:0; left:4px; width:28px; height:28px; background:#2563EB; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; font-family:Inter,sans-serif; border:2px solid white; box-shadow:0 3px 8px rgba(0,0,0,0.4);">' + number + '</div>' +
-                      '</div>',
-                iconSize: [36, 44],
-                iconAnchor: [18, 44],
-                popupAnchor: [0, -44]
-            });
-        }
-
         async function initProfilFaskesMap() {
-            // Prevent re-initialization if map already exists
             if (profilFaskesMap) {
                 profilFaskesMap.invalidateSize();
                 return;
@@ -3148,7 +3177,6 @@
             const mapContainer = document.getElementById('profil-faskes-map');
             if (!mapContainer) return;
 
-            // Initialize Leaflet map centered on Jember/Lumajang area
             profilFaskesMap = L.map('profil-faskes-map', {
                 center: [-8.18, 113.5],
                 zoom: 10,
@@ -3160,7 +3188,6 @@
                 maxZoom: 19
             }).addTo(profilFaskesMap);
 
-            // Load and render data
             await loadProfilFaskesSpreadsheetData();
         }
 
@@ -3229,7 +3256,7 @@
         });
 
         function onParentFilterChange() {
-            updateTipeFaskesOptions();
+            updateTipeFaskesOptions(false);
             applyProfilFaskesFilter();
         }
 
@@ -3269,7 +3296,7 @@
             }
         }
 
-        function getSelectedTipeFaskes() {
+        function getRawSelectedTipeArray() {
             const chkAll = document.getElementById('chk-tipe-all');
             if (chkAll && chkAll.checked) {
                 return ['(All)'];
@@ -3282,8 +3309,12 @@
             checkboxes.forEach(chk => {
                 if (chk.checked) selected.push(chk.value);
             });
+            return selected;
+        }
 
-            return selected.length > 0 ? selected : ['(All)'];
+        function getSelectedTipeFaskes() {
+            const selected = getRawSelectedTipeArray();
+            return (selected.length > 0) ? selected : ['(All)'];
         }
 
         function populateProfilFilters() {
@@ -3315,15 +3346,17 @@
                 jenisSelect.innerHTML = html;
             }
 
-            updateTipeFaskesOptions();
+            updateTipeFaskesOptions(false);
         }
 
-        function updateTipeFaskesOptions() {
+        function updateTipeFaskesOptions(preserveSelections = false) {
             const kabSelect = document.getElementById('flt-profil-kabupaten');
             const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
 
             const selectedKab = kabSelect ? kabSelect.value : '(All)';
             const selectedJenis = jenisSelect ? jenisSelect.value : '(All)';
+
+            const previouslySelected = preserveSelections ? getRawSelectedTipeArray() : [];
 
             const availableTipeSet = new Set();
             profilFaskesAllData.forEach(d => {
@@ -3341,16 +3374,21 @@
 
             if (tipeContainer) {
                 let html = '';
+                const checkAllDefault = (!preserveSelections || previouslySelected.length === 0 || previouslySelected.includes('(All)'));
+
                 sortedTipe.forEach(t => {
+                    const isChecked = checkAllDefault || previouslySelected.includes(t);
                     const badgeColor = getTipeFaskesColor(t);
                     html += '<label style="display:flex; align-items:center; gap:8px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:500; color:#334155; user-select:none;" onmouseenter="this.style.background=\'#F8FAFC\'" onmouseleave="this.style.background=\'transparent\'">' +
-                            '<input type="checkbox" value="' + t + '" checked onchange="onTipeOptionChange()">' +
+                            '<input type="checkbox" value="' + t + '" ' + (isChecked ? 'checked' : '') + ' onchange="onTipeOptionChange()">' +
                             '<span style="width:10px; height:10px; border-radius:50%; background:' + badgeColor + '; flex-shrink:0;"></span>' +
                             '<span>' + t + '</span>' +
                             '</label>';
                 });
                 tipeContainer.innerHTML = html;
-                if (chkAll) chkAll.checked = true;
+                if (chkAll) {
+                    chkAll.checked = checkAllDefault;
+                }
                 updateTipeFaskesBtnLabel();
             }
         }
