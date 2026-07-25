@@ -11,6 +11,9 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <!-- SheetJS with Full Cell Styling Support for XLSX -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <!-- Leaflet.js Map Library -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         :root {
@@ -286,8 +289,34 @@
                 </div>
             </div>
 
-            <!-- PAGE: PROFIL FASKES (EMPTY PAGE CONTENT) -->
+            <!-- PAGE: PROFIL FASKES (MAP VIEW) -->
             <div id="page-profil-faskes" style="display:none;">
+                <div style="background:#F8FAFC; border-radius:16px; padding:24px; color:#1E293B; box-shadow:0 10px 40px rgba(0,0,0,0.4); margin-bottom:24px;">
+                    <h1 style="font-size:22px; font-weight:800; color:#1E293B; margin:0 0 4px 0; letter-spacing:0.5px;">
+                        🏥 Peta Sebaran Fasilitas Kesehatan (Faskes)
+                    </h1>
+                    <p style="font-size:13px; color:#64748B; margin:0 0 16px 0;">Data lokasi faskes terkoneksi langsung dari Google Spreadsheet</p>
+
+                    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                        <!-- MAP CONTAINER -->
+                        <div style="flex:1; min-width:400px;">
+                            <div id="profil-faskes-map" style="height:560px; border-radius:12px; border:2px solid #E2E8F0; overflow:hidden;"></div>
+                        </div>
+                        <!-- LEGEND PANEL -->
+                        <div style="width:340px; min-width:280px;">
+                            <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px; padding:16px; height:560px; display:flex; flex-direction:column;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                                    <h3 style="font-size:15px; font-weight:700; color:#1E293B; margin:0;">📋 Legenda Faskes</h3>
+                                    <span id="legend-count" style="font-size:12px; color:#64748B; background:#F1F5F9; padding:2px 8px; border-radius:10px;">0 faskes</span>
+                                </div>
+                                <input type="text" id="legend-search" placeholder="🔍 Cari faskes..." style="width:100%; padding:8px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; margin-bottom:10px; outline:none; background:#F8FAFC; color:#1E293B; box-sizing:border-box;" oninput="filterLegend(this.value)">
+                                <div id="legend-list" style="flex:1; overflow-y:auto; font-size:12px; line-height:1.6;">
+                                    <div style="text-align:center; color:#94A3B8; padding:40px 0;">Memuat data faskes...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- PAGE: DASHBOARD FKRTL > PEMANFAATAN ANTROL (100% UI MATCH SCREENSHOT) -->
@@ -1118,6 +1147,8 @@
                 const navProfil = document.getElementById('nav-profil-faskes');
                 if (navProfil) navProfil.classList.add('active');
                 document.getElementById('page-profil-faskes').style.display = 'block';
+                // Initialize map if not already done
+                setTimeout(initProfilFaskesMap, 100);
             } else if (page === 'fkrtl_antrol') {
                 const headerFkrtl = document.getElementById('nav-header-fkrtl');
                 const subAntrol = document.getElementById('nav-sub-antrol');
@@ -2898,18 +2929,232 @@
             document.getElementById('login-modal').style.display = 'flex';
         }
 
-        function checkSessionOnLoad() {
-            const isLoggedIn = localStorage.getItem('sapa_is_logged_in') === 'true';
-            if (isLoggedIn) {
-                document.getElementById('login-modal').style.display = 'none';
-                document.getElementById('app-layout').style.display = 'block';
-                const savedPage = localStorage.getItem('sapa_active_page') || 'home';
-                switchNav(savedPage);
-                setTimeout(initCharts, 50);
-            } else {
-                document.getElementById('login-modal').style.display = 'flex';
-                document.getElementById('app-layout').style.display = 'none';
+        // ==========================================
+        // PROFIL FASKES - MAP INITIALIZATION
+        // ==========================================
+        let profilFaskesMap = null;
+        let profilFaskesMarkers = [];
+        let profilFaskesData = [];
+        const PROFIL_FASKES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/118-bQDYWFwEjCsA0yvIjTdLqu9bF18XChOZQyGD04i4/gviz/tq?tqx=out:csv';
+
+        function parseCSVRow(row) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < row.length; i++) {
+                const ch = row[i];
+                if (inQuotes) {
+                    if (ch === '"') {
+                        if (i + 1 < row.length && row[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = false;
+                        }
+                    } else {
+                        current += ch;
+                    }
+                } else {
+                    if (ch === '"') {
+                        inQuotes = true;
+                    } else if (ch === ',') {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += ch;
+                    }
+                }
             }
+            result.push(current);
+            return result;
+        }
+
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+            if (lines.length < 2) return [];
+            const headers = parseCSVRow(lines[0]);
+            const rows = [];
+            for (let i = 1; i < lines.length; i++) {
+                const vals = parseCSVRow(lines[i]);
+                const obj = {};
+                headers.forEach((h, idx) => {
+                    obj[h] = (vals[idx] || '').trim();
+                });
+                rows.push(obj);
+            }
+            return rows;
+        }
+
+        function extractCoordsFromGmapsLink(link) {
+            if (!link) return null;
+            // Format: https://www.google.com/maps/search/?api=1&query=LAT,LNG
+            const match = link.match(/query=([^&]+)/);
+            if (!match) return null;
+            const parts = match[1].split(',');
+            if (parts.length < 2) return null;
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+            if (isNaN(lat) || isNaN(lng)) return null;
+            // Basic validation for Indonesian coordinates
+            if (lat < -15 || lat > 10 || lng < 90 || lng > 145) return null;
+            return { lat, lng };
+        }
+
+        function createNumberedIcon(number) {
+            return L.divIcon({
+                className: 'custom-numbered-marker',
+                html: '<div style="background:#2563EB; color:white; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; font-family:Inter,sans-serif; border:2px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.4);">' + number + '</div>',
+                iconSize: [26, 26],
+                iconAnchor: [13, 13],
+                popupAnchor: [0, -16]
+            });
+        }
+
+        async function initProfilFaskesMap() {
+            // Prevent re-initialization
+            if (profilFaskesMap) {
+                profilFaskesMap.invalidateSize();
+                return;
+            }
+
+            const mapContainer = document.getElementById('profil-faskes-map');
+            if (!mapContainer) return;
+
+            // Initialize Leaflet map centered on Jember/Lumajang area
+            profilFaskesMap = L.map('profil-faskes-map', {
+                center: [-8.18, 113.5],
+                zoom: 10,
+                zoomControl: true
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(profilFaskesMap);
+
+            // Fetch data from spreadsheet
+            try {
+                const res = await fetch(PROFIL_FASKES_SHEET_URL);
+                const csvText = await res.text();
+                const rows = parseCSV(csvText);
+
+                profilFaskesData = [];
+                let num = 1;
+
+                rows.forEach(row => {
+                    const link = row['Link Gmaps'] || '';
+                    const nmppk = row['NMPPK'] || '';
+                    const jenisFaskes = row['Jenis Faskes'] || '';
+                    const tipeFaskes = row['TIPEFASKES'] || '';
+                    const kabupaten = row['NMDATI2'] || '';
+                    const kecamatan = row['NMKEC'] || '';
+                    const alamat = row['NMJLNPPK'] || '';
+
+                    if (!link || !nmppk) return;
+
+                    const coords = extractCoordsFromGmapsLink(link);
+                    if (!coords) return;
+
+                    profilFaskesData.push({
+                        num: num,
+                        nmppk: nmppk,
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        jenisFaskes: jenisFaskes,
+                        tipeFaskes: tipeFaskes,
+                        kabupaten: kabupaten,
+                        kecamatan: kecamatan,
+                        alamat: alamat,
+                        gmapsLink: link
+                    });
+                    num++;
+                });
+
+                // Add markers to map
+                const bounds = [];
+                profilFaskesData.forEach(item => {
+                    const marker = L.marker([item.lat, item.lng], {
+                        icon: createNumberedIcon(item.num)
+                    }).addTo(profilFaskesMap);
+
+                    marker.bindPopup(
+                        '<div style="font-family:Inter,sans-serif; min-width:200px;">' +
+                        '<div style="font-size:14px; font-weight:700; color:#1E293B; margin-bottom:6px;">' + item.num + '. ' + item.nmppk + '</div>' +
+                        '<div style="font-size:12px; color:#475569; line-height:1.6;">' +
+                        '<b>Jenis:</b> ' + item.jenisFaskes + ' — ' + item.tipeFaskes + '<br>' +
+                        '<b>Kabupaten:</b> ' + item.kabupaten + '<br>' +
+                        '<b>Kecamatan:</b> ' + item.kecamatan + '<br>' +
+                        '<b>Alamat:</b> ' + item.alamat + '<br>' +
+                        '<a href="' + item.gmapsLink + '" target="_blank" style="color:#2563EB; text-decoration:none; font-weight:600;">📍 Buka di Google Maps</a>' +
+                        '</div></div>'
+                    );
+
+                    profilFaskesMarkers.push(marker);
+                    bounds.push([item.lat, item.lng]);
+                });
+
+                // Fit map to bounds
+                if (bounds.length > 0) {
+                    profilFaskesMap.fitBounds(bounds, { padding: [30, 30] });
+                }
+
+                // Build legend
+                renderFaskesLegend(profilFaskesData);
+
+            } catch (err) {
+                console.error('Error loading Profil Faskes data:', err);
+                document.getElementById('legend-list').innerHTML = '<div style="text-align:center; color:#EF4444; padding:20px 0;">Gagal memuat data faskes. Periksa koneksi internet.</div>';
+            }
+        }
+
+        function renderFaskesLegend(data) {
+            const legendList = document.getElementById('legend-list');
+            const legendCount = document.getElementById('legend-count');
+            if (!legendList) return;
+
+            legendCount.textContent = data.length + ' faskes';
+
+            if (data.length === 0) {
+                legendList.innerHTML = '<div style="text-align:center; color:#94A3B8; padding:20px 0;">Tidak ada data faskes ditemukan.</div>';
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                html += '<div class="legend-item" data-num="' + item.num + '" onclick="focusMarker(' + item.num + ')" style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background 0.15s ease; border-bottom:1px solid #F1F5F9;" onmouseenter="this.style.background=\'#EFF6FF\'" onmouseleave="this.style.background=\'transparent\'">' +
+                    '<div style="min-width:26px; height:26px; background:#2563EB; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">' + item.num + '</div>' +
+                    '<div style="flex:1; min-width:0;">' +
+                    '<div style="font-weight:600; color:#1E293B; font-size:12px; word-wrap:break-word;">' + item.nmppk + '</div>' +
+                    '<div style="font-size:11px; color:#94A3B8; margin-top:2px;">' + item.tipeFaskes + ' • ' + item.kabupaten + '</div>' +
+                    '</div></div>';
+            });
+            legendList.innerHTML = html;
+        }
+
+        function focusMarker(num) {
+            const item = profilFaskesData.find(d => d.num === num);
+            const marker = profilFaskesMarkers[num - 1];
+            if (item && marker && profilFaskesMap) {
+                profilFaskesMap.setView([item.lat, item.lng], 15, { animate: true });
+                marker.openPopup();
+            }
+        }
+
+        function filterLegend(query) {
+            const q = query.toLowerCase();
+            const items = document.querySelectorAll('#legend-list .legend-item');
+            let visibleCount = 0;
+            items.forEach(el => {
+                const text = el.textContent.toLowerCase();
+                if (text.includes(q)) {
+                    el.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+            const countEl = document.getElementById('legend-count');
+            if (countEl) countEl.textContent = visibleCount + ' faskes';
         }
 
         document.addEventListener('DOMContentLoaded', checkSessionOnLoad);
