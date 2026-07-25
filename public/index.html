@@ -3491,16 +3491,6 @@
                 ctx.font = 'normal 38px Arial, sans-serif';
                 ctx.fillText(subtitleText, 1920, 150);
 
-                // Header Right Branding
-                ctx.fillStyle = '#02628A';
-                ctx.font = 'extrabold 44px Arial, sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText('SAPA YANFASKES', startX + fullWidth - 40, 92);
-                ctx.fillStyle = '#64748B';
-                ctx.font = 'bold 24px Arial, sans-serif';
-                ctx.fillText('BPJS KESEHATAN', startX + fullWidth - 40, 140);
-                ctx.textAlign = 'left';
-
                 // 6. Draw 4K Map Canvas Area (3720px x 1860px)
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
@@ -3516,6 +3506,16 @@
 
                 // Draw 16:9 map tiles
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
+
+                // Watermark Text in Center of Map (Grey opacity 70%)
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(100, 116, 139, 0.7)';
+                ctx.font = 'bold 34px Arial, sans-serif';
+                ctx.fillText('SAPA Yanfaskes', mapAreaX + (mapAreaW / 2), mapAreaY + (mapAreaH / 2) - 15);
+                ctx.font = 'normal 24px Arial, sans-serif';
+                ctx.fillText('Powered by BPJS Kesehatan Cabang Jember', mapAreaX + (mapAreaW / 2), mapAreaY + (mapAreaH / 2) + 25);
+                ctx.restore();
 
                 // 7. Cluster & De-conflict Markers with Multi-Ring Spiral Spiderfy + 25-Pass Dual Repulsion
                 const clusters = [];
