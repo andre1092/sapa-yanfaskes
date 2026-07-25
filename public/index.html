@@ -1102,6 +1102,7 @@
         }
 
         function switchNav(page) {
+            localStorage.setItem('sapa_active_page', page);
             document.querySelectorAll('.nav-item, .nav-group-header, .submenu-item').forEach(el => el.classList.remove('active'));
             
             document.getElementById('page-home').style.display = 'none';
@@ -2859,8 +2860,11 @@
 
             // Direct instant login verification
             if (u === 'admin' && p === '123456') {
+                localStorage.setItem('sapa_is_logged_in', 'true');
                 document.getElementById('login-modal').style.display = 'none';
                 document.getElementById('app-layout').style.display = 'block';
+                const savedPage = localStorage.getItem('sapa_active_page') || 'home';
+                switchNav(savedPage);
                 setTimeout(initCharts, 50);
                 return;
             }
@@ -2873,8 +2877,11 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    localStorage.setItem('sapa_is_logged_in', 'true');
                     document.getElementById('login-modal').style.display = 'none';
                     document.getElementById('app-layout').style.display = 'block';
+                    const savedPage = localStorage.getItem('sapa_active_page') || 'home';
+                    switchNav(savedPage);
                     setTimeout(initCharts, 50);
                 } else {
                     document.getElementById('login-error').style.display = 'block';
@@ -2885,9 +2892,27 @@
         }
 
         function doLogout() {
+            localStorage.removeItem('sapa_is_logged_in');
+            localStorage.removeItem('sapa_active_page');
             document.getElementById('app-layout').style.display = 'none';
             document.getElementById('login-modal').style.display = 'flex';
         }
+
+        function checkSessionOnLoad() {
+            const isLoggedIn = localStorage.getItem('sapa_is_logged_in') === 'true';
+            if (isLoggedIn) {
+                document.getElementById('login-modal').style.display = 'none';
+                document.getElementById('app-layout').style.display = 'block';
+                const savedPage = localStorage.getItem('sapa_active_page') || 'home';
+                switchNav(savedPage);
+                setTimeout(initCharts, 50);
+            } else {
+                document.getElementById('login-modal').style.display = 'flex';
+                document.getElementById('app-layout').style.display = 'none';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkSessionOnLoad);
 
         async function loadSheetsData() {
             const url = document.getElementById('sheets-url').value;
