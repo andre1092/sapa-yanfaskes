@@ -308,11 +308,20 @@
                                 <option value="(All)">(All) Semua Jenis Faskes</option>
                             </select>
                         </div>
-                        <div>
-                            <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Tipe Faskes:</label>
-                            <select id="flt-profil-tipe-faskes" onchange="applyProfilFaskesFilter()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
-                                <option value="(All)">(All) Semua Tipe Faskes</option>
-                            </select>
+                        <div style="position:relative; width:260px;">
+                            <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Tipe Faskes (Multiselect):</label>
+                            <div id="tipe-faskes-dropdown-btn" onclick="toggleTipeFaskesDropdown(event)" style="width:100%; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; box-sizing:border-box; user-select:none;">
+                                <span id="tipe-faskes-btn-label" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">(All) Semua Tipe Faskes</span>
+                                <span style="font-size:10px; color:#64748B; margin-left:6px;">▼</span>
+                            </div>
+                            <div id="tipe-faskes-dropdown-menu" onclick="event.stopPropagation()" style="display:none; position:absolute; top:100%; left:0; right:0; margin-top:4px; background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.15); max-height:220px; overflow-y:auto; z-index:1000; padding:6px 0;">
+                                <label style="display:flex; align-items:center; gap:8px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:600; color:#1E293B; user-select:none;" onmouseenter="this.style.background='#F1F5F9'" onmouseleave="this.style.background='transparent'">
+                                    <input type="checkbox" id="chk-tipe-all" checked onchange="toggleAllTipeFaskes(this.checked)">
+                                    <span>(All) Semua Tipe Faskes</span>
+                                </label>
+                                <div style="border-top:1px solid #E2E8F0; margin:4px 0;"></div>
+                                <div id="tipe-faskes-options-container"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -3206,6 +3215,78 @@
             }
         }
 
+        // ==========================================
+        // MULTISELECT TIPE FASKES FILTER LOGIC
+        // ==========================================
+        function toggleTipeFaskesDropdown(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('tipe-faskes-dropdown-menu');
+            if (menu) {
+                menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('tipe-faskes-dropdown-menu');
+            const btn = document.getElementById('tipe-faskes-dropdown-btn');
+            if (dropdown && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        function toggleAllTipeFaskes(checked) {
+            const container = document.getElementById('tipe-faskes-options-container');
+            if (container) {
+                const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(chk => { chk.checked = checked; });
+            }
+            updateTipeFaskesBtnLabel();
+            applyProfilFaskesFilter();
+        }
+
+        function onTipeOptionChange() {
+            const container = document.getElementById('tipe-faskes-options-container');
+            const chkAll = document.getElementById('chk-tipe-all');
+            if (container && chkAll) {
+                const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+                const allChecked = checkboxes.length > 0 && checkboxes.every(chk => chk.checked);
+                chkAll.checked = allChecked;
+            }
+            updateTipeFaskesBtnLabel();
+            applyProfilFaskesFilter();
+        }
+
+        function updateTipeFaskesBtnLabel() {
+            const label = document.getElementById('tipe-faskes-btn-label');
+            if (!label) return;
+
+            const selected = getSelectedTipeFaskes();
+            if (selected.length === 0 || selected.includes('(All)')) {
+                label.textContent = '(All) Semua Tipe Faskes';
+            } else if (selected.length === 1) {
+                label.textContent = selected[0];
+            } else {
+                label.textContent = `${selected.length} Tipe Terpilih`;
+            }
+        }
+
+        function getSelectedTipeFaskes() {
+            const chkAll = document.getElementById('chk-tipe-all');
+            if (chkAll && chkAll.checked) {
+                return ['(All)'];
+            }
+            const container = document.getElementById('tipe-faskes-options-container');
+            if (!container) return ['(All)'];
+
+            const selected = [];
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(chk => {
+                if (chk.checked) selected.push(chk.value);
+            });
+
+            return selected.length > 0 ? selected : ['(All)'];
+        }
+
         function populateProfilFilters() {
             // Populate Kabupaten
             const kabSelect = document.getElementById('flt-profil-kabupaten');
@@ -3237,36 +3318,39 @@
                 jenisSelect.innerHTML = html;
             }
 
-            // Populate Tipe Faskes (from NMTYPEPPK)
-            const tipeSelect = document.getElementById('flt-profil-tipe-faskes');
-            if (tipeSelect) {
+            // Populate Tipe Faskes Multiselect Options (from NMTYPEPPK)
+            const tipeContainer = document.getElementById('tipe-faskes-options-container');
+            if (tipeContainer) {
                 const tipeSet = new Set();
                 profilFaskesAllData.forEach(d => {
                     if (d.tipeFaskes) tipeSet.add(d.tipeFaskes);
                 });
                 const sortedTipe = Array.from(tipeSet).sort();
-                let html = '<option value="(All)">(All) Semua Tipe Faskes</option>';
+                let html = '';
                 sortedTipe.forEach(t => {
-                    html += '<option value="' + t + '">' + t + '</option>';
+                    html += '<label style="display:flex; align-items:center; gap:8px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:500; color:#334155; user-select:none;" onmouseenter="this.style.background=\'#F8FAFC\'" onmouseleave="this.style.background=\'transparent\'">' +
+                            '<input type="checkbox" value="' + t + '" checked onchange="onTipeOptionChange()">' +
+                            '<span>' + t + '</span>' +
+                            '</label>';
                 });
-                tipeSelect.innerHTML = html;
+                tipeContainer.innerHTML = html;
+                updateTipeFaskesBtnLabel();
             }
         }
 
         function applyProfilFaskesFilter() {
             const kabSelect = document.getElementById('flt-profil-kabupaten');
             const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
-            const tipeSelect = document.getElementById('flt-profil-tipe-faskes');
 
             const selectedKab = kabSelect ? kabSelect.value : '(All)';
             const selectedJenis = jenisSelect ? jenisSelect.value : '(All)';
-            const selectedTipe = tipeSelect ? tipeSelect.value : '(All)';
+            const selectedTipes = getSelectedTipeFaskes();
 
-            // Filter data by Kabupaten, Jenis Faskes, and Tipe Faskes
+            // Filter data by Kabupaten, Jenis Faskes, and Multiselect Tipe Faskes
             const filtered = profilFaskesAllData.filter(d => {
                 const matchKab = (selectedKab === '(All)' || d.kabupaten === selectedKab);
                 const matchJenis = (selectedJenis === '(All)' || d.jenisFaskes === selectedJenis);
-                const matchTipe = (selectedTipe === '(All)' || d.tipeFaskes === selectedTipe);
+                const matchTipe = (selectedTipes.includes('(All)') || selectedTipes.includes(d.tipeFaskes));
                 return matchKab && matchJenis && matchTipe;
             });
 
@@ -3355,7 +3439,7 @@
         }
 
         // ==========================================
-        // EXPORT PROFIL FASKES MAP & LEGEND (DYNAMIC LANDSCAPE EXPORT - LEGENDA BELOW MAP)
+        // EXPORT PROFIL FASKES MAP & LEGEND (SMART ADAPTIVE FLOATING VS BELOW MAP)
         // ==========================================
         async function exportProfilFaskesMapJPEG() {
             const btn = document.getElementById('btn-export-map');
@@ -3380,13 +3464,17 @@
             try {
                 const kabSelect = document.getElementById('flt-profil-kabupaten');
                 const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
-                const tipeSelect = document.getElementById('flt-profil-tipe-faskes');
+                const selectedTipes = getSelectedTipeFaskes();
+
                 const kabVal = kabSelect ? kabSelect.value : '(All)';
                 const jenisVal = jenisSelect ? jenisSelect.value : '(All)';
-                const tipeVal = tipeSelect ? tipeSelect.value : '(All)';
 
                 let jenisLabel = (jenisVal && jenisVal !== '(All)') ? jenisVal : '';
-                let tipeLabel = (tipeVal && tipeVal !== '(All)') ? tipeVal : '';
+                let tipeLabel = '';
+                if (!selectedTipes.includes('(All)')) {
+                    if (selectedTipes.length === 1) tipeLabel = selectedTipes[0];
+                    else if (selectedTipes.length > 1) tipeLabel = selectedTipes.join(', ');
+                }
                 let kabLabel = (kabVal && kabVal !== '(All)') ? kabVal : '';
 
                 let mainTypeLabel = 'Fasilitas Kesehatan';
@@ -3401,7 +3489,7 @@
                 let titleText = `Peta Sebaran ${mainTypeLabel} ${kabLabel}`.replace(/\s+/g, ' ').trim();
                 let subtitleText = `Total ${mainTypeLabel} : ${profilFaskesData.length} Faskes`;
 
-                // 1. Temporarily resize container to 16:9 aspect ratio for map capture
+                // 1. Resize for capture
                 const currentW = mapEl.clientWidth || 1000;
                 const mapRatio = 16 / 9;
                 const targetH = Math.round(currentW / mapRatio);
@@ -3409,7 +3497,6 @@
                 mapEl.style.height = `${targetH}px`;
                 mapEl.style.minHeight = `${targetH}px`;
 
-                // Force Leaflet to recalculate container bounds & fit all markers
                 if (profilFaskesMap) {
                     profilFaskesMap.invalidateSize({ animate: false });
                     if (profilFaskesData && profilFaskesData.length > 0) {
@@ -3424,7 +3511,7 @@
 
                 await new Promise(r => setTimeout(r, 400));
 
-                // 2. Hide web controls (+/- zoom, attribution, marker/popup pane) for pure GIS map canvas
+                // 2. Hide web controls
                 const zoomControl = mapEl.querySelector('.leaflet-control-zoom');
                 const attribControl = mapEl.querySelector('.leaflet-control-attribution');
                 const markerPane = mapEl.querySelector('.leaflet-marker-pane');
@@ -3442,31 +3529,86 @@
                     logging: false
                 });
 
-                // Calculate required legend columns & rows
                 const count = profilFaskesData.length;
-                let legCols = 2;
-                if (count <= 15) legCols = 2;
-                else if (count <= 36) legCols = 3;
-                else if (count <= 75) legCols = 4;
-                else if (count <= 120) legCols = 5;
-                else legCols = 6;
 
-                const itemsPerCol = Math.ceil(count / legCols);
-                const legItemRowH = 46;
-                const legH = 90 + (itemsPerCol * legItemRowH);
-
-                // Calculate required canvas height & scale canvas width proportionally to GUARANTEE LANDSCAPE RATIO!
+                // Base coordinates & dimension setup
                 const baseMapW = 3720;
                 const baseMapH = Math.round(baseMapW / (16 / 9)); // 2092px
                 const headerH = 160;
                 const startX = 60;
                 const mapAreaY = 210;
 
-                const baseReqHeight = mapAreaY + baseMapH + 40 + legH + 60;
+                const containerW = mapEl.clientWidth || 1000;
+                const containerH = mapEl.clientHeight || 562;
 
-                // Enforce minimum 1.45 : 1 Landscape Ratio (Width = Height * 1.45)
+                // Calculate projected points
+                const tempMapAreaW = baseMapW;
+                const tempMapAreaH = baseMapH;
+                const scaleXTemp = (tempMapAreaW - 8) / containerW;
+                const scaleYTemp = (tempMapAreaH - 8) / containerH;
+
+                const projected = profilFaskesData.map(item => {
+                    const pt = profilFaskesMap.latLngToContainerPoint([item.lat, item.lng]);
+                    let cx = startX + 4 + (pt.x * scaleXTemp);
+                    let cy = mapAreaY + 4 + (pt.y * scaleYTemp);
+                    return { ...item, origX: cx, origY: cy, x: cx, y: cy - 50 };
+                });
+
+                // SMART ADAPTIVE LEGEND DECISION
+                let useFloatingInsideMap = false;
+                let floatLegX = 0, floatLegY = 0, floatLegW = 0, floatLegH = 0;
+                let floatLegCols = 1;
+
+                if (count <= 18 && count > 0) {
+                    if (count > 8) floatLegCols = 2;
+                    const floatColW = 460;
+                    floatLegW = Math.min(1100, (floatLegCols * floatColW) + 50);
+                    const floatItemsPerCol = Math.ceil(count / floatLegCols);
+                    floatLegH = 85 + (floatItemsPerCol * 44);
+
+                    // Candidate Bottom-Right
+                    floatLegX = startX + baseMapW - floatLegW - 40;
+                    floatLegY = mapAreaY + baseMapH - floatLegH - 40;
+
+                    let covers = projected.some(item => {
+                        return (item.origX >= floatLegX - 35 && item.origX <= floatLegX + floatLegW + 35 &&
+                                item.origY >= floatLegY - 35 && item.origY <= floatLegY + floatLegH + 35);
+                    });
+
+                    // Candidate Top-Right if bottom-right has markers
+                    if (covers) {
+                        floatLegY = mapAreaY + 40;
+                        covers = projected.some(item => {
+                            return (item.origX >= floatLegX - 35 && item.origX <= floatLegX + floatLegW + 35 &&
+                                    item.origY >= floatLegY - 35 && item.origY <= floatLegY + floatLegH + 35);
+                        });
+                    }
+
+                    if (!covers) {
+                        useFloatingInsideMap = true;
+                    }
+                }
+
+                // Determine Canvas Dimensions
+                let legCols = 2;
+                let legH = 0;
+
+                if (!useFloatingInsideMap) {
+                    if (count <= 15) legCols = 2;
+                    else if (count <= 36) legCols = 3;
+                    else if (count <= 75) legCols = 4;
+                    else if (count <= 120) legCols = 5;
+                    else legCols = 6;
+
+                    const itemsPerCol = Math.ceil(count / legCols);
+                    const legItemRowH = 44; 
+                    legH = 90 + (itemsPerCol * legItemRowH);
+                }
+
+                const baseReqHeight = useFloatingInsideMap ? (mapAreaY + baseMapH + 60) : (mapAreaY + baseMapH + 40 + legH + 60);
+
                 let canvasWidth = 3840;
-                if (baseReqHeight > (canvasWidth / 1.45)) {
+                if (!useFloatingInsideMap && baseReqHeight > (canvasWidth / 1.45)) {
                     canvasWidth = Math.round(baseReqHeight * 1.45);
                 }
                 const canvasHeight = Math.max(2160, baseReqHeight);
@@ -3476,33 +3618,31 @@
                 const mapAreaW = fullWidth;
                 const mapAreaH = baseMapH;
 
-                const containerW = mapEl.clientWidth || 1000;
-                const containerH = mapEl.clientHeight || 562;
-
                 const scaleX = (mapAreaW - 8) / containerW;
                 const scaleY = (mapAreaH - 8) / containerH;
 
-                // Define strict boundary limits inside map box
                 const minBadgeX = mapAreaX + 50;
                 const maxBadgeX = mapAreaX + mapAreaW - 50;
                 const minBadgeY = mapAreaY + 50;
                 const maxBadgeY = mapAreaY + mapAreaH - 50;
 
-                const projected = profilFaskesData.map(item => {
+                // Update final projected badge positions
+                projected.forEach(item => {
                     const pt = profilFaskesMap.latLngToContainerPoint([item.lat, item.lng]);
                     let cx = mapAreaX + 4 + (pt.x * scaleX);
                     let cy = mapAreaY + 4 + (pt.y * scaleY);
-
                     cx = Math.max(minBadgeX, Math.min(maxBadgeX, cx));
                     cy = Math.max(minBadgeY, Math.min(maxBadgeY, cy));
-
                     let badgeY = cy - 50;
                     if (badgeY < minBadgeY) badgeY = cy + 50;
 
-                    return { ...item, origX: cx, origY: cy, x: cx, y: badgeY };
+                    item.origX = cx;
+                    item.origY = cy;
+                    item.x = cx;
+                    item.y = badgeY;
                 });
 
-                // Restore Leaflet container styles & web controls
+                // Restore Leaflet
                 mapEl.style.height = origHeight;
                 mapEl.style.minHeight = origMinHeight;
                 mapEl.style.width = origWidth;
@@ -3519,36 +3659,30 @@
                     profilFaskesMap.invalidateSize({ animate: false });
                 }
 
-                // 4. Create target high-res landscape canvas
+                // 4. Create target high-res canvas
                 const canvas = document.createElement('canvas');
                 canvas.width = canvasWidth;
                 canvas.height = canvasHeight;
                 const ctx = canvas.getContext('2d');
-
-                // Fill background
                 ctx.fillStyle = '#F8FAFC';
                 ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-                // 5. Draw Layout Header Box
+                // Header Box
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(startX, 30, fullWidth, headerH);
                 ctx.strokeStyle = '#CBD5E1';
                 ctx.lineWidth = 3.5;
                 ctx.strokeRect(startX, 30, fullWidth, headerH);
-
-                // Header Title - CENTERED, BOLD Arial Font!
                 const centerX = canvasWidth / 2;
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#1E293B';
                 ctx.font = 'bold 64px Arial, sans-serif';
                 ctx.fillText(titleText, centerX, 95);
-
-                // Header Subtitle - CENTERED, NORMAL (NOT BOLD) Arial Font!
                 ctx.fillStyle = '#475569';
                 ctx.font = 'normal 38px Arial, sans-serif';
                 ctx.fillText(subtitleText, centerX, 150);
 
-                // 6. Draw Map Canvas Area
+                // Map Canvas Area
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
                 ctx.strokeStyle = '#CBD5E1';
@@ -3559,11 +3693,8 @@
                 ctx.beginPath();
                 ctx.rect(mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
                 ctx.clip();
-
-                // Draw 16:9 map tiles
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
 
-                // Watermark Text at Bottom-Center INSIDE Map Box
                 ctx.save();
                 ctx.textAlign = 'center';
                 ctx.fillStyle = 'rgba(51, 65, 85, 0.85)';
@@ -3573,7 +3704,7 @@
                 ctx.fillText('Powered by BPJS Kesehatan Cabang Jember', centerX, mapAreaY + mapAreaH - 22);
                 ctx.restore();
 
-                // 7. Cluster & De-conflict Markers
+                // Cluster & Render
                 const clusters = [];
                 const visited = new Set();
                 projected.forEach((item, i) => {
@@ -3603,11 +3734,6 @@
                     }
                 });
 
-                // 25-Pass Dual Repulsion Loop
-                const badgeRadius = 32;
-                const minBadgeDist = 84;
-                const minPinDist = 65;
-
                 for (let pass = 0; pass < 25; pass++) {
                     for (let i = 0; i < projected.length; i++) {
                         for (let j = i + 1; j < projected.length; j++) {
@@ -3616,8 +3742,8 @@
                             const dx = p2.x - p1.x;
                             const dy = p2.y - p1.y;
                             const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
-                            if (dist < minBadgeDist) {
-                                const overlap = (minBadgeDist - dist) / 2;
+                            if (dist < 84) {
+                                const overlap = (84 - dist) / 2;
                                 const nx = dx / dist;
                                 const ny = dy / dist;
                                 p1.x -= nx * overlap;
@@ -3627,30 +3753,12 @@
                             }
                         }
                     }
-                    for (let i = 0; i < projected.length; i++) {
-                        for (let j = 0; j < projected.length; j++) {
-                            const p1 = projected[i];
-                            const pinX = projected[j].origX;
-                            const pinY = projected[j].origY;
-                            const dx = p1.x - pinX;
-                            const dy = p1.y - pinY;
-                            const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
-                            if (dist < minPinDist) {
-                                const overlap = minPinDist - dist;
-                                const nx = dx / dist;
-                                const ny = dy / dist;
-                                p1.x += nx * overlap;
-                                p1.y += ny * overlap;
-                            }
-                        }
-                    }
                     projected.forEach(item => {
                         item.x = Math.max(minBadgeX, Math.min(maxBadgeX, item.x));
                         item.y = Math.max(minBadgeY, Math.min(maxBadgeY, item.y));
                     });
                 }
 
-                // Render badge lines & badges
                 projected.forEach(item => {
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 8;
@@ -3663,7 +3771,7 @@
                     ctx.fillStyle = '#EF4444';
                     ctx.beginPath(); ctx.arc(item.origX, item.origY, 9, 0, 2 * Math.PI); ctx.fill();
                     ctx.fillStyle = '#2563EB';
-                    ctx.beginPath(); ctx.arc(item.x, item.y, badgeRadius, 0, 2 * Math.PI); ctx.fill();
+                    ctx.beginPath(); ctx.arc(item.x, item.y, 32, 0, 2 * Math.PI); ctx.fill();
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 3.5;
                     ctx.stroke();
@@ -3674,7 +3782,7 @@
                     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
                 });
 
-                // 8. Draw Compass & Scale Bar
+                // Compass & Scale Bar
                 const compX = mapAreaX + 80;
                 const compY = mapAreaY + mapAreaH - 90;
                 ctx.fillStyle = '#FFFFFF';
@@ -3684,13 +3792,10 @@
                 ctx.strokeStyle = '#1E293B'; ctx.lineWidth = 3; ctx.stroke();
                 ctx.fillStyle = '#1E293B'; ctx.font = 'extrabold 26px Arial, sans-serif';
                 ctx.textAlign = 'center'; ctx.fillText('N', compX, compY - 52);
-                
                 ctx.fillStyle = '#EF4444';
                 ctx.beginPath(); ctx.moveTo(compX, compY - 30); ctx.lineTo(compX, compY); ctx.lineTo(compX + 11, compY + 6); ctx.closePath(); ctx.fill();
                 ctx.fillStyle = '#1E293B';
                 ctx.beginPath(); ctx.moveTo(compX, compY - 30); ctx.lineTo(compX, compY); ctx.lineTo(compX - 11, compY + 6); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = '#94A3B8';
-                ctx.beginPath(); ctx.moveTo(compX, compY + 28); ctx.lineTo(compX - 7, compY + 3); ctx.lineTo(compX + 7, compY + 3); ctx.closePath(); ctx.fill();
                 ctx.textAlign = 'left';
 
                 if (profilFaskesMap) {
@@ -3705,8 +3810,7 @@
                     else if (testM < 1800) scaleMeters = 1000;
                     else if (testM < 3800) scaleMeters = 2000;
                     else if (testM < 7500) scaleMeters = 5000;
-                    else if (testM < 18000) scaleMeters = 10000;
-                    else scaleMeters = 50000;
+                    else scaleMeters = 10000;
                     const scaleBarPx = (scaleMeters / (metersPerPx || 1)) * scaleX;
                     const scaleStr = scaleMeters >= 1000 ? `${scaleMeters / 1000} km` : `${scaleMeters} m`;
                     const scaleXPos = compX + 70;
@@ -3716,70 +3820,114 @@
                     ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 2; ctx.strokeRect(scaleXPos, scaleYPos - 32, scaleBarPx + 40, 54);
                     ctx.strokeStyle = '#1E293B'; ctx.lineWidth = 4;
                     ctx.beginPath(); ctx.moveTo(scaleXPos + 20, scaleYPos); ctx.lineTo(scaleXPos + 20 + scaleBarPx, scaleYPos);
-                    ctx.moveTo(scaleXPos + 20, scaleYPos - 7); ctx.lineTo(scaleXPos + 20, scaleYPos + 7);
-                    ctx.moveTo(scaleXPos + 20 + scaleBarPx, scaleYPos - 7); ctx.lineTo(scaleXPos + 20 + scaleBarPx, scaleYPos + 7);
                     ctx.stroke();
                     ctx.fillStyle = '#1E293B'; ctx.font = 'bold 18px Arial, sans-serif'; ctx.textAlign = 'center';
                     ctx.fillText('0', scaleXPos + 20, scaleYPos - 10); ctx.fillText(scaleStr, scaleXPos + 20 + scaleBarPx, scaleYPos - 10); ctx.textAlign = 'left';
                 }
 
+                // OPTION A: IF FEW FASKES -> RENDER FLOATING LEGEND CARD INSIDE MAP
+                if (useFloatingInsideMap) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                    ctx.shadowBlur = 24;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(floatLegX, floatLegY, floatLegW, floatLegH, 18);
+                    else ctx.fillRect(floatLegX, floatLegY, floatLegW, floatLegH);
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
+                    ctx.strokeStyle = '#CBD5E1';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(floatLegX, floatLegY, floatLegW, floatLegH, 18);
+                    else ctx.strokeRect(floatLegX, floatLegY, floatLegW, floatLegH);
+                    ctx.stroke();
+                    ctx.fillStyle = '#1E293B';
+                    ctx.font = 'bold 32px Arial, sans-serif';
+                    ctx.fillText('📋 LEGENDA', floatLegX + 25, floatLegY + 44);
+                    ctx.fillStyle = '#2563EB';
+                    ctx.font = 'bold 26px Arial, sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`${count} Faskes`, floatLegX + floatLegW - 25, floatLegY + 44);
+                    ctx.textAlign = 'left';
+                    ctx.strokeStyle = '#E2E8F0';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(floatLegX + 25, floatLegY + 62); ctx.lineTo(floatLegX + floatLegW - 25, floatLegY + 62); ctx.stroke();
+
+                    const floatItemsPerCol = Math.ceil(count / floatLegCols);
+                    profilFaskesData.forEach((item, idx) => {
+                        const cIdx = Math.floor(idx / floatItemsPerCol);
+                        const rIdx = idx % floatItemsPerCol;
+                        const ix = floatLegX + 25 + (cIdx * 460);
+                        const iy = floatLegY + 80 + (rIdx * 44);
+                        const circleR = 14;
+                        const circleX = ix + circleR;
+                        const circleY = iy + circleR + 2;
+                        ctx.fillStyle = '#2563EB';
+                        ctx.beginPath(); ctx.arc(circleX, circleY, circleR, 0, 2 * Math.PI); ctx.fill();
+                        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+                        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 16px Arial, sans-serif';
+                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        ctx.fillText(item.num.toString(), circleX, circleY);
+                        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+                        const tx = ix + (circleR * 2) + 12;
+                        ctx.fillStyle = '#1E293B';
+                        ctx.font = 'bold 22px Arial, sans-serif';
+                        ctx.fillText(item.nmppk, tx, iy + 22);
+                    });
+                }
+
                 ctx.restore();
 
-                // 9. Draw LEGENDA BOX BELOW THE MAP
-                const legAreaX = startX;
-                const legAreaY = mapAreaY + mapAreaH + 40;
-                const legAreaW = fullWidth;
+                // OPTION B: IF MANY FASKES -> RENDER LEGENDA BOX BELOW THE MAP
+                if (!useFloatingInsideMap) {
+                    const legAreaX = startX;
+                    const legAreaY = mapAreaY + mapAreaH + 40;
+                    const legAreaW = fullWidth;
 
-                ctx.fillStyle = '#FFFFFF';
-                ctx.strokeStyle = '#CBD5E1';
-                ctx.lineWidth = 3.5;
-                ctx.beginPath();
-                if (ctx.roundRect) ctx.roundRect(legAreaX, legAreaY, legAreaW, legH, 18);
-                else ctx.fillRect(legAreaX, legAreaY, legAreaW, legH);
-                ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = '#CBD5E1';
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(legAreaX, legAreaY, legAreaW, legH, 18);
+                    else ctx.fillRect(legAreaX, legAreaY, legAreaW, legH);
+                    ctx.fill(); ctx.stroke();
 
-                ctx.fillStyle = '#1E293B';
-                ctx.font = 'bold 34px Arial, sans-serif';
-                ctx.fillText('📋 LEGENDA', legAreaX + 35, legAreaY + 48);
-                ctx.fillStyle = '#2563EB';
-                ctx.font = 'bold 28px Arial, sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText(`${count} Faskes`, legAreaX + legAreaW - 35, legAreaY + 48);
-                ctx.textAlign = 'left';
-
-                ctx.strokeStyle = '#E2E8F0';
-                ctx.lineWidth = 2.5;
-                ctx.beginPath(); ctx.moveTo(legAreaX + 35, legAreaY + 68); ctx.lineTo(legAreaX + legAreaW - 35, legAreaY + 68); ctx.stroke();
-
-                const colW = Math.floor((legAreaW - 70) / legCols);
-                profilFaskesData.forEach((item, idx) => {
-                    const cIdx = Math.floor(idx / itemsPerCol);
-                    const rIdx = idx % itemsPerCol;
-                    const ix = legAreaX + 35 + (cIdx * colW);
-                    const iy = legAreaY + 88 + (rIdx * legItemRowH);
-                    const circleR = 15;
-                    const circleX = ix + circleR;
-                    const circleY = iy + circleR + 2;
-
-                    ctx.fillStyle = '#2563EB';
-                    ctx.beginPath(); ctx.arc(circleX, circleY, circleR, 0, 2 * Math.PI); ctx.fill();
-                    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
-                    ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 18px Arial, sans-serif';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText(item.num.toString(), circleX, circleY);
-                    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-
-                    const tx = ix + (circleR * 2) + 12;
                     ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 22px Arial, sans-serif';
-                    let nameText = item.nmppk;
-                    const maxTextW = colW - (circleR * 2) - 25;
-                    if (ctx.measureText(nameText).width > maxTextW) {
-                        while (nameText.length > 3 && ctx.measureText(nameText + '...').width > maxTextW) nameText = nameText.substring(0, nameText.length - 1);
-                        nameText += '...';
-                    }
-                    ctx.fillText(nameText, tx, iy + 22);
-                });
+                    ctx.font = 'bold 34px Arial, sans-serif';
+                    ctx.fillText('📋 LEGENDA', legAreaX + 35, legAreaY + 48);
+                    ctx.fillStyle = '#2563EB';
+                    ctx.font = 'bold 28px Arial, sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`${count} Faskes`, legAreaX + legAreaW - 35, legAreaY + 48);
+                    ctx.textAlign = 'left';
+                    ctx.strokeStyle = '#E2E8F0';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath(); ctx.moveTo(legAreaX + 35, legAreaY + 68); ctx.lineTo(legAreaX + legAreaW - 35, legAreaY + 68); ctx.stroke();
+
+                    const colW = Math.floor((legAreaW - 70) / legCols);
+                    const itemsPerCol = Math.ceil(count / legCols);
+
+                    profilFaskesData.forEach((item, idx) => {
+                        const cIdx = Math.floor(idx / itemsPerCol);
+                        const rIdx = idx % itemsPerCol;
+                        const ix = legAreaX + 35 + (cIdx * colW);
+                        const iy = legAreaY + 88 + (rIdx * 44);
+                        const circleR = 14;
+                        const circleX = ix + circleR;
+                        const circleY = iy + circleR + 2;
+                        ctx.fillStyle = '#2563EB';
+                        ctx.beginPath(); ctx.arc(circleX, circleY, circleR, 0, 2 * Math.PI); ctx.fill();
+                        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+                        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 15px Arial, sans-serif';
+                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        ctx.fillText(item.num.toString(), circleX, circleY);
+                        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+                        const tx = ix + (circleR * 2) + 12;
+                        ctx.fillStyle = '#1E293B';
+                        ctx.font = 'normal 20px Arial, sans-serif';
+                        ctx.fillText(item.nmppk, tx, iy + 22);
+                    });
+                }
 
                 // 10. Convert to DataURL & Trigger Download
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
