@@ -292,12 +292,20 @@
             <!-- PAGE: PROFIL FASKES (MAP VIEW) -->
             <div id="page-profil-faskes" style="display:none;">
                 <div style="background:#F8FAFC; border-radius:16px; padding:24px; color:#1E293B; box-shadow:0 10px 40px rgba(0,0,0,0.4); margin-bottom:24px;">
-                    <!-- KABUPATEN FILTER -->
-                    <div style="margin-bottom:16px;">
-                        <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Kabupaten:</label>
-                        <select id="flt-profil-kabupaten" onchange="applyProfilFaskesFilter()" style="width:280px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
-                            <option value="(All)">(All) Semua Kabupaten</option>
-                        </select>
+                    <!-- FILTER BAR (KABUPATEN & JENIS FASKES) -->
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Kabupaten:</label>
+                            <select id="flt-profil-kabupaten" onchange="applyProfilFaskesFilter()" style="width:240px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                                <option value="(All)">(All) Semua Kabupaten</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Jenis Faskes:</label>
+                            <select id="flt-profil-jenis-faskes" onchange="applyProfilFaskesFilter()" style="width:240px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                                <option value="(All)">(All) Semua Jenis Faskes</option>
+                            </select>
+                        </div>
                     </div>
 
                     <h1 style="font-size:22px; font-weight:800; color:#1E293B; margin:0 0 4px 0; letter-spacing:0.5px;">
@@ -3167,8 +3175,8 @@
                     });
                 });
 
-                // Populate kabupaten filter dropdown
-                populateProfilKabupatenFilter();
+                // Populate filter dropdowns (Kabupaten & Jenis Faskes)
+                populateProfilFilters();
 
                 // Apply filter (defaults to "(All)")
                 applyProfilFaskesFilter();
@@ -3179,34 +3187,51 @@
             }
         }
 
-        function populateProfilKabupatenFilter() {
-            const select = document.getElementById('flt-profil-kabupaten');
-            if (!select) return;
+        function populateProfilFilters() {
+            // Populate Kabupaten
+            const kabSelect = document.getElementById('flt-profil-kabupaten');
+            if (kabSelect) {
+                const kabSet = new Set();
+                profilFaskesAllData.forEach(d => {
+                    if (d.kabupaten) kabSet.add(d.kabupaten);
+                });
+                const sortedKabs = Array.from(kabSet).sort();
+                let html = '<option value="(All)">(All) Semua Kabupaten</option>';
+                sortedKabs.forEach(k => {
+                    html += '<option value="' + k + '">' + k + '</option>';
+                });
+                kabSelect.innerHTML = html;
+            }
 
-            const kabSet = new Set();
-            profilFaskesAllData.forEach(d => {
-                if (d.kabupaten) kabSet.add(d.kabupaten);
-            });
-
-            const sortedKabs = Array.from(kabSet).sort();
-            let html = '<option value="(All)">(All) Semua Kabupaten</option>';
-            sortedKabs.forEach(k => {
-                html += '<option value="' + k + '">' + k + '</option>';
-            });
-            select.innerHTML = html;
+            // Populate Jenis Faskes
+            const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
+            if (jenisSelect) {
+                const jenisSet = new Set();
+                profilFaskesAllData.forEach(d => {
+                    if (d.jenisFaskes) jenisSet.add(d.jenisFaskes);
+                });
+                const sortedJenis = Array.from(jenisSet).sort();
+                let html = '<option value="(All)">(All) Semua Jenis Faskes</option>';
+                sortedJenis.forEach(j => {
+                    html += '<option value="' + j + '">' + j + '</option>';
+                });
+                jenisSelect.innerHTML = html;
+            }
         }
 
         function applyProfilFaskesFilter() {
             const kabSelect = document.getElementById('flt-profil-kabupaten');
-            const selectedKab = kabSelect ? kabSelect.value : '(All)';
+            const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
 
-            // Filter data
-            let filtered;
-            if (selectedKab === '(All)') {
-                filtered = profilFaskesAllData.slice();
-            } else {
-                filtered = profilFaskesAllData.filter(d => d.kabupaten === selectedKab);
-            }
+            const selectedKab = kabSelect ? kabSelect.value : '(All)';
+            const selectedJenis = jenisSelect ? jenisSelect.value : '(All)';
+
+            // Filter data by both Kabupaten and Jenis Faskes
+            const filtered = profilFaskesAllData.filter(d => {
+                const matchKab = (selectedKab === '(All)' || d.kabupaten === selectedKab);
+                const matchJenis = (selectedJenis === '(All)' || d.jenisFaskes === selectedJenis);
+                return matchKab && matchJenis;
+            });
 
             // Renumber from 1
             profilFaskesData = filtered.map((item, idx) => ({
