@@ -298,13 +298,13 @@
                     <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
                         <div>
                             <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Kabupaten:</label>
-                            <select id="flt-profil-kabupaten" onchange="applyProfilFaskesFilter()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                            <select id="flt-profil-kabupaten" onchange="onParentFilterChange()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
                                 <option value="(All)">(All) Semua Kabupaten</option>
                             </select>
                         </div>
                         <div>
                             <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:6px;">Filter Jenis Faskes:</label>
-                            <select id="flt-profil-jenis-faskes" onchange="applyProfilFaskesFilter()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
+                            <select id="flt-profil-jenis-faskes" onchange="onParentFilterChange()" style="width:200px; padding:9px 12px; border:1px solid #CBD5E1; border-radius:8px; font-size:13px; font-weight:600; color:#1E293B; background:#FFFFFF; outline:none; cursor:pointer;">
                                 <option value="(All)">(All) Semua Jenis Faskes</option>
                             </select>
                         </div>
@@ -3203,10 +3203,7 @@
                     });
                 });
 
-                // Populate filter dropdowns (Kabupaten, Jenis Faskes, Tipe Faskes)
                 populateProfilFilters();
-
-                // Apply filter (defaults to "(All)")
                 applyProfilFaskesFilter();
 
             } catch (err) {
@@ -3215,9 +3212,6 @@
             }
         }
 
-        // ==========================================
-        // MULTISELECT TIPE FASKES FILTER LOGIC
-        // ==========================================
         function toggleTipeFaskesDropdown(e) {
             if (e) e.stopPropagation();
             const menu = document.getElementById('tipe-faskes-dropdown-menu');
@@ -3233,6 +3227,11 @@
                 dropdown.style.display = 'none';
             }
         });
+
+        function onParentFilterChange() {
+            updateTipeFaskesOptions();
+            applyProfilFaskesFilter();
+        }
 
         function toggleAllTipeFaskes(checked) {
             const container = document.getElementById('tipe-faskes-options-container');
@@ -3288,7 +3287,6 @@
         }
 
         function populateProfilFilters() {
-            // Populate Kabupaten
             const kabSelect = document.getElementById('flt-profil-kabupaten');
             if (kabSelect) {
                 const kabSet = new Set();
@@ -3303,7 +3301,6 @@
                 kabSelect.innerHTML = html;
             }
 
-            // Populate Jenis Faskes
             const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
             if (jenisSelect) {
                 const jenisSet = new Set();
@@ -3318,22 +3315,42 @@
                 jenisSelect.innerHTML = html;
             }
 
-            // Populate Tipe Faskes Multiselect Options (from NMTYPEPPK)
+            updateTipeFaskesOptions();
+        }
+
+        function updateTipeFaskesOptions() {
+            const kabSelect = document.getElementById('flt-profil-kabupaten');
+            const jenisSelect = document.getElementById('flt-profil-jenis-faskes');
+
+            const selectedKab = kabSelect ? kabSelect.value : '(All)';
+            const selectedJenis = jenisSelect ? jenisSelect.value : '(All)';
+
+            const availableTipeSet = new Set();
+            profilFaskesAllData.forEach(d => {
+                const matchKab = (selectedKab === '(All)' || d.kabupaten === selectedKab);
+                const matchJenis = (selectedJenis === '(All)' || d.jenisFaskes === selectedJenis);
+                if (matchKab && matchJenis && d.tipeFaskes) {
+                    availableTipeSet.add(d.tipeFaskes);
+                }
+            });
+
+            const sortedTipe = Array.from(availableTipeSet).sort();
+
             const tipeContainer = document.getElementById('tipe-faskes-options-container');
+            const chkAll = document.getElementById('chk-tipe-all');
+
             if (tipeContainer) {
-                const tipeSet = new Set();
-                profilFaskesAllData.forEach(d => {
-                    if (d.tipeFaskes) tipeSet.add(d.tipeFaskes);
-                });
-                const sortedTipe = Array.from(tipeSet).sort();
                 let html = '';
                 sortedTipe.forEach(t => {
+                    const badgeColor = getTipeFaskesColor(t);
                     html += '<label style="display:flex; align-items:center; gap:8px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:500; color:#334155; user-select:none;" onmouseenter="this.style.background=\'#F8FAFC\'" onmouseleave="this.style.background=\'transparent\'">' +
                             '<input type="checkbox" value="' + t + '" checked onchange="onTipeOptionChange()">' +
+                            '<span style="width:10px; height:10px; border-radius:50%; background:' + badgeColor + '; flex-shrink:0;"></span>' +
                             '<span>' + t + '</span>' +
                             '</label>';
                 });
                 tipeContainer.innerHTML = html;
+                if (chkAll) chkAll.checked = true;
                 updateTipeFaskesBtnLabel();
             }
         }
@@ -3346,7 +3363,6 @@
             const selectedJenis = jenisSelect ? jenisSelect.value : '(All)';
             const selectedTipes = getSelectedTipeFaskes();
 
-            // Filter data by Kabupaten, Jenis Faskes, and Multiselect Tipe Faskes
             const filtered = profilFaskesAllData.filter(d => {
                 const matchKab = (selectedKab === '(All)' || d.kabupaten === selectedKab);
                 const matchJenis = (selectedJenis === '(All)' || d.jenisFaskes === selectedJenis);
@@ -3354,23 +3370,20 @@
                 return matchKab && matchJenis && matchTipe;
             });
 
-            // Renumber from 1
             profilFaskesData = filtered.map((item, idx) => ({
                 ...item,
                 num: idx + 1
             }));
 
-            // Clear existing markers
             profilFaskesMarkers.forEach(m => {
                 if (profilFaskesMap) profilFaskesMap.removeLayer(m);
             });
             profilFaskesMarkers = [];
 
-            // Add new markers
             const bounds = [];
             profilFaskesData.forEach(item => {
                 const marker = L.marker([item.lat, item.lng], {
-                    icon: createNumberedIcon(item.num)
+                    icon: createNumberedIcon(item.num, item.tipeFaskes)
                 }).addTo(profilFaskesMap);
 
                 marker.bindPopup(
@@ -3389,16 +3402,13 @@
                 bounds.push([item.lat, item.lng]);
             });
 
-            // Fit map to bounds
             if (bounds.length > 0) {
                 profilFaskesMap.fitBounds(bounds, { padding: [30, 30] });
             }
 
-            // Clear search input
             const searchInput = document.getElementById('legend-search');
             if (searchInput) searchInput.value = '';
 
-            // Build legend
             renderFaskesLegend(profilFaskesData);
         }
 
@@ -3421,9 +3431,13 @@
 
             let html = '';
             data.forEach(item => {
+                const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                 html += '<div class="legend-item" data-num="' + item.num + '" onclick="focusMarker(' + item.num + ')" style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px; cursor:pointer; transition:background 0.15s ease; border-bottom:1px solid #F1F5F9;" onmouseenter="this.style.background=\'#EFF6FF\'" onmouseleave="this.style.background=\'transparent\'">' +
-                    '<div style="min-width:24px; height:24px; background:#2563EB; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">' + item.num + '</div>' +
-                    '<div style="flex:1; min-width:0; font-weight:600; color:#1E293B; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + item.nmppk + '</div>' +
+                    '<div style="min-width:24px; height:24px; background:' + badgeColor + '; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0;">' + item.num + '</div>' +
+                    '<div style="flex:1; min-width:0; display:flex; flex-direction:column;">' +
+                    '<div style="font-weight:600; color:#1E293B; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + item.nmppk + '</div>' +
+                    (item.tipeFaskes ? ('<div style="font-size:10px; color:' + badgeColor + '; font-weight:700;">' + item.tipeFaskes + '</div>') : '') +
+                    '</div>' +
                     '</div>';
             });
             legendList.innerHTML = html;
@@ -3438,9 +3452,6 @@
             }
         }
 
-        // ==========================================
-        // EXPORT PROFIL FASKES MAP & LEGEND (SMART ADAPTIVE FLOATING VS BELOW MAP)
-        // ==========================================
         async function exportProfilFaskesMapJPEG() {
             const btn = document.getElementById('btn-export-map');
             const originalBtnText = btn ? btn.innerHTML : '';
@@ -3489,7 +3500,6 @@
                 let titleText = `Peta Sebaran ${mainTypeLabel} ${kabLabel}`.replace(/\s+/g, ' ').trim();
                 let subtitleText = `Total ${mainTypeLabel} : ${profilFaskesData.length} Faskes`;
 
-                // 1. Resize for capture
                 const currentW = mapEl.clientWidth || 1000;
                 const mapRatio = 16 / 9;
                 const targetH = Math.round(currentW / mapRatio);
@@ -3511,7 +3521,6 @@
 
                 await new Promise(r => setTimeout(r, 400));
 
-                // 2. Hide web controls
                 const zoomControl = mapEl.querySelector('.leaflet-control-zoom');
                 const attribControl = mapEl.querySelector('.leaflet-control-attribution');
                 const markerPane = mapEl.querySelector('.leaflet-marker-pane');
@@ -3530,10 +3539,8 @@
                 });
 
                 const count = profilFaskesData.length;
-
-                // Base coordinates & dimension setup
                 const baseMapW = 3720;
-                const baseMapH = Math.round(baseMapW / (16 / 9)); // 2092px
+                const baseMapH = Math.round(baseMapW / (16 / 9));
                 const headerH = 160;
                 const startX = 60;
                 const mapAreaY = 210;
@@ -3541,11 +3548,8 @@
                 const containerW = mapEl.clientWidth || 1000;
                 const containerH = mapEl.clientHeight || 562;
 
-                // Calculate projected points
-                const tempMapAreaW = baseMapW;
-                const tempMapAreaH = baseMapH;
-                const scaleXTemp = (tempMapAreaW - 8) / containerW;
-                const scaleYTemp = (tempMapAreaH - 8) / containerH;
+                const scaleXTemp = (baseMapW - 8) / containerW;
+                const scaleYTemp = (baseMapH - 8) / containerH;
 
                 const projected = profilFaskesData.map(item => {
                     const pt = profilFaskesMap.latLngToContainerPoint([item.lat, item.lng]);
@@ -3554,7 +3558,6 @@
                     return { ...item, origX: cx, origY: cy, x: cx, y: cy - 50 };
                 });
 
-                // SMART ADAPTIVE LEGEND DECISION
                 let useFloatingInsideMap = false;
                 let floatLegX = 0, floatLegY = 0, floatLegW = 0, floatLegH = 0;
                 let floatLegCols = 1;
@@ -3566,7 +3569,6 @@
                     const floatItemsPerCol = Math.ceil(count / floatLegCols);
                     floatLegH = 85 + (floatItemsPerCol * 44);
 
-                    // Candidate Bottom-Right
                     floatLegX = startX + baseMapW - floatLegW - 40;
                     floatLegY = mapAreaY + baseMapH - floatLegH - 40;
 
@@ -3575,7 +3577,6 @@
                                 item.origY >= floatLegY - 35 && item.origY <= floatLegY + floatLegH + 35);
                     });
 
-                    // Candidate Top-Right if bottom-right has markers
                     if (covers) {
                         floatLegY = mapAreaY + 40;
                         covers = projected.some(item => {
@@ -3583,50 +3584,34 @@
                                     item.origY >= floatLegY - 35 && item.origY <= floatLegY + floatLegH + 35);
                         });
                     }
-
-                    if (!covers) {
-                        useFloatingInsideMap = true;
-                    }
+                    if (!covers) useFloatingInsideMap = true;
                 }
 
-                // Determine Canvas Dimensions
                 let legCols = 2;
                 let legH = 0;
-
                 if (!useFloatingInsideMap) {
                     if (count <= 15) legCols = 2;
                     else if (count <= 36) legCols = 3;
                     else if (count <= 75) legCols = 4;
                     else if (count <= 120) legCols = 5;
                     else legCols = 6;
-
                     const itemsPerCol = Math.ceil(count / legCols);
-                    const legItemRowH = 44; 
-                    legH = 90 + (itemsPerCol * legItemRowH);
+                    legH = 90 + (itemsPerCol * 44);
                 }
 
                 const baseReqHeight = useFloatingInsideMap ? (mapAreaY + baseMapH + 60) : (mapAreaY + baseMapH + 40 + legH + 60);
-
                 let canvasWidth = 3840;
-                if (!useFloatingInsideMap && baseReqHeight > (canvasWidth / 1.45)) {
-                    canvasWidth = Math.round(baseReqHeight * 1.45);
-                }
+                if (!useFloatingInsideMap && baseReqHeight > (canvasWidth / 1.45)) canvasWidth = Math.round(baseReqHeight * 1.45);
                 const canvasHeight = Math.max(2160, baseReqHeight);
-
                 const fullWidth = canvasWidth - (startX * 2);
                 const mapAreaX = startX;
                 const mapAreaW = fullWidth;
                 const mapAreaH = baseMapH;
-
                 const scaleX = (mapAreaW - 8) / containerW;
                 const scaleY = (mapAreaH - 8) / containerH;
+                const minBadgeX = mapAreaX + 50, maxBadgeX = mapAreaX + mapAreaW - 50;
+                const minBadgeY = mapAreaY + 50, maxBadgeY = mapAreaY + mapAreaH - 50;
 
-                const minBadgeX = mapAreaX + 50;
-                const maxBadgeX = mapAreaX + mapAreaW - 50;
-                const minBadgeY = mapAreaY + 50;
-                const maxBadgeY = mapAreaY + mapAreaH - 50;
-
-                // Update final projected badge positions
                 projected.forEach(item => {
                     const pt = profilFaskesMap.latLngToContainerPoint([item.lat, item.lng]);
                     let cx = mapAreaX + 4 + (pt.x * scaleX);
@@ -3635,76 +3620,52 @@
                     cy = Math.max(minBadgeY, Math.min(maxBadgeY, cy));
                     let badgeY = cy - 50;
                     if (badgeY < minBadgeY) badgeY = cy + 50;
-
-                    item.origX = cx;
-                    item.origY = cy;
-                    item.x = cx;
-                    item.y = badgeY;
+                    item.origX = cx; item.origY = cy; item.x = cx; item.y = badgeY;
                 });
 
-                // Restore Leaflet
                 mapEl.style.height = origHeight;
                 mapEl.style.minHeight = origMinHeight;
                 mapEl.style.width = origWidth;
-
                 if (zoomControl) zoomControl.style.display = '';
                 if (attribControl) attribControl.style.display = '';
                 if (markerPane) markerPane.style.display = '';
                 if (popupPane) popupPane.style.display = '';
 
                 if (profilFaskesMap) {
-                    if (origBounds) {
-                        try { profilFaskesMap.fitBounds(origBounds, { animate: false }); } catch(e) {}
-                    }
+                    if (origBounds) try { profilFaskesMap.fitBounds(origBounds, { animate: false }); } catch(e) {}
                     profilFaskesMap.invalidateSize({ animate: false });
                 }
 
-                // 4. Create target high-res canvas
                 const canvas = document.createElement('canvas');
                 canvas.width = canvasWidth;
                 canvas.height = canvasHeight;
                 const ctx = canvas.getContext('2d');
                 ctx.fillStyle = '#F8FAFC';
                 ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-                // Header Box
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(startX, 30, fullWidth, headerH);
                 ctx.strokeStyle = '#CBD5E1';
                 ctx.lineWidth = 3.5;
                 ctx.strokeRect(startX, 30, fullWidth, headerH);
-                const centerX = canvasWidth / 2;
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#1E293B';
                 ctx.font = 'bold 64px Arial, sans-serif';
-                ctx.fillText(titleText, centerX, 95);
+                ctx.fillText(titleText, canvasWidth / 2, 95);
                 ctx.fillStyle = '#475569';
                 ctx.font = 'normal 38px Arial, sans-serif';
-                ctx.fillText(subtitleText, centerX, 150);
-
-                // Map Canvas Area
+                ctx.fillText(subtitleText, canvasWidth / 2, 150);
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
                 ctx.strokeStyle = '#CBD5E1';
                 ctx.lineWidth = 4;
                 ctx.strokeRect(mapAreaX, mapAreaY, mapAreaW, mapAreaH);
-
                 ctx.save();
                 ctx.beginPath();
                 ctx.rect(mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
                 ctx.clip();
                 ctx.drawImage(mapCanvas, mapAreaX + 4, mapAreaY + 4, mapAreaW - 8, mapAreaH - 8);
-
-                ctx.save();
-                ctx.textAlign = 'center';
-                ctx.fillStyle = 'rgba(51, 65, 85, 0.85)';
-                ctx.font = 'bold 36px Arial, sans-serif';
-                ctx.fillText('SAPA Yanfaskes', centerX, mapAreaY + mapAreaH - 60);
-                ctx.font = 'normal 26px Arial, sans-serif';
-                ctx.fillText('Powered by BPJS Kesehatan Cabang Jember', centerX, mapAreaY + mapAreaH - 22);
                 ctx.restore();
 
-                // Cluster & Render
                 const clusters = [];
                 const visited = new Set();
                 projected.forEach((item, i) => {
@@ -3715,12 +3676,10 @@
                         if (visited.has(j)) continue;
                         const dx = item.origX - projected[j].origX;
                         const dy = item.origY - projected[j].origY;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < 130) { cluster.push(projected[j]); visited.add(j); }
+                        if (Math.sqrt(dx*dx + dy*dy) < 130) { cluster.push(projected[j]); visited.add(j); }
                     }
                     clusters.push(cluster);
                 });
-
                 clusters.forEach(cluster => {
                     if (cluster.length > 1) {
                         const avgX = cluster.reduce((sum, c) => sum + c.origX, 0) / cluster.length;
@@ -3734,43 +3693,20 @@
                     }
                 });
 
-                for (let pass = 0; pass < 25; pass++) {
-                    for (let i = 0; i < projected.length; i++) {
-                        for (let j = i + 1; j < projected.length; j++) {
-                            const p1 = projected[i];
-                            const p2 = projected[j];
-                            const dx = p2.x - p1.x;
-                            const dy = p2.y - p1.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy) || 0.1;
-                            if (dist < 84) {
-                                const overlap = (84 - dist) / 2;
-                                const nx = dx / dist;
-                                const ny = dy / dist;
-                                p1.x -= nx * overlap;
-                                p1.y -= ny * overlap;
-                                p2.x += nx * overlap;
-                                p2.y += ny * overlap;
-                            }
-                        }
-                    }
-                    projected.forEach(item => {
-                        item.x = Math.max(minBadgeX, Math.min(maxBadgeX, item.x));
-                        item.y = Math.max(minBadgeY, Math.min(maxBadgeY, item.y));
-                    });
-                }
-
                 projected.forEach(item => {
+                    const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 8;
                     ctx.beginPath(); ctx.moveTo(item.origX, item.origY); ctx.lineTo(item.x, item.y); ctx.stroke();
-                    ctx.strokeStyle = '#2563EB';
+                    ctx.strokeStyle = badgeColor;
                     ctx.lineWidth = 4;
                     ctx.beginPath(); ctx.moveTo(item.origX, item.origY); ctx.lineTo(item.x, item.y); ctx.stroke();
                 });
                 projected.forEach(item => {
+                    const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                     ctx.fillStyle = '#EF4444';
                     ctx.beginPath(); ctx.arc(item.origX, item.origY, 9, 0, 2 * Math.PI); ctx.fill();
-                    ctx.fillStyle = '#2563EB';
+                    ctx.fillStyle = badgeColor;
                     ctx.beginPath(); ctx.arc(item.x, item.y, 32, 0, 2 * Math.PI); ctx.fill();
                     ctx.strokeStyle = '#FFFFFF';
                     ctx.lineWidth = 3.5;
@@ -3782,154 +3718,63 @@
                     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
                 });
 
-                // Compass & Scale Bar
-                const compX = mapAreaX + 80;
-                const compY = mapAreaY + mapAreaH - 90;
-                ctx.fillStyle = '#FFFFFF';
-                ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 12;
-                ctx.beginPath(); ctx.arc(compX, compY, 45, 0, 2 * Math.PI); ctx.fill();
-                ctx.shadowColor = 'transparent';
-                ctx.strokeStyle = '#1E293B'; ctx.lineWidth = 3; ctx.stroke();
-                ctx.fillStyle = '#1E293B'; ctx.font = 'extrabold 26px Arial, sans-serif';
-                ctx.textAlign = 'center'; ctx.fillText('N', compX, compY - 52);
-                ctx.fillStyle = '#EF4444';
-                ctx.beginPath(); ctx.moveTo(compX, compY - 30); ctx.lineTo(compX, compY); ctx.lineTo(compX + 11, compY + 6); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = '#1E293B';
-                ctx.beginPath(); ctx.moveTo(compX, compY - 30); ctx.lineTo(compX, compY); ctx.lineTo(compX - 11, compY + 6); ctx.closePath(); ctx.fill();
-                ctx.textAlign = 'left';
-
-                if (profilFaskesMap) {
-                    const bounds = profilFaskesMap.getBounds();
-                    const center = profilFaskesMap.getCenter();
-                    const totalMeters = center.distanceTo(L.latLng(center.lat, bounds.getEast())) * 2;
-                    const metersPerPx = totalMeters / containerW;
-                    let scaleMeters = 5000;
-                    const targetPx = 200;
-                    const testM = metersPerPx * targetPx;
-                    if (testM < 800) scaleMeters = 500;
-                    else if (testM < 1800) scaleMeters = 1000;
-                    else if (testM < 3800) scaleMeters = 2000;
-                    else if (testM < 7500) scaleMeters = 5000;
-                    else scaleMeters = 10000;
-                    const scaleBarPx = (scaleMeters / (metersPerPx || 1)) * scaleX;
-                    const scaleStr = scaleMeters >= 1000 ? `${scaleMeters / 1000} km` : `${scaleMeters} m`;
-                    const scaleXPos = compX + 70;
-                    const scaleYPos = compY + 10;
-                    ctx.fillStyle = '#FFFFFF'; ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 10;
-                    ctx.fillRect(scaleXPos, scaleYPos - 32, scaleBarPx + 40, 54);
-                    ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 2; ctx.strokeRect(scaleXPos, scaleYPos - 32, scaleBarPx + 40, 54);
-                    ctx.strokeStyle = '#1E293B'; ctx.lineWidth = 4;
-                    ctx.beginPath(); ctx.moveTo(scaleXPos + 20, scaleYPos); ctx.lineTo(scaleXPos + 20 + scaleBarPx, scaleYPos);
-                    ctx.stroke();
-                    ctx.fillStyle = '#1E293B'; ctx.font = 'bold 18px Arial, sans-serif'; ctx.textAlign = 'center';
-                    ctx.fillText('0', scaleXPos + 20, scaleYPos - 10); ctx.fillText(scaleStr, scaleXPos + 20 + scaleBarPx, scaleYPos - 10); ctx.textAlign = 'left';
-                }
-
-                // OPTION A: IF FEW FASKES -> RENDER FLOATING LEGEND CARD INSIDE MAP
                 if (useFloatingInsideMap) {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.97)';
-                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-                    ctx.shadowBlur = 24;
-                    ctx.beginPath();
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'; ctx.shadowBlur = 24;
                     if (ctx.roundRect) ctx.roundRect(floatLegX, floatLegY, floatLegW, floatLegH, 18);
                     else ctx.fillRect(floatLegX, floatLegY, floatLegW, floatLegH);
-                    ctx.fill();
-                    ctx.shadowColor = 'transparent';
-                    ctx.strokeStyle = '#CBD5E1';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
+                    ctx.fill(); ctx.shadowColor = 'transparent';
+                    ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 3;
                     if (ctx.roundRect) ctx.roundRect(floatLegX, floatLegY, floatLegW, floatLegH, 18);
                     else ctx.strokeRect(floatLegX, floatLegY, floatLegW, floatLegH);
                     ctx.stroke();
-                    ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 32px Arial, sans-serif';
+                    ctx.fillStyle = '#1E293B'; ctx.font = 'bold 32px Arial, sans-serif';
                     ctx.fillText('📋 LEGENDA', floatLegX + 25, floatLegY + 44);
-                    ctx.fillStyle = '#2563EB';
-                    ctx.font = 'bold 26px Arial, sans-serif';
-                    ctx.textAlign = 'right';
+                    ctx.textAlign = 'right'; ctx.fillStyle = '#2563EB';
                     ctx.fillText(`${count} Faskes`, floatLegX + floatLegW - 25, floatLegY + 44);
                     ctx.textAlign = 'left';
-                    ctx.strokeStyle = '#E2E8F0';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.moveTo(floatLegX + 25, floatLegY + 62); ctx.lineTo(floatLegX + floatLegW - 25, floatLegY + 62); ctx.stroke();
-
                     const floatItemsPerCol = Math.ceil(count / floatLegCols);
                     profilFaskesData.forEach((item, idx) => {
+                        const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                         const cIdx = Math.floor(idx / floatItemsPerCol);
                         const rIdx = idx % floatItemsPerCol;
                         const ix = floatLegX + 25 + (cIdx * 460);
                         const iy = floatLegY + 80 + (rIdx * 44);
-                        const circleR = 14;
-                        const circleX = ix + circleR;
-                        const circleY = iy + circleR + 2;
-                        ctx.fillStyle = '#2563EB';
-                        ctx.beginPath(); ctx.arc(circleX, circleY, circleR, 0, 2 * Math.PI); ctx.fill();
-                        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+                        ctx.fillStyle = badgeColor;
+                        ctx.beginPath(); ctx.arc(ix + 14, iy + 16, 14, 0, 2 * Math.PI); ctx.fill();
                         ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 16px Arial, sans-serif';
-                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillText(item.num.toString(), circleX, circleY);
-                        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-                        const tx = ix + (circleR * 2) + 12;
-                        ctx.fillStyle = '#1E293B';
-                        ctx.font = 'bold 22px Arial, sans-serif';
-                        ctx.fillText(item.nmppk, tx, iy + 22);
+                        ctx.textAlign = 'center'; ctx.fillText(item.num.toString(), ix + 14, iy + 16);
+                        ctx.textAlign = 'left'; ctx.fillStyle = '#1E293B';
+                        ctx.fillText(item.nmppk, ix + 40, iy + 22);
                     });
-                }
-
-                ctx.restore();
-
-                // OPTION B: IF MANY FASKES -> RENDER LEGENDA BOX BELOW THE MAP
-                if (!useFloatingInsideMap) {
-                    const legAreaX = startX;
-                    const legAreaY = mapAreaY + mapAreaH + 40;
-                    const legAreaW = fullWidth;
-
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.strokeStyle = '#CBD5E1';
-                    ctx.lineWidth = 3.5;
-                    ctx.beginPath();
+                } else {
+                    const legAreaX = startX, legAreaY = mapAreaY + mapAreaH + 40, legAreaW = fullWidth;
+                    ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 3.5;
                     if (ctx.roundRect) ctx.roundRect(legAreaX, legAreaY, legAreaW, legH, 18);
                     else ctx.fillRect(legAreaX, legAreaY, legAreaW, legH);
                     ctx.fill(); ctx.stroke();
-
-                    ctx.fillStyle = '#1E293B';
-                    ctx.font = 'bold 34px Arial, sans-serif';
+                    ctx.fillStyle = '#1E293B'; ctx.font = 'bold 34px Arial, sans-serif';
                     ctx.fillText('📋 LEGENDA', legAreaX + 35, legAreaY + 48);
-                    ctx.fillStyle = '#2563EB';
-                    ctx.font = 'bold 28px Arial, sans-serif';
-                    ctx.textAlign = 'right';
+                    ctx.textAlign = 'right'; ctx.fillStyle = '#2563EB';
                     ctx.fillText(`${count} Faskes`, legAreaX + legAreaW - 35, legAreaY + 48);
                     ctx.textAlign = 'left';
-                    ctx.strokeStyle = '#E2E8F0';
-                    ctx.lineWidth = 2.5;
-                    ctx.beginPath(); ctx.moveTo(legAreaX + 35, legAreaY + 68); ctx.lineTo(legAreaX + legAreaW - 35, legAreaY + 68); ctx.stroke();
-
                     const colW = Math.floor((legAreaW - 70) / legCols);
                     const itemsPerCol = Math.ceil(count / legCols);
-
                     profilFaskesData.forEach((item, idx) => {
+                        const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                         const cIdx = Math.floor(idx / itemsPerCol);
                         const rIdx = idx % itemsPerCol;
                         const ix = legAreaX + 35 + (cIdx * colW);
                         const iy = legAreaY + 88 + (rIdx * 44);
-                        const circleR = 14;
-                        const circleX = ix + circleR;
-                        const circleY = iy + circleR + 2;
-                        ctx.fillStyle = '#2563EB';
-                        ctx.beginPath(); ctx.arc(circleX, circleY, circleR, 0, 2 * Math.PI); ctx.fill();
-                        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+                        ctx.fillStyle = badgeColor;
+                        ctx.beginPath(); ctx.arc(ix + 14, iy + 16, 14, 0, 2 * Math.PI); ctx.fill();
                         ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 15px Arial, sans-serif';
-                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillText(item.num.toString(), circleX, circleY);
-                        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-                        const tx = ix + (circleR * 2) + 12;
-                        ctx.fillStyle = '#1E293B';
-                        ctx.font = 'normal 20px Arial, sans-serif';
-                        ctx.fillText(item.nmppk, tx, iy + 22);
+                        ctx.textAlign = 'center'; ctx.fillText(item.num.toString(), ix + 14, iy + 16);
+                        ctx.textAlign = 'left'; ctx.fillStyle = '#1E293B';
+                        ctx.fillText(item.nmppk, ix + 40, iy + 22);
                     });
                 }
 
-                // 10. Convert to DataURL & Trigger Download
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 const a = document.createElement('a');
                 const cleanFileTitle = titleText.replace(/[^a-zA-Z0-9]/g, '_');
