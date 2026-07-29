@@ -1466,8 +1466,8 @@
                     if (kdkr.length === 1) kdkr = '0' + kdkr;
 
                     const faskesName = getColIgnoreCase(r, ['Faskes', 'FASKES', 'Nama_Faskes']).trim() || fInfo.Nama || '';
-                    const sumberVal = (r.Sumber || '').trim();
-                    const dedupeKey = `${kdppk}_${mNum}_${yNum}_${sumberVal}`;
+                    const sumberStr = (r.Sumber || '').trim();
+                    const dedupeKey = `${faskesName}_${mNum}_${yNum}_${sumberStr}`;
 
                     const newEntry = {
                         tahun: String(yNum),
@@ -1477,7 +1477,7 @@
                         cabang: cab,
                         kabupaten: fInfo.Kabupaten,
                         faskes: faskesName,
-                        sumber: sumberVal,
+                        sumber: sumberStr,
                         jenis_ppk: fInfo.Jenis_PPK,
                         kelas_faskes: fInfo.Kelas_RS,
                         capaian: capVal,
