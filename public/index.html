@@ -1469,6 +1469,14 @@
                     const sumberStr = (r.Sumber || '').trim();
                     const dedupeKey = `${faskesName}_${mNum}_${yNum}_${sumberStr}`;
 
+                    const rawJmlAntrian = getColIgnoreCase(r, ['Jumlah Antrian by Sumber', 'Jml_Antrian_Sumber', 'JML_ANTRIAN_BY_SUMBER', 'Jumlah_Antrian_by_Sumber']).trim();
+                    const rawJmlSep = getColIgnoreCase(r, ['Jumlah Sep Rjtl', 'Jml_Sep_Rjtl', 'JML_SEP_RJTL', 'Jumlah_Sep_Rjtl']).trim();
+                    const rawJmlPeserta = getColIgnoreCase(r, ['Jumlah Peserta Jkn', 'Jml_Peserta_Jkn', 'JML_PESERTA_JKN', 'Jumlah_Peserta_Jkn']).trim();
+
+                    const jmlAntrian = parseFloat(rawJmlAntrian.replace(/\./g, '').replace(',', '.')) || 0;
+                    const jmlSep = parseFloat(rawJmlSep.replace(/\./g, '').replace(',', '.')) || 0;
+                    const jmlPeserta = parseFloat(rawJmlPeserta.replace(/\./g, '').replace(',', '.')) || 0;
+
                     const newEntry = {
                         tahun: String(yNum),
                         bulan: monthNames[mNum] || ('Bulan ' + mNum),
@@ -1481,6 +1489,9 @@
                         jenis_ppk: fInfo.Jenis_PPK,
                         kelas_faskes: fInfo.Kelas_RS,
                         capaian: capVal,
+                        jml_antrian: jmlAntrian,
+                        jml_sep: jmlSep,
+                        jml_peserta: jmlPeserta,
                         _ts: tsValue
                     };
 
@@ -1513,6 +1524,21 @@
             } finally {
                 isFetchingFKRTLData = false;
             }
+        }
+
+        function calculateCapaian(rows, sumberType) {
+            if (!rows || rows.length === 0) return 0;
+            const sumAntrian = rows.reduce((a, r) => a + (r.jml_antrian || 0), 0);
+            
+            let sumDenominator = 0;
+            if (sumberType === 'Mobile JKN') {
+                sumDenominator = rows.reduce((a, r) => a + (r.jml_peserta || 0), 0);
+            } else {
+                sumDenominator = rows.reduce((a, r) => a + (r.jml_sep || 0), 0);
+            }
+
+            if (sumDenominator === 0) return 0;
+            return (sumAntrian / sumDenominator) * 100;
         }
 
         function populateDynamicFilters() {
@@ -1611,9 +1637,7 @@
             });
 
             // 1. UPDATE SCORECARD
-            const avgScorecard = filteredRows.length > 0
-                ? filteredRows.reduce((acc, r) => acc + r.capaian, 0) / filteredRows.length
-                : 0;
+            const avgScorecard = calculateCapaian(filteredRows, selSumber);
 
             const valElem = document.getElementById('fkrtl-scorecard-value');
             if (valElem) valElem.textContent = avgScorecard.toFixed(2).replace('.', ',') + '%';
@@ -1650,7 +1674,7 @@
                 const mRows = trendRows.filter(r => r.bulan === mName);
                 trendLabels.push(monthOrderMap[mName]);
                 if (mRows.length > 0) {
-                    const mAvg = mRows.reduce((a, r) => a + r.capaian, 0) / mRows.length;
+                    const mAvg = calculateCapaian(mRows, selSumber);
                     trendValues.push(parseFloat(mAvg.toFixed(2)));
                     trendTexts.push(mAvg.toFixed(2).replace('.', ',') + '%');
                 } else {
@@ -1680,14 +1704,13 @@
             const faskesGroup = {};
             filteredRows.forEach(r => {
                 let name = r.faskes;
-                if (!faskesGroup[name]) faskesGroup[name] = { sum: 0, count: 0 };
-                faskesGroup[name].sum += r.capaian;
-                faskesGroup[name].count += 1;
+                if (!faskesGroup[name]) faskesGroup[name] = [];
+                faskesGroup[name].push(r);
             });
 
             let faskesList = Object.keys(faskesGroup).map(name => ({
                 name: name,
-                val: faskesGroup[name].sum / faskesGroup[name].count
+                val: calculateCapaian(faskesGroup[name], selSumber)
             }));
 
             faskesList.sort((a, b) => b.val - a.val);
@@ -1719,17 +1742,16 @@
             const sumberGroup = {};
             filteredRows.forEach(r => {
                 const s = r.sumber;
-                if (!sumberGroup[s]) sumberGroup[s] = { sum: 0, count: 0 };
-                sumberGroup[s].sum += r.capaian;
-                sumberGroup[s].count += 1;
+                if (!sumberGroup[s]) sumberGroup[s] = [];
+                sumberGroup[s].push(r);
             });
 
             const sumberCats = Object.keys(sumberGroup).length > 0 ? Object.keys(sumberGroup) : ['Mobile JKN', 'All Sumber'];
             const sumberVals = sumberCats.map(cat => {
                 if (sumberGroup[cat]) {
-                    return parseFloat((sumberGroup[cat].sum / sumberGroup[cat].count).toFixed(2));
+                    return parseFloat(calculateCapaian(sumberGroup[cat], cat).toFixed(2));
                 }
-                return cat === 'Mobile JKN' ? 66.78 : 74.52;
+                return 0;
             });
 
             Plotly.newPlot('chart-fkrtl-sumber', [{
