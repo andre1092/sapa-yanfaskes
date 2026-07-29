@@ -1513,11 +1513,14 @@
 
             monthKeys.forEach(mName => {
                 const mRows = trendRows.filter(r => r.bulan === mName);
+                trendLabels.push(monthOrderMap[mName]);
                 if (mRows.length > 0) {
                     const mAvg = mRows.reduce((a, r) => a + r.capaian, 0) / mRows.length;
-                    trendLabels.push(monthOrderMap[mName]);
                     trendValues.push(parseFloat(mAvg.toFixed(2)));
                     trendTexts.push(mAvg.toFixed(2).replace('.', ',') + '%');
+                } else {
+                    trendValues.push(0);
+                    trendTexts.push('0%');
                 }
             });
 
