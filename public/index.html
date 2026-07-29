@@ -1443,13 +1443,22 @@
                     const dNum = parseInt(dateParts[1], 10);
                     const yNum = parseInt(dateParts[2], 10);
 
-                    const hNum = parseInt(timeParts[0], 10) || 0;
+                    let hNum = parseInt(timeParts[0], 10) || 0;
                     const minNum = parseInt(timeParts[1], 10) || 0;
                     const sNum = parseInt(timeParts[2], 10) || 0;
 
+                    // Handle AM/PM
+                    const tsRawLower = tsRaw.toLowerCase();
+                    if (tsRawLower.includes('pm') && hNum < 12) hNum += 12;
+                    if (tsRawLower.includes('am') && hNum === 12) hNum = 0;
+
                     if (isNaN(mNum) || isNaN(yNum)) return;
 
-                    const tsValue = new Date(yNum, mNum - 1, dNum, hNum, minNum, sNum).getTime();
+                    // Compute absolute timestamp
+                    let tsValue = Date.parse(tsRaw);
+                    if (isNaN(tsValue)) {
+                        tsValue = new Date(yNum, mNum - 1, dNum, hNum, minNum, sNum).getTime();
+                    }
 
                     if (tsValue > maxTsValue) {
                         maxTsValue = tsValue;
@@ -1466,6 +1475,8 @@
                     if (kdkr.length === 1) kdkr = '0' + kdkr;
 
                     const faskesName = getColIgnoreCase(r, ['Faskes', 'FASKES', 'Nama_Faskes']).trim() || fInfo.Nama || '';
+                    
+                    // Deduplicate strictly by Unique Faskes Code to prevent typos in names from duplicating data
                     const dedupeKey = `${kdppk}_${mNum}_${yNum}`;
 
                     const newEntry = {
@@ -1476,6 +1487,7 @@
                         cabang: cab,
                         kabupaten: fInfo.Kabupaten,
                         faskes: faskesName,
+                        kdppk: kdppk,
                         sumber: (r.Sumber || '').trim(),
                         jenis_ppk: fInfo.Jenis_PPK,
                         kelas_faskes: fInfo.Kelas_RS,
@@ -1483,7 +1495,7 @@
                         _ts: tsValue
                     };
 
-                    if (!rawDataMap[dedupeKey] || rawDataMap[dedupeKey]._ts <= tsValue) {
+                    if (!rawDataMap[dedupeKey] || rawDataMap[dedupeKey]._ts < tsValue) {
                         rawDataMap[dedupeKey] = newEntry;
                     }
                 });
