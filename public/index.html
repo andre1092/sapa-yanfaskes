@@ -1466,7 +1466,7 @@
                     if (kdkr.length === 1) kdkr = '0' + kdkr;
 
                     const faskesName = getColIgnoreCase(r, ['Faskes', 'FASKES', 'Nama_Faskes']).trim() || fInfo.Nama || '';
-                    const dedupeKey = `${faskesName}_${mNum}_${yNum}`;
+                    const dedupeKey = `${kdppk}_${mNum}_${yNum}`;
 
                     const newEntry = {
                         tahun: String(yNum),
@@ -1483,7 +1483,7 @@
                         _ts: tsValue
                     };
 
-                    if (!rawDataMap[dedupeKey] || rawDataMap[dedupeKey]._ts < tsValue) {
+                    if (!rawDataMap[dedupeKey] || rawDataMap[dedupeKey]._ts <= tsValue) {
                         rawDataMap[dedupeKey] = newEntry;
                     }
                 });
