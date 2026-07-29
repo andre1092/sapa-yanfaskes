@@ -380,8 +380,8 @@
                         <div style="width:230px; flex-shrink:0; display:flex; flex-direction:column; gap:12px;">
                             
                             <!-- RED TIMESTAMP BADGE -->
-                            <div style="border:1px solid #CBD5E1; background:#FFF; border-radius:4px; padding:6px 10px; font-size:11px; color:#DC2626; font-style:italic; font-weight:600; text-align:left;">
-                                Last Update : 2026-07-22 04:54:00
+                            <div id="last-update-time" style="border:1px solid #CBD5E1; background:#FFF; border-radius:4px; padding:6px 10px; font-size:11px; color:#DC2626; font-style:italic; font-weight:600; text-align:left;">
+                                Last Update : Memuat...
                             </div>
 
                             <!-- MAIN SCORECARD CARD -->
@@ -1429,6 +1429,7 @@
                 const monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
                 let rawDataMap = {};
+                let maxTsValue = 0;
 
                 rawAntrol.forEach(r => {
                     const tsRaw = r.Timestamp || '';
@@ -1449,6 +1450,10 @@
                     if (isNaN(mNum) || isNaN(yNum)) return;
 
                     const tsValue = new Date(yNum, mNum - 1, dNum, hNum, minNum, sNum).getTime();
+
+                    if (tsValue > maxTsValue) {
+                        maxTsValue = tsValue;
+                    }
 
                     const capStr = (r.Capaian || '').replace('%', '').replace(',', '.').trim();
                     const capVal = parseFloat(capStr) || 0;
@@ -1484,6 +1489,22 @@
                 });
                 
                 fkrtlRawData = Object.values(rawDataMap);
+
+                const lastUpdateElem = document.getElementById('last-update-time');
+                if (lastUpdateElem) {
+                    if (maxTsValue > 0) {
+                        const dt = new Date(maxTsValue);
+                        const y = dt.getFullYear();
+                        const m = String(dt.getMonth() + 1).padStart(2, '0');
+                        const d = String(dt.getDate()).padStart(2, '0');
+                        const hh = String(dt.getHours()).padStart(2, '0');
+                        const mm = String(dt.getMinutes()).padStart(2, '0');
+                        const ss = String(dt.getSeconds()).padStart(2, '0');
+                        lastUpdateElem.innerHTML = `Last Update : ${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+                    } else {
+                        lastUpdateElem.innerHTML = `Last Update : -`;
+                    }
+                }
 
                 populateDynamicFilters();
             } catch (e) {
