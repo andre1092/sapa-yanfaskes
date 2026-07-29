@@ -1141,6 +1141,7 @@
                 } else if (menu === 'Profil Faskes') {
                     targetUrl += '&sheet=DB_FASKES';
                 }
+                targetUrl += `&_=${new Date().getTime()}`;
 
                 const res = await fetch(targetUrl);
                 if (!res.ok) return { rows: 0, cols: 0 };
@@ -1388,8 +1389,9 @@
                     if (match) sheetId = match[1];
                 }
 
-                const urlAntrol = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=DB_LAP_ANTROL_FKRTL`;
-                const urlFaskes = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=DB_FASKES`;
+                const cacheBuster = new Date().getTime();
+                const urlAntrol = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=DB_LAP_ANTROL_FKRTL&_=${cacheBuster}`;
+                const urlFaskes = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=DB_FASKES&_=${cacheBuster}`;
 
                 const [resAntrol, resFaskes] = await Promise.all([
                     fetch(urlAntrol).then(r => r.text()),
@@ -3306,7 +3308,7 @@
                 const savedUrl = localStorage.getItem('sapa_profil_faskes_url');
                 if (savedUrl) profilFaskesSheetUrl = savedUrl;
 
-                const targetFetchUrl = formatGoogleSheetsCsvUrl(profilFaskesSheetUrl);
+                const targetFetchUrl = formatGoogleSheetsCsvUrl(profilFaskesSheetUrl) + `&_=${new Date().getTime()}`;
                 const res = await fetch(targetFetchUrl);
                 const csvText = await res.text();
                 const rows = parseCSV(csvText);
