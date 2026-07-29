@@ -1119,7 +1119,7 @@
                         <td style="padding:8px 6px; color:#94A3B8;">${conn.lastSync}</td>
                         <td style="padding:8px 6px; color:#34D399; font-weight:700;">🟢 ${conn.status}</td>
                         <td style="padding:8px 6px; text-align:right;">
-                            <button onclick="reSyncConnection(${conn.id})" style="background:rgba(56,189,248,0.2); border:1px solid rgba(56,189,248,0.4); color:#38BDF8; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:4px;">🔄 Sync</button>
+                            <button onclick="reSyncConnection(${conn.id}, this)" style="background:rgba(56,189,248,0.2); border:1px solid rgba(56,189,248,0.4); color:#38BDF8; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer; margin-right:4px;">🔄 Sync</button>
                             <button onclick="removeConnection(${conn.id})" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#F87171; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Disconnect</button>
                         </td>
                     </tr>
@@ -1128,7 +1128,36 @@
             tbody.innerHTML = html;
         }
 
-        function doSyncConnection() {
+        async function fetchSpreadsheetStats(url, menu) {
+            try {
+                let sheetId = "";
+                const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (match) sheetId = match[1];
+                if (!sheetId) return { rows: 0, cols: 0 };
+
+                let targetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+                if (menu === 'Dashboard FKRTL') {
+                    targetUrl += '&sheet=DB_LAP_ANTROL_FKRTL';
+                } else if (menu === 'Profil Faskes') {
+                    targetUrl += '&sheet=DB_FASKES';
+                }
+
+                const res = await fetch(targetUrl);
+                if (!res.ok) return { rows: 0, cols: 0 };
+                const text = await res.text();
+                
+                const rawData = parseCSVText(text);
+                const rows = rawData.length;
+                const cols = rawData.length > 0 ? Object.keys(rawData[0]).length : 0;
+                
+                return { rows, cols };
+            } catch (e) {
+                console.error('Error fetching stats:', e);
+                return { rows: 0, cols: 0 };
+            }
+        }
+
+        async function doSyncConnection() {
             const urlInput = document.getElementById('conn-sheets-url');
             const menuSelect = document.getElementById('conn-target-menu-main');
             const submenuSelect = document.getElementById('conn-target-submenu');
@@ -1141,6 +1170,14 @@
                 alert('⚠️ Silakan masukkan URL Google Spreadsheet terlebih dahulu.');
                 return;
             }
+            
+            const syncBtn = document.querySelector('button[onclick="doSyncConnection()"]');
+            if (syncBtn) {
+                syncBtn.innerHTML = '⏳ Menyinkronkan...';
+                syncBtn.disabled = true;
+            }
+
+            const stats = await fetchSpreadsheetStats(url, menu);
 
             const now = new Date();
             const timeStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
@@ -1163,6 +1200,8 @@
                 activeConnections[existingIndex].url = url;
                 activeConnections[existingIndex].shortUrl = shortUrl;
                 activeConnections[existingIndex].lastSync = timeStr;
+                if (stats.rows > 0) activeConnections[existingIndex].rows = stats.rows;
+                if (stats.cols > 0) activeConnections[existingIndex].cols = stats.cols;
             } else {
                 activeConnections.push({
                     id: Date.now(),
@@ -1170,8 +1209,8 @@
                     shortUrl: shortUrl,
                     menu: menu,
                     submenu: submenu,
-                    rows: 1250,
-                    cols: 8,
+                    rows: stats.rows > 0 ? stats.rows : 1250,
+                    cols: stats.cols > 0 ? stats.cols : 8,
                     lastSync: timeStr,
                     status: "CONNECTED"
                 });
@@ -1181,20 +1220,31 @@
             renderActiveConnectionsTable();
 
             if (menu === 'Dashboard FKRTL' && submenu === 'Pemanfaatan Antrol') {
-                loadLiveFKRTLDataset(url).then(() => renderFKRTLAntrolDashboard());
+                await loadLiveFKRTLDataset(url);
+                renderFKRTLAntrolDashboard();
             } else if (menu === 'Profil Faskes') {
                 profilFaskesSheetUrl = formatGoogleSheetsCsvUrl(url);
                 localStorage.setItem('sapa_profil_faskes_url', profilFaskesSheetUrl);
-                reloadProfilFaskesData();
+                await reloadProfilFaskesData();
             }
 
             const targetLabel = (submenu === '— (Halaman Utama)' || !submenu) ? menu : (menu + ' > ' + submenu);
             alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${targetLabel}.`);
+            
+            if (syncBtn) {
+                syncBtn.innerHTML = '⚡ Sinkronkan Data Spreadsheet';
+                syncBtn.disabled = false;
+            }
         }
 
-        function reSyncConnection(id) {
+        async function reSyncConnection(id, btnElem) {
             const conn = activeConnections.find(c => c.id === id);
             if (conn) {
+                if (btnElem) {
+                    btnElem.innerHTML = '⏳ Syncing...';
+                    btnElem.disabled = true;
+                }
+
                 const urlInput = document.getElementById('conn-sheets-url');
                 const menuSelect = document.getElementById('conn-target-menu-main');
                 const submenuSelect = document.getElementById('conn-target-submenu');
@@ -1202,6 +1252,10 @@
                 if (urlInput) urlInput.value = conn.url;
                 if (menuSelect) menuSelect.value = conn.menu;
                 if (submenuSelect) submenuSelect.value = conn.submenu;
+                
+                const stats = await fetchSpreadsheetStats(conn.url, conn.menu);
+                if (stats.rows > 0) conn.rows = stats.rows;
+                if (stats.cols > 0) conn.cols = stats.cols;
 
                 const now = new Date();
                 conn.lastSync = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' +
@@ -1211,15 +1265,21 @@
                 renderActiveConnectionsTable();
 
                 if (conn.menu === 'Dashboard FKRTL' && conn.submenu === 'Pemanfaatan Antrol') {
-                    loadLiveFKRTLDataset(conn.url).then(() => renderFKRTLAntrolDashboard());
+                    await loadLiveFKRTLDataset(conn.url);
+                    renderFKRTLAntrolDashboard();
                 } else if (conn.menu === 'Profil Faskes') {
                     profilFaskesSheetUrl = formatGoogleSheetsCsvUrl(conn.url);
                     localStorage.setItem('sapa_profil_faskes_url', profilFaskesSheetUrl);
-                    reloadProfilFaskesData();
+                    await reloadProfilFaskesData();
                 }
 
                 const reSyncLabel = (conn.submenu === '— (Halaman Utama)' || !conn.submenu) ? conn.menu : (conn.menu + ' > ' + conn.submenu);
                 alert(`Sinkronisasi Berhasil! Data otomatis terhubung & diperbaharui. Target : ${reSyncLabel}.`);
+                
+                if (btnElem) {
+                    btnElem.innerHTML = '🔄 Sync';
+                    btnElem.disabled = false;
+                }
             }
         }
 
