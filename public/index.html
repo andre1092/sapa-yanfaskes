@@ -3603,10 +3603,10 @@
 
                 if (count <= 18 && count > 0) {
                     if (count > 8) floatLegCols = 2;
-                    const floatColW = 460;
-                    floatLegW = Math.min(1100, (floatLegCols * floatColW) + 50);
+                    const floatColW = 520;
+                    floatLegW = Math.min(1200, (floatLegCols * floatColW) + 50);
                     const floatItemsPerCol = Math.ceil(count / floatLegCols);
-                    floatLegH = 85 + (floatItemsPerCol * 44);
+                    floatLegH = 100 + (floatItemsPerCol * 50);
 
                     // Candidate Bottom-Right
                     floatLegX = startX + baseMapW - floatLegW - 40;
@@ -3644,7 +3644,7 @@
                     else if (count <= 120) legCols = 5;
                     else legCols = 6;
                     const itemsPerCol = Math.ceil(count / legCols);
-                    legH = 100 + (itemsPerCol * 50);
+                    legH = 120 + (itemsPerCol * 60);
                 }
 
                 const baseReqHeight = useFloatingInsideMap ? (mapAreaY + baseMapH + 60) : (mapAreaY + baseMapH + 40 + legH + 60);
@@ -3789,17 +3789,17 @@
                         const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                         const cIdx = Math.floor(idx / floatItemsPerCol);
                         const rIdx = idx % floatItemsPerCol;
-                        const ix = floatLegX + 25 + (cIdx * 460);
-                        const iy = floatLegY + 80 + (rIdx * 44);
+                        const ix = floatLegX + 25 + (cIdx * 520);
+                        const iy = floatLegY + 95 + (rIdx * 50);
                         ctx.fillStyle = badgeColor;
-                        ctx.beginPath(); ctx.arc(ix + 14, iy + 16, 14, 0, 2 * Math.PI); ctx.fill();
-                        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
-                        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 16px Arial, sans-serif';
+                        ctx.beginPath(); ctx.arc(ix + 18, iy + 18, 18, 0, 2 * Math.PI); ctx.fill();
+                        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2.5; ctx.stroke();
+                        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 20px Arial, sans-serif';
                         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillText(item.num.toString(), ix + 14, iy + 16);
+                        ctx.fillText(item.num.toString(), ix + 18, iy + 18);
                         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-                        ctx.fillStyle = '#1E293B'; ctx.font = 'bold 22px Arial, sans-serif';
-                        ctx.fillText(item.nmppk, ix + 40, iy + 22);
+                        ctx.fillStyle = '#1E293B'; ctx.font = 'bold 28px Arial, sans-serif';
+                        ctx.fillText(item.nmppk, ix + 48, iy + 26);
                     });
                 }
 
@@ -3890,53 +3890,54 @@
                     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
                 });
 
-                // LAYER C: LEGEND BELOW MAP (FIXED STRICTLY AT 11PT ARIAL REGULAR = 24PX ON 3840PX CANVAS)
+                // LAYER C: LEGEND BELOW MAP (FIXED STRICTLY AT VISUAL EQUIVALENT OF 10 ARIAL ON CANVAS)
                 if (!useFloatingInsideMap) {
                     const legAreaX = startX, legAreaY = mapAreaY + mapAreaH + 40, legAreaW = fullWidth;
                     ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 3.5;
                     if (ctx.roundRect) ctx.roundRect(legAreaX, legAreaY, legAreaW, legH, 18);
                     else ctx.fillRect(legAreaX, legAreaY, legAreaW, legH);
                     ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = '#1E293B'; ctx.font = 'bold 36px Arial, sans-serif';
-                    ctx.fillText('📋 LEGENDA', legAreaX + 35, legAreaY + 52);
+                    ctx.fillStyle = '#1E293B'; ctx.font = 'bold 44px Arial, sans-serif';
+                    ctx.fillText('📋 LEGENDA', legAreaX + 35, legAreaY + 60);
                     ctx.textAlign = 'right'; ctx.fillStyle = '#2563EB';
-                    ctx.fillText(`${count} Faskes`, legAreaX + legAreaW - 35, legAreaY + 52);
+                    ctx.font = 'bold 44px Arial, sans-serif';
+                    ctx.fillText(`${count} Faskes`, legAreaX + legAreaW - 35, legAreaY + 60);
                     ctx.textAlign = 'left';
                     ctx.strokeStyle = '#E2E8F0'; ctx.lineWidth = 2.5;
-                    ctx.beginPath(); ctx.moveTo(legAreaX + 35, legAreaY + 74); ctx.lineTo(legAreaX + legAreaW - 35, legAreaY + 74); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(legAreaX + 35, legAreaY + 84); ctx.lineTo(legAreaX + legAreaW - 35, legAreaY + 84); ctx.stroke();
 
                     const colW = Math.floor((legAreaW - 70) / legCols);
                     const itemsPerCol = Math.ceil(count / legCols);
-                    const itemRowH = 50; // CONSTANT 50PX ROW HEIGHT
+                    const itemRowH = 60; // CONSTANT 60PX ROW HEIGHT TO ACCOMMODATE LARGER FONT
 
                     profilFaskesData.forEach((item, idx) => {
                         const badgeColor = getTipeFaskesColor(item.tipeFaskes);
                         const cIdx = Math.floor(idx / itemsPerCol);
                         const rIdx = idx % itemsPerCol;
                         const ix = legAreaX + 35 + (cIdx * colW);
-                        const iy = legAreaY + 92 + (rIdx * itemRowH);
-                        const circleR = 15;
+                        const iy = legAreaY + 110 + (rIdx * itemRowH);
+                        const circleR = 18;
                         const circleX = ix + circleR;
                         const circleY = iy + circleR;
 
                         ctx.fillStyle = badgeColor;
                         ctx.beginPath(); ctx.arc(circleX, circleY, circleR, 0, 2 * Math.PI); ctx.fill();
                         ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
-                        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 16px Arial, sans-serif';
+                        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 20px Arial, sans-serif';
                         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                         ctx.fillText(item.num.toString(), circleX, circleY);
                         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
 
-                        // STRICTLY FIXED AT 11PT ARIAL REGULAR (24PX ON 3840PX CANVAS)
+                        // VISUALLY EQUIVALENT TO 10 ARIAL ON STANDARD SCREEN, SCALED ~3.5X FOR 3840PX CANVAS
                         ctx.fillStyle = '#1E293B';
-                        ctx.font = 'normal 24px Arial, sans-serif';
+                        ctx.font = 'normal 35px Arial, sans-serif';
                         let nameText = item.nmppk;
                         const maxTextW = colW - (circleR * 2) - 25;
                         if (ctx.measureText(nameText).width > maxTextW) {
                             while (nameText.length > 3 && ctx.measureText(nameText + '...').width > maxTextW) nameText = nameText.substring(0, nameText.length - 1);
                             nameText += '...';
                         }
-                        ctx.fillText(nameText, ix + (circleR * 2) + 12, iy + 22);
+                        ctx.fillText(nameText, ix + (circleR * 2) + 16, iy + 26);
                     });
                 }
 
