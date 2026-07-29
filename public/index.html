@@ -1337,17 +1337,28 @@
                 ]);
 
                 const rawFaskes = parseCSVText(resFaskes);
+                
+                function getColIgnoreCase(obj, possibleKeys) {
+                    const keys = Object.keys(obj);
+                    for (let pk of possibleKeys) {
+                        const pkLower = pk.toLowerCase();
+                        const found = keys.find(k => k.toLowerCase() === pkLower);
+                        if (found) return obj[found];
+                    }
+                    return '';
+                }
+
                 fkrtlFaskesMap = {};
                 rawFaskes.forEach(f => {
-                    const kd = f.Kode_Faskes ? f.Kode_Faskes.trim() : '';
+                    const kd = getColIgnoreCase(f, ['Kode_Faskes', 'Kode Faskes', 'Kdppk']).trim();
                     if (kd) {
-                        const rawKls = f.Kelas_RS ? f.Kelas_RS.trim() : 'C';
+                        const rawKls = getColIgnoreCase(f, ['Kelas_RS', 'Kelas RS', 'Kelas']).trim() || 'C';
                         const kls = rawKls.startsWith('Kelas') ? rawKls : 'Kelas ' + rawKls;
                         fkrtlFaskesMap[kd] = {
-                            Jenis_PPK: f.Jenis_PPK ? f.Jenis_PPK.trim() : 'Rumah Sakit',
+                            Jenis_PPK: getColIgnoreCase(f, ['Jenis_PPK', 'Jenis PPK', 'Jenis']).trim() || 'Rumah Sakit',
                             Kelas_RS: kls,
-                            Nama: f.Nama_FKRTL ? f.Nama_FKRTL.trim() : '',
-                            Kabupaten: f.Kabupaten ? f.Kabupaten.trim() : ''
+                            Nama: getColIgnoreCase(f, ['Nama_FKRTL', 'Nama FKRTL', 'Nama']).trim(),
+                            Kabupaten: getColIgnoreCase(f, ['Kabupaten', 'Kota']).trim()
                         };
                     }
                 });
@@ -1371,8 +1382,8 @@
                     const capStr = (r.Capaian || '').replace('%', '').replace(',', '.').trim();
                     const capVal = parseFloat(capStr) || 0;
 
-                    const kdppk = (r.Kdppk || '').trim();
-                    const fInfo = fkrtlFaskesMap[kdppk] || { Jenis_PPK: 'Rumah Sakit', Kelas_RS: 'Kelas C', Kabupaten: '' };
+                    const kdppk = getColIgnoreCase(r, ['Kdppk', 'KDPPK', 'Kode_Faskes']).trim();
+                    const fInfo = fkrtlFaskesMap[kdppk] || { Jenis_PPK: 'Rumah Sakit', Kelas_RS: 'Kelas C', Kabupaten: '', Nama: '' };
 
                     let cab = (r.Cabang || '').split(' (')[0].trim();
                     let kdkr = (r.Kdkr || '').trim();
@@ -1385,7 +1396,7 @@
                         kepwil: kdkr,
                         cabang: cab,
                         kabupaten: fInfo.Kabupaten,
-                        faskes: (r.Faskes || '').trim(),
+                        faskes: getColIgnoreCase(r, ['Faskes', 'FASKES', 'Nama_Faskes']).trim() || fInfo.Nama || '',
                         sumber: (r.Sumber || '').trim(),
                         jenis_ppk: fInfo.Jenis_PPK,
                         kelas_faskes: fInfo.Kelas_RS,
@@ -1459,10 +1470,9 @@
             const selKabupaten = (document.getElementById('flt-kabupaten')?.value || '(All)').trim();
             const selJenisPpk = (document.getElementById('flt-jenis-ppk')?.value || '(All)').trim();
             const selKelasFaskes = (document.getElementById('flt-kelas-faskes')?.value || '(All)').trim();
-            const selNamaFaskes = (document.getElementById('flt-nama-faskes')?.value || '(All)').trim();
             const selSumber = (document.getElementById('flt-sumber')?.value || '(All)').trim();
 
-            const filteredRows = fkrtlRawData.filter(r => {
+            const rowsForFaskesOptions = fkrtlRawData.filter(r => {
                 if (selTahun !== '(All)' && r.tahun !== selTahun) return false;
                 if (selBulan !== '(All)' && r.bulan !== selBulan) return false;
                 if (selKepwil !== '(All)' && r.kepwil !== selKepwil) return false;
@@ -1470,8 +1480,30 @@
                 if (selKabupaten !== '(All)' && r.kabupaten !== selKabupaten) return false;
                 if (selJenisPpk !== '(All)' && r.jenis_ppk !== selJenisPpk) return false;
                 if (selKelasFaskes !== '(All)' && r.kelas_faskes !== selKelasFaskes) return false;
-                if (selNamaFaskes !== '(All)' && r.faskes !== selNamaFaskes) return false;
                 if (selSumber !== '(All)' && r.sumber !== selSumber) return false;
+                return true;
+            });
+
+            const validNamaFaskes = Array.from(new Set(rowsForFaskesOptions.map(r => r.faskes).filter(Boolean))).sort();
+            const selFaskesElem = document.getElementById('flt-nama-faskes');
+            let selNamaFaskes = selFaskesElem?.value || '(All)';
+            
+            if (selFaskesElem) {
+                const currentOptions = Array.from(selFaskesElem.options).map(o => o.value);
+                const expectedOptions = ['(All)', ...validNamaFaskes];
+                if (currentOptions.join('|') !== expectedOptions.join('|')) {
+                    selFaskesElem.innerHTML = expectedOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('');
+                    if (expectedOptions.includes(selNamaFaskes)) {
+                        selFaskesElem.value = selNamaFaskes;
+                    } else {
+                        selNamaFaskes = '(All)';
+                        selFaskesElem.value = '(All)';
+                    }
+                }
+            }
+
+            const filteredRows = rowsForFaskesOptions.filter(r => {
+                if (selNamaFaskes !== '(All)' && r.faskes !== selNamaFaskes) return false;
                 return true;
             });
 
