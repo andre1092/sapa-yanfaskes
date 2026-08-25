@@ -762,8 +762,18 @@ async def get_fkrtl_antrol_stats(
                 filtered_poli = filtered_poli.filter(pl.col("Kelas_RS") == kelas_rs)
 
         # Filter by Sumber
+        measure_col = None
+        if not filtered_poli.is_empty():
+            measure_col = find_column_name(filtered_poli, ["measure names", "measure_names", "measure"])
+            if measure_col:
+                # Do not display any values other than those that match between these two columns
+                valid_sumbers = [s for s in available_sumber if s and s not in ("Semua Sumber", "(All)")]
+                filtered_poli = filtered_poli.filter(pl.col(measure_col).is_in(valid_sumbers))
+
         if sumber and sumber != "Semua Sumber" and sumber != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Sumber") == sumber)
+            if measure_col and not filtered_poli.is_empty():
+                filtered_poli = filtered_poli.filter(pl.col(measure_col) == sumber)
 
         # 12. Check if filtered data exists
         if filtered_antrol.is_empty():
