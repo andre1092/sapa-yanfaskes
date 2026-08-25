@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 .DS_Store
 gw_config.json
+
+# Credentials & Secrets
+.env
+.env.local
+.env.*
+api-sapa-yanfaskes-*.json
+*-credentials.json
