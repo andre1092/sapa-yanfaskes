@@ -84,16 +84,16 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   const isNoData = !data || data.status === 'no_data' || (data.trend_per_bulan.length === 0 && data.top_faskes.length === 0);
 
   const filterOptions = data?.filter_options || {
-    tahun: ['2026', '2025'],
-    bulan: ['(All)', 'Agustus 2026', 'Juli 2026'],
+    tahun: ['2026'],
+    bulan: ['(All)', 'August 2026', 'July 2026'],
     kabupaten: ['(All)'],
     kelas_rs: ['(All)'],
     sumber: ['Semua Sumber', 'Mobile JKN'],
   };
 
-  const lastUpdate = data?.last_update || '2026-08-25 05:28:41';
-  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : 'Agustus 2026');
-  const kpiValue = data?.kpi_capaian ?? 93.51;
+  const lastUpdate = data?.last_update || 'No data available.';
+  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filterOptions.bulan[1] || 'August 2026'));
+  const kpiValue = data?.kpi_capaian ?? 0.0;
 
   // Max value for bar scaling
   const maxTrend = Math.max(...(data?.trend_per_bulan.map((t) => t.avg_capaian) || [100]), 100);
@@ -111,7 +111,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Last Update, KPI, Filters & Keterangan (Col span 3.5 / 12) */}
         <div className="lg:col-span-4 xl:col-span-3 space-y-4">
-          {/* 1. Last Update Header */}
+          {/* 1. Last Update Header (Sourced from the final row of spreadsheet) */}
           <div className="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 shadow-sm">
             <span className="text-xs font-semibold italic text-rose-400 block tracking-wide">
               Last Update : {lastUpdate}
@@ -137,7 +137,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">Tahun</label>
               <select
-                value={filters.tahun || '2026'}
+                value={filters.tahun || (filterOptions.tahun[0] || '2026')}
                 onChange={(e) => handleFilterChange('tahun', e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
               >
@@ -157,14 +157,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 onChange={(e) => handleFilterChange('bulan', e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
               >
-                <option value="(All)">(All)</option>
-                {filterOptions.bulan
-                  .filter((b) => b !== '(All)')
-                  .map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
+                {filterOptions.bulan.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -234,15 +231,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white">Tidak ada data tersedia</h3>
+              <h3 className="text-xl font-bold text-white">{data?.message || 'No data available.'}</h3>
               <p className="text-xs text-slate-400 mt-2 max-w-sm">
-                Data untuk parameter filter dan kombinasi Timestamp terpilih tidak ditemukan pada lembar kerja spreadsheet.
+                No matching records found for the selected filter parameters and Timestamp range in the spreadsheet dataset.
               </p>
               <button
                 onClick={() => setFilters({ tahun: '2026', bulan: '(All)', kabupaten: '(All)', kelas_rs: '(All)', sumber: 'Semua Sumber' })}
                 className="mt-5 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
-                Reset Filter
+                Reset Filters
               </button>
             </div>
           ) : (

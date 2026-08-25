@@ -123,14 +123,57 @@ async def scim_provision_user(tenant_id: str, req: Request, db: AsyncSession = D
 
 
 # --- GOOGLE SHEETS INTEGRATION & RELATIONAL DATA ENGINE ---
-MONTH_NAMES_ID = {
-    1: "Januari", 2: "Februari", 3: "Maret", 4: "April", 5: "Mei", 6: "Juni",
-    7: "Juli", 8: "Agustus", 9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+MONTH_NAMES_EN = {
+    1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
+    7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
 }
-MONTH_SHORT_ID = {
-    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mei", 6: "Jun",
-    7: "Jul", 8: "Agu", 9: "Sep", 10: "Okt", 11: "Nov", 12: "Des"
+MONTH_SHORT_EN = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
+    7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
 }
+
+def parse_date_info(val: Any):
+    """
+    Parses timestamp strings in any format ('8/25/2026 5:32:44', '2026-08-25', etc.)
+    Returns (year_str, month_full_str, month_short_str, sort_key, month_int)
+    Example: ('2026', 'August 2026', 'Aug 26', '202608', 8)
+    """
+    if val is None:
+        return None, None, None, None, None
+    s = str(val).strip()
+    if not s:
+        return None, None, None, None, None
+        
+    month, day, year = None, None, None
+    
+    # 1. Regex for M/D/YYYY or MM/DD/YYYY with optional time
+    m1 = re.match(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?", s)
+    if m1:
+        month = int(m1.group(1))
+        day = int(m1.group(2))
+        year = int(m1.group(3))
+        if month > 12 and day <= 12:
+            month, day = day, month
+            
+    # 2. Regex for YYYY-MM-DD or YYYY/MM/DD with optional time
+    if not year or not month:
+        m2 = re.match(r"^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?", s)
+        if m2:
+            year = int(m2.group(1))
+            month = int(m2.group(2))
+            day = int(m2.group(3))
+            
+    if year and month and 1 <= month <= 12 and 1900 <= year <= 2100:
+        year_str = str(year)
+        month_name = MONTH_NAMES_EN.get(month, "")
+        month_full_str = f"{month_name} {year_str}"
+        month_short = MONTH_SHORT_EN.get(month, "")
+        month_short_str = f"{month_short} {year_str[-2:]}"
+        sort_key = f"{year:04d}{month:02d}"
+        return year_str, month_full_str, month_short_str, sort_key, month
+        
+    return None, None, None, None, None
+
 
 def get_sheets_service():
     gcp_creds = os.environ.get("GCP_SA_CREDENTIALS_BASE64") or os.environ.get("GCP_SA_CREDENTIALS_JSON")
@@ -402,7 +445,7 @@ async def get_fkrtl_antrol_stats(
         else:
             df_antrol = df_antrol.with_columns(pl.lit(0.0).alias(col))
 
-    # Calculate Capaian
+    # Calculate Capaian for df_antrol
     if "Sumber" in df_antrol.columns:
         df_antrol = df_antrol.with_columns(
             pl.when(pl.col("Sumber") == "Mobile JKN")
@@ -427,60 +470,50 @@ async def get_fkrtl_antrol_stats(
             .alias("Capaian")
         )
 
-    # 5. Timestamp hierarchy extraction
-    last_update_str = "2026-08-25 05:28:41"
+    # 5. Extract Last Update from the final row of DB_LAP_ANTROL_FKRTL
+    last_update_str = "No data available."
     if "Timestamp" in df_antrol.columns:
-        valid_ts = df_antrol.filter(pl.col("Timestamp").is_not_null() & (pl.col("Timestamp") != ""))
-        if not valid_ts.is_empty():
-            last_update_str = str(valid_ts.select(pl.col("Timestamp").max()).item())
-            
-        # Parse Dates
-        df_antrol = df_antrol.with_columns([
-            pl.col("Timestamp").cast(pl.Utf8).str.slice(0, 4).alias("Tahun_Raw"),
-            pl.col("Timestamp").cast(pl.Utf8).str.slice(5, 2).alias("Bulan_Raw"),
-            pl.col("Timestamp").cast(pl.Utf8).str.slice(0, 7).alias("Bulan_Tahun_Raw"),
-        ])
+        raw_ts_list = df_antrol["Timestamp"].to_list()
+        non_empty_ts = [str(t).strip() for t in raw_ts_list if t is not None and str(t).strip()]
+        if non_empty_ts:
+            # Exact value from the final row of the spreadsheet
+            last_update_str = non_empty_ts[-1]
+
+    # 6. Parse Timestamps in df_antrol (handles '8/25/2026 5:32:44', '2026-08-25', etc.)
+    if "Timestamp" in df_antrol.columns:
+        antrol_ts_raw = df_antrol["Timestamp"].to_list()
+        parsed_antrol = [parse_date_info(ts) for ts in antrol_ts_raw]
         
-        # Build human-readable month names and sorting keys
         df_antrol = df_antrol.with_columns([
-            pl.col("Tahun_Raw").alias("Tahun"),
-            (
-                pl.when(pl.col("Bulan_Raw") == "01").then(pl.lit("Januari"))
-                .when(pl.col("Bulan_Raw") == "02").then(pl.lit("Februari"))
-                .when(pl.col("Bulan_Raw") == "03").then(pl.lit("Maret"))
-                .when(pl.col("Bulan_Raw") == "04").then(pl.lit("April"))
-                .when(pl.col("Bulan_Raw") == "05").then(pl.lit("Mei"))
-                .when(pl.col("Bulan_Raw") == "06").then(pl.lit("Juni"))
-                .when(pl.col("Bulan_Raw") == "07").then(pl.lit("Juli"))
-                .when(pl.col("Bulan_Raw") == "08").then(pl.lit("Agustus"))
-                .when(pl.col("Bulan_Raw") == "09").then(pl.lit("September"))
-                .when(pl.col("Bulan_Raw") == "10").then(pl.lit("Oktober"))
-                .when(pl.col("Bulan_Raw") == "11").then(pl.lit("November"))
-                .when(pl.col("Bulan_Raw") == "12").then(pl.lit("Desember"))
-                .otherwise(pl.lit("Lainnya"))
-            ).alias("NamaBulan"),
-            (
-                pl.when(pl.col("Bulan_Raw") == "01").then(pl.lit("Jan"))
-                .when(pl.col("Bulan_Raw") == "02").then(pl.lit("Feb"))
-                .when(pl.col("Bulan_Raw") == "03").then(pl.lit("Mar"))
-                .when(pl.col("Bulan_Raw") == "04").then(pl.lit("Apr"))
-                .when(pl.col("Bulan_Raw") == "05").then(pl.lit("Mei"))
-                .when(pl.col("Bulan_Raw") == "06").then(pl.lit("Jun"))
-                .when(pl.col("Bulan_Raw") == "07").then(pl.lit("Jul"))
-                .when(pl.col("Bulan_Raw") == "08").then(pl.lit("Agu"))
-                .when(pl.col("Bulan_Raw") == "09").then(pl.lit("Sep"))
-                .when(pl.col("Bulan_Raw") == "10").then(pl.lit("Okt"))
-                .when(pl.col("Bulan_Raw") == "11").then(pl.lit("Nov"))
-                .when(pl.col("Bulan_Raw") == "12").then(pl.lit("Des"))
-                .otherwise(pl.lit("N/A"))
-            ).alias("BulanShort")
-        ]).with_columns([
-            (pl.col("NamaBulan") + " " + pl.col("Tahun")).alias("BulanTahun"),
-            (pl.col("BulanShort") + " " + pl.col("Tahun").str.slice(2, 2)).alias("BulanTahunShort"),
-            (pl.col("Tahun_Raw") + pl.col("Bulan_Raw")).alias("SortKey")
+            pl.Series("Tahun", [p[0] for p in parsed_antrol], dtype=pl.Utf8),
+            pl.Series("BulanTahun", [p[1] for p in parsed_antrol], dtype=pl.Utf8),
+            pl.Series("BulanTahunShort", [p[2] for p in parsed_antrol], dtype=pl.Utf8),
+            pl.Series("SortKey", [p[3] for p in parsed_antrol], dtype=pl.Utf8),
+        ])
+    else:
+        df_antrol = df_antrol.with_columns([
+            pl.lit(None).cast(pl.Utf8).alias("Tahun"),
+            pl.lit(None).cast(pl.Utf8).alias("BulanTahun"),
+            pl.lit(None).cast(pl.Utf8).alias("BulanTahunShort"),
+            pl.lit(None).cast(pl.Utf8).alias("SortKey"),
         ])
 
-    # 6. Relational Join: DB_LAP_ANTROL_FKRTL with DB_FASKES on Kdppk
+    # Check if valid timestamp data exists
+    has_valid_antrol_ts = df_antrol.filter(pl.col("Tahun").is_not_null()).height > 0
+    if not has_valid_antrol_ts:
+        return {
+            "status": "no_data",
+            "message": "No data available.",
+            "last_update": last_update_str,
+            "selected_period": "No data available.",
+            "kpi_capaian": 0.0,
+            "trend_per_bulan": [],
+            "top_faskes": [],
+            "top_poli": [],
+            "filter_options": {"tahun": [], "bulan": [], "kabupaten": [], "kelas_rs": [], "sumber": []}
+        }
+
+    # 7. Relational Join: DB_LAP_ANTROL_FKRTL with DB_FASKES on Kdppk
     if not df_faskes_clean.is_empty() and "Kdppk" in df_antrol.columns:
         df_antrol = df_antrol.join(df_faskes_clean, on="Kdppk", how="left")
     else:
@@ -489,30 +522,36 @@ async def get_fkrtl_antrol_stats(
         if "Kelas_RS" not in df_antrol.columns:
             df_antrol = df_antrol.with_columns(pl.lit("Kelas C").alias("Kelas_RS"))
 
-    # Fill any null values for dimension columns
     df_antrol = df_antrol.with_columns([
         pl.col("Kabupaten").fill_null("(All)"),
         pl.col("Kelas_RS").fill_null("(All)"),
         pl.col("Sumber").fill_null("Semua Sumber")
     ])
 
-    # 7. Prepare antrol_by_poli relational joins
+    # 8. Prepare antrol_by_poli relational joins and Timestamp parsing
     if not df_poli.is_empty():
-        # Cast numeric fields in df_poli
-        for col in ["Jumlah Antrian by Sumber", "Jumlah Sep Rjtl"]:
-            if col in df_poli.columns:
-                df_poli = df_poli.with_columns(
-                    pl.col(col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0)
+        # Identify numeric columns for Capaian calculation
+        cap_col = next((c for c in df_poli.columns if any(k in c.lower() for k in ["capai", "persen", "%"])), None)
+        if cap_col:
+            df_poli = df_poli.with_columns(
+                pl.col(cap_col).cast(pl.Utf8).str.replace_all("%", "").str.replace_all(",", ".").cast(pl.Float64, strict=False).fill_null(0.0).alias("PoliCapaian")
+            )
+        else:
+            num_col = next((c for c in df_poli.columns if any(k in c.lower() for k in ["antri", "antre", "sumber"])), None)
+            den_col = next((c for c in df_poli.columns if any(k in c.lower() for k in ["sep", "peserta", "kunjungan", "total"])), None)
+            
+            if num_col and den_col:
+                df_poli = df_poli.with_columns([
+                    pl.col(num_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_p_num"),
+                    pl.col(den_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_p_den"),
+                ]).with_columns(
+                    pl.when(pl.col("_p_den") > 0)
+                    .then((pl.col("_p_num") / pl.col("_p_den")) * 100.0)
+                    .otherwise(0.0)
+                    .alias("PoliCapaian")
                 )
             else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias(col))
-                
-        df_poli = df_poli.with_columns(
-            pl.when(pl.col("Jumlah Sep Rjtl") > 0)
-            .then((pl.col("Jumlah Antrian by Sumber") / pl.col("Jumlah Sep Rjtl")) * 100.0)
-            .otherwise(0.0)
-            .alias("PoliCapaian")
-        )
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("PoliCapaian"))
         
         # Link antrol_by_poli with DB_FASKES on Kdppk
         if not df_faskes_clean.is_empty() and "Kdppk" in df_poli.columns:
@@ -524,47 +563,53 @@ async def get_fkrtl_antrol_stats(
                 df_poli = df_poli.with_columns(pl.lit("Kelas C").alias("Kelas_RS"))
                 
         # Link antrol_by_poli with ref_poli on Politujuan
-        if not df_ref_poli_clean.is_empty() and "Politujuan" in df_poli.columns:
-            df_poli = df_poli.join(df_ref_poli_clean, on="Politujuan", how="left")
+        poli_code_col = next((c for c in df_poli.columns if c.lower() in ["politujuan", "kd_poli", "kode_poli", "kdpoli", "kode"]), "Politujuan" if "Politujuan" in df_poli.columns else df_poli.columns[0])
+        
+        if not df_ref_poli_clean.is_empty():
             df_poli = df_poli.with_columns(
-                pl.col("Nama_Poli").fill_null(pl.col("Politujuan"))
+                pl.col(poli_code_col).cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias("_poli_key")
+            )
+            df_ref_poli_clean_keyed = df_ref_poli_clean.with_columns(
+                pl.col("Politujuan").cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias("_poli_key")
+            )
+            df_poli = df_poli.join(df_ref_poli_clean_keyed, on="_poli_key", how="left")
+            df_poli = df_poli.with_columns(
+                pl.col("Nama_Poli").fill_null(pl.col(poli_code_col))
             )
         else:
-            if "Nama_Poli" not in df_poli.columns and "Politujuan" in df_poli.columns:
-                df_poli = df_poli.with_columns(pl.col("Politujuan").alias("Nama_Poli"))
+            if "Nama_Poli" not in df_poli.columns:
+                df_poli = df_poli.with_columns(pl.col(poli_code_col).alias("Nama_Poli"))
                 
+        # Parse Timestamp in df_poli
         if "Timestamp" in df_poli.columns:
+            poli_ts_raw = df_poli["Timestamp"].to_list()
+            parsed_poli_ts = [parse_date_info(ts) for ts in poli_ts_raw]
             df_poli = df_poli.with_columns([
-                pl.col("Timestamp").cast(pl.Utf8).str.slice(0, 4).alias("Tahun"),
-                pl.col("Timestamp").cast(pl.Utf8).str.slice(5, 2).alias("Bulan_Raw")
-            ]).with_columns([
-                (
-                    pl.when(pl.col("Bulan_Raw") == "01").then(pl.lit("Januari"))
-                    .when(pl.col("Bulan_Raw") == "02").then(pl.lit("Februari"))
-                    .when(pl.col("Bulan_Raw") == "03").then(pl.lit("Maret"))
-                    .when(pl.col("Bulan_Raw") == "04").then(pl.lit("April"))
-                    .when(pl.col("Bulan_Raw") == "05").then(pl.lit("Mei"))
-                    .when(pl.col("Bulan_Raw") == "06").then(pl.lit("Juni"))
-                    .when(pl.col("Bulan_Raw") == "07").then(pl.lit("Juli"))
-                    .when(pl.col("Bulan_Raw") == "08").then(pl.lit("Agustus"))
-                    .when(pl.col("Bulan_Raw") == "09").then(pl.lit("September"))
-                    .when(pl.col("Bulan_Raw") == "10").then(pl.lit("Oktober"))
-                    .when(pl.col("Bulan_Raw") == "11").then(pl.lit("November"))
-                    .when(pl.col("Bulan_Raw") == "12").then(pl.lit("Desember"))
-                    .otherwise(pl.lit("Lainnya"))
-                ).alias("NamaBulan")
-            ]).with_columns([
-                (pl.col("NamaBulan") + " " + pl.col("Tahun")).alias("BulanTahun")
+                pl.Series("Tahun", [p[0] for p in parsed_poli_ts], dtype=pl.Utf8),
+                pl.Series("BulanTahun", [p[1] for p in parsed_poli_ts], dtype=pl.Utf8),
+                pl.Series("BulanTahunShort", [p[2] for p in parsed_poli_ts], dtype=pl.Utf8),
+                pl.Series("SortKey", [p[3] for p in parsed_poli_ts], dtype=pl.Utf8),
             ])
 
-    # 8. Extract Available Dynamic Filter Options
-    available_years = sorted([str(y) for y in df_antrol.select("Tahun").unique().to_series().to_list() if y], reverse=True)
-    available_months = [str(m) for m in df_antrol.select("BulanTahun").unique().to_series().to_list() if m]
+    # 9. Extract Dynamic Filter Options
+    available_years = sorted(list(set([str(y) for y in df_antrol.select("Tahun").unique().to_series().to_list() if y])), reverse=True)
+    
+    # Months sorted chronologically descending by SortKey
+    month_sort_tuples = (
+        df_antrol
+        .filter(pl.col("BulanTahun").is_not_null() & pl.col("SortKey").is_not_null())
+        .select(["SortKey", "BulanTahun"])
+        .unique()
+        .sort("SortKey", descending=True)
+        .to_dicts()
+    )
+    available_months = ["(All)"] + [m["BulanTahun"] for m in month_sort_tuples]
+    
     available_kabupaten = ["(All)"] + sorted(list(set([str(k) for k in df_antrol.select("Kabupaten").unique().to_series().to_list() if k and k != "(All)"])))
     available_kelas = ["(All)"] + sorted(list(set([str(k) for k in df_antrol.select("Kelas_RS").unique().to_series().to_list() if k and k != "(All)"])))
     available_sumber = ["Semua Sumber"] + sorted(list(set([str(s) for s in df_antrol.select("Sumber").unique().to_series().to_list() if s and s != "Semua Sumber"])))
 
-    # 9. Apply User Filters
+    # 10. Apply Filters
     filtered_antrol = df_antrol
     filtered_poli = df_poli
 
@@ -591,13 +636,13 @@ async def get_fkrtl_antrol_stats(
     if sumber and sumber != "Semua Sumber" and sumber != "(All)":
         filtered_antrol = filtered_antrol.filter(pl.col("Sumber") == sumber)
 
-    # 10. Check if data exists after filtering and timestamp relation
+    # 11. Check if filtered data exists
     if filtered_antrol.is_empty():
         return {
             "status": "no_data",
-            "message": "Tidak ada data tersedia",
+            "message": "No data available.",
             "last_update": last_update_str,
-            "selected_period": bulan or (available_months[0] if available_months else "Agustus 2026"),
+            "selected_period": bulan or "August 2026",
             "kpi_capaian": 0.0,
             "trend_per_bulan": [],
             "top_faskes": [],
@@ -611,14 +656,14 @@ async def get_fkrtl_antrol_stats(
             }
         }
 
-    # 11. Compute Aggregations
+    # 12. Compute Aggregations
     # Overall KPI Capaian
     overall_capaian = filtered_antrol.select(pl.col("Capaian").mean()).item() or 0.0
     
-    # Tren Perbulan (Vertical Bar Chart)
+    # Tren Perbulan (Vertical Bar Chart - strictly by valid Month & Year)
     trend_query = (
         df_antrol
-        .filter(pl.col("BulanTahunShort").is_not_null())
+        .filter(pl.col("SortKey").is_not_null() & pl.col("BulanTahunShort").is_not_null())
         .group_by(["SortKey", "BulanTahunShort"])
         .agg(pl.col("Capaian").mean().alias("avg_capaian"))
         .sort("SortKey")
@@ -658,8 +703,13 @@ async def get_fkrtl_antrol_stats(
             for r in poli_query.to_dicts()
         ]
 
-    # Period Label for KPI header
-    period_label = bulan if (bulan and bulan != "(All)") else (available_months[0] if available_months else "Periode Aktif")
+    # Period Label for KPI Card
+    if bulan and bulan != "(All)":
+        period_label = bulan
+    elif len(available_months) > 1:
+        period_label = available_months[1]  # First actual month after "(All)"
+    else:
+        period_label = "August 2026"
 
     return {
         "status": "success",
