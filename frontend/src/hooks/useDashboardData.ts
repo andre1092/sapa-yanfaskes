@@ -10,13 +10,14 @@ export interface DashboardStats {
   top_faskes: Array<{ Faskes: string; AvgCapaian: number }>;
 }
 
-export const useDashboardData = () => {
+export const useDashboardData = (enabled: boolean = true) => {
   return useQuery<DashboardStats, Error>({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const response = await apiClient.get<DashboardStats>('/api/v1/dashboard-stats');
       return response.data;
     },
+    enabled: enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes fresh
     gcTime: 15 * 60 * 1000,   // 15 minutes in memory
   });
