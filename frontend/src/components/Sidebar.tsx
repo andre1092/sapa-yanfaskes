@@ -219,8 +219,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5 whitespace-nowrap">
                   SAPA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-300">YANFASKES</span>
                 </span>
-                <span className="text-[10px] font-medium text-slate-400 tracking-wide uppercase whitespace-nowrap">
-                  Health Analytics
+                <span className="text-[9.5px] font-medium text-slate-400 tracking-tight whitespace-nowrap">
+                  Saluran Analisis Performa & Akselerasi
                 </span>
               </div>
             </div>
