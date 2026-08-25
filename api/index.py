@@ -181,7 +181,7 @@ def fetch_sheet_data(spreadsheet_id: str, range_name: str) -> pl.DataFrame:
         return pl.DataFrame(normalized_data, schema=headers, orient="row")
     except Exception as e:
         logger.error(f"Error fetching sheets data: {e}")
-        raise HTTPException(status_code=502, detail="Failed to retrieve data from Google Sheets.")
+        raise HTTPException(status_code=502, detail=f"Failed to retrieve data from Google Sheets: {str(e)}")
 
 # --- DATA PROCESSING (Polars Engine) ---
 @app.get("/api/v1/dashboard-stats")
