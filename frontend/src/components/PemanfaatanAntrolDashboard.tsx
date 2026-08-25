@@ -85,14 +85,14 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
   const filterOptions = data?.filter_options || {
     tahun: ['2026'],
-    bulan: ['(All)', 'August 2026', 'July 2026'],
+    bulan: ['(All)', 'Agustus 2026', 'Juli 2026'],
     kabupaten: ['(All)'],
     kelas_rs: ['(All)'],
     sumber: ['Semua Sumber', 'Mobile JKN'],
   };
 
   const lastUpdate = data?.last_update || 'No data available.';
-  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filterOptions.bulan[1] || 'August 2026'));
+  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filterOptions.bulan[1] || 'Agustus 2026'));
   const kpiValue = data?.kpi_capaian ?? 0.0;
 
   // Max value for bar scaling
@@ -322,24 +322,30 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   </div>
 
                   <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                    {data.top_poli.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-semibold text-slate-200 truncate flex-1" title={p.poli}>
-                          {p.poli}
-                        </span>
-
-                        {/* Horizontal Percentage Bar */}
-                        <div className="w-36 sm:w-44 bg-slate-950 rounded-md overflow-hidden h-6 flex items-center relative border border-slate-800 shrink-0">
-                          <div
-                            style={{ width: `${Math.min(p.avg_capaian, 100)}%` }}
-                            className="h-full bg-[#4c76a3] transition-all duration-500"
-                          />
-                          <span className="absolute right-2 text-[10.5px] font-bold text-white drop-shadow">
-                            {formatPercentID(p.avg_capaian)}
-                          </span>
-                        </div>
+                    {data.top_poli.length === 0 ? (
+                      <div className="py-12 text-center text-slate-400 text-xs italic">
+                        Tidak ada data tersedia
                       </div>
-                    ))}
+                    ) : (
+                      data.top_poli.map((p, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="font-semibold text-slate-200 truncate flex-1" title={p.poli}>
+                            {p.poli}
+                          </span>
+
+                          {/* Horizontal Percentage Bar */}
+                          <div className="w-36 sm:w-44 bg-slate-950 rounded-md overflow-hidden h-6 flex items-center relative border border-slate-800 shrink-0">
+                            <div
+                              style={{ width: `${Math.min(p.avg_capaian, 100)}%` }}
+                              className="h-full bg-[#4c76a3] transition-all duration-500"
+                            />
+                            <span className="absolute right-2 text-[10.5px] font-bold text-white drop-shadow">
+                              {formatPercentID(p.avg_capaian)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
