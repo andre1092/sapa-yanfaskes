@@ -54,4 +54,5 @@ async def set_tenant_context(session: AsyncSession, tenant_id: str, user_id: str
         })
     except Exception as e:
         logger.error(f"Failed to set tenant context in database: {e}")
-        raise HTTPException(status_code=500, detail="Database context isolation failure.")
+        # Expose the precise error string to help diagnose connection/function issues
+        raise HTTPException(status_code=500, detail=f"Database context isolation failure: {str(e)}")
