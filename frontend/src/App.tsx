@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import type { NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BlankContentArea } from './components/BlankContentArea';
+import { PemanfaatanAntrolDashboard } from './components/PemanfaatanAntrolDashboard';
 
 // Environment Variables
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || '';
@@ -107,9 +108,13 @@ function MainLayout() {
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
         />
 
-        {/* Dynamic Content View (Blank for now) */}
+        {/* Dynamic Content View */}
         <main className="flex-1 overflow-y-auto">
-          <BlankContentArea activeTab={activeTab} />
+          {activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
+            <PemanfaatanAntrolDashboard />
+          ) : (
+            <BlankContentArea activeTab={activeTab} />
+          )}
         </main>
       </div>
     </div>
