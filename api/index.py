@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import polars as pl
 import jwt
+import uuid
 from jwt import PyJWKClient
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -193,7 +194,15 @@ async def get_dashboard_stats(spreadsheet_id: str = "1GqP1T3l_g6Z7k4n1x_F6Wp9Y_c
         tenant_id = user.get("tenant_id", "00000000-0000-0000-0000-000000000001")
         role = user.get("role", "viewer")
         sub = user.get("sub", "unknown")
-        await set_tenant_context(db, tenant_id, sub, role == "superadmin")
+        
+        # Ensure sub is a valid UUID for the database context
+        try:
+            user_uuid = str(uuid.UUID(sub))
+        except (ValueError, TypeError):
+            # Fallback to the seed admin user UUID if the Auth0 sub is not a UUID (e.g. "auth0|...")
+            user_uuid = "00000000-0000-0000-0000-000000000002"
+            
+        await set_tenant_context(db, tenant_id, user_uuid, role == "superadmin")
         # In a full EHR integration, the database queries here would automatically be isolated by RLS.
         # But here we aggregate from Google Sheets, so we use the tenant_id to map to the correct spreadsheet if needed.
 
