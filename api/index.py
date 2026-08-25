@@ -185,7 +185,7 @@ def fetch_sheet_data(spreadsheet_id: str, range_name: str) -> pl.DataFrame:
 
 # --- DATA PROCESSING (Polars Engine) ---
 @app.get("/api/v1/dashboard-stats")
-async def get_dashboard_stats(spreadsheet_id: str = "1GqP1T3l_g6Z7k4n1x_F6Wp9Y_c-K4fA2", 
+async def get_dashboard_stats(spreadsheet_id: str = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY", 
                               user=Depends(require_auth),
                               db: AsyncSession = Depends(get_db)):
     
