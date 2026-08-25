@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 
-export type NavTab = 'home' | 'fktp' | 'fkrtl' | 'admin';
+export type NavTab = 'home' | 'fktp' | 'fkrtl' | 'fkrtl-antrol' | 'admin';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -10,12 +10,20 @@ interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
+interface SubMenuItem {
+  id: NavTab;
+  label: string;
+  badge?: string;
+  description?: string;
+}
+
 interface NavItemConfig {
   id: NavTab;
   label: string;
   badge?: string;
   description?: string;
   icon: (active: boolean) => React.ReactNode;
+  children?: SubMenuItem[];
 }
 
 const navItems: NavItemConfig[] = [
@@ -64,7 +72,7 @@ const navItems: NavItemConfig[] = [
     id: 'fkrtl',
     label: 'FKRTL Dashboard',
     badge: 'Rujukan',
-    description: 'Fasilitas Kesehatan Rujukan Tingkat Lanjutan',
+    description: 'Fasilitas Rujukan Tingkat Lanjutan',
     icon: (active) => (
       <svg
         className={`w-5 h-5 transition-colors ${active ? 'text-cyan-400' : 'text-slate-400 group-hover:text-slate-200'}`}
@@ -80,11 +88,19 @@ const navItems: NavItemConfig[] = [
         />
       </svg>
     ),
+    children: [
+      {
+        id: 'fkrtl-antrol',
+        label: 'Pemanfaatan Antrol',
+        badge: 'Live',
+        description: 'Monitoring Antrean Online FKRTL',
+      },
+    ],
   },
   {
     id: 'admin',
     label: 'Admin Settings',
-    description: 'IAM, RLS & Integration',
+    description: 'IAM, RLS & Konfigurasi',
     icon: (active) => (
       <svg
         className={`w-5 h-5 transition-colors ${active ? 'text-cyan-400' : 'text-slate-400 group-hover:text-slate-200'}`}
@@ -115,6 +131,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, logout } = useAuth0();
+  // Keep FKRTL expanded by default or when any of its submenus is active
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    fkrtl: true,
+  });
+
+  const toggleExpand = (menuId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedMenus((prev) => ({
+      ...prev,
+      [menuId]: !prev[menuId],
+    }));
+  };
 
   const handleLogout = () => {
     logout({ logoutParams: { returnTo: window.location.origin } });
@@ -185,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Navigation Section */}
-          <div className="px-4 py-6">
+          <div className="px-4 py-6 overflow-y-auto max-h-[calc(100vh-190px)]">
             <div className="px-3 mb-2.5">
               <span className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase">
                 Menu Navigasi
@@ -194,59 +222,141 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <nav className="space-y-1.5" aria-label="Sidebar navigation">
               {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onTabChange(item.id);
-                      if (onCloseMobile) onCloseMobile();
-                    }}
-                    className={`group w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-left relative ${
-                      isActive
-                        ? 'bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-transparent text-white border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'
-                    }`}
-                  >
-                    {/* Active Accent Bar */}
-                    {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-cyan-400 to-teal-400 rounded-r-full" />
-                    )}
+                const hasChildren = Boolean(item.children && item.children.length > 0);
+                const isDirectActive = activeTab === item.id;
+                const isChildActive = Boolean(hasChildren && item.children?.some((child) => child.id === activeTab));
+                const isParentActive = Boolean(isDirectActive || isChildActive);
+                const isExpanded = Boolean(expandedMenus[item.id] ?? false);
 
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-1.5 rounded-lg transition-colors ${
-                          isActive
-                            ? 'bg-cyan-500/20 text-cyan-300'
-                            : 'bg-slate-800/80 text-slate-400 group-hover:bg-slate-800 group-hover:text-slate-200'
-                        }`}
-                      >
-                        {item.icon(isActive)}
+                return (
+                  <div key={item.id} className="space-y-1">
+                    {/* Main Nav Item */}
+                    <button
+                      onClick={() => {
+                        if (hasChildren) {
+                          // Toggle expand and navigate to first child if not on child
+                          setExpandedMenus((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
+                          if (item.children?.[0]) {
+                            onTabChange(item.children[0].id);
+                          } else {
+                            onTabChange(item.id);
+                          }
+                        } else {
+                          onTabChange(item.id);
+                        }
+                        if (onCloseMobile && !hasChildren) onCloseMobile();
+                      }}
+                      className={`group w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-left relative ${
+                        isParentActive
+                          ? 'bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-transparent text-white border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'
+                      }`}
+                    >
+                      {/* Active Accent Bar */}
+                      {isParentActive && (
+                        <span className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-cyan-400 to-teal-400 rounded-r-full" />
+                      )}
+
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`p-1.5 rounded-lg transition-colors shrink-0 ${
+                            isParentActive
+                              ? 'bg-cyan-500/20 text-cyan-300'
+                              : 'bg-slate-800/80 text-slate-400 group-hover:bg-slate-800 group-hover:text-slate-200'
+                          }`}
+                        >
+                          {item.icon(isParentActive)}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className={`leading-none truncate ${isParentActive ? 'font-semibold text-cyan-100' : 'font-medium'}`}>
+                            {item.label}
+                          </span>
+                          {item.description && (
+                            <span className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+                              {item.description}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className={`leading-none ${isActive ? 'font-semibold text-cyan-100' : 'font-medium'}`}>
-                          {item.label}
-                        </span>
-                        {item.description && (
-                          <span className="text-[11px] text-slate-400 mt-1 line-clamp-1">
-                            {item.description}
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {item.badge && (
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              isParentActive
+                                ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400/30'
+                                : 'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+
+                        {/* Chevron Expand Indicator for Parent Items */}
+                        {hasChildren && (
+                          <span
+                            onClick={(e) => toggleExpand(item.id, e)}
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition-transform duration-200"
+                            aria-label="Toggle submenu"
+                          >
+                            <svg
+                              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-cyan-400' : 'text-slate-400'}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
                           </span>
                         )}
                       </div>
-                    </div>
+                    </button>
 
-                    {item.badge && (
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                          isActive
-                            ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400/30'
-                            : 'bg-slate-800 text-slate-400 border-slate-700'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
+                    {/* Sub-menu Items (e.g. Pemanfaatan Antrol under FKRTL Dashboard) */}
+                    {hasChildren && isExpanded && (
+                      <div className="pl-6 pr-1 py-1 space-y-1 border-l-2 border-slate-800/80 ml-5 my-1">
+                        {item.children?.map((child) => {
+                          const isChildCurrentActive = activeTab === child.id;
+                          return (
+                            <button
+                              key={child.id}
+                              onClick={() => {
+                                onTabChange(child.id);
+                                if (onCloseMobile) onCloseMobile();
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all text-left ${
+                                isChildCurrentActive
+                                  ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
+                                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isChildCurrentActive ? 'bg-cyan-400 ring-2 ring-cyan-400/30' : 'bg-slate-600'
+                                  }`}
+                                />
+                                <span className="truncate">{child.label}</span>
+                              </div>
+
+                              {child.badge && (
+                                <span
+                                  className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${
+                                    isChildCurrentActive
+                                      ? 'bg-cyan-400/30 text-cyan-200'
+                                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                  }`}
+                                >
+                                  {child.badge}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </nav>
@@ -282,7 +392,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Logout Button placed at the very bottom */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-rose-950/30"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-rose-950/30 cursor-pointer"
           >
             <svg
               className="w-4 h-4 text-rose-400"

@@ -6,22 +6,31 @@ interface HeaderProps {
   onOpenMobileMenu: () => void;
 }
 
-const tabTitles: Record<NavTab, { title: string; subtitle: string }> = {
+const tabTitles: Record<NavTab, { title: string; subtitle: string; breadcrumb: string }> = {
   home: {
     title: 'Home',
     subtitle: 'Selamat datang di Portal Layanan dan Analitik Fasilitas Kesehatan',
+    breadcrumb: 'Home',
   },
   fktp: {
     title: 'FKTP Dashboard',
     subtitle: 'Monitoring Kinerja & Pemanfaatan Fasilitas Kesehatan Tingkat Pertama',
+    breadcrumb: 'FKTP Dashboard',
   },
   fkrtl: {
     title: 'FKRTL Dashboard',
     subtitle: 'Monitoring Kinerja & Rujukan Fasilitas Kesehatan Rujukan Tingkat Lanjutan',
+    breadcrumb: 'FKRTL Dashboard',
+  },
+  'fkrtl-antrol': {
+    title: 'Pemanfaatan Antrol',
+    subtitle: 'Monitoring & Analisis Pemanfaatan Antrean Online FKRTL',
+    breadcrumb: 'FKRTL Dashboard / Pemanfaatan Antrol',
   },
   admin: {
     title: 'Admin Settings',
     subtitle: 'Manajemen Keamanan IAM, Database Context & Konfigurasi Sistem',
+    breadcrumb: 'Admin Settings',
   },
 };
 
@@ -49,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
             </span>
             <span className="text-slate-600">•</span>
             <span className="text-xs font-medium text-slate-400">
-              {currentTab.title}
+              {currentTab.breadcrumb}
             </span>
           </div>
           <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-white mt-0.5">
