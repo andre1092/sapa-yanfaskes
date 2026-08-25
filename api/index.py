@@ -170,15 +170,26 @@ def fetch_sheet_data(spreadsheet_id: str, range_name: str) -> pl.DataFrame:
         headers = rows[0]
         data = rows[1:]
         
+        # Deduplicate headers: "Cabang", "Cabang" -> "Cabang", "Cabang_2"
+        seen = {}
+        unique_headers = []
+        for h in headers:
+            if h in seen:
+                seen[h] += 1
+                unique_headers.append(f"{h}_{seen[h]}")
+            else:
+                seen[h] = 1
+                unique_headers.append(h)
+        
         normalized_data = []
         for r in data:
-            if len(r) < len(headers):
-                r.extend([""] * (len(headers) - len(r)))
-            elif len(r) > len(headers):
-                r = r[:len(headers)]
+            if len(r) < len(unique_headers):
+                r.extend([""] * (len(unique_headers) - len(r)))
+            elif len(r) > len(unique_headers):
+                r = r[:len(unique_headers)]
             normalized_data.append(r)
             
-        return pl.DataFrame(normalized_data, schema=headers, orient="row")
+        return pl.DataFrame(normalized_data, schema=unique_headers, orient="row")
     except Exception as e:
         logger.error(f"Error fetching sheets data: {e}")
         raise HTTPException(status_code=502, detail=f"Failed to retrieve data from Google Sheets: {str(e)}")
