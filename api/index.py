@@ -312,12 +312,16 @@ def generate_mock_multi_sheets():
     for f in faskes_list[:5]:
         for p in polis:
             for m in months[-2:]:
+                flag_mjkn = int(p[2] * 7)   # e.g. 700
+                flag_bridging = int(p[2] * 3)  # e.g. 300
+                total_sep = 1000
                 poli_rows.append({
                     "Kdppk": f[0],
                     "Politujuan": p[0],
                     "Timestamp": m[0],
-                    "Jumlah Antrian by Sumber": str(int(p[2] * 10)),
-                    "Jumlah Sep Rjtl": "1000"
+                    "Flag Mobile JKN": str(flag_mjkn),
+                    "Flag Bridging Antrean": str(flag_bridging),
+                    "Total SEP": str(total_sep)
                 })
     df_poli = pl.DataFrame(poli_rows)
     
@@ -601,28 +605,58 @@ async def get_fkrtl_antrol_stats(
 
         # 9. Prepare antrol_by_poli relational joins, Politujuan mapping, and Timestamp
         if not df_poli.is_empty():
-            # Identify numeric columns for Capaian calculation in antrol_by_poli
-            cap_col = find_column_name(df_poli, ["capai", "persen", "%"])
-            if cap_col:
+            # Identify the specific columns for PoliCapaian calculation
+            flag_mjkn_col = find_column_name(df_poli, ["flag mobile jkn", "flag_mobile_jkn", "flag mjkn", "mobile jkn"])
+            flag_bridging_col = find_column_name(df_poli, ["flag bridging antrean", "flag_bridging_antrean", "flag bridging", "bridging antrean", "bridging"])
+            total_sep_col = find_column_name(df_poli, ["total sep", "total_sep", "jumlah sep", "sep"])
+
+            if flag_mjkn_col:
                 df_poli = df_poli.with_columns(
-                    pl.col(cap_col).cast(pl.Utf8).str.replace_all("%", "").str.replace_all(",", ".").cast(pl.Float64, strict=False).fill_null(0.0).alias("PoliCapaian")
+                    pl.col(flag_mjkn_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_mjkn")
                 )
             else:
-                num_col = find_column_name(df_poli, ["antrian", "antrean", "sumber", "by_sumber", "jml"])
-                den_col = find_column_name(df_poli, ["sep", "rjtl", "peserta", "kunjungan", "total"])
-                
-                if num_col and den_col and num_col != den_col:
-                    df_poli = df_poli.with_columns([
-                        pl.col(num_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_p_num"),
-                        pl.col(den_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_p_den"),
-                    ]).with_columns(
-                        pl.when(pl.col("_p_den") > 0)
-                        .then((pl.col("_p_num") / pl.col("_p_den")) * 100.0)
-                        .otherwise(0.0)
-                        .alias("PoliCapaian")
-                    )
-                else:
-                    df_poli = df_poli.with_columns(pl.lit(0.0).alias("PoliCapaian"))
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_mjkn"))
+
+            if flag_bridging_col:
+                df_poli = df_poli.with_columns(
+                    pl.col(flag_bridging_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_bridging")
+                )
+            else:
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_bridging"))
+
+            if total_sep_col:
+                df_poli = df_poli.with_columns(
+                    pl.col(total_sep_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_total_sep")
+                )
+            else:
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_total_sep"))
+
+            # Compute PoliCapaian based on Sumber filter:
+            # - "Mobile JKN"    → Flag Mobile JKN / Total SEP * 100
+            # - "Semua Sumber"  → (Flag Mobile JKN + Flag Bridging Antrean) / Total SEP * 100
+            # - other specific  → Flag Bridging Antrean / Total SEP * 100
+            if sumber and sumber == "Mobile JKN":
+                df_poli = df_poli.with_columns(
+                    pl.when(pl.col("_total_sep") > 0)
+                    .then((pl.col("_flag_mjkn") / pl.col("_total_sep")) * 100.0)
+                    .otherwise(0.0)
+                    .alias("PoliCapaian")
+                )
+            elif not sumber or sumber in ("Semua Sumber", "(All)"):
+                df_poli = df_poli.with_columns(
+                    pl.when(pl.col("_total_sep") > 0)
+                    .then(((pl.col("_flag_mjkn") + pl.col("_flag_bridging")) / pl.col("_total_sep")) * 100.0)
+                    .otherwise(0.0)
+                    .alias("PoliCapaian")
+                )
+            else:
+                # Any other Sumber value → Flag Bridging Antrean / Total SEP
+                df_poli = df_poli.with_columns(
+                    pl.when(pl.col("_total_sep") > 0)
+                    .then((pl.col("_flag_bridging") / pl.col("_total_sep")) * 100.0)
+                    .otherwise(0.0)
+                    .alias("PoliCapaian")
+                )
             
             # Link antrol_by_poli with DB_FASKES on Kdppk
             if not df_faskes_clean.is_empty() and "Kdppk" in df_poli.columns:
@@ -761,19 +795,10 @@ async def get_fkrtl_antrol_stats(
             if not filtered_poli.is_empty() and "Kelas_RS" in filtered_poli.columns:
                 filtered_poli = filtered_poli.filter(pl.col("Kelas_RS") == kelas_rs)
 
-        # Filter by Sumber
-        measure_col = None
-        if not filtered_poli.is_empty():
-            measure_col = find_column_name(filtered_poli, ["measure names", "measure_names", "measure"])
-            if measure_col:
-                # Do not display any values other than those that match between these two columns
-                valid_sumbers = [s for s in available_sumber if s and s not in ("Semua Sumber", "(All)")]
-                filtered_poli = filtered_poli.filter(pl.col(measure_col).is_in(valid_sumbers))
-
+        # Filter by Sumber (only applies to df_antrol; df_poli's PoliCapaian
+        # is already computed with the correct formula based on the sumber parameter)
         if sumber and sumber != "Semua Sumber" and sumber != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Sumber") == sumber)
-            if measure_col and not filtered_poli.is_empty():
-                filtered_poli = filtered_poli.filter(pl.col(measure_col) == sumber)
 
         # 12. Check if filtered data exists
         if filtered_antrol.is_empty():
