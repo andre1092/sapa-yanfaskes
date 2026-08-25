@@ -45,7 +45,7 @@ async def set_tenant_context(session: AsyncSession, tenant_id: str, user_id: str
         
     try:
         query = text(
-            "SELECT set_tenant_context(:tenant_id::UUID, :user_id::UUID, :is_superadmin::BOOLEAN)"
+            "SELECT set_tenant_context(CAST(:tenant_id AS UUID), CAST(:user_id AS UUID), CAST(:is_superadmin AS BOOLEAN))"
         )
         await session.execute(query, {
             "tenant_id": tenant_id,
