@@ -711,23 +711,43 @@ async def get_fkrtl_antrol_stats(
             if not filtered_poli.is_empty() and "Tahun" in filtered_poli.columns:
                 filtered_poli = filtered_poli.filter(pl.col("Tahun") == tahun)
 
-        # Filter by Bulan linked directly to the month's latest Timestamp
+        # Filter by Bulan linked robustly
         if bulan and bulan != "(All)":
             target_ts = latest_ts_by_month.get(bulan)
             if target_ts:
                 filtered_antrol = filtered_antrol.filter(pl.col("RawTimestamp") == target_ts)
-                if not filtered_poli.is_empty() and "RawTimestamp" in filtered_poli.columns:
-                    filtered_poli = filtered_poli.filter(pl.col("RawTimestamp") == target_ts)
             else:
                 filtered_antrol = filtered_antrol.filter(pl.col("BulanTahun") == bulan)
-                if not filtered_poli.is_empty() and "BulanTahun" in filtered_poli.columns:
-                    filtered_poli = filtered_poli.filter(pl.col("BulanTahun") == bulan)
+                
+            if not filtered_poli.is_empty() and "BulanTahun" in filtered_poli.columns:
+                has_exact = False
+                if "RawTimestamp" in filtered_poli.columns and target_ts:
+                    has_exact = filtered_poli.filter(pl.col("RawTimestamp") == target_ts).height > 0
+                    
+                if has_exact:
+                    filtered_poli = filtered_poli.filter(pl.col("RawTimestamp") == target_ts)
+                else:
+                    month_poli = filtered_poli.filter(pl.col("BulanTahun") == bulan)
+                    if not month_poli.is_empty() and "RawTimestamp" in month_poli.columns:
+                        latest_poli_ts = month_poli.select(pl.col("RawTimestamp").max()).item()
+                        filtered_poli = month_poli.filter(pl.col("RawTimestamp") == latest_poli_ts)
+                    else:
+                        filtered_poli = month_poli
         else:
             # If "(All)" is selected, use the latest snapshot timestamp of each month
             if all_latest_ts:
                 filtered_antrol = filtered_antrol.filter(pl.col("RawTimestamp").is_in(all_latest_ts))
-                if not filtered_poli.is_empty() and "RawTimestamp" in filtered_poli.columns:
-                    filtered_poli = filtered_poli.filter(pl.col("RawTimestamp").is_in(all_latest_ts))
+                if not filtered_poli.is_empty() and "BulanTahun" in filtered_poli.columns:
+                    # Group by BulanTahun and take the max RawTimestamp for each month in poli
+                    latest_poli_ts_list = (
+                        filtered_poli
+                        .group_by("BulanTahun")
+                        .agg(pl.col("RawTimestamp").max())
+                        .select("RawTimestamp")
+                        .to_series()
+                        .to_list()
+                    )
+                    filtered_poli = filtered_poli.filter(pl.col("RawTimestamp").is_in(latest_poli_ts_list))
 
         # Filter by Kabupaten
         if kabupaten and kabupaten != "(All)":
@@ -848,6 +868,12 @@ async def get_fkrtl_antrol_stats(
                 "kabupaten": available_kabupaten,
                 "kelas_rs": available_kelas,
                 "sumber": available_sumber
+            },
+            "debug": {
+                "poli_columns": df_poli.columns,
+                "poli_raw_ts_sample": df_poli["RawTimestamp"].head(5).to_list() if "RawTimestamp" in df_poli.columns else [],
+                "target_raw_ts": latest_ts_by_month.get(bulan) if bulan and bulan != "(All)" else all_latest_ts,
+                "antrol_raw_ts_sample": df_antrol["RawTimestamp"].head(5).to_list() if "RawTimestamp" in df_antrol.columns else []
             }
         }
     except Exception as e:
