@@ -571,12 +571,23 @@ async def get_fkrtl_antrol_stats(
 
         # 8. Relational Join: DB_LAP_ANTROL_FKRTL with DB_FASKES on Kdppk
         if not df_faskes_clean.is_empty() and "Kdppk" in df_antrol.columns:
-            df_antrol = df_antrol.join(df_faskes_clean, on="Kdppk", how="left")
+            df_antrol = df_antrol.join(df_faskes_clean, on="Kdppk", how="left", suffix="_fk")
+            # Drop duplicate _fk suffix columns from the join
+            for c in df_antrol.columns:
+                if c.endswith("_fk"):
+                    df_antrol = df_antrol.drop(c)
         else:
             if "Kabupaten" not in df_antrol.columns:
                 df_antrol = df_antrol.with_columns(pl.lit("KAB. JEMBER").alias("Kabupaten"))
             if "Kelas_RS" not in df_antrol.columns:
                 df_antrol = df_antrol.with_columns(pl.lit("Kelas C").alias("Kelas_RS"))
+
+        if "Kabupaten" not in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.lit("(All)").alias("Kabupaten"))
+        if "Kelas_RS" not in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.lit("(All)").alias("Kelas_RS"))
+        if "Faskes" not in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.col("Kdppk").alias("Faskes"))
 
         df_antrol = df_antrol.with_columns([
             pl.col("Kabupaten").fill_null("(All)"),
@@ -611,12 +622,21 @@ async def get_fkrtl_antrol_stats(
             
             # Link antrol_by_poli with DB_FASKES on Kdppk
             if not df_faskes_clean.is_empty() and "Kdppk" in df_poli.columns:
-                df_poli = df_poli.join(df_faskes_clean, on="Kdppk", how="left")
+                df_poli = df_poli.join(df_faskes_clean, on="Kdppk", how="left", suffix="_fk")
+                # Drop duplicate _fk suffix columns from the join
+                for c in df_poli.columns:
+                    if c.endswith("_fk"):
+                        df_poli = df_poli.drop(c)
             else:
                 if "Kabupaten" not in df_poli.columns:
                     df_poli = df_poli.with_columns(pl.lit("KAB. JEMBER").alias("Kabupaten"))
                 if "Kelas_RS" not in df_poli.columns:
                     df_poli = df_poli.with_columns(pl.lit("Kelas C").alias("Kelas_RS"))
+
+            if "Kabupaten" not in df_poli.columns:
+                df_poli = df_poli.with_columns(pl.lit("(All)").alias("Kabupaten"))
+            if "Kelas_RS" not in df_poli.columns:
+                df_poli = df_poli.with_columns(pl.lit("(All)").alias("Kelas_RS"))
 
             df_poli = df_poli.with_columns([
                 pl.col("Kabupaten").fill_null("(All)"),
