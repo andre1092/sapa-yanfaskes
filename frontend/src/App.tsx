@@ -99,8 +99,8 @@ function MainLayout() {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Content Area Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-72">
+      {/* Main Content Area Wrapper (Offset by icon-rail width w-20) */}
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-20 transition-all duration-300">
         {/* Top Header */}
         <Header
           activeTab={activeTab}

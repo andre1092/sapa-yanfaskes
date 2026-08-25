@@ -131,10 +131,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, logout } = useAuth0();
-  // Keep FKRTL expanded by default or when any of its submenus is active
+  const [isHovered, setIsHovered] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     fkrtl: true,
   });
+
+  // When cursor leaves the sidebar, auto-collapse all submenus & reset hovered state
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setExpandedMenus({});
+  };
+
+  // When cursor enters the sidebar, enable full hover mode and auto-expand active parent submenu
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // Auto expand FKRTL if FKRTL or any of its children is currently active
+    if (activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol') {
+      setExpandedMenus({ fkrtl: true });
+    }
+  };
 
   const toggleExpand = (menuId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -161,17 +176,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Sidebar Container: Auto-collapses to w-20 (icon only) and expands to w-72 on hover */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpenMobile ? 'translate-x-0 shadow-2xl shadow-cyan-950/40' : '-translate-x-full'
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`fixed top-0 bottom-0 left-0 z-50 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800 flex flex-col justify-between transition-all duration-300 ease-in-out lg:translate-x-0 ${
+          isOpenMobile ? 'translate-x-0 shadow-2xl shadow-cyan-950/40 w-72' : '-translate-x-full'
+        } ${
+          isHovered
+            ? 'lg:w-72 shadow-2xl shadow-cyan-950/60 ring-1 ring-cyan-500/20'
+            : 'lg:w-20'
         }`}
       >
         {/* Top: Brand / Logo Header */}
         <div className="flex flex-col">
-          <div className="h-20 px-6 flex items-center justify-between border-b border-slate-800/80">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-teal-500 to-blue-600 p-[1px] shadow-lg shadow-cyan-500/20">
+          <div className={`h-20 flex items-center border-b border-slate-800/80 transition-all duration-300 ${
+            isHovered || isOpenMobile ? 'px-5 justify-between' : 'px-0 justify-center'
+          }`}>
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-cyan-500 via-teal-500 to-blue-600 p-[1px] shadow-lg shadow-cyan-500/20">
                 <div className="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center">
                   <svg
                     className="w-5 h-5 text-cyan-400"
@@ -188,11 +211,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </svg>
                 </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+              
+              {/* Brand Title (Fades in when hovered or on mobile) */}
+              <div className={`flex flex-col min-w-0 transition-opacity duration-200 ${
+                isHovered || isOpenMobile ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden pointer-events-none'
+              }`}>
+                <span className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5 whitespace-nowrap">
                   SAPA <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-300">YANFASKES</span>
                 </span>
-                <span className="text-[11px] font-medium text-slate-400 tracking-wide uppercase">
+                <span className="text-[10px] font-medium text-slate-400 tracking-wide uppercase whitespace-nowrap">
                   Health Analytics
                 </span>
               </div>
@@ -213,8 +240,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Navigation Section */}
-          <div className="px-4 py-6 overflow-y-auto max-h-[calc(100vh-190px)]">
-            <div className="px-3 mb-2.5">
+          <div className="py-5 px-3 overflow-y-auto max-h-[calc(100vh-190px)]">
+            <div className={`px-3 mb-2.5 transition-opacity duration-200 ${
+              isHovered || isOpenMobile ? 'opacity-100 block' : 'opacity-0 hidden'
+            }`}>
               <span className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase">
                 Menu Navigasi
               </span>
@@ -226,7 +255,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 const isDirectActive = activeTab === item.id;
                 const isChildActive = Boolean(hasChildren && item.children?.some((child) => child.id === activeTab));
                 const isParentActive = Boolean(isDirectActive || isChildActive);
-                const isExpanded = Boolean(expandedMenus[item.id] ?? false);
+                // Submenus only show when the entire sidebar is hovered or on mobile
+                const isExpanded = Boolean((isHovered || isOpenMobile) && (expandedMenus[item.id] ?? false));
 
                 return (
                   <div key={item.id} className="space-y-1">
@@ -234,7 +264,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       onClick={() => {
                         if (hasChildren) {
-                          // Toggle expand and navigate to first child if not on child
                           setExpandedMenus((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
                           if (item.children?.[0]) {
                             onTabChange(item.children[0].id);
@@ -246,7 +275,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         }
                         if (onCloseMobile && !hasChildren) onCloseMobile();
                       }}
-                      className={`group w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-left relative ${
+                      title={!isHovered && !isOpenMobile ? item.label : undefined}
+                      className={`group w-full flex items-center rounded-xl font-medium text-sm transition-all duration-200 relative cursor-pointer ${
+                        isHovered || isOpenMobile
+                          ? 'px-3.5 py-3 justify-between text-left'
+                          : 'p-3 justify-center'
+                      } ${
                         isParentActive
                           ? 'bg-gradient-to-r from-cyan-500/15 via-teal-500/10 to-transparent text-white border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
                           : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'
@@ -267,55 +301,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         >
                           {item.icon(isParentActive)}
                         </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className={`leading-none truncate ${isParentActive ? 'font-semibold text-cyan-100' : 'font-medium'}`}>
-                            {item.label}
-                          </span>
-                          {item.description && (
-                            <span className="text-[11px] text-slate-400 mt-1 line-clamp-1">
-                              {item.description}
+
+                        {/* Menu Label & Description (Visible only when hovered or mobile) */}
+                        {(isHovered || isOpenMobile) && (
+                          <div className="flex flex-col min-w-0 transition-opacity duration-200">
+                            <span className={`leading-none truncate ${isParentActive ? 'font-semibold text-cyan-100' : 'font-medium'}`}>
+                              {item.label}
+                            </span>
+                            {item.description && (
+                              <span className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+                                {item.description}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Badges & Chevron (Visible only when hovered or mobile) */}
+                      {(isHovered || isOpenMobile) && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          {item.badge && (
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                                isParentActive
+                                  ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400/30'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+
+                          {hasChildren && (
+                            <span
+                              onClick={(e) => toggleExpand(item.id, e)}
+                              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition-transform duration-200"
+                              aria-label="Toggle submenu"
+                            >
+                              <svg
+                                className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-cyan-400' : 'text-slate-400'}`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
                             </span>
                           )}
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {item.badge && (
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                              isParentActive
-                                ? 'bg-cyan-400/20 text-cyan-300 border-cyan-400/30'
-                                : 'bg-slate-800 text-slate-400 border-slate-700'
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-
-                        {/* Chevron Expand Indicator for Parent Items */}
-                        {hasChildren && (
-                          <span
-                            onClick={(e) => toggleExpand(item.id, e)}
-                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700/50 transition-transform duration-200"
-                            aria-label="Toggle submenu"
-                          >
-                            <svg
-                              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-cyan-400' : 'text-slate-400'}`}
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </button>
 
-                    {/* Sub-menu Items (e.g. Pemanfaatan Antrol under FKRTL Dashboard) */}
-                    {hasChildren && isExpanded && (
-                      <div className="pl-6 pr-1 py-1 space-y-1 border-l-2 border-slate-800/80 ml-5 my-1">
+                    {/* Sub-menu Items (e.g. Pemanfaatan Antrol) — Auto-collapsed unless hovered */}
+                    {hasChildren && isExpanded && (isHovered || isOpenMobile) && (
+                      <div className="pl-6 pr-1 py-1 space-y-1 border-l-2 border-slate-800/80 ml-5 my-1 transition-all duration-200">
                         {item.children?.map((child) => {
                           const isChildCurrentActive = activeTab === child.id;
                           return (
@@ -325,7 +365,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 onTabChange(child.id);
                                 if (onCloseMobile) onCloseMobile();
                               }}
-                              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all text-left ${
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
                                 isChildCurrentActive
                                   ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30 shadow-sm shadow-cyan-500/10'
                                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
@@ -364,38 +404,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Bottom Section: User Info & Logout Button */}
-        <div className="p-4 border-t border-slate-800/80 bg-slate-950/40 space-y-3">
+        <div className={`p-3 border-t border-slate-800/80 bg-slate-950/50 space-y-2.5 transition-all duration-300 ${
+          isHovered || isOpenMobile ? 'px-4' : 'px-2 flex flex-col items-center'
+        }`}>
           {/* User Profile Card */}
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/40 border border-slate-800/60">
+          <div className={`flex items-center rounded-xl bg-slate-800/40 border border-slate-800/60 transition-all ${
+            isHovered || isOpenMobile ? 'gap-3 px-3 py-2.5 w-full' : 'p-2 justify-center'
+          }`}>
             {user?.picture ? (
               <img
                 src={user.picture}
                 alt={userDisplayName}
-                className="w-9 h-9 rounded-full object-cover border border-slate-700"
+                className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0"
               />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-bold text-xs text-white shadow-md shadow-cyan-900/30">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center font-bold text-xs text-white shadow-md shadow-cyan-900/30 shrink-0">
                 {userInitials}
               </div>
             )}
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-semibold text-slate-200 truncate" title={userDisplayName}>
-                {userDisplayName}
-              </span>
-              <span className="text-[11px] text-slate-400 truncate" title={user?.email || ''}>
-                {user?.email || 'Authenticated User'}
-              </span>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20" title="Active session" />
+
+            {(isHovered || isOpenMobile) && (
+              <>
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-slate-200 truncate" title={userDisplayName}>
+                    {userDisplayName}
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate" title={user?.email || ''}>
+                    {user?.email || 'Authenticated User'}
+                  </span>
+                </div>
+                <div className="w-2 h-2 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20 shrink-0" title="Active session" />
+              </>
+            )}
           </div>
 
           {/* Logout Button placed at the very bottom */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-rose-950/30 cursor-pointer"
+            title={!isHovered && !isOpenMobile ? 'Logout' : undefined}
+            className={`flex items-center justify-center rounded-xl text-sm font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-rose-950/30 cursor-pointer ${
+              isHovered || isOpenMobile
+                ? 'w-full gap-2.5 px-4 py-2.5'
+                : 'w-10 h-10 p-0'
+            }`}
           >
             <svg
-              className="w-4 h-4 text-rose-400"
+              className="w-4 h-4 text-rose-400 shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -407,7 +461,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
               />
             </svg>
-            <span>Logout</span>
+            {(isHovered || isOpenMobile) && <span>Logout</span>}
           </button>
         </div>
       </aside>
