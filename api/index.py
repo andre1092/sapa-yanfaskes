@@ -23,15 +23,31 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("sapa-api")
 
 # Environment & Config
-AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN", "YOUR_AUTH0_DOMAIN.auth0.com")
+RAW_AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN", "")
 AUTH0_API_AUDIENCE = os.environ.get("AUTH0_API_AUDIENCE", "https://api.sapa-yanfaskes.com")
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
+# Domain Normalization & Sanitization
+# Strip whitespace, https://, http://, and trailing slashes
+def sanitize_domain(domain: str) -> str:
+    domain = domain.strip()
+    if domain.startswith("https://"):
+        domain = domain[8:]
+    elif domain.startswith("http://"):
+        domain = domain[7:]
+    if domain.endswith("/"):
+        domain = domain[:-1]
+    return domain
+
+AUTH0_DOMAIN = sanitize_domain(RAW_AUTH0_DOMAIN) if RAW_AUTH0_DOMAIN else ""
+
 # Auth0 JWKS Client
-jwks_url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
-jwk_client = PyJWKClient(jwks_url)
+jwk_client = None
+if AUTH0_DOMAIN:
+    jwks_url = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+    jwk_client = PyJWKClient(jwks_url)
 
 app = FastAPI(title="SAPA YANFASKES Enterprise IAM API", version="5.0.0")
 
@@ -47,8 +63,15 @@ def verify_auth0_token(token: str):
     """
     Verifies the RS256 JWT signature using Auth0's public keys.
     """
+    if not jwk_client:
+        raise HTTPException(status_code=500, detail="Auth0 Configuration Error: AUTH0_DOMAIN environment variable is missing on the server.")
+        
     try:
         signing_key = jwk_client.get_signing_key_from_jwt(token)
+        
+        # We can extract unverified payload first to give better error diagnostics
+        unverified_payload = jwt.decode(token, options={"verify_signature": False})
+        
         payload = jwt.decode(
             token,
             signing_key.key,
@@ -59,10 +82,12 @@ def verify_auth0_token(token: str):
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidAudienceError:
-        raise HTTPException(status_code=403, detail="Invalid audience. Token is not intended for this API.")
-    except jwt.InvalidIssuerError:
-        raise HTTPException(status_code=403, detail="Invalid issuer.")
+    except jwt.InvalidAudienceError as e:
+        aud = unverified_payload.get("aud", "None") if 'unverified_payload' in locals() else "Unknown"
+        raise HTTPException(status_code=403, detail=f"Invalid audience. Expected '{AUTH0_API_AUDIENCE}', but token has audience: '{aud}'. {str(e)}")
+    except jwt.InvalidIssuerError as e:
+        iss = unverified_payload.get("iss", "None") if 'unverified_payload' in locals() else "Unknown"
+        raise HTTPException(status_code=403, detail=f"Invalid issuer. Expected 'https://{AUTH0_DOMAIN}/', but token has issuer: '{iss}'. {str(e)}")
     except Exception as e:
         logger.error(f"Token validation error: {e}")
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -73,10 +98,10 @@ def require_auth(request: Request):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
     token = auth_header.split(" ")[1]
     
-    # Optional: Skip validation in dev mode if ENV is missing
-    if AUTH0_DOMAIN == "YOUR_AUTH0_DOMAIN.auth0.com":
-        logger.warning("Auth0 configuration missing, skipping JWT validation (Dev Mode).")
-        return {"sub": "dev-user", "tenant_id": "00000000-0000-0000-0000-000000000001", "role": "viewer"}
+    # Zero-Trust Enforcement: No Development Bypass
+    if not AUTH0_DOMAIN:
+        logger.error("CRITICAL: AUTH0_DOMAIN is not configured. JWT validation cannot proceed.")
+        raise HTTPException(status_code=500, detail="Server Configuration Error: Auth0 environment variables are missing.")
         
     return verify_auth0_token(token)
 
