@@ -525,13 +525,17 @@ async def get_fkrtl_antrol_stats(
 
         # 5. Extract Last Update from the final row of DB_LAP_ANTROL_FKRTL
         last_update_str = "No data available."
-        raw_ts_list = []
-        if "Timestamp" in df_antrol.columns:
-            raw_ts_list = [str(t).strip() if t is not None else "" for t in df_antrol["Timestamp"].to_list()]
-            non_empty_ts = [t for t in raw_ts_list if t]
-            if non_empty_ts:
-                # Exact value from the final row of the spreadsheet
-                last_update_str = non_empty_ts[-1]
+
+        ts_col_antrol = find_column_name(df_antrol, ["timestamp", "waktu", "tanggal", "time"])
+        if ts_col_antrol:
+            raw_ts_list = [str(t).strip() if t is not None else "" for t in df_antrol[ts_col_antrol].to_list()]
+        else:
+            raw_ts_list = [""] * df_antrol.height
+            
+        non_empty_ts = [t for t in raw_ts_list if t]
+        if non_empty_ts:
+            # Exact value from the final row of the spreadsheet
+            last_update_str = non_empty_ts[-1]
 
         # 6. Parse Timestamps in df_antrol (handles '8/25/2026 5:32:44', '2026-08-25', etc.)
         parsed_antrol = [parse_date_info(ts) for ts in raw_ts_list]
@@ -663,9 +667,12 @@ async def get_fkrtl_antrol_stats(
             df_poli = df_poli.with_columns(pl.Series("Nama_Poli", poli_names, dtype=pl.Utf8))
                     
             # Parse Timestamp in df_poli
-            poli_raw_ts_list = []
-            if "Timestamp" in df_poli.columns:
-                poli_raw_ts_list = [str(t).strip() if t is not None else "" for t in df_poli["Timestamp"].to_list()]
+            ts_col_poli = find_column_name(df_poli, ["timestamp", "waktu", "tanggal", "time"])
+            if ts_col_poli:
+                poli_raw_ts_list = [str(t).strip() if t is not None else "" for t in df_poli[ts_col_poli].to_list()]
+            else:
+                poli_raw_ts_list = [""] * df_poli.height
+                
             parsed_poli_ts = [parse_date_info(ts) for ts in poli_raw_ts_list]
             
             df_poli = df_poli.with_columns([
