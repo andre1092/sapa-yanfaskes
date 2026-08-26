@@ -500,7 +500,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       
       {/* Hidden Tables for JPEG Export */}
       {jpegData && jpegData.type === 'faskes' && (
-        <div id="jpeg-export-faskes" className="hidden" style={{ width: '800px', backgroundColor: 'white', padding: '20px' }}>
+        <div id="jpeg-export-faskes" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '800px', backgroundColor: 'white', padding: '20px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
             <thead>
               <tr>
@@ -535,7 +535,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       )}
 
       {jpegData && jpegData.type === 'poli' && (
-        <div id="jpeg-export-poli" className="hidden" style={{ width: '1200px', backgroundColor: 'white', padding: '20px' }}>
+        <div id="jpeg-export-poli" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '1200px', backgroundColor: 'white', padding: '20px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
             <thead>
               <tr>
