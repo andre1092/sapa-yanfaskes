@@ -811,8 +811,14 @@ async def get_fkrtl_antrol_stats(
             }
 
         # 13. Compute Aggregations
+        # Determine columns based on selected Sumber
+        num_col = "_antrol_num"
+        den_col = "_antrol_peserta" if (sumber == "Mobile JKN") else "_antrol_sep"
+
         # Overall KPI Capaian
-        overall_capaian = filtered_antrol.select(pl.col("Capaian").mean()).item() or 0.0
+        sum_num = filtered_antrol.select(pl.col(num_col).sum()).item() or 0.0
+        sum_den = filtered_antrol.select(pl.col(den_col).sum()).item() or 0.0
+        overall_capaian = (sum_num / sum_den * 100.0) if sum_den > 0 else 0.0
         
         # Tren Perbulan (Vertical Bar Chart - strictly by valid Month & Year using latest snapshots)
         trend_base = df_antrol
@@ -832,7 +838,16 @@ async def get_fkrtl_antrol_stats(
             trend_base
             .filter(pl.col("SortKey").is_not_null() & pl.col("BulanTahunShort").is_not_null())
             .group_by(["SortKey", "BulanTahunShort"])
-            .agg(pl.col("Capaian").mean().alias("avg_capaian"))
+            .agg([
+                pl.col(num_col).sum().alias("sum_num"),
+                pl.col(den_col).sum().alias("sum_den")
+            ])
+            .with_columns(
+                pl.when(pl.col("sum_den") > 0)
+                .then((pl.col("sum_num") / pl.col("sum_den")) * 100.0)
+                .otherwise(0.0)
+                .alias("avg_capaian")
+            )
             .sort("SortKey")
         )
         trend_per_bulan = [
@@ -845,7 +860,16 @@ async def get_fkrtl_antrol_stats(
             filtered_antrol
             .filter(pl.col("Faskes").is_not_null() & (pl.col("Faskes") != ""))
             .group_by("Faskes")
-            .agg(pl.col("Capaian").mean().alias("avg_capaian"))
+            .agg([
+                pl.col(num_col).sum().alias("sum_num"),
+                pl.col(den_col).sum().alias("sum_den")
+            ])
+            .with_columns(
+                pl.when(pl.col("sum_den") > 0)
+                .then((pl.col("sum_num") / pl.col("sum_den")) * 100.0)
+                .otherwise(0.0)
+                .alias("avg_capaian")
+            )
             .sort("avg_capaian", descending=True)
             .limit(15)
         )
@@ -857,11 +881,23 @@ async def get_fkrtl_antrol_stats(
         # Top Poli Tujuan Ranking (Horizontal Bar Chart)
         top_poli = []
         if not filtered_poli.is_empty() and "Nama_Poli" in filtered_poli.columns:
+            poli_num_col = "_flag_mjkn" if (sumber == "Mobile JKN") else "_flag_bridging"
+            poli_den_col = "_total_sep"
+
             poli_query = (
                 filtered_poli
                 .filter(pl.col("Nama_Poli").is_not_null() & (pl.col("Nama_Poli") != ""))
                 .group_by("Nama_Poli")
-                .agg(pl.col("PoliCapaian").mean().alias("avg_capaian"))
+                .agg([
+                    pl.col(poli_num_col).sum().alias("sum_num"),
+                    pl.col(poli_den_col).sum().alias("sum_den")
+                ])
+                .with_columns(
+                    pl.when(pl.col("sum_den") > 0)
+                    .then((pl.col("sum_num") / pl.col("sum_den")) * 100.0)
+                    .otherwise(0.0)
+                    .alias("avg_capaian")
+                )
                 .sort("avg_capaian", descending=True)
                 .limit(18)
             )
