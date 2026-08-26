@@ -828,6 +828,7 @@ async def get_fkrtl_antrol_stats(
                     "tahun": available_years,
                     "bulan": available_months,
                     "kabupaten": available_kabupaten,
+                    "nama_rs": available_nama_rs,
                     "kelas_rs": available_kelas,
                     "sumber": available_sumber
                 }
@@ -956,6 +957,7 @@ async def get_fkrtl_antrol_stats(
                 "tahun": available_years,
                 "bulan": available_months,
                 "kabupaten": available_kabupaten,
+                "nama_rs": available_nama_rs,
                 "kelas_rs": available_kelas,
                 "sumber": available_sumber
             },
