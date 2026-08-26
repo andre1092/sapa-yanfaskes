@@ -3,12 +3,62 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useFkrtlAntrolData } from '../hooks/useDashboardData';
 import type { FkrtlFilterParams } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
+import { exportToCSV, exportToExcel, exportToJPEG } from '../utils/exportUtils';
 
 const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
 export const PemanfaatanAntrolDashboard: React.FC = () => {
   const { getAccessTokenSilently } = useAuth0();
   const [authReady, setAuthReady] = useState(false);
+  const [downloadingType, setDownloadingType] = useState<'faskes'|'poli'|null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'faskes'|'poli'|null>(null);
+  const [jpegData, setJpegData] = useState<{data: any[], type: 'faskes'|'poli'}|null>(null);
+
+  useEffect(() => {
+    if (jpegData) {
+      setTimeout(() => {
+        exportToJPEG(`jpeg-export-${jpegData.type}`, `Export_${jpegData.type.toUpperCase()}_${new Date().getTime()}`)
+          .finally(() => {
+            setJpegData(null);
+            setDownloadingType(null);
+          });
+      }, 500);
+    }
+  }, [jpegData]);
+
+  const handleDownload = async (type: 'faskes' | 'poli', format: 'csv' | 'xlsx' | 'jpeg') => {
+    setDownloadingType(type);
+    setOpenDropdown(null);
+    try {
+      const token = await getAccessTokenSilently({ authorizationParams: { audience: AUTH0_AUDIENCE } });
+      const params = new URLSearchParams();
+      params.append('type', type);
+      if (filters.tahun && filters.tahun !== '(All)') params.append('tahun', filters.tahun);
+      if (filters.bulan && filters.bulan !== '(All)') params.append('bulan', filters.bulan);
+      if (filters.kabupaten && filters.kabupaten !== '(All)') params.append('kabupaten', filters.kabupaten);
+      if (filters.kelas_rs && filters.kelas_rs !== '(All)') params.append('kelas_rs', filters.kelas_rs);
+      if (filters.nama_rs && filters.nama_rs !== '(All)') params.append('nama_rs', filters.nama_rs);
+
+      const res = await apiClient.get(`/fkrtl-export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const exportData = res.data.data || [];
+
+      if (format === 'csv') {
+        exportToCSV(exportData, type);
+        setDownloadingType(null);
+      } else if (format === 'xlsx') {
+        await exportToExcel(exportData, type);
+        setDownloadingType(null);
+      } else if (format === 'jpeg') {
+        setJpegData({ data: exportData, type });
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal mendownload data');
+      setDownloadingType(null);
+    }
+  };
 
   useEffect(() => {
     const interceptor = apiClient.interceptors.request.use(async (config) => {
@@ -108,10 +158,67 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
       {/* Top Main Title Header */}
-      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl py-4 px-6 text-center shadow-lg">
+      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl py-4 px-6 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
         <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
           Pemanfaatan Sistem Antrean Online FKRTL
         </h2>
+        <div className="flex gap-3">
+          {/* Download Faskes */}
+          <div className="relative">
+            <button 
+              onClick={() => setOpenDropdown(openDropdown === 'faskes' ? null : 'faskes')}
+              disabled={downloadingType === 'faskes'}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-semibold text-white transition-colors"
+            >
+              <span>{downloadingType === 'faskes' ? '⏳ Downloading...' : '💾 Download by Nama RS'}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {openDropdown === 'faskes' && (
+              <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
+                <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
+                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Download as .xlsx
+                </button>
+                <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
+                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
+                  Download as .JPEG
+                </button>
+                <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors">
+                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Download as .csv
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Download Poli */}
+          <div className="relative">
+            <button 
+              onClick={() => setOpenDropdown(openDropdown === 'poli' ? null : 'poli')}
+              disabled={downloadingType === 'poli'}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-semibold text-white transition-colors"
+            >
+              <span>{downloadingType === 'poli' ? '⏳ Downloading...' : '💾 Download by Nama Poli'}</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {openDropdown === 'poli' && (
+              <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
+                <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
+                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Download as .xlsx
+                </button>
+                <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
+                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
+                  Download as .JPEG
+                </button>
+                <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors">
+                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Download as .csv
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Main Grid Layout: Left Panel + Right Content Area */}
@@ -390,6 +497,77 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Hidden Tables for JPEG Export */}
+      {jpegData && jpegData.type === 'faskes' && (
+        <div id="jpeg-export-faskes" className="hidden" style={{ width: '800px', backgroundColor: 'white', padding: '20px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+            <thead>
+              <tr>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid black', padding: '8px' }}>Nama FKRTL</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid black', padding: '8px' }}>All Sumber<br/>(Target 95%)</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid black', padding: '8px' }}>Mobile JKN<br/>(Target 80%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jpegData.data.map((row, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid black', padding: '6px' }}>{row.Faskes}</td>
+                  <td style={{ 
+                    border: '1px solid black', padding: '6px', textAlign: 'right',
+                    backgroundColor: row.all_sumber_pct >= 95 ? '#C6EFCE' : '#FFC7CE',
+                    color: row.all_sumber_pct >= 95 ? '#006100' : '#9C0006'
+                  }}>
+                    {row.all_sumber_pct.toFixed(2)}%
+                  </td>
+                  <td style={{ 
+                    border: '1px solid black', padding: '6px', textAlign: 'right',
+                    backgroundColor: row.mjkn_pct >= 80 ? '#C6EFCE' : '#FFC7CE',
+                    color: row.mjkn_pct >= 80 ? '#006100' : '#9C0006'
+                  }}>
+                    {row.mjkn_pct.toFixed(2)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {jpegData && jpegData.type === 'poli' && (
+        <div id="jpeg-export-poli" className="hidden" style={{ width: '1200px', backgroundColor: 'white', padding: '20px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
+            <thead>
+              <tr>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Kabupaten</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Nmppk</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Nama Poli</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Flag Bridging Antrean</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>% Antrol All Sumber</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Flag Mobile JKN</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>% Antrol MJKN</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Flag Tidak Antrol</th>
+                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Total SEP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jpegData.data.map((row, idx) => (
+                <tr key={idx}>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px' }}>{row.Kabupaten}</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px' }}>{row.Nama_RS}</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px' }}>{row.Nama_Poli}</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.flag_bridging}</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.all_sumber_pct.toFixed(2)}%</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.flag_mjkn}</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.mjkn_pct.toFixed(2)}%</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.flag_tidak_antrol}</td>
+                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.total_sep}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
