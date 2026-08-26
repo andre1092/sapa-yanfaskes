@@ -37,8 +37,13 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     kelas_rs: '(All)',
     sumber: 'Semua Sumber',
   });
+  const [sortFaskesDesc, setSortFaskesDesc] = useState(true);
+  const [sortPoliDesc, setSortPoliDesc] = useState(true);
 
   const { data, isLoading, isError, error, refetch } = useFkrtlAntrolData(filters, authReady);
+
+  const sortedFaskes = data?.top_faskes ? [...data.top_faskes].sort((a, b) => sortFaskesDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
+  const sortedPoli = data?.top_poli ? [...data.top_poli].sort((a, b) => sortPoliDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
 
   const handleFilterChange = (key: keyof FkrtlFilterParams, value: string) => {
     setFilters((prev) => ({
@@ -217,7 +222,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           {/* 4. Keterangan Box */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-slate-400 text-xs leading-relaxed space-y-1">
             <span className="font-bold text-slate-200 block">Keterangan :</span>
-            <p>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama</p>
+            <p>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama dengan SEP Terbit</p>
+            <p>- Poli Exclude adalah HIV, HDL, INF, IGD, ICU, 043, 060, KDN, 168, RDT, NUK, KEM, RAT, UGD</p>
           </div>
         </div>
 
@@ -283,12 +289,21 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 {/* Left Sub-Column: Faskes Ranking */}
                 <div className="bg-slate-900/70 border border-slate-700/80 rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Faskes</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Faskes</h4>
+                      <button 
+                        onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
+                        className="text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors px-1"
+                        title="Sort"
+                      >
+                        ↓☰↑
+                      </button>
+                    </div>
                     <span className="text-[10px] text-slate-400">Pemanfaatan</span>
                   </div>
 
                   <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                    {data.top_faskes.map((f, idx) => (
+                    {sortedFaskes.map((f, idx) => (
                       <div key={idx} className="flex items-center justify-between gap-3 text-xs">
                         <span className="font-semibold text-slate-200 truncate flex-1" title={f.faskes}>
                           {f.faskes}
@@ -314,20 +329,24 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
                     <div className="flex items-center gap-1.5">
                       <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Poli Tujuan</h4>
-                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                      </svg>
+                      <button 
+                        onClick={() => setSortPoliDesc(!sortPoliDesc)}
+                        className="text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors px-1"
+                        title="Sort"
+                      >
+                        ↓☰↑
+                      </button>
                     </div>
                     <span className="text-[10px] text-slate-400">Pemanfaatan</span>
                   </div>
 
                   <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                    {data.top_poli.length === 0 ? (
+                    {sortedPoli.length === 0 ? (
                       <div className="py-12 text-center text-slate-400 text-xs italic">
                         Tidak ada data tersedia
                       </div>
                     ) : (
-                      data.top_poli.map((p, idx) => (
+                      sortedPoli.map((p, idx) => (
                         <div key={idx} className="flex items-center justify-between gap-3 text-xs">
                           <span className="font-semibold text-slate-200 truncate flex-1" title={p.poli}>
                             {p.poli}
