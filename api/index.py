@@ -787,8 +787,11 @@ async def get_fkrtl_antrol_stats(
 
         # Filter by Sumber (only applies to df_antrol; df_poli's PoliCapaian
         # is already computed with the correct formula based on the sumber parameter)
-        if sumber and sumber not in ("Semua Sumber", "(All)", "All Sumber"):
-            filtered_antrol = filtered_antrol.filter(pl.col("Sumber") == sumber)
+        if sumber and sumber != "(All)":
+            if sumber in ("Semua Sumber", "All Sumber"):
+                filtered_antrol = filtered_antrol.filter(pl.col("Sumber").is_in(["Semua Sumber", "All Sumber"]))
+            else:
+                filtered_antrol = filtered_antrol.filter(pl.col("Sumber") == sumber)
 
         # 12. Check if filtered data exists
         if filtered_antrol.is_empty():
@@ -831,8 +834,11 @@ async def get_fkrtl_antrol_stats(
             trend_base = trend_base.filter(pl.col("Kabupaten") == kabupaten)
         if kelas_rs and kelas_rs != "(All)":
             trend_base = trend_base.filter(pl.col("Kelas_RS") == kelas_rs)
-        if sumber and sumber != "Semua Sumber" and sumber != "(All)":
-            trend_base = trend_base.filter(pl.col("Sumber") == sumber)
+        if sumber and sumber != "(All)":
+            if sumber in ("Semua Sumber", "All Sumber"):
+                trend_base = trend_base.filter(pl.col("Sumber").is_in(["Semua Sumber", "All Sumber"]))
+            else:
+                trend_base = trend_base.filter(pl.col("Sumber") == sumber)
 
         trend_query = (
             trend_base
