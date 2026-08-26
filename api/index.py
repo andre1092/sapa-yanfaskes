@@ -884,22 +884,21 @@ async def get_fkrtl_antrol_stats(
             for r in trend_query.to_dicts()
         ]
 
-        # Pre-compute row-level capaian for Faskes average
-        filtered_antrol = filtered_antrol.with_columns(
-            pl.when(pl.col(den_col) > 0)
-            .then((pl.col(num_col) / pl.col(den_col)) * 100.0)
-            .otherwise(0.0)
-            .alias("row_capaian")
-        )
-
-        # Top Faskes Ranking (Horizontal Bar Chart) - Uses average of monthly capaians
+        # Top Faskes Ranking (Horizontal Bar Chart)
         faskes_query = (
             filtered_antrol
             .filter(pl.col("Faskes").is_not_null() & (pl.col("Faskes") != ""))
             .group_by("Faskes")
             .agg([
-                pl.col("row_capaian").mean().alias("avg_capaian")
+                pl.col(num_col).sum().alias("sum_num"),
+                pl.col(den_col).sum().alias("sum_den")
             ])
+            .with_columns(
+                pl.when(pl.col("sum_den") > 0)
+                .then((pl.col("sum_num") / pl.col("sum_den")) * 100.0)
+                .otherwise(0.0)
+                .alias("avg_capaian")
+            )
             .sort("avg_capaian", descending=True)
             .limit(15)
         )
@@ -914,20 +913,20 @@ async def get_fkrtl_antrol_stats(
             poli_num_col = "_flag_mjkn" if (sumber == "Mobile JKN") else "_flag_bridging"
             poli_den_col = "_total_sep"
 
-            filtered_poli = filtered_poli.with_columns(
-                pl.when(pl.col(poli_den_col) > 0)
-                .then((pl.col(poli_num_col) / pl.col(poli_den_col)) * 100.0)
-                .otherwise(0.0)
-                .alias("row_capaian")
-            )
-
             poli_query = (
                 filtered_poli
                 .filter(pl.col("Nama_Poli").is_not_null() & (pl.col("Nama_Poli") != ""))
                 .group_by("Nama_Poli")
                 .agg([
-                    pl.col("row_capaian").mean().alias("avg_capaian")
+                    pl.col(poli_num_col).sum().alias("sum_num"),
+                    pl.col(poli_den_col).sum().alias("sum_den")
                 ])
+                .with_columns(
+                    pl.when(pl.col("sum_den") > 0)
+                    .then((pl.col("sum_num") / pl.col("sum_den")) * 100.0)
+                    .otherwise(0.0)
+                    .alias("avg_capaian")
+                )
                 .sort("avg_capaian", descending=True)
                 .limit(18)
             )
