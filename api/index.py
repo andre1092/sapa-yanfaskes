@@ -391,6 +391,7 @@ async def get_fkrtl_antrol_stats(
     tahun: Optional[str] = None,
     bulan: Optional[str] = None,
     kabupaten: Optional[str] = None,
+    nama_rs: Optional[str] = None,
     kelas_rs: Optional[str] = None,
     sumber: Optional[str] = None,
     user=Depends(require_auth),
@@ -439,6 +440,7 @@ async def get_fkrtl_antrol_stats(
         faskes_cols = df_faskes.columns
         kab_col = next((c for c in faskes_cols if c.lower() in ["kabupaten", "kab", "kota", "kab_kota", "kepwil"]), None)
         kelas_col = next((c for c in faskes_cols if c.lower() in ["kelas_rs", "kelas", "jenis ppk", "jenis_ppk"]), None)
+        nama_rs_col = next((c for c in faskes_cols if c.lower() in ["nama_fkrtl", "nama fkrtl", "nama_rs", "nama rs", "nama_faskes", "nama faskes"]), None)
         
         if not df_faskes.is_empty() and "Kdppk" in df_faskes.columns:
             select_exprs = [pl.col("Kdppk")]
@@ -452,6 +454,13 @@ async def get_fkrtl_antrol_stats(
             else:
                 select_exprs.append(pl.lit("Semua Kelas").alias("Kelas_RS"))
                 
+            if nama_rs_col:
+                select_exprs.append(pl.col(nama_rs_col).alias("Nama_RS"))
+            elif "Faskes" in faskes_cols:
+                select_exprs.append(pl.col("Faskes").alias("Nama_RS"))
+            else:
+                select_exprs.append(pl.lit("(All)").alias("Nama_RS"))
+                
             if "Faskes" in faskes_cols:
                 select_exprs.append(pl.col("Faskes"))
                 
@@ -460,7 +469,8 @@ async def get_fkrtl_antrol_stats(
             df_faskes_clean = pl.DataFrame({
                 "Kdppk": pl.Series(dtype=pl.Utf8),
                 "Kabupaten": pl.Series(dtype=pl.Utf8),
-                "Kelas_RS": pl.Series(dtype=pl.Utf8)
+                "Kelas_RS": pl.Series(dtype=pl.Utf8),
+                "Nama_RS": pl.Series(dtype=pl.Utf8)
             })
 
         # Build comprehensive Poli Code -> Poli Name reference map
@@ -665,10 +675,13 @@ async def get_fkrtl_antrol_stats(
                 df_poli = df_poli.with_columns(pl.lit("(All)").alias("Kabupaten"))
             if "Kelas_RS" not in df_poli.columns:
                 df_poli = df_poli.with_columns(pl.lit("(All)").alias("Kelas_RS"))
+            if "Nama_RS" not in df_poli.columns:
+                df_poli = df_poli.with_columns(pl.lit("(All)").alias("Nama_RS"))
 
             df_poli = df_poli.with_columns([
                 pl.col("Kabupaten").fill_null("(All)"),
-                pl.col("Kelas_RS").fill_null("(All)")
+                pl.col("Kelas_RS").fill_null("(All)"),
+                pl.col("Nama_RS").fill_null("(All)")
             ])
                     
             # Map Politujuan using poli_dict
@@ -723,6 +736,7 @@ async def get_fkrtl_antrol_stats(
         
         available_kabupaten = ["(All)"] + sorted(list(set([str(k) for k in df_antrol.select("Kabupaten").unique().to_series().to_list() if k and k != "(All)"])))
         available_kelas = ["(All)"] + sorted(list(set([str(k) for k in df_antrol.select("Kelas_RS").unique().to_series().to_list() if k and k != "(All)"])))
+        available_nama_rs = ["(All)"] + sorted(list(set([str(k) for k in df_antrol.select("Nama_RS").unique().to_series().to_list() if k and k != "(All)"])))
         available_sumber = ["All Sumber", "Mobile JKN"]
 
         # 11. Apply Filters with Latest-Timestamp Matching
@@ -785,6 +799,12 @@ async def get_fkrtl_antrol_stats(
             if not filtered_poli.is_empty() and "Kelas_RS" in filtered_poli.columns:
                 filtered_poli = filtered_poli.filter(pl.col("Kelas_RS") == kelas_rs)
 
+        # Filter by Nama_RS
+        if nama_rs and nama_rs != "(All)":
+            filtered_antrol = filtered_antrol.filter(pl.col("Nama_RS") == nama_rs)
+            if not filtered_poli.is_empty() and "Nama_RS" in filtered_poli.columns:
+                filtered_poli = filtered_poli.filter(pl.col("Nama_RS") == nama_rs)
+
         # Filter by Sumber (only applies to df_antrol; df_poli's PoliCapaian
         # is already computed with the correct formula based on the sumber parameter)
         if sumber and sumber != "(All)":
@@ -834,6 +854,8 @@ async def get_fkrtl_antrol_stats(
             trend_base = trend_base.filter(pl.col("Kabupaten") == kabupaten)
         if kelas_rs and kelas_rs != "(All)":
             trend_base = trend_base.filter(pl.col("Kelas_RS") == kelas_rs)
+        if nama_rs and nama_rs != "(All)":
+            trend_base = trend_base.filter(pl.col("Nama_RS") == nama_rs)
         if sumber and sumber != "(All)":
             if sumber in ("Semua Sumber", "All Sumber"):
                 trend_base = trend_base.filter(pl.col("Sumber").is_in(["Semua Sumber", "All Sumber"]))

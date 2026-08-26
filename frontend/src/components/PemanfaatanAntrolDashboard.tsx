@@ -34,6 +34,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     tahun: '2026',
     bulan: '(All)',
     kabupaten: '(All)',
+    nama_rs: '(All)',
     kelas_rs: '(All)',
     sumber: 'Semua Sumber',
   });
@@ -92,6 +93,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     tahun: ['2026'],
     bulan: ['(All)', 'Agustus 2026', 'Juli 2026'],
     kabupaten: ['(All)'],
+    nama_rs: ['(All)'],
     kelas_rs: ['(All)'],
     sumber: ['Semua Sumber', 'Mobile JKN'],
   };
@@ -183,6 +185,22 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     {k}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Nama RS Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Nama RS</label>
+              <select
+                value={filters.nama_rs || '(All)'}
+                onChange={(e) => handleFilterChange('nama_rs', e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+              >
+                {filterOptions.nama_rs?.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                )) || <option value="(All)">(All)</option>}
               </select>
             </div>
 

@@ -5,6 +5,7 @@ export interface FkrtlFilterParams {
   tahun?: string;
   bulan?: string;
   kabupaten?: string;
+  nama_rs?: string;
   kelas_rs?: string;
   sumber?: string;
 }
@@ -23,6 +24,7 @@ export interface FkrtlAntrolStats {
     tahun: string[];
     bulan: string[];
     kabupaten: string[];
+    nama_rs: string[];
     kelas_rs: string[];
     sumber: string[];
   };
@@ -46,6 +48,7 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
           tahun: filters.tahun,
           bulan: filters.bulan,
           kabupaten: filters.kabupaten,
+          nama_rs: filters.nama_rs,
           kelas_rs: filters.kelas_rs,
           sumber: filters.sumber,
         },
