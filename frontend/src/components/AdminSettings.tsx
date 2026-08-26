@@ -56,7 +56,7 @@ export const AdminSettings: React.FC = () => {
                 </p>
                 {lastRefreshed && (
                   <p className="text-[10px] font-medium text-emerald-400 mt-2">
-                    Terakhir disinkronisasi: {lastRefreshed.toLocaleTimeString('id-ID')}
+                    Terakhir disinkronisasi: {lastRefreshed.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                   </p>
                 )}
               </div>
