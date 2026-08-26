@@ -5,6 +5,7 @@ import type { NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BlankContentArea } from './components/BlankContentArea';
 import { PemanfaatanAntrolDashboard } from './components/PemanfaatanAntrolDashboard';
+import { AdminSettings } from './components/AdminSettings';
 
 // Environment Variables
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || '';
@@ -112,6 +113,8 @@ function MainLayout() {
         <main className="flex-1 overflow-y-auto">
           {activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
             <PemanfaatanAntrolDashboard />
+          ) : activeTab === 'admin' ? (
+            <AdminSettings />
           ) : (
             <BlankContentArea activeTab={activeTab} />
           )}
