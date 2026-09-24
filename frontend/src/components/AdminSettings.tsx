@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { ThemeToggle } from './ThemeToggle';
 
 export const AdminSettings: React.FC = () => {
   const queryClient = useQueryClient();
@@ -74,6 +75,23 @@ export const AdminSettings: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Theme & Display Preferences Section */}
+        <div className="glass-card rounded-2xl p-6 border border-white/10 shadow-xl">
+          <div className="flex items-center gap-3 border-b border-slate-800 pb-4 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-blue-950/60 border border-blue-500/30 flex items-center justify-center shadow-md shadow-blue-950/30">
+              <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Preferensi Tampilan & Tema</h2>
+              <p className="text-xs text-slate-400">Atur mode visual antarmuka: Mode Terang (Light), Mode Gelap (Dark), atau Mengikuti Sistem OS</p>
+            </div>
+          </div>
+
+          <ThemeToggle variant="expanded" />
         </div>
       </div>
     </div>

@@ -1,14 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="SAPA YANFASKES — Saluran Analisis Performa & Akselerasi Pelayanan Fasilitas Kesehatan" />
     <title>SAPA YANFASKES — Saluran Analisis Performa & Akselerasi</title>
+    <meta name="color-scheme" content="light dark" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var raw = localStorage.getItem('sapa-theme-storage');
+          var theme = 'system';
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed && parsed.state && parsed.state.theme) {
+              theme = parsed.state.theme;
+            }
+          }
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var effective = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+          document.documentElement.classList.remove('light', 'dark');
+          document.documentElement.classList.add(effective);
+          document.documentElement.style.colorScheme = effective;
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

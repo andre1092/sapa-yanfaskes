@@ -15,10 +15,12 @@
     - Kartu dan panel translusen (`.glass-panel`, `.glass-card`) dengan *backdrop blur* 16px–20px dan garis tepi cahaya lembut (`border-emerald-500/20` & `border-white/10`).
     - *Ambient Lighting Aura*: Dua bola cahaya gradasi hijau dan biru di latar belakang aplikasi yang dibiaskan oleh kaca panel.
     - Kontras teks tinggi (*accessible high-contrast*) dengan keterbacaan optimal di atas panel kaca gelap.
-- **Mode Tema (Theme Modes)**:
+- **Mode Tema (Theme Modes) [STATUS: AKTIF / LIVE]**:
   - 🌙 **Dark Glassmorphism**: Dominan Slate gelap (`#0B0F19` / `#0F172A`) berpadu gradasi hijau zamrud dan biru laut BPJS.
-  - ☀️ **Light Glassmorphism**: Versi terang dengan frosted glass putih medis dan aksen hijau-biru BPJS.
-  - 💻 **System Theme**: Mengikuti preferensi tema sistem operasi pengguna.
+  - ☀️ **Light Glassmorphism**: Versi terang dengan frosted glass putih medis (`#F8FAFC`), kontras tinggi, border halus, dan aksen hijau-biru BPJS.
+  - 💻 **System Theme**: Mengikuti preferensi tema sistem operasi pengguna secara dinamis dan real-time via `matchMedia`.
+  - **Komponen Kontrol**: `ThemeToggle` segmented control di header utama (`Header.tsx`) dan kartu pemilih visual di `AdminSettings.tsx`.
+  - **Zero-FOUC Engine**: Dilengkapi inline script anti-flicker di `index.html` dan sinkronisasi store Zustand persisten (`localStorage`).
 
 ### B. Pengalihan Bahasa Sistem (Language Switching)
 - **Bahasa yang Didukung**:

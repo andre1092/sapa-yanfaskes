@@ -1,5 +1,6 @@
 import React from 'react';
 import type { NavTab } from './Sidebar';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   activeTab: NavTab;
@@ -68,8 +69,9 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
         </div>
       </div>
 
-      {/* Right: Security & Status Indicators with BPJS Theme */}
+      {/* Right: Theme Toggle & Security Indicators with BPJS Theme */}
       <div className="flex items-center gap-3">
+        <ThemeToggle variant="compact" />
         <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs font-semibold text-emerald-300 shadow-sm shadow-emerald-950/30">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span>SSO Aktif</span>
