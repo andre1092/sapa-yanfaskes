@@ -29,7 +29,7 @@ description:
 8. Success (Verify performance criteria is met, response time < 2s, and code compiles cleanly)
    │
    ▼
-9. Deploy to Production (Generate configurations or guide deployment to a free tier platform like Vercel)
+9. Deploy to Production (Mandatory: Execute git commit, push to main branch to trigger Vercel deployment, and log to `memories.md`)
    │
    ▼
 10. Walkthrough (Deliver a final interactive code demonstration and summary to the user in Indonesian)

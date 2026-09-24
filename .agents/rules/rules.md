@@ -36,3 +36,6 @@ Every piece of framework, library, API, database layer, Google Spreadsheet conne
 9. DYNAMIC FILE SYNCHRONIZATION
 - Whenever the user adds, modifies, or deletes items from the menu structure, you must immediately read, cross-check, and update the structural manifests inside `struktur.md` (Menu: Home, FKTP, FKRTL, Settings, Log out).
 - Whenever the user adds, modifies, or deletes features, you must immediately read, cross-check, and update the features listed inside `feature.md` (Features: Language switching, Dark/Light/System theme toggles).
+
+10. MANDATORY PRODUCTION DEPLOYMENT
+Whenever any additions, modifications, or deletions are completed and verified (zero errors, response time < 2s), you must ALWAYS execute deployment to the production environment (create a semantic git commit, push to the main branch to trigger Vercel CI/CD, and log the deployment milestone in `memories.md`).

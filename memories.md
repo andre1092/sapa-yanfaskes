@@ -13,6 +13,7 @@
 - **Palet Warna Merek**: BPJS Kesehatan (Hijau: `#009B4D` / `#00A86B`, Biru: `#00529C` / `#0A50A1`, Aksen Cyan: `#06B6D4`)
 - **Batasan Biaya**: 100% Free Tier (Vercel Serverless + FastAPI + React Vite + Polars + Google Sheets API + Supabase/Free PostgreSQL)
 - **Bahasa Operasional**: Bahasa Indonesia formal dan baku
+- **Mandat Deployment Produksi**: Aturan No. 10 — Wajib selalu mengeksekusi komit dan pemicuan rilis produksi secara otomatis setiap kali siklus tugas selesai.
 
 ---
 
@@ -20,8 +21,8 @@
 ```
 sapa-yanfaskes/
 ├── .agents/
-│   ├── rules/rules.md           # Aturan baku sistem & batasan operasional
-│   └── workflows/workflows.md   # Pipeline alur kerja 10 langkah
+│   ├── rules/rules.md           # Aturan baku sistem & batasan operasional (Termasuk Aturan 10)
+│   └── workflows/workflows.md   # Pipeline alur kerja 10 langkah (Mandatory Step 9)
 ├── api/                         # Serverless Backend API (FastAPI)
 │   ├── index.py                 # Endpoint data, parser Polars, integrasi Sheets
 │   ├── db.py                    # Koneksi async SQLAlchemy & tenant context
@@ -52,6 +53,7 @@ sapa-yanfaskes/
 | **2026-09-24** | Inisialisasi Tata Kelola Wajib | Selesai | Pembentukan berkas `memories.md`, `source.md`, `struktur.md`, dan `feature.md`. |
 | **2026-09-24** | Komit Produksi & Verifikasi Build | Selesai | Komit `a2866fb` terbentuk. Kompilasi backend dan build Vite frontend sukses 100%. |
 | **2026-09-24** | Implementasi Tema BPJS Kesehatan | Selesai | Penerapan tema resmi BPJS Kesehatan (Dominan Green `#009B4D` & Blue `#00529C`) dengan efek Glassmorphism murni (`.glass-card`, `.glass-panel`, ambient aura). Build Vite tuntas dalam 635ms. |
+| **2026-09-24** | Pengesahan Aturan Deployment Otomatis | Selesai | Penambahan Aturan No. 10 (Mandatory Production Deployment), sinkronisasi workflows.md Langkah 9, dan aktivasi `credential.helper store`. |
 
 ---
 
