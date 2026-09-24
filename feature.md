@@ -12,7 +12,7 @@
   - 🌿 **Warna Utama (BPJS Green)**: `#009B4D` / Emerald `#10B981` (melambangkan keandalan pelayanan kesehatan dan mutu fasilitas).
   - 🌊 **Warna Sekunder (BPJS Blue)**: `#00529C` / `#0A50A1` (melambangkan jaminan sosial yang kokoh dan integritas data terpusat).
   - 🪟 **Efek Glassmorphism Modern**:
-    - Kartu dan panel translusen (`.glass-panel`, `.glass-card`) dengan *backdrop blur* 16px–20px dan garis tepi cahaya lembut (`border-emerald-500/20` & `border-white/10`).
+    - Kartu dan panel translusen berkalibrasi 70% transparansi (`.glass-panel`, `.glass-card`, `.glass-input`, sidebar) dengan *backdrop blur* 20px, *optical saturation* 180%, dan garis tepi cahaya lembut (`border-emerald-500/20` & `border-white/10`).
     - *Ambient Lighting Aura*: Dua bola cahaya gradasi hijau dan biru di latar belakang aplikasi yang dibiaskan oleh kaca panel.
     - Kontras teks tinggi (*accessible high-contrast*) dengan keterbacaan optimal di atas panel kaca gelap.
 - **Mode Tema (Theme Modes) [STATUS: AKTIF / LIVE]**:

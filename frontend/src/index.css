@@ -11,40 +11,40 @@
   --bpjs-blue-dark: #0A3C74;
   --bpjs-sky: #38BDF8;
 
-  /* Default (Dark Mode) Tokens */
+  /* Default (Dark Mode) Tokens - 70% Glassmorphism Transparency */
   --bg-main: #020617;
   --text-main: #F8FAFC;
   --text-muted: #94A3B8;
-  --panel-bg: rgba(10, 17, 34, 0.78);
-  --panel-border: rgba(16, 185, 129, 0.15);
+  --panel-bg: rgba(10, 17, 34, 0.70);
+  --panel-border: rgba(16, 185, 129, 0.20);
   --panel-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6);
-  --card-bg: rgba(15, 23, 42, 0.68);
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(15, 23, 42, 0.70);
+  --card-border: rgba(255, 255, 255, 0.10);
   --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --input-bg: rgba(8, 14, 28, 0.85);
-  --input-border: rgba(255, 255, 255, 0.12);
+  --input-bg: rgba(8, 14, 28, 0.70);
+  --input-border: rgba(255, 255, 255, 0.15);
   --input-text: #F8FAFC;
-  --ambient-green-opacity: 0.20;
-  --ambient-blue-opacity: 0.20;
-  --scrollbar-track: rgba(10, 17, 34, 0.7);
+  --ambient-green-opacity: 0.25;
+  --ambient-blue-opacity: 0.25;
+  --scrollbar-track: rgba(10, 17, 34, 0.70);
 }
 
 :root.light {
   --bg-main: #F8FAFC;
   --text-main: #0F172A;
   --text-muted: #475569;
-  --panel-bg: rgba(255, 255, 255, 0.85);
-  --panel-border: rgba(0, 155, 77, 0.22);
+  --panel-bg: rgba(255, 255, 255, 0.70);
+  --panel-border: rgba(0, 155, 77, 0.25);
   --panel-shadow: 0 10px 30px -5px rgba(0, 82, 156, 0.08);
-  --card-bg: rgba(255, 255, 255, 0.88);
-  --card-border: rgba(203, 213, 225, 0.8);
+  --card-bg: rgba(255, 255, 255, 0.70);
+  --card-border: rgba(203, 213, 225, 0.75);
   --card-shadow: 0 6px 24px 0 rgba(15, 23, 42, 0.06);
-  --input-bg: rgba(255, 255, 255, 0.95);
-  --input-border: rgba(203, 213, 225, 0.9);
+  --input-bg: rgba(255, 255, 255, 0.70);
+  --input-border: rgba(203, 213, 225, 0.85);
   --input-text: #0F172A;
-  --ambient-green-opacity: 0.10;
-  --ambient-blue-opacity: 0.10;
-  --scrollbar-track: rgba(241, 245, 249, 0.8);
+  --ambient-green-opacity: 0.15;
+  --ambient-blue-opacity: 0.15;
+  --scrollbar-track: rgba(241, 245, 249, 0.70);
 }
 
 @layer base {
@@ -57,11 +57,11 @@
   }
 }
 
-/* Glassmorphism Design Tokens */
+/* Glassmorphism Design Tokens (70% Transparency with 20px Blur + 180% Saturation) */
 .glass-panel {
   background: var(--panel-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow);
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
@@ -69,24 +69,24 @@
 
 .glass-card {
   background: var(--card-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card-hover:hover {
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 16px 40px -12px rgba(0, 155, 77, 0.22), 0 8px 24px -8px rgba(0, 82, 156, 0.22);
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 16px 40px -12px rgba(0, 155, 77, 0.25), 0 8px 24px -8px rgba(0, 82, 156, 0.25);
   transform: translateY(-2px);
 }
 
 .glass-input {
   background: var(--input-bg);
   color: var(--input-text);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--input-border);
   transition: all 0.2s ease-in-out;
 }
@@ -191,12 +191,18 @@ html.light .bpjs-gradient-btn * {
   color: #FFFFFF !important;
 }
 
-html.light .bg-slate-900\/90 {
-  background-color: rgba(255, 255, 255, 0.94);
-  box-shadow: 4px 0 24px -4px rgba(0, 82, 156, 0.08);
+.bg-slate-900\/70 {
+  background-color: rgba(10, 17, 34, 0.70);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
+
+html.light .bg-slate-900\/90,
 html.light .bg-slate-900\/70 {
-  background-color: rgba(241, 245, 249, 0.85);
+  background-color: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 4px 0 24px -4px rgba(0, 82, 156, 0.08);
 }
 html.light .border-slate-800\/80 {
   border-color: rgba(226, 232, 240, 0.9);

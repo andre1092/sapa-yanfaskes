@@ -16,7 +16,7 @@
   - Kode Heksadesimal: `#00529C` / `#0A50A1` (BPJS Blue)
   - Nuansa Gelap: `#0F172A` / `#1E293B` (Slate Background)
   - Aksen Tambahan: `#06B6D4` (Cyan Accent untuk Glassmorphism)
-- **Desain Antarmuka**: Glassmorphism (Backdrop-filter blur 12px–16px, border semi-transparan `rgba(255, 255, 255, 0.08)`, translusen `rgba(15, 23, 42, 0.75)`).
+- **Desain Antarmuka**: Glassmorphism Refined 70% Transparency Level (Backdrop-filter blur 20px saturate 180%, border semi-transparan `rgba(255, 255, 255, 0.10)` & `rgba(16, 185, 129, 0.20)`, translusen `rgba(15, 23, 42, 0.70)` pada Dark Mode dan `rgba(255, 255, 255, 0.70)` pada Light Mode).
 
 ---
 

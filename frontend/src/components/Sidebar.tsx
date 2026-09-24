@@ -180,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`fixed top-0 bottom-0 left-0 z-50 bg-slate-900/90 backdrop-blur-2xl border-r border-emerald-500/15 flex flex-col justify-between transition-all duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 bg-slate-900/70 backdrop-blur-2xl border-r border-emerald-500/15 flex flex-col justify-between transition-all duration-300 ease-in-out lg:translate-x-0 ${
           isOpenMobile ? 'translate-x-0 shadow-2xl shadow-emerald-950/40 w-72' : '-translate-x-full'
         } ${
           isHovered
