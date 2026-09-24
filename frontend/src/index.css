@@ -1,24 +1,96 @@
 @import "tailwindcss";
 
+:root {
+  --bpjs-green: #009B4D;
+  --bpjs-green-dark: #007A3D;
+  --bpjs-emerald: #10B981;
+  --bpjs-blue: #00529C;
+  --bpjs-blue-dark: #0A3C74;
+  --bpjs-sky: #38BDF8;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    @apply bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500/25 selection:text-cyan-200;
+    @apply bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-emerald-200;
   }
 }
 
-/* Custom sleek scrollbars */
+/* Glassmorphism Design Tokens */
+.glass-panel {
+  background: rgba(10, 17, 34, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6);
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-hover:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 16px 40px -12px rgba(0, 155, 77, 0.18), 0 8px 24px -8px rgba(0, 82, 156, 0.25);
+  transform: translateY(-2px);
+}
+
+.glass-input {
+  background: rgba(8, 14, 28, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-input:focus {
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 3px rgba(0, 155, 77, 0.2);
+  outline: none;
+}
+
+/* BPJS Official Gradients */
+.bpjs-gradient {
+  background: linear-gradient(135deg, #009B4D 0%, #007A3D 45%, #00529C 100%);
+}
+
+.bpjs-gradient-btn {
+  background: linear-gradient(135deg, #009B4D 0%, #00529C 100%);
+  transition: all 0.3s ease;
+}
+
+.bpjs-gradient-btn:hover {
+  background: linear-gradient(135deg, #00B056 0%, #0866BD 100%);
+  box-shadow: 0 8px 25px -4px rgba(0, 155, 77, 0.35), 0 4px 15px -2px rgba(0, 82, 156, 0.3);
+}
+
+.bpjs-gradient-text {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 35%, #38BDF8 70%, #3B82F6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bpjs-gradient-subtle {
+  background: linear-gradient(135deg, rgba(0, 155, 77, 0.12) 0%, rgba(0, 82, 156, 0.12) 100%);
+}
+
+/* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(10, 17, 34, 0.7);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.6);
+  background: linear-gradient(180deg, rgba(0, 155, 77, 0.5) 0%, rgba(0, 82, 156, 0.5) 100%);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.8);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.8) 0%, rgba(37, 99, 235, 0.8) 100%);
 }

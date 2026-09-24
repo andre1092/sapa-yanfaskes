@@ -7,12 +7,18 @@
 
 ## 1. Fitur Utama Sistem (Core Features)
 
-### A. Pengalihan Tema Antarmuka (Theme Toggle Engine)
-- **Mode yang Didukung**:
-  - 🌙 **Dark Mode**: Latar belakang gelap futuristik Slate (`#0B0F19` / `#0F172A`) dengan kontras kartu glassmorphism tinggi.
-  - ☀️ **Light Mode**: Latar belakang terang bersih bernuansa institusional medis (`#F8FAFC` / `#FFFFFF`) dengan bayangan halus.
-  - 💻 **System Theme**: Mengikuti preferensi otomatis tema pada sistem operasi / peramban pengguna.
-- **Implementasi**: Integrasi Tailwind CSS class-based dark mode (`dark` class pada elemen `<html>`) disimpan dalam `localStorage`.
+### A. Desain Antarmuka & Tema BPJS Kesehatan (BPJS Health Glassmorphism Theme)
+- **Karakteristik Visual Utama**:
+  - 🌿 **Warna Utama (BPJS Green)**: `#009B4D` / Emerald `#10B981` (melambangkan keandalan pelayanan kesehatan dan mutu fasilitas).
+  - 🌊 **Warna Sekunder (BPJS Blue)**: `#00529C` / `#0A50A1` (melambangkan jaminan sosial yang kokoh dan integritas data terpusat).
+  - 🪟 **Efek Glassmorphism Modern**:
+    - Kartu dan panel translusen (`.glass-panel`, `.glass-card`) dengan *backdrop blur* 16px–20px dan garis tepi cahaya lembut (`border-emerald-500/20` & `border-white/10`).
+    - *Ambient Lighting Aura*: Dua bola cahaya gradasi hijau dan biru di latar belakang aplikasi yang dibiaskan oleh kaca panel.
+    - Kontras teks tinggi (*accessible high-contrast*) dengan keterbacaan optimal di atas panel kaca gelap.
+- **Mode Tema (Theme Modes)**:
+  - 🌙 **Dark Glassmorphism**: Dominan Slate gelap (`#0B0F19` / `#0F172A`) berpadu gradasi hijau zamrud dan biru laut BPJS.
+  - ☀️ **Light Glassmorphism**: Versi terang dengan frosted glass putih medis dan aksen hijau-biru BPJS.
+  - 💻 **System Theme**: Mengikuti preferensi tema sistem operasi pengguna.
 
 ### B. Pengalihan Bahasa Sistem (Language Switching)
 - **Bahasa yang Didukung**:

@@ -157,9 +157,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
-      {/* Top Main Title Header */}
-      <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-2xl py-4 px-6 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
-        <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+      {/* Top Main Title Header with Glassmorphism */}
+      <div className="glass-panel rounded-2xl py-4 px-6 sm:px-8 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4 border border-emerald-500/20">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+          <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-emerald-500/40" />
           Pemanfaatan Sistem Antrean Online FKRTL
         </h2>
         <div className="flex gap-3">
@@ -168,24 +169,24 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             <button 
               onClick={() => setOpenDropdown(openDropdown === 'faskes' ? null : 'faskes')}
               disabled={downloadingType === 'faskes'}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-semibold text-white transition-colors"
+              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all active:scale-95 cursor-pointer"
             >
-              <span>{downloadingType === 'faskes' ? '⏳ Downloading...' : '💾 Download by Nama RS'}</span>
+              <span>{downloadingType === 'faskes' ? '⏳ Mengunduh...' : '💾 Unduh Data RS'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {openDropdown === 'faskes' && (
-              <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
-                <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
-                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
-                  Download as .xlsx
+              <div className="absolute right-0 mt-2 w-56 glass-panel border border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Format Excel (.xlsx)
                 </button>
-                <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
-                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
-                  Download as .JPEG
+                <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
+                  Format Gambar (.JPEG)
                 </button>
-                <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors">
-                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
-                  Download as .csv
+                <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors cursor-pointer">
+                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Format CSV (.csv)
                 </button>
               </div>
             )}
@@ -196,24 +197,24 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             <button 
               onClick={() => setOpenDropdown(openDropdown === 'poli' ? null : 'poli')}
               disabled={downloadingType === 'poli'}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-semibold text-white transition-colors"
+              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all active:scale-95 cursor-pointer"
             >
-              <span>{downloadingType === 'poli' ? '⏳ Downloading...' : '💾 Download by Nama Poli'}</span>
+              <span>{downloadingType === 'poli' ? '⏳ Mengunduh...' : '💾 Unduh Data Poli'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {openDropdown === 'poli' && (
-              <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 overflow-hidden">
-                <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
-                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
-                  Download as .xlsx
+              <div className="absolute right-0 mt-2 w-56 glass-panel border border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Format Excel (.xlsx)
                 </button>
-                <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors border-b border-slate-700">
-                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
-                  Download as .JPEG
+                <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
+                  Format Gambar (.JPEG)
                 </button>
-                <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-slate-700 text-left text-sm text-slate-200 transition-colors">
-                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-5 h-5 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
-                  Download as .csv
+                <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors cursor-pointer">
+                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
+                  Format CSV (.csv)
                 </button>
               </div>
             )}
@@ -225,38 +226,56 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Last Update, KPI, Filters & Keterangan (Col span 3.5 / 12) */}
         <div className="lg:col-span-4 xl:col-span-3 space-y-4">
-          {/* 1. Last Update Header (Sourced from the final row of spreadsheet) */}
-          <div className="bg-slate-900/80 border border-slate-700/80 rounded-xl px-4 py-2.5 shadow-sm">
-            <span className="text-xs font-semibold italic text-rose-400 block tracking-wide">
-              Last Update : {lastUpdate}
+          {/* 1. Last Update Header (BPJS Glassmorphism Badge) */}
+          <div className="glass-card rounded-xl px-4 py-2.5 shadow-sm border border-emerald-500/20 flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-400 tracking-wide flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Update Terakhir: {lastUpdate}
             </span>
           </div>
 
-          {/* 2. Pemanfaatan KPI Card */}
-          <div className="rounded-xl overflow-hidden border border-slate-700 shadow-md">
-            <div className="bg-gradient-to-r from-[#2f557f] to-[#3e6b99] px-4 py-3 text-center border-b border-[#4d7cae]/50">
-              <h3 className="text-base font-bold text-white tracking-wide">Pemanfaatan</h3>
-              <p className="text-xs italic text-cyan-200 mt-0.5">Periode {selectedPeriod}</p>
+          {/* 2. Pemanfaatan KPI Card with BPJS Gradient Header */}
+          <div className="glass-card rounded-2xl overflow-hidden border border-emerald-500/30 shadow-xl shadow-emerald-950/20">
+            <div className="bpjs-gradient px-4 py-3.5 text-center border-b border-emerald-400/30 shadow-sm">
+              <h3 className="text-base font-bold text-white tracking-wide flex items-center justify-center gap-2">
+                <svg className="w-5 h-5 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Pemanfaatan Antrol
+              </h3>
+              <p className="text-xs font-medium text-emerald-100 mt-0.5">Periode {selectedPeriod}</p>
             </div>
-            <div className="bg-slate-900/90 py-5 text-center">
-              <span className="text-4xl font-extrabold text-white tracking-tight">
+            <div className="bg-slate-900/80 backdrop-blur-md py-6 text-center">
+              <span className="text-4xl font-extrabold text-white tracking-tight drop-shadow-md">
                 {formatPercentID(kpiValue)}
               </span>
+              <div className="mt-2.5 flex items-center justify-center gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
+                  Target BPJS: &ge;85%
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* 3. Filter Controls Box */}
-          <div className="bg-slate-900/80 border border-slate-700/80 rounded-xl p-4 space-y-3.5 shadow-sm">
+          {/* 3. Filter Controls Box with Glassmorphism Inputs */}
+          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-lg border border-white/10">
+            <div className="border-b border-slate-800 pb-2">
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                Filter Analitik
+              </span>
+            </div>
+
             {/* Tahun Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Tahun</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Tahun</label>
               <select
                 value={filters.tahun || (filterOptions.tahun[0] || '2026')}
                 onChange={(e) => handleFilterChange('tahun', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.tahun.map((y) => (
-                  <option key={y} value={y}>
+                  <option key={y} value={y} className="bg-slate-900 text-white">
                     {y}
                   </option>
                 ))}
@@ -265,14 +284,14 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Bulan Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Bulan</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Bulan</label>
               <select
                 value={filters.bulan || '(All)'}
                 onChange={(e) => handleFilterChange('bulan', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.bulan.map((b) => (
-                  <option key={b} value={b}>
+                  <option key={b} value={b} className="bg-slate-900 text-white">
                     {b}
                   </option>
                 ))}
@@ -281,14 +300,14 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Kabupaten Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Kabupaten</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Kabupaten / Kota</label>
               <select
                 value={filters.kabupaten || '(All)'}
                 onChange={(e) => handleFilterChange('kabupaten', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.kabupaten.map((k) => (
-                  <option key={k} value={k}>
+                  <option key={k} value={k} className="bg-slate-900 text-white">
                     {k}
                   </option>
                 ))}
@@ -297,30 +316,30 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Nama RS Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Nama RS</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Rumah Sakit</label>
               <select
                 value={filters.nama_rs || '(All)'}
                 onChange={(e) => handleFilterChange('nama_rs', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.nama_rs?.map((n) => (
-                  <option key={n} value={n}>
+                  <option key={n} value={n} className="bg-slate-900 text-white">
                     {n}
                   </option>
-                )) || <option value="(All)">(All)</option>}
+                )) || <option value="(All)" className="bg-slate-900 text-white">(All)</option>}
               </select>
             </div>
 
             {/* Kelas_RS Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Kelas_RS</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Kelas RS</label>
               <select
                 value={filters.kelas_rs || '(All)'}
                 onChange={(e) => handleFilterChange('kelas_rs', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.kelas_rs.map((c) => (
-                  <option key={c} value={c}>
+                  <option key={c} value={c} className="bg-slate-900 text-white">
                     {c}
                   </option>
                 ))}
@@ -329,14 +348,14 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Sumber Antrean Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">Sumber Antrean</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Sumber Antrean</label>
               <select
                 value={filters.sumber || 'Semua Sumber'}
                 onChange={(e) => handleFilterChange('sumber', e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-medium text-white focus:outline-none focus:border-cyan-400 transition-colors"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.sumber.map((s) => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} className="bg-slate-900 text-white">
                     {s}
                   </option>
                 ))}
@@ -345,10 +364,13 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           </div>
 
           {/* 4. Keterangan Box */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-slate-400 text-xs leading-relaxed space-y-1">
-            <span className="font-bold text-slate-200 block">Keterangan :</span>
-            <p>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama dengan SEP Terbit</p>
-            <p>- Poli Exclude adalah HIV, HDL, INF, IGD, ICU, 043, 060, KDN, 168, RDT, NUK, KEM, RAT, UGD</p>
+          <div className="glass-card rounded-2xl p-4.5 text-slate-300 text-xs leading-relaxed space-y-1.5 border border-white/10">
+            <span className="font-bold text-emerald-300 block flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Keterangan Analisis:
+            </span>
+            <p>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama dengan SEP Terbit.</p>
+            <p>- Poli Exclude adalah HIV, HDL, INF, IGD, ICU, 043, 060, KDN, 168, RDT, NUK, KEM, RAT, UGD.</p>
           </div>
         </div>
 
@@ -356,47 +378,51 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
         <div className="lg:col-span-8 xl:col-span-9 space-y-6">
           {isNoData ? (
             /* No Data State */
-            <div className="bg-slate-900/50 border border-dashed border-slate-800 rounded-2xl p-12 text-center flex flex-col items-center justify-center min-h-[450px]">
-              <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-4 text-slate-400">
+            <div className="glass-card border border-dashed border-emerald-500/30 rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[450px]">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-emerald-500/30 flex items-center justify-center mb-4 text-emerald-400 shadow-lg shadow-emerald-950/30">
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white">{data?.message || 'No data available.'}</h3>
-              <p className="text-xs text-slate-400 mt-2 max-w-sm">
-                No matching records found for the selected filter parameters and Timestamp range in the spreadsheet dataset.
+              <h3 className="text-xl font-bold text-white">{data?.message || 'Data Tidak Ditemukan.'}</h3>
+              <p className="text-xs text-slate-300 mt-2 max-w-sm">
+                Tidak ada catatan yang cocok untuk kombinasi parameter filter dan rentang waktu yang dipilih.
               </p>
               <button
                 onClick={() => setFilters({ tahun: '2026', bulan: '(All)', kabupaten: '(All)', kelas_rs: '(All)', sumber: 'Semua Sumber' })}
-                className="mt-5 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold transition-colors cursor-pointer"
+                className="mt-5 bpjs-gradient-btn px-5 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
               >
-                Reset Filters
+                Reset Filter
               </button>
             </div>
           ) : (
             <>
-              {/* Top: Tren Perbulan Bar Chart */}
-              <div className="bg-slate-900/70 border border-slate-700/80 rounded-2xl p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-center text-slate-200 mb-6 uppercase tracking-wider">
-                  Tren Perbulan
-                </h3>
+              {/* Top: Tren Perbulan Bar Chart with BPJS Colors & Glassmorphism */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10 relative overflow-hidden">
+                <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-800/80">
+                  <h3 className="text-sm font-bold text-emerald-200 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                    Tren Pemanfaatan Per Bulan
+                  </h3>
+                  <span className="text-[11px] font-semibold text-slate-400">Target BPJS: &ge;85%</span>
+                </div>
 
-                <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 px-2 sm:px-6 pt-8 pb-2 border-b border-slate-700/60">
+                <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 px-2 sm:px-6 pt-8 pb-2 border-b border-emerald-500/20">
                   {data.trend_per_bulan.map((item, idx) => {
                     const heightPercent = Math.min(Math.max((item.avg_capaian / maxTrend) * 100, 10), 100);
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
                         {/* Percentage Label Above Bar */}
-                        <span className="text-[11px] font-bold text-cyan-300 mb-1.5 whitespace-nowrap transition-transform group-hover:scale-110">
+                        <span className="text-[11px] font-bold text-emerald-300 mb-1.5 whitespace-nowrap transition-transform group-hover:scale-110">
                           {formatPercentID(item.avg_capaian)}
                         </span>
 
-                        {/* Bar */}
+                        {/* Bar with BPJS Blue-to-Green Gradient */}
                         <div
                           style={{ height: `${heightPercent}%` }}
-                          className="w-full max-w-[54px] rounded-t-md bg-[#4c76a3] hover:bg-[#5b8cbe] border-t-2 border-[#81aedb] transition-all duration-300 shadow-md shadow-slate-950/40 relative"
+                          className="w-full max-w-[54px] rounded-t-lg bg-gradient-to-t from-[#00529C] to-[#009B4D] hover:from-[#0A5EB5] hover:to-[#00B85C] border-t-2 border-emerald-300 transition-all duration-300 shadow-md shadow-emerald-950/40 relative cursor-pointer"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/10 rounded-t-md pointer-events-none" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/15 rounded-t-lg pointer-events-none" />
                         </div>
 
                         {/* Month X-Axis Label */}
@@ -409,22 +435,25 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom: Two-Column Ranking (Faskes & Poli Tujuan) */}
+              {/* Bottom: Two-Column Ranking (Faskes & Poli Tujuan) with Glassmorphism */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Left Sub-Column: Faskes Ranking */}
-                <div className="bg-slate-900/70 border border-slate-700/80 rounded-2xl p-5 shadow-sm">
+                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Faskes</h4>
+                      <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        Peringkat Faskes
+                      </h4>
                       <button 
                         onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
-                        className="text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors px-1"
-                        title="Sort"
+                        className="text-slate-400 hover:text-emerald-400 focus:outline-none transition-colors px-1"
+                        title="Urutkan"
                       >
                         ↓☰↑
                       </button>
                     </div>
-                    <span className="text-[10px] text-slate-400">Pemanfaatan</span>
+                    <span className="text-[11px] font-semibold text-slate-400">Pemanfaatan</span>
                   </div>
 
                   <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
@@ -434,11 +463,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           {f.faskes}
                         </span>
 
-                        {/* Horizontal Percentage Bar */}
-                        <div className="w-36 sm:w-44 bg-slate-950 rounded-md overflow-hidden h-6 flex items-center relative border border-slate-800 shrink-0">
+                        {/* Horizontal Percentage Bar with BPJS Gradient */}
+                        <div className="w-36 sm:w-44 bg-slate-950/80 rounded-lg overflow-hidden h-6.5 flex items-center relative border border-emerald-500/20 shrink-0">
                           <div
                             style={{ width: `${Math.min(f.avg_capaian, 100)}%` }}
-                            className="h-full bg-[#4c76a3] transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#009B4D] transition-all duration-500"
                           />
                           <span className="absolute right-2 text-[10.5px] font-bold text-white drop-shadow">
                             {formatPercentID(f.avg_capaian)}
@@ -450,19 +479,22 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 </div>
 
                 {/* Right Sub-Column: Poli Tujuan Ranking */}
-                <div className="bg-slate-900/70 border border-slate-700/80 rounded-2xl p-5 shadow-sm">
+                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
                     <div className="flex items-center gap-1.5">
-                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">Poli Tujuan</h4>
+                      <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        Poli Tujuan
+                      </h4>
                       <button 
                         onClick={() => setSortPoliDesc(!sortPoliDesc)}
-                        className="text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors px-1"
-                        title="Sort"
+                        className="text-slate-400 hover:text-emerald-400 focus:outline-none transition-colors px-1"
+                        title="Urutkan"
                       >
                         ↓☰↑
                       </button>
                     </div>
-                    <span className="text-[10px] text-slate-400">Pemanfaatan</span>
+                    <span className="text-[11px] font-semibold text-slate-400">Pemanfaatan</span>
                   </div>
 
                   <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
@@ -477,11 +509,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                             {p.poli}
                           </span>
 
-                          {/* Horizontal Percentage Bar */}
-                          <div className="w-36 sm:w-44 bg-slate-950 rounded-md overflow-hidden h-6 flex items-center relative border border-slate-800 shrink-0">
+                          {/* Horizontal Percentage Bar with BPJS Gradient */}
+                          <div className="w-36 sm:w-44 bg-slate-950/80 rounded-lg overflow-hidden h-6.5 flex items-center relative border border-emerald-500/20 shrink-0">
                             <div
                               style={{ width: `${Math.min(p.avg_capaian, 100)}%` }}
-                              className="h-full bg-[#4c76a3] transition-all duration-500"
+                              className="h-full bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#009B4D] transition-all duration-500"
                             />
                             <span className="absolute right-2 text-[10.5px] font-bold text-white drop-shadow">
                               {formatPercentID(p.avg_capaian)}
@@ -504,9 +536,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
             <thead>
               <tr>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid black', padding: '8px' }}>Nama FKRTL</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid black', padding: '8px' }}>All Sumber<br/>(Target 95%)</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid black', padding: '8px' }}>Mobile JKN<br/>(Target 80%)</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Nama FKRTL</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>All Sumber<br/>(Target 95%)</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Mobile JKN<br/>(Target 80%)</th>
               </tr>
             </thead>
             <tbody>
@@ -539,15 +571,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
             <thead>
               <tr>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Kabupaten</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Nmppk</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Nama Poli</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Flag Bridging Antrean</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>% Antrol All Sumber</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Flag Mobile JKN</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>% Antrol MJKN</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Flag Tidak Antrol</th>
-                <th style={{ backgroundColor: '#4D94FF', color: 'white', border: '1px solid #4D94FF', padding: '8px' }}>Total SEP</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Kabupaten</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Nmppk</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Nama Poli</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Flag Bridging Antrean</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>% Antrol All Sumber</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Flag Mobile JKN</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>% Antrol MJKN</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Flag Tidak Antrol</th>
+                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Total SEP</th>
               </tr>
             </thead>
             <tbody>

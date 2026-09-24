@@ -22,41 +22,44 @@ export const AdminSettings: React.FC = () => {
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full space-y-8 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Admin Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Konfigurasi Sistem dan Manajemen Data</p>
+      {/* Header with BPJS Theme */}
+      <div className="flex items-center gap-3">
+        <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-emerald-500/40" />
+        <div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">Admin Settings</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Konfigurasi Sistem dan Manajemen Data SAPA YANFASKES</p>
+        </div>
       </div>
 
       {/* Settings Sections */}
       <div className="grid grid-cols-1 gap-6">
         {/* Dashboard FKRTL Section */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+        <div className="glass-card rounded-2xl p-6 border border-white/10 shadow-xl">
           <div className="flex items-center gap-3 border-b border-slate-800 pb-4 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-800 flex items-center justify-center">
-              <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-center shadow-md shadow-emerald-950/30">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-200">Dashboard FKRTL</h2>
-              <p className="text-xs text-slate-400">Pengaturan data dashboard Fasilitas Kesehatan Rujukan Tingkat Lanjut</p>
+              <h2 className="text-lg font-bold text-white">Dashboard FKRTL</h2>
+              <p className="text-xs text-slate-400">Pengaturan data dashboard Fasilitas Kesehatan Rujukan Tingkat Lanjutan</p>
             </div>
           </div>
 
           {/* Sub-sections */}
           <div className="space-y-4">
-            
             {/* Pemanfaatan Antrol Item */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-800/40 border border-slate-700/50 hover:bg-slate-800/60 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl glass-card border border-emerald-500/20 hover:border-emerald-500/35 transition-all">
               <div>
-                <h3 className="text-sm font-semibold text-slate-200">Pemanfaatan Antrol</h3>
-                <p className="text-xs text-slate-400 mt-1 max-w-lg">
+                <h3 className="text-sm font-bold text-emerald-300">Pemanfaatan Antrol</h3>
+                <p className="text-xs text-slate-300 mt-1 max-w-lg leading-relaxed">
                   Sinkronisasi ulang data spreadsheet secara langsung. Ini akan menghapus cache sementara dan mengambil data terbaru dari Google Sheets.
                 </p>
                 {lastRefreshed && (
-                  <p className="text-[10px] font-medium text-emerald-400 mt-2">
-                    Terakhir disinkronisasi: {lastRefreshed.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                  <p className="text-[11px] font-semibold text-emerald-400 mt-2 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Terakhir disinkronisasi: {lastRefreshed.toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </p>
                 )}
               </div>
@@ -64,13 +67,12 @@ export const AdminSettings: React.FC = () => {
               <button
                 onClick={handleResync}
                 disabled={isRefreshing}
-                className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-400 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-cyan-900/20 active:scale-95 cursor-pointer"
+                className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 bpjs-gradient-btn disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-950/40 border border-emerald-400/30 active:scale-95 cursor-pointer"
               >
                 <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
-                {isRefreshing ? 'Memproses...' : 'Resync Data'}
+                {isRefreshing ? 'Menyinkronkan...' : 'Sinkronisasi Data'}
               </button>
             </div>
-
           </div>
         </div>
       </div>
