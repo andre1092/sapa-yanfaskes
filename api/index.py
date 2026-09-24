@@ -1033,6 +1033,12 @@ async def export_fkrtl_data(
             df_faskes_clean = pl.DataFrame({"Kdppk": pl.Series(dtype=pl.Utf8), "Kabupaten": pl.Series(dtype=pl.Utf8), "Kelas_RS": pl.Series(dtype=pl.Utf8), "Nama_RS": pl.Series(dtype=pl.Utf8)})
 
         # 2. Add Faskes attributes to df_antrol
+        from api.index import find_column_name, parse_date_info
+
+        faskes_col = next((c for c in df_antrol.columns if c.lower() in ["nama fkrtl", "nama_fkrtl", "faskes", "nama faskes"]), None)
+        if faskes_col and faskes_col != "Faskes":
+            df_antrol = df_antrol.rename({faskes_col: "Faskes"})
+
         if "Kdppk" in df_antrol.columns:
             df_antrol = df_antrol.join(df_faskes_clean, on="Kdppk", how="left")
             df_antrol = df_antrol.with_columns(
@@ -1040,6 +1046,47 @@ async def export_fkrtl_data(
                 pl.col("Kelas_RS").fill_null(pl.lit("Semua Kelas")),
                 pl.col("Nama_RS").fill_null(pl.col("Faskes") if "Faskes" in df_antrol.columns else pl.lit("(All)"))
             )
+
+        if "Faskes" not in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.col("Kdppk").alias("Faskes") if "Kdppk" in df_antrol.columns else pl.lit("(All)").alias("Faskes"))
+        if "Sumber" not in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.lit("Semua Sumber").alias("Sumber"))
+        else:
+            df_antrol = df_antrol.with_columns(pl.col("Sumber").fill_null("Semua Sumber"))
+
+        # Parse Numerator and Denominator
+        antrol_antrian_col = find_column_name(df_antrol, ["jumlah antrian by sumber", "jumlah antrean by sumber", "jumlah antrian", "jumlah antrean", "antrian", "antrean"])
+        antrol_sep_col = find_column_name(df_antrol, ["jumlah sep rjtl", "jumlah sep", "sep rjtl", "jumlah kunjungan", "sep"])
+        antrol_peserta_col = find_column_name(df_antrol, ["jumlah peserta jkn", "jumlah peserta", "peserta jkn", "peserta"])
+
+        if antrol_antrian_col and antrol_antrian_col in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.col(antrol_antrian_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_antrol_num"))
+        else:
+            df_antrol = df_antrol.with_columns(pl.lit(0.0).alias("_antrol_num"))
+
+        if antrol_sep_col and antrol_sep_col in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.col(antrol_sep_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_antrol_sep"))
+        else:
+            df_antrol = df_antrol.with_columns(pl.lit(0.0).alias("_antrol_sep"))
+
+        if antrol_peserta_col and antrol_peserta_col in df_antrol.columns:
+            df_antrol = df_antrol.with_columns(pl.col(antrol_peserta_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_antrol_peserta"))
+        else:
+            df_antrol = df_antrol.with_columns(pl.lit(0.0).alias("_antrol_peserta"))
+
+        # Parse Timestamps for df_antrol
+        ts_col_antrol = find_column_name(df_antrol, ["timestamp", "waktu", "tanggal", "time"])
+        if ts_col_antrol:
+            raw_ts_list = [str(t).strip() if t is not None else "" for t in df_antrol[ts_col_antrol].to_list()]
+        else:
+            raw_ts_list = [""] * df_antrol.height
+            
+        parsed_antrol = [parse_date_info(ts) for ts in raw_ts_list]
+        df_antrol = df_antrol.with_columns([
+            pl.Series("Tahun", [p[0] for p in parsed_antrol], dtype=pl.Utf8),
+            pl.Series("BulanTahun", [p[1] for p in parsed_antrol], dtype=pl.Utf8),
+            pl.Series("RawTimestamp", raw_ts_list, dtype=pl.Utf8)
+        ])
 
         # 3. Add Faskes attributes to df_poli
         if "Kdppk" in df_poli.columns and not df_poli.is_empty():
@@ -1049,6 +1096,27 @@ async def export_fkrtl_data(
                 pl.col("Kelas_RS").fill_null(pl.lit("Semua Kelas")),
                 pl.col("Nama_RS").fill_null(pl.col("Faskes") if "Faskes" in df_poli.columns else pl.lit("(All)"))
             )
+
+        # Parse Numerator and Denominator for Poli
+        if not df_poli.is_empty():
+            flag_mjkn_col = find_column_name(df_poli, ["mobile jkn flag", "flag mobile jkn", "flag_mobile_jkn", "flag mjkn", "mobile jkn"])
+            flag_bridging_col = find_column_name(df_poli, ["flag bridging antrean", "flag_bridging_antrean", "flag bridging", "bridging antrean", "bridging"])
+            total_sep_col = find_column_name(df_poli, ["total sep", "total_sep", "jumlah sep", "sep"])
+
+            if flag_mjkn_col:
+                df_poli = df_poli.with_columns(pl.col(flag_mjkn_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_mjkn"))
+            else:
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_mjkn"))
+
+            if flag_bridging_col:
+                df_poli = df_poli.with_columns(pl.col(flag_bridging_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_bridging"))
+            else:
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_bridging"))
+
+            if total_sep_col:
+                df_poli = df_poli.with_columns(pl.col(total_sep_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_total_sep"))
+            else:
+                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_total_sep"))
 
         # 4. Standardize Poli name
         if not df_poli.is_empty():

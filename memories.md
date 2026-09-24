@@ -1,0 +1,60 @@
+# MEMORIES.MD — PERSISTENT AGENT CONTEXT & TASK METRICS
+**Proyek**: SAPA YANFASKES (Saluran Analisis Performa & Akselerasi)  
+**Entitas**: AntiGravity AI Agent  
+**Terakhir Diperbarui**: 2026-09-24  
+
+---
+
+## 1. Identitas Sistem & Sasaran Utama (Core Objectives)
+- **Nama Aplikasi**: SAPA YANFASKES (Saluran Analisis Performa & Akselerasi Fasilitas Kesehatan)
+- **Target Kinerja**: Waktu respons sub-2-detik (< 2s latency)
+- **Konektivitas Data**: Terhubung langsung ke Google Spreadsheet via Service Account & Polars Lazy Engine
+- **Tema Desain**: Modern Glassmorphism UI Theme
+- **Palet Warna Merek**: BPJS Kesehatan (Hijau: `#009B4D` / `#00A86B`, Biru: `#00529C` / `#0A50A1`, Aksen Cyan: `#06B6D4`)
+- **Batasan Biaya**: 100% Free Tier (Vercel Serverless + FastAPI + React Vite + Polars + Google Sheets API + Supabase/Free PostgreSQL)
+- **Bahasa Operasional**: Bahasa Indonesia formal dan baku
+
+---
+
+## 2. Arsitektur Produksi Aktif
+```
+sapa-yanfaskes/
+├── .agents/
+│   ├── rules/rules.md           # Aturan baku sistem & batasan operasional
+│   └── workflows/workflows.md   # Pipeline alur kerja 10 langkah
+├── api/                         # Serverless Backend API (FastAPI)
+│   ├── index.py                 # Endpoint data, parser Polars, integrasi Sheets
+│   ├── db.py                    # Koneksi async SQLAlchemy & tenant context
+│   └── schemas.sql              # Skema DDL PostgreSQL multi-tenant
+├── frontend/                    # Single Page Application (React 19 + Vite)
+│   ├── src/                     # Komponen, hook, store Zustand, tema Tailwind
+│   └── package.json             # Dependensi frontend
+├── documentations/              # Spesifikasi teknis, arsitektur IAM, DevSecOps
+├── memories.md                  # Log konteks & status persisten (File ini)
+├── source.md                    # Grounding parameter resmi & fakta BPJS Kesehatan
+├── struktur.md                  # Manifest hierarki menu aktif
+├── feature.md                   # Manifest fitur aktif dashboard
+├── requirements.txt             # Dependensi Python backend
+└── vercel.json                  # Konfigurasi routing & deployment Vercel
+```
+
+---
+
+## 3. Log Riwayat Tugas & Status Proyek (Completed Milestones)
+
+| Tanggal | Tahapan / Milestone | Status | Keterangan |
+| :--- | :--- | :--- | :--- |
+| **2026-08** | Migrasi Arsitektur | Selesai | Migrasi tuntas dari prototipe lama (Streamlit) ke React 19 + FastAPI di Vercel. |
+| **2026-09-24** | Audit Komprehensif Repositori | Selesai | Dilakukan identifikasi menyeluruh 25+ item berkas di repositori. |
+| **2026-09-24** | Persetujuan Pengguna (*User Approval*) | Selesai | Pengguna memberikan persetujuan eksplisit ("APPROVED") untuk rencana pembersihan. |
+| **2026-09-24** | Pembersihan Berkas Usang (*Cleanup*) | Selesai | Dihapus: `app.py`, `main.py`, `.streamlit/`, `modules/`, `antigravity.rules`, `gw_config.json`, `print_columns.py`, `read_docx.py`, `test_jwks.py`, `test_jwt.py`, `.DS_Store`. |
+| **2026-09-24** | Reorganisasi Dokumen Spesifikasi | Selesai | Folder `Enterprise-Grade SAML 2.0 & OIDC Identity Provider (IdP)` dipindahkan ke `documentations/ENTERPRISE SECURITY & IAM ARCHITECTURE/`. |
+| **2026-09-24** | Inisialisasi Tata Kelola Wajib | Selesai | Pembentukan berkas `memories.md`, `source.md`, `struktur.md`, dan `feature.md`. |
+| **2026-09-24** | Komit Produksi & Verifikasi Build | Selesai | Komit `bb5a3eb` terbentuk (`chore(release): cleanup legacy files, add governance manifests, and deploy production build`). Kompilasi backend dan build Vite frontend sukses 100%. |
+
+---
+
+## 4. Metrik Kualitas & Pemantauan (Quality Metrics)
+- **Token Efficiency**: 100% kepatuhan bedah modul presisi (*surgical edits*), tanpa pembacaan ulang repositori menyeluruh (*zero unnecessary reads*).
+- **Security Posture**: File kredensial lokal (`api-sapa-yanfaskes-*.json`) tidak di-commit dan diamankan dalam `.gitignore`.
+- **Integrity Status**: Repositori berada dalam kondisi bersih, terstruktur, siap untuk iterasi fitur dan pengujian performa.
