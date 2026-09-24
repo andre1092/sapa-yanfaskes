@@ -98,12 +98,12 @@ function MainLayout() {
 
   // 3. Authenticated Dashboard with Glassmorphism Background Aura & Left Sidebar Layout
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 flex flex-row overflow-x-hidden">
+    <div className="relative min-h-screen flex flex-row overflow-x-hidden">
       {/* Dynamic Ambient Background Aura (BPJS Green & Blue Lighting Refractions) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-32 left-1/4 w-[650px] h-[650px] bg-emerald-500/10 rounded-full blur-[140px]" />
-        <div className="absolute top-1/3 -right-32 w-[600px] h-[600px] bg-blue-600/12 rounded-full blur-[150px]" />
-        <div className="absolute -bottom-40 left-1/3 w-[700px] h-[500px] bg-teal-600/10 rounded-full blur-[160px]" />
+        <div className="absolute -top-32 -left-20 w-[650px] h-[650px] bg-[#009B4D]/18 dark:bg-[#009B4D]/25 rounded-full blur-[140px]" />
+        <div className="absolute top-1/4 -right-32 w-[650px] h-[650px] bg-[#00529C]/20 dark:bg-[#00529C]/30 rounded-full blur-[150px]" />
+        <div className="absolute -bottom-40 left-1/3 w-[700px] h-[550px] bg-[#0A3C74]/15 dark:bg-[#10B981]/15 rounded-full blur-[160px]" />
       </div>
 
       {/* Left Sidebar */}
@@ -129,7 +129,7 @@ function MainLayout() {
           ) : activeTab === 'admin' ? (
             <AdminSettings />
           ) : (
-            <BlankContentArea activeTab={activeTab} />
+            <BlankContentArea activeTab={activeTab} onNavigate={(tab) => setActiveTab(tab)} />
           )}
         </main>
       </div>

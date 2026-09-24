@@ -4,47 +4,47 @@
 @custom-variant light (&:where(.light, .light *));
 
 :root {
+  /* Official BPJS Kesehatan Brand Hex Codes */
   --bpjs-green: #009B4D;
-  --bpjs-green-dark: #007A3D;
+  --bpjs-green-deep: #007A3D;
   --bpjs-emerald: #10B981;
   --bpjs-blue: #00529C;
-  --bpjs-blue-dark: #0A3C74;
+  --bpjs-navy: #0A3C74;
+  --bpjs-navy-deep: #08284D;
+  --bpjs-cyan: #06B6D4;
   --bpjs-sky: #38BDF8;
 
-  /* Default (Dark Mode) Tokens - 70% Glassmorphism Transparency */
-  --bg-main: #020617;
+  /* Default (Dark Mode) - Executive Midnight Navy Glassmorphism */
+  --bg-main: #070D1A;
   --text-main: #F8FAFC;
   --text-muted: #94A3B8;
-  --panel-bg: rgba(10, 17, 34, 0.70);
-  --panel-border: rgba(16, 185, 129, 0.20);
-  --panel-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6);
-  --card-bg: rgba(15, 23, 42, 0.70);
+  --panel-bg: rgba(10, 22, 45, 0.72);
+  --panel-border: rgba(16, 185, 129, 0.22);
+  --panel-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.65);
+  --card-bg: rgba(13, 27, 54, 0.70);
   --card-border: rgba(255, 255, 255, 0.10);
-  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --input-bg: rgba(8, 14, 28, 0.70);
-  --input-border: rgba(255, 255, 255, 0.15);
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.40);
+  --input-bg: rgba(9, 18, 38, 0.75);
+  --input-border: rgba(255, 255, 255, 0.14);
   --input-text: #F8FAFC;
-  --ambient-green-opacity: 0.25;
-  --ambient-blue-opacity: 0.25;
-  --scrollbar-track: rgba(10, 17, 34, 0.70);
+  --scrollbar-track: rgba(10, 22, 45, 0.70);
 }
 
 :root.light {
-  --bg-main: #F8FAFC;
-  --text-main: #0F172A;
-  --text-muted: #475569;
-  --panel-bg: rgba(255, 255, 255, 0.70);
-  --panel-border: rgba(0, 155, 77, 0.25);
-  --panel-shadow: 0 10px 30px -5px rgba(0, 82, 156, 0.08);
-  --card-bg: rgba(255, 255, 255, 0.70);
-  --card-border: rgba(203, 213, 225, 0.75);
-  --card-shadow: 0 6px 24px 0 rgba(15, 23, 42, 0.06);
-  --input-bg: rgba(255, 255, 255, 0.70);
-  --input-border: rgba(203, 213, 225, 0.85);
-  --input-text: #0F172A;
-  --ambient-green-opacity: 0.15;
-  --ambient-blue-opacity: 0.15;
-  --scrollbar-track: rgba(241, 245, 249, 0.70);
+  /* Light Mode - Medical Ice Blue & Crisp Executive BPJS Glassmorphism */
+  --bg-main: #F1F6FA;
+  --text-main: #0A2540;
+  --text-muted: #536B88;
+  --panel-bg: rgba(255, 255, 255, 0.78);
+  --panel-border: rgba(0, 82, 156, 0.16);
+  --panel-shadow: 0 16px 40px -10px rgba(0, 82, 156, 0.10);
+  --card-bg: rgba(255, 255, 255, 0.82);
+  --card-border: rgba(0, 82, 156, 0.12);
+  --card-shadow: 0 10px 30px -5px rgba(0, 82, 156, 0.08);
+  --input-bg: rgba(255, 255, 255, 0.85);
+  --input-border: rgba(0, 82, 156, 0.20);
+  --input-text: #0A2540;
+  --scrollbar-track: rgba(235, 243, 250, 0.80);
 }
 
 @layer base {
@@ -77,8 +77,8 @@
 }
 
 .glass-card-hover:hover {
-  border-color: rgba(16, 185, 129, 0.45);
-  box-shadow: 0 16px 40px -12px rgba(0, 155, 77, 0.25), 0 8px 24px -8px rgba(0, 82, 156, 0.25);
+  border-color: rgba(0, 155, 77, 0.45);
+  box-shadow: 0 16px 40px -10px rgba(0, 155, 77, 0.22), 0 8px 24px -6px rgba(0, 82, 156, 0.22);
   transform: translateY(-2px);
 }
 
@@ -92,35 +92,44 @@
 }
 
 .glass-input:focus {
-  border-color: rgba(16, 185, 129, 0.7);
+  border-color: #009B4D;
   box-shadow: 0 0 0 3px rgba(0, 155, 77, 0.25);
   outline: none;
 }
 
-/* BPJS Official Gradients */
+/* BPJS Kesehatan Gradients */
 .bpjs-gradient {
-  background: linear-gradient(135deg, #009B4D 0%, #007A3D 45%, #00529C 100%);
+  background: linear-gradient(135deg, #009B4D 0%, #007A3D 40%, #00529C 100%);
+}
+
+.bpjs-gradient-blue {
+  background: linear-gradient(135deg, #00529C 0%, #0A3C74 60%, #08284D 100%);
+}
+
+.bpjs-gradient-green {
+  background: linear-gradient(135deg, #009B4D 0%, #007A3D 60%, #04522B 100%);
 }
 
 .bpjs-gradient-btn {
-  background: linear-gradient(135deg, #009B4D 0%, #00529C 100%);
+  background: linear-gradient(135deg, #009B4D 0%, #007A3D 35%, #00529C 100%);
   color: #FFFFFF !important;
   transition: all 0.3s ease;
 }
 
 .bpjs-gradient-btn:hover {
-  background: linear-gradient(135deg, #00B056 0%, #0866BD 100%);
-  box-shadow: 0 8px 25px -4px rgba(0, 155, 77, 0.35), 0 4px 15px -2px rgba(0, 82, 156, 0.3);
+  background: linear-gradient(135deg, #00B056 0%, #008743 35%, #0866BD 100%);
+  box-shadow: 0 8px 25px -4px rgba(0, 155, 77, 0.35), 0 4px 15px -2px rgba(0, 82, 156, 0.35);
+  transform: translateY(-1px);
 }
 
 .bpjs-gradient-text {
-  background: linear-gradient(135deg, #10B981 0%, #34D399 35%, #38BDF8 70%, #3B82F6 100%);
+  background: linear-gradient(135deg, #009B4D 0%, #10B981 30%, #00529C 80%, #0A3C74 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .bpjs-gradient-subtle {
-  background: linear-gradient(135deg, rgba(0, 155, 77, 0.12) 0%, rgba(0, 82, 156, 0.12) 100%);
+  background: linear-gradient(135deg, rgba(0, 155, 77, 0.08) 0%, rgba(0, 82, 156, 0.08) 100%);
 }
 
 /* Custom Sleek Scrollbar */
@@ -132,102 +141,9 @@
   background: var(--scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(0, 155, 77, 0.5) 0%, rgba(0, 82, 156, 0.5) 100%);
+  background: linear-gradient(180deg, rgba(0, 155, 77, 0.6) 0%, rgba(0, 82, 156, 0.6) 100%);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(16, 185, 129, 0.8) 0%, rgba(37, 99, 235, 0.8) 100%);
-}
-
-/* Light Mode Aesthetic & Readability Harmonization */
-html.light .text-white {
-  color: #0F172A;
-}
-html.light .text-slate-100 {
-  color: #1E293B;
-}
-html.light .text-slate-200 {
-  color: #334155;
-}
-html.light .text-slate-300 {
-  color: #475569;
-}
-html.light .text-slate-400 {
-  color: #64748B;
-}
-html.light .border-white\/10,
-html.light .border-white\/8,
-html.light .border-white\/12 {
-  border-color: rgba(203, 213, 225, 0.7);
-}
-html.light .border-slate-800 {
-  border-color: rgba(226, 232, 240, 0.9);
-}
-html.light .bg-slate-900\/50,
-html.light .bg-slate-950\/50,
-html.light .bg-slate-900\/60,
-html.light .bg-slate-900\/40 {
-  background-color: rgba(241, 245, 249, 0.75);
-}
-html.light .bg-slate-950,
-html.light .bg-slate-900 {
-  background-color: rgba(248, 250, 252, 0.9);
-}
-html.light .bg-emerald-950\/40,
-html.light .bg-emerald-950\/60 {
-  background-color: rgba(209, 250, 229, 0.7);
-  color: #065F46;
-}
-html.light .bg-blue-950\/40,
-html.light .bg-blue-950\/60 {
-  background-color: rgba(219, 234, 254, 0.7);
-  color: #1E40AF;
-}
-
-/* Ensure button and header gradient text stays sharp */
-html.light .bpjs-gradient .text-white,
-html.light .bpjs-gradient-btn,
-html.light .bpjs-gradient-btn * {
-  color: #FFFFFF !important;
-}
-
-.bg-slate-900\/70 {
-  background-color: rgba(10, 17, 34, 0.70);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-html.light .bg-slate-900\/90,
-html.light .bg-slate-900\/70 {
-  background-color: rgba(255, 255, 255, 0.70);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 4px 0 24px -4px rgba(0, 82, 156, 0.08);
-}
-html.light .border-slate-800\/80 {
-  border-color: rgba(226, 232, 240, 0.9);
-}
-html.light .text-emerald-200,
-html.light .text-emerald-300 {
-  color: #047857;
-}
-html.light .text-emerald-400 {
-  color: #059669;
-}
-html.light .text-blue-200,
-html.light .text-blue-300 {
-  color: #1D4ED8;
-}
-html.light .text-blue-400 {
-  color: #2563EB;
-}
-html.light .shadow-emerald-950\/40,
-html.light .shadow-emerald-950\/50,
-html.light .shadow-emerald-950\/30 {
-  box-shadow: 0 4px 20px -2px rgba(0, 155, 77, 0.12);
-}
-html.light .shadow-blue-950\/40,
-html.light .shadow-blue-950\/50,
-html.light .shadow-blue-950\/30 {
-  box-shadow: 0 4px 20px -2px rgba(0, 82, 156, 0.12);
+  background: linear-gradient(180deg, rgba(0, 155, 77, 0.9) 0%, rgba(0, 82, 156, 0.9) 100%);
 }

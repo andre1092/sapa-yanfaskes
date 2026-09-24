@@ -87,7 +87,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
 
   return (
     <div
-      className={`flex items-center p-1 rounded-xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-md shadow-inner ${className}`}
+      className={`flex items-center p-1 rounded-xl bg-slate-100/90 dark:bg-slate-900/70 border border-slate-200/90 dark:border-slate-800/80 backdrop-blur-md shadow-inner ${className}`}
       role="group"
       aria-label="Pemilih Tema"
     >
@@ -100,10 +100,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
             onClick={() => setTheme(opt.mode)}
             title={`Mode ${opt.label}${opt.mode === 'system' ? ` (Aktif: ${effectiveTheme})` : ''}`}
             aria-pressed={isActive}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               isActive
-                ? 'bpjs-gradient text-white shadow-sm shadow-emerald-900/40 scale-[1.02]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bpjs-gradient text-white shadow-md shadow-[#009B4D]/30 scale-[1.02]'
+                : 'text-slate-600 dark:text-slate-400 hover:text-[#00529C] dark:hover:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/50'
             }`}
           >
             {opt.icon}
