@@ -66,11 +66,20 @@ app = FastAPI(title="SAPA YANFASKES Enterprise IAM API", version="5.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://sapa-yanfaskes.vercel.app"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/v1/health")
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "sapa-api",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 def verify_auth0_token(token: str):
     """
