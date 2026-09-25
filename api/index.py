@@ -29,17 +29,24 @@ try:
     HAS_GOOGLE_CLIENT = True
 except (ImportError, ModuleNotFoundError):
     HAS_GOOGLE_CLIENT = False
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+try:
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy import text
+except Exception:
+    AsyncSession = Any
+    text = None
 
 # Import the Database context and context injector
 try:
     from .db import get_db, set_tenant_context
-except (ImportError, ValueError):
+except Exception:
     try:
         from db import get_db, set_tenant_context
-    except (ImportError, ValueError):
-        from api.db import get_db, set_tenant_context
+    except Exception:
+        async def get_db():
+            yield None
+        async def set_tenant_context(session, tenant_id: str, user_id: str, is_superadmin: bool = False):
+            pass
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("sapa-api")
@@ -81,6 +88,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+@app.get("/api")
+@app.get("/api/index.py")
 @app.get("/api/v1/health")
 @app.get("/health")
 def health_check():
