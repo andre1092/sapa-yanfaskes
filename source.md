@@ -140,6 +140,15 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
    - $\text{Persen Sesuai} > 60.0\% \rightarrow \text{Capaian} = 75 \text{ (atau hingga 100)}$
 3. **Bobot Indikator**:
    - Bobot resmi indikator Jadwal Praktek Nakes adalah **25%** dari total evaluasi kepatuhan mutu faskes.
-4. **Target Kinerja Nasional BPJS**:
-   - Standar kepatuhan faskes (*Patuh*) adalah $\ge 80\%$.
+4. **Logika & Standar Status Kepatuhan**:
+   - **Tercapai**: jika nilai mencapai **100** ($\text{Capaian} \ge 100 \lor \text{Persen Sesuai} \ge 100$).
+   - **Belum Tercapai**: jika nilai **di bawah 100** ($< 100$).
+
+### C. Standar Tampilan Dashboard & Tabel Matriks
+1. **Dua Line Chart Berdampingan**:
+   - **Line Chart Kiri**: Tren bulanan Persen Sesuai (%) dengan kurva `#2b4390` dan garis target 100%.
+   - **Line Chart Kanan**: Tren bulanan Capaian (Poin) dengan kurva `#44853b` dan garis target 100 poin.
+2. **Struktur Kolom Tabel Standar**:
+   - `No`, `Nama Faskes`, `Tipe Faskes`, `Total Kunjungan`, `Tidak Sesuai`, `Sesuai`, `Persen Sesuai`, `Capaian`, `Status`.
+
 

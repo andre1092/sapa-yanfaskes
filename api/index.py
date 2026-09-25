@@ -1656,9 +1656,9 @@ async def get_fkrtl_kepatuhan_nakes(
             weighted_persen_sesuai = 0.0
             avg_capaian = 0.0
 
-        target_persen = 80.0
-        total_met = sum(1 for r in filtered if r["persen_sesuai"] >= target_persen)
-        total_unmet = len(filtered) - total_met
+        target_persen = 100.0
+        total_tercapai = sum(1 for r in filtered if (r["capaian"] >= 100.0 or r["persen_sesuai"] >= 100.0))
+        total_belum_tercapai = len(filtered) - total_tercapai
 
         kpi_data = {
             "avg_persen_sesuai": avg_persen_sesuai,
@@ -1670,8 +1670,10 @@ async def get_fkrtl_kepatuhan_nakes(
             "total_kunjungan": total_kunjungan,
             "total_sesuai": total_sesuai,
             "total_tidak_sesuai": total_tidak_sesuai,
-            "total_met": total_met,
-            "total_unmet": total_unmet,
+            "total_met": total_tercapai,
+            "total_unmet": total_belum_tercapai,
+            "total_tercapai": total_tercapai,
+            "total_belum_tercapai": total_belum_tercapai,
             "total_records": len(filtered)
         }
 
@@ -1693,7 +1695,7 @@ async def get_fkrtl_kepatuhan_nakes(
             by_month[m]["total"] += r["total_kunjungan"]
             by_month[m]["p_sum"] += r["persen_sesuai"]
             by_month[m]["c_sum"] += r["capaian"]
-            if r["persen_sesuai"] >= target_persen:
+            if (r["capaian"] >= 100.0 or r["persen_sesuai"] >= 100.0):
                 by_month[m]["met_count"] += 1
 
         monthly_chart = []
@@ -1723,6 +1725,7 @@ async def get_fkrtl_kepatuhan_nakes(
         sorted_filtered = sorted(filtered, key=lambda x: (x["persen_sesuai"], x["nama_ppk"]), reverse=True)
         table_data = []
         for idx, r in enumerate(sorted_filtered):
+            is_tercapai = bool(r["capaian"] >= 100.0 or r["persen_sesuai"] >= 100.0)
             table_data.append({
                 "no": idx + 1,
                 "kode_ppk": r["kode_ppk"],
@@ -1733,12 +1736,13 @@ async def get_fkrtl_kepatuhan_nakes(
                 "bulan": r["bulan"],
                 "bulan_indo": r["bulan_indo"],
                 "total_kunjungan": r["total_kunjungan"],
-                "sesuai": r["sesuai"],
                 "tidak_sesuai": r["tidak_sesuai"],
+                "sesuai": r["sesuai"],
                 "persen_sesuai": r["persen_sesuai"],
                 "capaian": r["capaian"],
                 "capaian_nilai": r["capaian_nilai"],
-                "is_met": r["persen_sesuai"] >= target_persen
+                "is_met": is_tercapai,
+                "status": "Tercapai" if is_tercapai else "Belum Tercapai"
             })
 
         return {
