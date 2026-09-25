@@ -75,10 +75,10 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ className = 
         <div
           role="menu"
           aria-orientation="vertical"
-          className="absolute right-0 mt-2 w-48 rounded-2xl glass-card border border-slate-200/90 dark:border-emerald-500/25 p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 overflow-hidden"
+          className="absolute right-0 mt-2.5 w-52 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-emerald-500/30 p-2 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 z-50 animate-in fade-in slide-in-from-top-2 duration-150"
         >
           {/* Header Label */}
-          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800/80 mb-1 flex items-center justify-between">
+          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800/80 mb-1.5 flex items-center justify-between">
             <span>{t('lang_select')}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-[#009B4D]" />
           </div>

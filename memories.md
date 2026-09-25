@@ -61,6 +61,7 @@ sapa-yanfaskes/
 | **2026-09-25** | Validasi & Persetujuan Pengguna (User Approval) | Selesai | Pengguna memberikan persetujuan eksplisit ("APPROVED") atas pembaruan sistem visual BPJS Kesehatan dan stabilitas produksi Vercel. |
 | **2026-09-25** | Perbaikan Mode Sistem Berbasis Waktu Komputer | Selesai | Integrasi algoritma waktu lokal (18:00 - 05:59 Dark, 06:00 - 17:59 Light) dan preferensi OS pada getSystemTheme() serta anti-FOUC script index.html. Pengecekan real-time via interval 60s, focus, dan visibilitychange. Build Vite tuntas dalam 692ms. |
 | **2026-09-25** | Implementasi Menu Dropdown Pengalihan Bahasa (ID/EN) | Selesai | Pembangunan store bahasa (Zustand persist key sapa-language-storage), komponen LanguageSwitcher floating glassmorphism di Header, integrasi dinamis pada Sidebar, Header, Home Overview, dan Theme Toggle, build Vite tuntas dalam 636ms. |
+| **2026-09-25** | Perbaikan Clipping Dropdown Bahasa (Header Overflow) | Selesai | Mengganti overflow-hidden dengan overflow-visible z-40 pada Header.tsx dan meningkatkan kontras backdrop-blur-2xl pada LanguageSwitcher.tsx. Build Vite tuntas dalam 640ms. |
 
 ---
 

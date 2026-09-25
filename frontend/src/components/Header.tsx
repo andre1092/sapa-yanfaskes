@@ -50,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
   const currentTab = getTabInfo(activeTab);
 
   return (
-    <header className="sticky top-0 z-30 glass-panel border-b border-slate-200/80 dark:border-emerald-500/20 h-20 px-6 lg:px-8 flex items-center justify-between shadow-sm relative overflow-hidden">
+    <header className="sticky top-0 z-40 glass-panel border-b border-slate-200/80 dark:border-emerald-500/20 h-20 px-6 lg:px-8 flex items-center justify-between shadow-sm relative overflow-visible">
       {/* Top 2px BPJS Brand Gradient Stripe */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#009B4D] via-[#0A50A1] to-[#00529C]" />
 
