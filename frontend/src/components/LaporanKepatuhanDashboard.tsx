@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { NakesComplianceTab } from './NakesComplianceTab';
 
 export type ComplianceTabId =
   | '01-nakes'
@@ -25,10 +26,10 @@ const COMPLIANCE_TABS: TabDefinition[] = [
   {
     id: '01-nakes',
     code: '01',
-    name: '01. Jadwal Praktek Nakes',
+    name: '01. Jadwal Praktek Nakes - bobot 25%',
     shortName: 'Jadwal Praktek Nakes',
     icon: '👨‍⚕️',
-    targetPercent: 90,
+    targetPercent: 80,
     description: 'Monitoring kesesuaian dan kepatuhan jadwal praktek tenaga medis / dokter spesialis pada sistem antrean rumah sakit.',
     kpiLabel: 'Kesesuaian Jadwal Nakes',
   },
@@ -326,8 +327,13 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Panel Ringkasan Indikator Terpilih & Statistik KPI */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* RENDER TAB KEPATUHAN: TAB 01 (JADWAL PRAKTEK NAKES - BOBOT 25%) ATAU TAB LAINNYA */}
+      {activeTabId === '01-nakes' ? (
+        <NakesComplianceTab />
+      ) : (
+        <>
+          {/* 3. Panel Ringkasan Indikator Terpilih & Statistik KPI */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-md">
           <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
             Rata-rata {activeTabDef.kpiLabel}
@@ -552,6 +558,8 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

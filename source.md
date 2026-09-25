@@ -110,3 +110,36 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
 - **Kanal Integrasi**: *Mobile JKN & Hospital Queue Bridging Web Service*
 - **Pengaturan & Manajemen IAM**: *Settings & IAM Security Management*
 - **Keluar Sesi**: *Sign Out / Log Out*
+
+---
+
+## 7. Parameter Resmi & Metadata Tab 01. Jadwal Praktek Nakes (Bobot 25%)
+
+### A. Metadata Sumber Data Google Spreadsheet
+1. **Dataset Realisasi Jadwal Nakes FKRTL**:
+   - **URL Spreadsheet**: `https://docs.google.com/spreadsheets/d/1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU/edit?usp=sharing`
+   - **Spreadsheet ID**: `1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU`
+   - **Jumlah Baris Data**: 228 baris data live.
+   - **Struktur Kolom**: `kode_ppk`, `nama_ppk`, `Tipe Faskes`, `Capaian Nilai`, `Total Kunjungan`, `Tidak Sesuai`, `Sesuai`, `Persen Sesuai`, `Capaian`, `bulan`.
+   - **Rentang Periode**: Januari 2026 s.d. September 2026 (9 bulan).
+2. **Dataset Referensi Fasilitas Kesehatan (Master FKRTL)**:
+   - **URL Spreadsheet**: `https://docs.google.com/spreadsheets/d/17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs/edit?usp=sharing`
+   - **Spreadsheet ID**: `17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`
+   - **Jumlah Faskes**: 26 Rumah Sakit & Klinik Rujukan.
+   - **Struktur Kolom**: `No`, `kode_ppk`, `kabupaten`, `nama_ppk`, `kelas_ppk`, `kepemilikan`, `vendor`, `keterangan`.
+   - **Cakupan Wilayah**: Kabupaten Bondowoso, Kabupaten Jember, dan Kabupaten Lumajang.
+   - **Kecocokan Relasional (*Join Match*)**: 100% (228 dari 228 baris nakes terhubung sempurna via `kode_ppk`).
+
+### B. Algoritma Perhitungan Indikator & Nilai Capaian
+1. **Persen Sesuai**:
+   $$\text{Persen Sesuai (\%)} = \left(\frac{\text{Jumlah Kunjungan Sesuai Jadwal}}{\text{Total Kunjungan Nakes}}\right) \times 100\%$$
+2. **Skor Capaian Bertingkat**:
+   - Persen Sesuai $\le 20.0\% \rightarrow \text{Capaian} = 0$
+   - $20.0\% < \text{Persen Sesuai} \le 40.0\% \rightarrow \text{Capaian} = 25$
+   - $40.0\% < \text{Persen Sesuai} \le 60.0\% \rightarrow \text{Capaian} = 50$
+   - $\text{Persen Sesuai} > 60.0\% \rightarrow \text{Capaian} = 75 \text{ (atau hingga 100)}$
+3. **Bobot Indikator**:
+   - Bobot resmi indikator Jadwal Praktek Nakes adalah **25%** dari total evaluasi kepatuhan mutu faskes.
+4. **Target Kinerja Nasional BPJS**:
+   - Standar kepatuhan faskes (*Patuh*) adalah $\ge 80\%$.
+

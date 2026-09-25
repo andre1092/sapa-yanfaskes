@@ -70,8 +70,21 @@
 
 ### D. Modul Laporan Kepatuhan FKRTL (8 Indikator Mutu Rumah Sakit) [STATUS: AKTIF / LIVE]
 - Terletak pada menu **FKRTL > Laporan Kepatuhan FKRTL** (`fkrtl-kepatuhan`).
+- **Tab 01. Jadwal Praktek Nakes - bobot 25% [STATUS: LIVE INTEGRASI SPREADSHEET]**:
+  - **Koneksi Live Google Spreadsheet**: Terhubung langsung secara paralel ke Spreadsheet Jadwal Nakes (`1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU`) dan Master Referensi Faskes (`17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`) dengan *join match rate* 100% (228 baris).
+  - **Filter 4 Dimensi**: Kabupaten (Bondowoso, Jember, Lumajang), Nama Faskes (26 FKRTL), Bulan (Januari–September 2026), dan Tipe Faskes (RS Kelas B, Swasta Setara Type C, dll).
+  - **Kartu Ringkasan KPI**:
+    - **"Persen Sesuai"**: Rata-rata dan tertimbang kesesuaian jadwal praktek dokter terhadap jadwal resmi dengan badge target &ge;80%.
+    - **"Capaian"**: Skor poin bertingkat (0, 25, 50, 75) dengan penanda bobot 25%.
+    - **Total Kunjungan**: Realisasi kunjungan dokter nakes terdata (Sesuai vs Tidak Sesuai).
+    - **Kepatuhan Faskes**: Jumlah RS Patuh vs Belum Patuh.
+  - **Grafik Bulanan (Monthly Performance Trend)**:
+    - Kurva garis dan area SVG interaktif (Januari s.d. September 2026) yang memetakan tren Persen Sesuai (Biru `#2b4390`) dan Capaian (Hijau `#44853b`), garis target 80%, *hover tooltip card* lengkap, dan klik interaktif untuk memfilter bulan.
+  - **Tabel Detail Matriks Nakes**:
+    - Matriks lengkap dengan kolom: No, Kode PPK, Nama Faskes, Kabupaten, Tipe Faskes, Bulan, Total Kunjungan, Sesuai / Tidak Sesuai, Persen Sesuai (visual *progress bar*), Capaian, dan Status Patuh.
+    - Dilengkapi pencarian *live search*, filter status, pengurutan kolom (*sorting*), dan paginasi adaptif.
 - Dilengkapi **8 Segmented Glassmorphism Tabs**:
-  1. 👨‍⚕️ **01. Jadwal Praktek Nakes**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes dengan sistem antrean online faskes (Target: ≥90%).
+  1. 👨‍⚕️ **01. Jadwal Praktek Nakes - bobot 25%**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes terintegrasi live Google Sheets.
   2. 📢 **02. Penyelesaian Pengaduan**: Kecepatan respon dan tingkat penuntasan keluhan peserta JKN di rumah sakit (Target: ≥95%).
   3. 💬 **03. Umabl Peserta**: Evaluasi Indeks Kepuasan Peserta (IKP) melalui instrumen KESSAN (Target: ≥88%).
   4. 🛏️ **04. Update Display TT**: Pemutakhiran real-time integrasi ketersediaan tempat tidur rawat inap (Target: ≥95%).
@@ -79,7 +92,6 @@
   6. ⏱️ **06. Antrean & WTL**: Pemantauan Waktu Tunggu Layanan poliklinik & farmasi serta integrasi sistem antrol (Target: ≥85%).
   7. 📝 **07. Surkon**: Penerbitan Surat Kontrol terjadwal melalui bridging sistem elektronik (Target: ≥90%).
   8. 📑 **08. RME**: Tingkat integrasi Rekam Medis Elektronik dengan platform SatuSehat & BPJS Kesehatan (Target: ≥95%).
-- Dilengkapi kartu statistik agregasi (Rata-rata Capaian, RS Patuh, RS Belum Patuh, Total RS), filter interaktif (Kabupaten, Status Kepatuhan), dan kotak live search rumah sakit.
 
 ---
 

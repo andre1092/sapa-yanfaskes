@@ -1409,6 +1409,365 @@ async def export_fkrtl_data(
             detail=f"Internal Server Error in data export: {str(e)}"
         )
 
+
+# --- HELPER: ROBUST CSV FETCHER FOR PUBLIC GOOGLE SHEETS ---
+def fetch_csv_records(spreadsheet_id: str, sheet_name: str, gid: Optional[str] = None) -> List[Dict[str, str]]:
+    cache_key = f"{spreadsheet_id}_{sheet_name}_records"
+    now = time.time()
+    if cache_key in _SHEETS_CACHE:
+        cached_time, recs = _SHEETS_CACHE[cache_key]
+        if (now - cached_time) < _CACHE_TTL:
+            return recs
+
+    if gid is not None and str(gid).strip() != "":
+        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+    else:
+        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv"
+
+    content = None
+    try:
+        import ssl
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
+            content = resp.read()
+    except Exception as e_urllib:
+        logger.warning(f"urllib fetch failed for {sheet_name} ({spreadsheet_id}): {e_urllib}")
+
+    if not content:
+        try:
+            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8, verify=False)
+            if r.status_code == 200 and r.content:
+                content = r.content
+        except Exception as e_req:
+            logger.error(f"requests fetch failed for {sheet_name} ({spreadsheet_id}): {e_req}")
+
+    if content:
+        import csv
+        reader = csv.DictReader(io.StringIO(content.decode('utf-8', errors='ignore')))
+        records = list(reader)
+        _SHEETS_CACHE[cache_key] = (now, records)
+        return records
+
+    if cache_key in _SHEETS_CACHE:
+        return _SHEETS_CACHE[cache_key][1]
+
+    return []
+
+
+# --- FKRTL LAPORAN KEPATUHAN: TAB 01 - JADWAL PRAKTEK NAKES (BOBOT 25%) ---
+NAKES_SPREADSHEET_ID = "1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU"
+REF_FASKES_SPREADSHEET_ID = "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs"
+
+MONTH_ORDER = [
+    "January 2026", "February 2026", "March 2026",
+    "April 2026", "May 2026", "June 2026",
+    "July 2026", "August 2026", "September 2026"
+]
+
+MONTH_INDO = {
+    "January 2026": "Januari 2026",
+    "February 2026": "Februari 2026",
+    "March 2026": "Maret 2026",
+    "April 2026": "April 2026",
+    "May 2026": "Mei 2026",
+    "June 2026": "Juni 2026",
+    "July 2026": "Juli 2026",
+    "August 2026": "Agustus 2026",
+    "September 2026": "September 2026"
+}
+
+@app.get("/api/v1/fkrtl-kepatuhan/nakes")
+async def get_fkrtl_kepatuhan_nakes(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        # 1. Fetch live records from Google Sheets (Parallel / Cached)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            fut_nakes = executor.submit(fetch_csv_records, NAKES_SPREADSHEET_ID, "NAKES_DATA")
+            fut_ref = executor.submit(fetch_csv_records, REF_FASKES_SPREADSHEET_ID, "REF_FASKES")
+            nakes_raw = fut_nakes.result()
+            ref_raw = fut_ref.result()
+
+        if not nakes_raw:
+            return {
+                "status": "no_data",
+                "message": "Data Jadwal Praktek Nakes tidak tersedia.",
+                "kpi": {
+                    "avg_persen_sesuai": 0.0,
+                    "weighted_persen_sesuai": 0.0,
+                    "avg_capaian": 0.0,
+                    "bobot_persen": 25,
+                    "target_persen": 80.0,
+                    "total_faskes": 0,
+                    "total_kunjungan": 0,
+                    "total_sesuai": 0,
+                    "total_tidak_sesuai": 0,
+                    "total_met": 0,
+                    "total_unmet": 0,
+                    "total_records": 0
+                },
+                "monthly_chart": [],
+                "table_data": [],
+                "filter_options": {
+                    "kabupaten": ["Semua Kabupaten"],
+                    "nama_ppk": ["Semua Faskes"],
+                    "bulan": ["Semua Bulan"],
+                    "tipe_faskes": ["Semua Tipe Faskes"]
+                },
+                "active_filters": {
+                    "kabupaten": kabupaten or "Semua Kabupaten",
+                    "nama_ppk": nama_ppk or "Semua Faskes",
+                    "bulan": bulan or "Semua Bulan",
+                    "tipe_faskes": tipe_faskes or "Semua Tipe Faskes"
+                }
+            }
+
+        # 2. Build Reference Map (Index by kode_ppk)
+        ref_map = {}
+        for r in ref_raw:
+            k = r.get("kode_ppk", "").strip()
+            if k:
+                ref_map[k] = {
+                    "kabupaten": r.get("kabupaten", "").strip(),
+                    "kelas_ppk": r.get("kelas_ppk", "").strip(),
+                    "kepemilikan": r.get("kepemilikan", "").strip(),
+                    "vendor": r.get("vendor", "").strip(),
+                    "nama_ref": r.get("nama_ppk", "").strip()
+                }
+
+        # 3. Join & Normalize All Rows
+        all_joined = []
+        for r in nakes_raw:
+            k = r.get("kode_ppk", "").strip()
+            ref = ref_map.get(k, {})
+
+            p_str = r.get("Persen Sesuai", "").replace("%", "").strip()
+            try:
+                p_val = float(p_str)
+            except Exception:
+                p_val = 0.0
+
+            try:
+                c_val = float(r.get("Capaian", "0").strip())
+            except Exception:
+                c_val = 0.0
+
+            try:
+                c_nilai = float(r.get("Capaian Nilai", "0").strip())
+            except Exception:
+                c_nilai = c_val
+
+            try:
+                tot = int(float(r.get("Total Kunjungan", "0").strip()))
+            except Exception:
+                tot = 0
+
+            try:
+                ses = int(float(r.get("Sesuai", "0").strip()))
+            except Exception:
+                ses = 0
+
+            try:
+                tses = int(float(r.get("Tidak Sesuai", "0").strip()))
+            except Exception:
+                tses = 0
+
+            b = r.get("bulan", "").strip().replace("\xa0", " ")
+            nama = r.get("nama_ppk", "").strip()
+            tipe = r.get("Tipe Faskes", "").strip()
+            kab = ref.get("kabupaten", "").strip() or "Lainnya"
+
+            all_joined.append({
+                "kode_ppk": k,
+                "nama_ppk": nama,
+                "tipe_faskes": tipe,
+                "kabupaten": kab,
+                "kelas_ppk": ref.get("kelas_ppk", "-").strip(),
+                "kepemilikan": ref.get("kepemilikan", "-").strip(),
+                "vendor": ref.get("vendor", "-").strip(),
+                "bulan": b,
+                "bulan_indo": MONTH_INDO.get(b, b),
+                "total_kunjungan": tot,
+                "sesuai": ses,
+                "tidak_sesuai": tses,
+                "persen_sesuai": p_val,
+                "capaian": c_val,
+                "capaian_nilai": c_nilai,
+            })
+
+        # 4. Generate Comprehensive Filter Options (from all joined rows)
+        raw_kabupatens = sorted(list(set(r["kabupaten"] for r in all_joined if r["kabupaten"] and r["kabupaten"] != "-")))
+        kabupaten_options = ["Semua Kabupaten"] + raw_kabupatens
+
+        raw_faskes = sorted(list(set(r["nama_ppk"] for r in all_joined if r["nama_ppk"])))
+        nama_ppk_options = ["Semua Faskes"] + raw_faskes
+
+        raw_tipes = sorted(list(set(r["tipe_faskes"] for r in all_joined if r["tipe_faskes"])))
+        tipe_faskes_options = ["Semua Tipe Faskes"] + raw_tipes
+
+        # Preserve chronological month order
+        present_months = set(r["bulan"] for r in all_joined if r["bulan"])
+        ordered_months = [m for m in MONTH_ORDER if m in present_months]
+        for m in sorted(list(present_months)):
+            if m not in ordered_months:
+                ordered_months.append(m)
+        bulan_options = ["Semua Bulan"] + ordered_months
+
+        # 5. Apply Active Filters
+        filtered = all_joined
+
+        if kabupaten and kabupaten.strip() not in ("Semua", "Semua Kabupaten", "ALL", ""):
+            filtered = [r for r in filtered if r["kabupaten"].lower() == kabupaten.strip().lower()]
+
+        if nama_ppk and nama_ppk.strip() not in ("Semua", "Semua Faskes", "ALL", ""):
+            filtered = [r for r in filtered if r["nama_ppk"].lower() == nama_ppk.strip().lower() or r["kode_ppk"].lower() == nama_ppk.strip().lower()]
+
+        if tipe_faskes and tipe_faskes.strip() not in ("Semua", "Semua Tipe Faskes", "ALL", ""):
+            filtered = [r for r in filtered if r["tipe_faskes"].lower() == tipe_faskes.strip().lower()]
+
+        # For monthly trend, compute trend with kabupaten, nama_ppk, and tipe_faskes applied
+        trend_subset = filtered
+
+        # Filter by bulan for KPI and Table
+        if bulan and bulan.strip() not in ("Semua", "Semua Bulan", "ALL", ""):
+            target_b = bulan.strip().lower()
+            filtered = [r for r in filtered if r["bulan"].lower() == target_b or r["bulan_indo"].lower() == target_b]
+
+        # 6. Compute KPI Summary
+        total_kunjungan = sum(r["total_kunjungan"] for r in filtered)
+        total_sesuai = sum(r["sesuai"] for r in filtered)
+        total_tidak_sesuai = sum(r["tidak_sesuai"] for r in filtered)
+        faskes_set = set(r["kode_ppk"] for r in filtered)
+        total_faskes = len(faskes_set)
+
+        if filtered:
+            avg_persen_sesuai = round(sum(r["persen_sesuai"] for r in filtered) / len(filtered), 2)
+            weighted_persen_sesuai = round((total_sesuai / total_kunjungan * 100), 2) if total_kunjungan > 0 else 0.0
+            avg_capaian = round(sum(r["capaian"] for r in filtered) / len(filtered), 2)
+        else:
+            avg_persen_sesuai = 0.0
+            weighted_persen_sesuai = 0.0
+            avg_capaian = 0.0
+
+        target_persen = 80.0
+        total_met = sum(1 for r in filtered if r["persen_sesuai"] >= target_persen)
+        total_unmet = len(filtered) - total_met
+
+        kpi_data = {
+            "avg_persen_sesuai": avg_persen_sesuai,
+            "weighted_persen_sesuai": weighted_persen_sesuai,
+            "avg_capaian": avg_capaian,
+            "bobot_persen": 25,
+            "target_persen": target_persen,
+            "total_faskes": total_faskes,
+            "total_kunjungan": total_kunjungan,
+            "total_sesuai": total_sesuai,
+            "total_tidak_sesuai": total_tidak_sesuai,
+            "total_met": total_met,
+            "total_unmet": total_unmet,
+            "total_records": len(filtered)
+        }
+
+        # 7. Compute Monthly Trend Data (Januari - September 2026)
+        by_month = {}
+        for r in trend_subset:
+            m = r["bulan"]
+            if m not in by_month:
+                by_month[m] = {
+                    "count": 0,
+                    "sesuai": 0,
+                    "total": 0,
+                    "p_sum": 0.0,
+                    "c_sum": 0.0,
+                    "met_count": 0
+                }
+            by_month[m]["count"] += 1
+            by_month[m]["sesuai"] += r["sesuai"]
+            by_month[m]["total"] += r["total_kunjungan"]
+            by_month[m]["p_sum"] += r["persen_sesuai"]
+            by_month[m]["c_sum"] += r["capaian"]
+            if r["persen_sesuai"] >= target_persen:
+                by_month[m]["met_count"] += 1
+
+        monthly_chart = []
+        for m in ordered_months:
+            if m in by_month:
+                d = by_month[m]
+                cnt = d["count"]
+                m_avg_p = round(d["p_sum"] / cnt, 2) if cnt else 0.0
+                m_weighted_p = round((d["sesuai"] / d["total"] * 100), 2) if d["total"] else 0.0
+                m_avg_c = round(d["c_sum"] / cnt, 2) if cnt else 0.0
+                monthly_chart.append({
+                    "bulan": m,
+                    "bulan_indo": MONTH_INDO.get(m, m),
+                    "short_name": MONTH_INDO.get(m, m).split()[0][:3],
+                    "avg_persen_sesuai": m_avg_p,
+                    "weighted_persen_sesuai": m_weighted_p,
+                    "avg_capaian": m_avg_c,
+                    "total_kunjungan": d["total"],
+                    "total_sesuai": d["sesuai"],
+                    "faskes_count": cnt,
+                    "met_count": d["met_count"],
+                    "is_selected": bool(bulan and (bulan.strip().lower() in (m.lower(), MONTH_INDO.get(m, m).lower())))
+                })
+
+        # 8. Format Table Data
+        # Sort by persen_sesuai descending, then nama_ppk
+        sorted_filtered = sorted(filtered, key=lambda x: (x["persen_sesuai"], x["nama_ppk"]), reverse=True)
+        table_data = []
+        for idx, r in enumerate(sorted_filtered):
+            table_data.append({
+                "no": idx + 1,
+                "kode_ppk": r["kode_ppk"],
+                "nama_ppk": r["nama_ppk"],
+                "kabupaten": r["kabupaten"],
+                "tipe_faskes": r["tipe_faskes"],
+                "kelas_ppk": r["kelas_ppk"],
+                "bulan": r["bulan"],
+                "bulan_indo": r["bulan_indo"],
+                "total_kunjungan": r["total_kunjungan"],
+                "sesuai": r["sesuai"],
+                "tidak_sesuai": r["tidak_sesuai"],
+                "persen_sesuai": r["persen_sesuai"],
+                "capaian": r["capaian"],
+                "capaian_nilai": r["capaian_nilai"],
+                "is_met": r["persen_sesuai"] >= target_persen
+            })
+
+        return {
+            "status": "success",
+            "kpi": kpi_data,
+            "monthly_chart": monthly_chart,
+            "table_data": table_data,
+            "filter_options": {
+                "kabupaten": kabupaten_options,
+                "nama_ppk": nama_ppk_options,
+                "bulan": bulan_options,
+                "tipe_faskes": tipe_faskes_options
+            },
+            "active_filters": {
+                "kabupaten": kabupaten or "Semua Kabupaten",
+                "nama_ppk": nama_ppk or "Semua Faskes",
+                "bulan": bulan or "Semua Bulan",
+                "tipe_faskes": tipe_faskes or "Semua Tipe Faskes"
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_nakes: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Laporan Kepatuhan Jadwal Praktek Nakes: {str(e)}"
+        )
+
+
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)
 try:
     from mangum import Mangum

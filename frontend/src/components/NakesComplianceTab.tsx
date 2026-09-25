@@ -1,0 +1,1028 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { apiClient } from '../lib/apiClient';
+
+export interface NakesKpiData {
+  avg_persen_sesuai: number;
+  weighted_persen_sesuai: number;
+  avg_capaian: number;
+  bobot_persen: number;
+  target_persen: number;
+  total_faskes: number;
+  total_kunjungan: number;
+  total_sesuai: number;
+  total_tidak_sesuai: number;
+  total_met: number;
+  total_unmet: number;
+  total_records: number;
+}
+
+export interface NakesMonthlyChartItem {
+  bulan: string;
+  bulan_indo: string;
+  short_name: string;
+  avg_persen_sesuai: number;
+  weighted_persen_sesuai: number;
+  avg_capaian: number;
+  total_kunjungan: number;
+  total_sesuai: number;
+  faskes_count: number;
+  met_count: number;
+  is_selected?: boolean;
+}
+
+export interface NakesTableRow {
+  no: number;
+  kode_ppk: string;
+  nama_ppk: string;
+  kabupaten: string;
+  tipe_faskes: string;
+  kelas_ppk: string;
+  bulan: string;
+  bulan_indo: string;
+  total_kunjungan: number;
+  sesuai: number;
+  tidak_sesuai: number;
+  persen_sesuai: number;
+  capaian: number;
+  capaian_nilai: number;
+  is_met: boolean;
+}
+
+export interface NakesFilterOptions {
+  kabupaten: string[];
+  nama_ppk: string[];
+  bulan: string[];
+  tipe_faskes: string[];
+}
+
+export interface NakesApiResponse {
+  status: string;
+  kpi: NakesKpiData;
+  monthly_chart: NakesMonthlyChartItem[];
+  table_data: NakesTableRow[];
+  filter_options: NakesFilterOptions;
+  active_filters: {
+    kabupaten: string;
+    nama_ppk: string;
+    bulan: string;
+    tipe_faskes: string;
+  };
+}
+
+export const NakesComplianceTab: React.FC = () => {
+  // Filter states
+  const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
+  const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
+  const [selectedBulan, setSelectedBulan] = useState<string>('Semua Bulan');
+  const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'MET' | 'UNMET'>('ALL');
+
+  // Chart hover state
+  const [hoveredMonth, setHoveredMonth] = useState<NakesMonthlyChartItem | null>(null);
+
+  // Pagination & Sorting state
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(15);
+  const [sortField, setSortField] = useState<keyof NakesTableRow>('persen_sesuai');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Data fetching state
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [apiData, setApiData] = useState<NakesApiResponse | null>(null);
+
+  // Fetch data from backend API
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (selectedKabupaten && selectedKabupaten !== 'Semua Kabupaten') {
+        params.append('kabupaten', selectedKabupaten);
+      }
+      if (selectedNamaPpk && selectedNamaPpk !== 'Semua Faskes') {
+        params.append('nama_ppk', selectedNamaPpk);
+      }
+      if (selectedBulan && selectedBulan !== 'Semua Bulan') {
+        params.append('bulan', selectedBulan);
+      }
+      if (selectedTipeFaskes && selectedTipeFaskes !== 'Semua Tipe Faskes') {
+        params.append('tipe_faskes', selectedTipeFaskes);
+      }
+
+      const res = await apiClient.get<NakesApiResponse>(`/api/v1/fkrtl-kepatuhan/nakes?${params.toString()}`);
+      if (res.data && res.data.status === 'success') {
+        setApiData(res.data);
+      } else {
+        throw new Error('Format data tidak sesuai');
+      }
+    } catch (err: any) {
+      console.warn('Gagal memuat live data nakes dari backend:', err);
+      setError('Gagal menghubungkan ke server, memuat data lokal...');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedKabupaten, selectedNamaPpk, selectedBulan, selectedTipeFaskes]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedKabupaten, selectedNamaPpk, selectedBulan, selectedTipeFaskes, searchQuery, statusFilter]);
+
+  // Filtered & Sorted Table Rows
+  const processedTableRows = useMemo(() => {
+    if (!apiData || !apiData.table_data) return [];
+    let rows = [...apiData.table_data];
+
+    // Status filter
+    if (statusFilter === 'MET') {
+      rows = rows.filter((r) => r.is_met);
+    } else if (statusFilter === 'UNMET') {
+      rows = rows.filter((r) => !r.is_met);
+    }
+
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      rows = rows.filter(
+        (r) =>
+          r.nama_ppk.toLowerCase().includes(q) ||
+          r.kode_ppk.toLowerCase().includes(q) ||
+          r.kabupaten.toLowerCase().includes(q) ||
+          r.tipe_faskes.toLowerCase().includes(q)
+      );
+    }
+
+    // Sorting
+    rows.sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+
+      if (typeof valA === 'string') {
+        valA = (valA as string).toLowerCase();
+        valB = (valB as string).toLowerCase();
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return rows;
+  }, [apiData, statusFilter, searchQuery, sortField, sortDirection]);
+
+  // Paginated Rows
+  const totalPages = Math.ceil(processedTableRows.length / itemsPerPage) || 1;
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return processedTableRows.slice(start, start + itemsPerPage);
+  }, [processedTableRows, currentPage, itemsPerPage]);
+
+  const handleSort = (field: keyof NakesTableRow) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const handleResetFilters = () => {
+    setSelectedKabupaten('Semua Kabupaten');
+    setSelectedNamaPpk('Semua Faskes');
+    setSelectedBulan('Semua Bulan');
+    setSelectedTipeFaskes('Semua Tipe Faskes');
+    setSearchQuery('');
+    setStatusFilter('ALL');
+  };
+
+  const formatNumberID = (val: number): string => {
+    return val.toLocaleString('id-ID');
+  };
+
+  const formatPercentID = (val: number): string => {
+    return val.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  };
+
+  const kpi = apiData?.kpi || {
+    avg_persen_sesuai: 0,
+    weighted_persen_sesuai: 0,
+    avg_capaian: 0,
+    bobot_persen: 25,
+    target_persen: 80,
+    total_faskes: 0,
+    total_kunjungan: 0,
+    total_sesuai: 0,
+    total_tidak_sesuai: 0,
+    total_met: 0,
+    total_unmet: 0,
+    total_records: 0,
+  };
+
+  const monthlyChart = apiData?.monthly_chart || [];
+  const filterOptions = apiData?.filter_options || {
+    kabupaten: ['Semua Kabupaten'],
+    nama_ppk: ['Semua Faskes'],
+    bulan: ['Semua Bulan'],
+    tipe_faskes: ['Semua Tipe Faskes'],
+  };
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      {/* Alert Error State if any */}
+      {error && (
+        <div className="glass-card rounded-2xl p-4 border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchData}
+            className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 font-bold transition-colors cursor-pointer"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      )}
+
+      {/* 1. FILTER BAR 4 DIMENSI + SEARCH (KABUPATEN, NAMA FASKES, BULAN, TIPE FASKES) */}
+      <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg relative overflow-hidden">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </span>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-[#f7fcfa] uppercase tracking-wider">
+                  Filter Analisis Jadwal Praktek Nakes
+                </h4>
+                <p className="text-[11px] text-[#6573a1] dark:text-[#afbade]">
+                  Pilih parameter Kabupaten, Nama Faskes, Bulan, dan Tipe Faskes untuk memfilter data real-time
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleResetFilters}
+              className="self-start sm:self-center px-3 py-1.5 rounded-xl text-xs font-bold text-[#2b4390] dark:text-white hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800 border border-[#afbade]/40 dark:border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Reset Semua Filter"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Reset Filter</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* Filter Kabupaten */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
+                <span>📍 Kabupaten</span>
+              </label>
+              <select
+                value={selectedKabupaten}
+                onChange={(e) => setSelectedKabupaten(e.target.value)}
+                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+              >
+                {filterOptions.kabupaten.map((kab) => (
+                  <option key={kab} value={kab} className="bg-slate-900 text-white">
+                    {kab}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Nama Faskes */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
+                <span>🏥 Nama Faskes (FKRTL)</span>
+              </label>
+              <select
+                value={selectedNamaPpk}
+                onChange={(e) => setSelectedNamaPpk(e.target.value)}
+                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm truncate"
+              >
+                {filterOptions.nama_ppk.map((faskes) => (
+                  <option key={faskes} value={faskes} className="bg-slate-900 text-white">
+                    {faskes}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Bulan */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
+                <span>🗓️ Bulan</span>
+              </label>
+              <select
+                value={selectedBulan}
+                onChange={(e) => setSelectedBulan(e.target.value)}
+                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+              >
+                {filterOptions.bulan.map((bln) => (
+                  <option key={bln} value={bln} className="bg-slate-900 text-white">
+                    {bln}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Tipe Faskes */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
+                <span>🏷️ Tipe Faskes</span>
+              </label>
+              <select
+                value={selectedTipeFaskes}
+                onChange={(e) => setSelectedTipeFaskes(e.target.value)}
+                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+              >
+                {filterOptions.tipe_faskes.map((tipe) => (
+                  <option key={tipe} value={tipe} className="bg-slate-900 text-white">
+                    {tipe}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. KARTU KPI UTAMA (PERSEN SESUAI, CAPAIAN BOBOT 25%, TOTAL KUNJUNGAN, PATUH VS BELUM) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: PERSEN SESUAI */}
+        <div className="glass-card rounded-2xl p-5 border border-[#83a67e]/40 dark:border-emerald-500/20 shadow-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+              Persen Sesuai
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300">
+              Target &ge; {kpi.target_persen}%
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2 mt-3">
+            <span className="text-3xl sm:text-4xl font-black text-[#2b4390] dark:text-[#f7fcfa] font-mono tracking-tight">
+              {formatPercentID(kpi.avg_persen_sesuai)}
+            </span>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                kpi.avg_persen_sesuai >= kpi.target_persen
+                  ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300'
+              }`}
+            >
+              {kpi.avg_persen_sesuai >= kpi.target_persen ? 'Tercapai' : 'Perlu Akselerasi'}
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+            <span>Tertimbang (Sesuai/Total)</span>
+            <span className="font-bold font-mono text-[#2b4390] dark:text-white">
+              {formatPercentID(kpi.weighted_persen_sesuai)}
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 2: CAPAIAN (BOBOT 25%) */}
+        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-blue-500/20 shadow-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+              Capaian
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/30 text-[#2b4390] dark:bg-blue-500/20 dark:text-sky-300">
+              Bobot {kpi.bobot_persen}%
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2 mt-3">
+            <span className="text-3xl sm:text-4xl font-black text-[#44853b] dark:text-emerald-400 font-mono tracking-tight">
+              {kpi.avg_capaian.toFixed(1)}
+            </span>
+            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+              poin dari skala 100
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+            <span>Kontribusi Nilai Riil</span>
+            <span className="font-bold font-mono text-[#44853b] dark:text-emerald-300">
+              {((kpi.avg_capaian * kpi.bobot_persen) / 100).toFixed(2)}%
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 3: TOTAL KUNJUNGAN & DOKTER SESUAI */}
+        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+              Kunjungan Nakes
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300">
+              Total Log
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2 mt-3">
+            <span className="text-3xl sm:text-4xl font-black text-[#2b4390] dark:text-sky-300 font-mono tracking-tight">
+              {formatNumberID(kpi.total_kunjungan)}
+            </span>
+            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+              kunjungan
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+            <span>Sesuai / Tidak Sesuai</span>
+            <span className="font-bold font-mono text-[#2b4390] dark:text-white">
+              {formatNumberID(kpi.total_sesuai)} / {formatNumberID(kpi.total_tidak_sesuai)}
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 4: KEPATUHAN FASKES */}
+        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+              Status Kepatuhan RS
+            </span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300">
+              {kpi.total_faskes} RS Terdaftar
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2 mt-3">
+            <span className="text-3xl sm:text-4xl font-black text-[#44853b] dark:text-emerald-400 font-mono tracking-tight">
+              {kpi.total_met}
+            </span>
+            <span className="text-xs text-[#6573a1] dark:text-slate-400">
+              Patuh (&ge;{kpi.target_persen}%)
+            </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+            <span>Belum Memenuhi Target</span>
+            <span className="font-bold font-mono text-amber-600 dark:text-amber-400">
+              {kpi.total_unmet} RS
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. GRAFIK BULANAN TREN PERSEN SESUAI & CAPAIAN (SVG INTERAKTIF JANUARI - SEPTEMBER 2026) */}
+      <div className="glass-card rounded-2xl p-5 sm:p-6 border border-[#afbade]/30 dark:border-white/10 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2b4390] shadow-sm shadow-[#2b4390]/50" />
+              Grafik Bulanan: Tren Persen Sesuai & Capaian (Januari - September 2026)
+            </h3>
+            <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+              Perkembangan bulanan kesesuaian jadwal praktek nakes dan perolehan skor capaian kepatuhan
+            </p>
+          </div>
+
+          {/* Legenda Grafik */}
+          <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-[#2b4390] border-2 border-white shadow-sm" />
+              <span className="text-[#2b4390] dark:text-[#afbade]">Persen Sesuai (%)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-[#44853b] border-2 border-white shadow-sm" />
+              <span className="text-[#44853b] dark:text-emerald-400">Capaian (Poin)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 h-0.5 bg-amber-500 border-t border-dashed border-amber-500" />
+              <span className="text-amber-600 dark:text-amber-400">Target BPJS (80%)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* SVG Monthly Chart Container */}
+        <div className="relative w-full h-72 sm:h-80 select-none">
+          {monthlyChart.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-xs text-[#6573a1] dark:text-slate-400 italic">
+              Tidak ada data bulanan yang tersedia.
+            </div>
+          ) : (
+            (() => {
+              const width = 1000;
+              const height = 280;
+              const paddingLeft = 50;
+              const paddingRight = 30;
+              const paddingTop = 25;
+              const paddingBottom = 40;
+              const chartWidth = width - paddingLeft - paddingRight;
+              const chartHeight = height - paddingTop - paddingBottom;
+
+              const n = monthlyChart.length;
+              const xStep = n > 1 ? chartWidth / (n - 1) : chartWidth;
+
+              // Coordinate mappings
+              const getX = (index: number) => paddingLeft + index * xStep;
+              const getY = (val: number) => paddingTop + chartHeight - (Math.min(Math.max(val, 0), 100) / 100) * chartHeight;
+
+              // Line path for Persen Sesuai
+              const pathPersen = monthlyChart
+                .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.avg_persen_sesuai)}`)
+                .join(' ');
+
+              // Area path for Persen Sesuai
+              const areaPersen = `${pathPersen} L ${getX(n - 1)} ${paddingTop + chartHeight} L ${getX(0)} ${paddingTop + chartHeight} Z`;
+
+              // Line path for Capaian
+              const pathCapaian = monthlyChart
+                .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.avg_capaian)}`)
+                .join(' ');
+
+              const yTarget80 = getY(80);
+
+              return (
+                <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="persenAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2b4390" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#2b4390" stopOpacity="0.0" />
+                    </linearGradient>
+                    <linearGradient id="capaianLineGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#44853b" />
+                      <stop offset="100%" stopColor="#83a67e" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Horizontal Grid Lines */}
+                  {[0, 20, 40, 60, 80, 100].map((tick) => {
+                    const y = getY(tick);
+                    return (
+                      <g key={tick}>
+                        <line
+                          x1={paddingLeft}
+                          y1={y}
+                          x2={width - paddingRight}
+                          y2={y}
+                          stroke="#afbade"
+                          strokeOpacity={tick === 80 ? '0.4' : '0.15'}
+                          strokeDasharray={tick === 80 ? '4 3' : undefined}
+                          strokeWidth={tick === 80 ? '1.5' : '1'}
+                        />
+                        <text
+                          x={paddingLeft - 8}
+                          y={y + 3.5}
+                          textAnchor="end"
+                          fontSize="10"
+                          className="font-mono font-medium fill-[#6573a1] dark:fill-slate-400"
+                        >
+                          {tick}%
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Target 80% Horizontal Indicator Line */}
+                  <line
+                    x1={paddingLeft}
+                    y1={yTarget80}
+                    x2={width - paddingRight}
+                    y2={yTarget80}
+                    stroke="#d97706"
+                    strokeWidth="1.5"
+                    strokeDasharray="5 4"
+                  />
+                  <text
+                    x={width - paddingRight}
+                    y={yTarget80 - 6}
+                    textAnchor="end"
+                    fontSize="9.5"
+                    className="font-mono font-bold fill-amber-600 dark:fill-amber-400"
+                  >
+                    Target 80%
+                  </text>
+
+                  {/* Area Fill for Persen Sesuai */}
+                  <path d={areaPersen} fill="url(#persenAreaGrad)" />
+
+                  {/* Line: Capaian (Green) */}
+                  <path
+                    d={pathCapaian}
+                    fill="none"
+                    stroke="#44853b"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Line: Persen Sesuai (Blue) */}
+                  <path
+                    d={pathPersen}
+                    fill="none"
+                    stroke="#2b4390"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Points and Interaction Areas */}
+                  {monthlyChart.map((d, i) => {
+                    const cx = getX(i);
+                    const cyPersen = getY(d.avg_persen_sesuai);
+                    const cyCapaian = getY(d.avg_capaian);
+                    const isSelected = selectedBulan === d.bulan || selectedBulan === d.bulan_indo;
+
+                    return (
+                      <g
+                        key={d.bulan}
+                        className="cursor-pointer group"
+                        onMouseEnter={() => setHoveredMonth(d)}
+                        onMouseLeave={() => setHoveredMonth(null)}
+                        onClick={() => {
+                          if (selectedBulan === d.bulan) {
+                            setSelectedBulan('Semua Bulan');
+                          } else {
+                            setSelectedBulan(d.bulan);
+                          }
+                        }}
+                      >
+                        {/* Hover vertical guideline */}
+                        <line
+                          x1={cx}
+                          y1={paddingTop}
+                          x2={cx}
+                          y2={paddingTop + chartHeight}
+                          stroke="#2b4390"
+                          strokeOpacity={isSelected ? '0.5' : '0.1'}
+                          strokeWidth={isSelected ? '2' : '1'}
+                          className="group-hover:stroke-opacity-40 transition-all"
+                        />
+
+                        {/* Capaian Marker (Green Diamond/Circle) */}
+                        <circle
+                          cx={cx}
+                          cy={cyCapaian}
+                          r={isSelected ? 5.5 : 4}
+                          fill="#44853b"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                          className="transition-transform duration-200 group-hover:scale-125"
+                        />
+
+                        {/* Persen Sesuai Marker (Blue Circle) */}
+                        <circle
+                          cx={cx}
+                          cy={cyPersen}
+                          r={isSelected ? 6.5 : 5}
+                          fill="#2b4390"
+                          stroke="#ffffff"
+                          strokeWidth="2.5"
+                          className="transition-transform duration-200 group-hover:scale-125"
+                        />
+
+                        {/* Month Label Sumbu X */}
+                        <text
+                          x={cx}
+                          y={paddingTop + chartHeight + 20}
+                          textAnchor="middle"
+                          fontSize="10.5"
+                          className={`font-semibold transition-colors ${
+                            isSelected
+                              ? 'fill-[#2b4390] dark:fill-white font-black'
+                              : 'fill-[#6573a1] dark:fill-slate-400 group-hover:fill-[#2b4390] dark:group-hover:fill-white'
+                          }`}
+                        >
+                          {d.short_name}
+                        </text>
+
+                        {/* Hitbox for Easy Mouse Interaction */}
+                        <rect
+                          x={cx - xStep / 2}
+                          y={paddingTop}
+                          width={xStep}
+                          height={chartHeight + paddingBottom}
+                          fill="transparent"
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+              );
+            })()
+          )}
+
+          {/* Floating Hover Tooltip */}
+          {hoveredMonth && (
+            <div className="absolute top-2 right-4 glass-card p-3 rounded-xl border border-[#afbade]/50 dark:border-white/20 shadow-xl pointer-events-none text-xs z-20 min-w-[200px] animate-fadeIn">
+              <div className="font-bold text-[#2b4390] dark:text-white border-b border-[#afbade]/30 pb-1 mb-1.5 flex items-center justify-between">
+                <span>{hoveredMonth.bulan_indo}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#afbade]/20 text-[#2b4390] dark:text-slate-300">
+                  {hoveredMonth.faskes_count} RS
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6573a1] dark:text-slate-400">Persen Sesuai:</span>
+                  <span className="font-mono font-bold text-[#2b4390] dark:text-sky-300">
+                    {formatPercentID(hoveredMonth.avg_persen_sesuai)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6573a1] dark:text-slate-400">Capaian:</span>
+                  <span className="font-mono font-bold text-[#44853b] dark:text-emerald-400">
+                    {hoveredMonth.avg_capaian.toFixed(1)} poin
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6573a1] dark:text-slate-400">Total Kunjungan:</span>
+                  <span className="font-mono text-[#2b4390] dark:text-slate-200">
+                    {formatNumberID(hoveredMonth.total_kunjungan)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6573a1] dark:text-slate-400">Dokter Sesuai:</span>
+                  <span className="font-mono text-[#44853b] dark:text-emerald-300">
+                    {formatNumberID(hoveredMonth.total_sesuai)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. TABEL MATRIKS KEPATUHAN DETAIL */}
+      <div className="glass-card rounded-2xl shadow-xl border border-[#afbade]/30 dark:border-white/10 overflow-hidden">
+        {/* Table Header Bar */}
+        <div className="p-4 sm:p-5 border-b border-[#afbade]/30 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#f0f7f4] dark:bg-slate-900/40">
+          <div>
+            <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
+              Tabel Matriks Kepatuhan Jadwal Praktek Nakes
+            </h3>
+            <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+              Menampilkan {processedTableRows.length} data fasilitas kesehatan terverifikasi
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Filter Status Kepatuhan */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
+              >
+                <option value="ALL" className="bg-slate-900 text-white">Semua Status</option>
+                <option value="MET" className="bg-slate-900 text-white">Patuh (&ge;80%)</option>
+                <option value="UNMET" className="bg-slate-900 text-white">Belum Patuh (&lt;80%)</option>
+              </select>
+            </div>
+
+            {/* Live Search */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Cari Faskes / Kode PPK..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="glass-input w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#2b4390] dark:text-white placeholder-[#6573a1] dark:placeholder-slate-500 bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+              />
+              <svg className="w-3.5 h-3.5 text-[#6573a1] dark:text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Table Content */}
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#e6f2ed] dark:bg-slate-900/80 text-[#2b4390] dark:text-[#afbade] uppercase text-[10.5px] font-bold tracking-wider border-b border-[#afbade]/30 dark:border-slate-800">
+              <tr>
+                <th className="py-3 px-3.5 text-center w-12">No</th>
+                <th
+                  className="py-3 px-3.5 cursor-pointer hover:text-[#44853b] transition-colors"
+                  onClick={() => handleSort('kode_ppk')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Kode PPK</span>
+                    {sortField === 'kode_ppk' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </div>
+                </th>
+                <th
+                  className="py-3 px-3.5 cursor-pointer hover:text-[#44853b] transition-colors"
+                  onClick={() => handleSort('nama_ppk')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Nama Rumah Sakit (FKRTL)</span>
+                    {sortField === 'nama_ppk' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </div>
+                </th>
+                <th className="py-3 px-3.5">Kabupaten</th>
+                <th className="py-3 px-3.5">Tipe Faskes</th>
+                <th className="py-3 px-3.5">Bulan</th>
+                <th
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                  onClick={() => handleSort('total_kunjungan')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Total Kunjungan</span>
+                    {sortField === 'total_kunjungan' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </div>
+                </th>
+                <th className="py-3 px-3.5 text-center">Sesuai / Tidak Sesuai</th>
+                <th
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                  onClick={() => handleSort('persen_sesuai')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Persen Sesuai</span>
+                    {sortField === 'persen_sesuai' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </div>
+                </th>
+                <th
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                  onClick={() => handleSort('capaian')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Capaian</span>
+                    {sortField === 'capaian' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </div>
+                </th>
+                <th className="py-3 px-3.5 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#afbade]/20 dark:divide-slate-800/60 font-medium">
+              {loading ? (
+                <tr>
+                  <td colSpan={11} className="py-12 text-center text-[#6573a1] dark:text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="w-6 h-6 border-2 border-[#44853b] border-t-transparent rounded-full animate-spin" />
+                      <span>Memuat data live Jadwal Praktek Nakes...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="py-12 text-center text-[#6573a1] dark:text-slate-400 italic">
+                    Tidak ada data fasilitas kesehatan yang sesuai dengan filter.
+                  </td>
+                </tr>
+              ) : (
+                paginatedRows.map((row, idx) => {
+                  const isMet = row.persen_sesuai >= 80;
+                  const rowNumber = (currentPage - 1) * itemsPerPage + idx + 1;
+
+                  return (
+                    <tr
+                      key={`${row.kode_ppk}-${row.bulan}-${idx}`}
+                      className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
+                    >
+                      <td className="py-3 px-3.5 text-center text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">
+                        {rowNumber}
+                      </td>
+                      <td className="py-3 px-3.5 font-mono font-bold text-[#2b4390] dark:text-slate-300">
+                        {row.kode_ppk}
+                      </td>
+                      <td className="py-3 px-3.5 font-bold text-[#2b4390] dark:text-white group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors">
+                        {row.nama_ppk}
+                      </td>
+                      <td className="py-3 px-3.5 text-[#2b4390] dark:text-slate-300 font-medium">
+                        {row.kabupaten}
+                      </td>
+                      <td className="py-3 px-3.5">
+                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[#d4ecd1]/50 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300 border border-[#afbade]/30 dark:border-white/5">
+                          {row.tipe_faskes}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-[#6573a1] dark:text-slate-400 font-medium">
+                        {row.bulan_indo}
+                      </td>
+                      <td className="py-3 px-3.5 text-center font-mono font-bold text-[#2b4390] dark:text-slate-200">
+                        {formatNumberID(row.total_kunjungan)}
+                      </td>
+                      <td className="py-3 px-3.5 text-center font-mono text-xs">
+                        <span className="text-[#44853b] dark:text-emerald-400 font-bold">{row.sesuai}</span>
+                        <span className="text-[#6573a1] dark:text-slate-500"> / </span>
+                        <span className="text-amber-600 dark:text-amber-400">{row.tidak_sesuai}</span>
+                      </td>
+                      <td className="py-3 px-3.5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 bg-[#afbade]/20 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-[#afbade]/30 dark:border-white/5">
+                            <div
+                              style={{ width: `${Math.min(row.persen_sesuai, 100)}%` }}
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isMet
+                                  ? 'bg-gradient-to-r from-[#44853b] to-[#83a67e]'
+                                  : 'bg-gradient-to-r from-amber-500 to-rose-400'
+                              }`}
+                            />
+                          </div>
+                          <span className="font-mono font-bold text-[#2b4390] dark:text-white text-[11px] w-12 text-right">
+                            {formatPercentID(row.persen_sesuai)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5 text-center">
+                        <span
+                          className={`font-mono font-bold px-2 py-0.5 rounded-md text-[11px] ${
+                            row.capaian >= 50
+                              ? 'bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300'
+                              : row.capaian > 0
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                          }`}
+                        >
+                          {row.capaian}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 text-center">
+                        {isMet ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
+                            ✓ Patuh
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
+                            ⚠ Belum
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Bar */}
+        <div className="p-4 border-t border-[#afbade]/30 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[#6573a1] dark:text-slate-400">
+            <span>Baris per halaman:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="glass-input rounded-lg px-2 py-1 text-xs text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10"
+            >
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span>
+              Menampilkan {processedTableRows.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
+              {Math.min(currentPage * itemsPerPage, processedTableRows.length)} dari {processedTableRows.length} baris
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-center sm:self-auto">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-2.5 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+            >
+              «
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+            >
+              Sebelumnya
+            </button>
+            <span className="px-3 py-1 font-mono font-bold text-[#2b4390] dark:text-white">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+            >
+              Selanjutnya
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage >= totalPages}
+              className="px-2.5 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+            >
+              »
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
