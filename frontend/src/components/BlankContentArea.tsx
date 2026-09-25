@@ -1,5 +1,6 @@
 import React from 'react';
 import type { NavTab } from './Sidebar';
+import { useLanguageStore } from '../store/languageStore';
 
 interface BlankContentAreaProps {
   activeTab: NavTab;
@@ -7,6 +8,8 @@ interface BlankContentAreaProps {
 }
 
 export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, onNavigate }) => {
+  const { t } = useLanguageStore();
+
   // If activeTab is 'home', render the Rich Executive BPJS Healthcare Portal
   if (activeTab === 'home') {
     return (
@@ -21,14 +24,14 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 text-xs font-bold text-[#007A3D] dark:text-emerald-300 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-[#009B4D] animate-pulse" />
-                <span>Portal Analitik Resmi BPJS Kesehatan</span>
+                <span>{t('home_badge')}</span>
               </div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#0A3C74] dark:text-white leading-tight">
-                Saluran Analisis Performa & Akselerasi{' '}
+                {t('home_hero_title')}{' '}
                 <span className="bpjs-gradient-text block sm:inline">SAPA YANFASKES</span>
               </h1>
               <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-                Sistem terpadu monitoring dan evaluasi performa fasilitas kesehatan (FKTP & FKRTL) secara real-time. Terhubung langsung dengan basis data nasional BPJS Kesehatan dengan waktu respons berkecepatan tinggi sub-2-detik.
+                {t('home_hero_desc')}
               </p>
             </div>
 
@@ -38,14 +41,14 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
                 onClick={() => onNavigate?.('fkrtl-antrol')}
                 className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 bpjs-gradient-btn text-white font-bold text-sm rounded-2xl shadow-lg shadow-[#009B4D]/30 border border-emerald-300/40 active:scale-95 cursor-pointer"
               >
-                <span>Buka Dashboard Antrol FKRTL</span>
+                <span>{t('home_cta_antrol')}</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>
               <div className="text-center lg:text-right">
                 <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  Target Nasional Antrol: <span className="text-[#009B4D] dark:text-emerald-400 font-bold">&ge; 85%</span>
+                  {t('home_target_national')}
                 </span>
               </div>
             </div>
@@ -57,7 +60,7 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
           <div className="flex items-center gap-2 mb-4">
             <span className="w-2.5 h-6 rounded-full bpjs-gradient shadow-sm" />
             <h2 className="text-lg font-bold text-[#00529C] dark:text-white tracking-tight">
-              Modul Layanan Fasilitas Kesehatan
+              {t('home_modules_heading')}
             </h2>
           </div>
 
@@ -72,29 +75,28 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
                     </svg>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950/70 text-[#00529C] dark:text-blue-300 border border-blue-300 dark:border-blue-700/50 uppercase tracking-wider">
-                    FKRTL Rujukan
+                    {t('badge_rujukan')}
                   </span>
                 </div>
 
                 <h3 className="text-base font-bold text-[#0A3C74] dark:text-white group-hover:text-[#00529C] dark:group-hover:text-emerald-300 transition-colors">
-                  Pemanfaatan Antrol Online
+                  {t('card1_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
-                  Analisis rasio antrean online terbit via Mobile JKN dan Bridging RS terhadap total kunjungan SEP Rawat Jalan (RJTL).
+                  {t('card1_desc')}
                 </p>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
                 <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Live Data Ready
+                  {t('card1_status')}
                 </span>
                 <button
                   onClick={() => onNavigate?.('fkrtl-antrol')}
                   className="text-xs font-bold text-[#00529C] dark:text-blue-400 hover:text-[#009B4D] dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>Analisis Data</span>
-                  <span>&rarr;</span>
+                  <span>{t('card1_action')}</span>
                 </button>
               </div>
             </div>
@@ -109,28 +111,27 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
                     </svg>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/70 text-[#007A3D] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/50 uppercase tracking-wider">
-                    FKTP Primer
+                    {t('badge_primer')}
                   </span>
                 </div>
 
                 <h3 className="text-base font-bold text-[#0A3C74] dark:text-white group-hover:text-[#009B4D] dark:group-hover:text-emerald-300 transition-colors">
-                  Monitoring Mutu FKTP
+                  {t('card2_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
-                  Pemantauan kinerja Puskesmas, Klinik Pratama, dan Dokter Praktik Mandiri dalam penerapan kontak pertama dan skrining kesehatan.
+                  {t('card2_desc')}
                 </p>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Puskesmas &amp; Klinik
+                  {t('card2_status')}
                 </span>
                 <button
                   onClick={() => onNavigate?.('fktp')}
                   className="text-xs font-bold text-[#007A3D] dark:text-emerald-400 hover:text-[#00529C] dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>Buka Modul</span>
-                  <span>&rarr;</span>
+                  <span>{t('card2_action')}</span>
                 </button>
               </div>
             </div>
@@ -146,28 +147,27 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
                     </svg>
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 uppercase tracking-wider">
-                    Sistem &amp; IAM
+                    {t('nav_settings')}
                   </span>
                 </div>
 
                 <h3 className="text-base font-bold text-[#0A3C74] dark:text-white group-hover:text-[#00529C] dark:group-hover:text-emerald-300 transition-colors">
-                  Konfigurasi &amp; Pengaturan
+                  {t('card3_title')}
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
-                  Sinkronisasi cache spreadsheet secara instan, pengelolaan tenant context, dan personalisasi tema visual sistem.
+                  {t('card3_desc')}
                 </p>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Zero-Trust Enabled
+                  {t('card3_status')}
                 </span>
                 <button
                   onClick={() => onNavigate?.('admin')}
                   className="text-xs font-bold text-[#00529C] dark:text-blue-400 hover:text-[#009B4D] dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>Kelola Sistem</span>
-                  <span>&rarr;</span>
+                  <span>{t('card3_action')}</span>
                 </button>
               </div>
             </div>
@@ -179,42 +179,42 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
           <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-3 mb-4">
             <h3 className="text-xs font-bold text-[#00529C] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#009B4D]" />
-              Standar Evaluasi Integrasi Antrean Online BPJS Kesehatan
+              {t('std_heading')}
             </h3>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Parameter Resmi Yanfaskes</span>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">BPJS Kesehatan Official</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/20">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#009B4D]" />
-                <span className="text-xs font-bold text-[#007A3D] dark:text-emerald-300">Target Kinerja Optimal</span>
+                <span className="text-xs font-bold text-[#007A3D] dark:text-emerald-300">{t('std_target_title')}</span>
               </div>
               <p className="text-xl font-extrabold text-[#009B4D] dark:text-emerald-400 mt-2">&ge; 85%</p>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                Kepatuhan tinggi pemanfaatan antrean online oleh peserta JKN.
+                {t('std_target_desc')}
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-500/20">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span className="text-xs font-bold text-amber-800 dark:text-amber-300">Kategori Cukup / Waspada</span>
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300">{t('std_cukup_title')}</span>
               </div>
               <p className="text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">60% - 84.9%</p>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                Memerlukan monitoring dan edukasi kanal pendaftaran Mobile JKN.
+                {t('std_cukup_desc')}
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/20">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#00529C]" />
-                <span className="text-xs font-bold text-[#00529C] dark:text-blue-300">Kanal Integrasi Resmi</span>
+                <span className="text-xs font-bold text-[#00529C] dark:text-blue-300">{t('std_kanal_title')}</span>
               </div>
               <p className="text-xl font-extrabold text-[#00529C] dark:text-blue-400 mt-2">Mobile JKN + Bridging</p>
               <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                Kombinasi antrean terbit via aplikasi peserta dan sistem pendaftaran RS.
+                {t('std_kanal_desc')}
               </p>
             </div>
           </div>

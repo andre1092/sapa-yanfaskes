@@ -85,3 +85,19 @@ Sesuai standar antarmuka web modern untuk otomatisasi tema sistem:
   1. `change` pada `window.matchMedia('(prefers-color-scheme: dark)')`
   2. `focus` & `visibilitychange` saat pengguna kembali ke jendela aktif
   3. `setInterval` setiap 60.000 ms (1 menit) untuk mendeteksi transisi jam 18:00 dan 06:00 tanpa *refresh*.
+
+---
+
+## 6. Standar Terminologi Bilingual Resmi BPJS Kesehatan (ID / EN)
+
+Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
+- **BPJS Kesehatan**: *Social Security Agency on Health*
+- **SAPA YANFASKES**: *Health Facility Performance Analysis & Acceleration Channel*
+- **Faskes Tingkat Pertama (FKTP)**: *Primary Care Facility*
+- **Faskes Rujukan Tingkat Lanjutan (FKRTL)**: *Advanced Referral Health Facility*
+- **Pemanfaatan Antrol (Antrean Online)**: *Online Queue Utilization*
+- **Rawat Jalan Tingkat Lanjutan (RJTL)**: *Outpatient Care*
+- **Surat Eligibilitas Peserta (SEP)**: *Participant Eligibility Letter*
+- **Kanal Integrasi**: *Mobile JKN & Hospital Queue Bridging Web Service*
+- **Pengaturan & Manajemen IAM**: *Settings & IAM Security Management*
+- **Keluar Sesi**: *Sign Out / Log Out*

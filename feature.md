@@ -22,11 +22,12 @@
   - **Komponen Kontrol**: `ThemeToggle` segmented control di header utama (`Header.tsx`) dan kartu pemilih visual di `AdminSettings.tsx`.
   - **Zero-FOUC Engine**: Dilengkapi inline script anti-flicker di `index.html` dan sinkronisasi store Zustand persisten (`localStorage`) dengan kalkulasi waktu instan.
 
-### B. Pengalihan Bahasa Sistem (Language Switching)
+### B. Pengalihan Bahasa Sistem (Language Switching) [STATUS: AKTIF / LIVE]
 - **Bahasa yang Didukung**:
-  - 🇮🇩 **Bahasa Indonesia (ID)**: Bahasa utama operasional dan pelaporan institusi resmi.
+  - 🇮🇩 **Bahasa Indonesia (ID)**: Bahasa utama operasional dan pelaporan institusi resmi BPJS Kesehatan (default).
   - 🇬🇧 **English (EN)**: Bahasa internasional untuk keperluan presentasi dan standarisasi global.
-- **Implementasi**: Penanganan kamus translasi dinamis untuk judul metrik, label filter, tooltip, dan pesan status sistem.
+- **Komponen Kontrol**: `LanguageSwitcher` floating glassmorphism dropdown di `Header.tsx` dengan bendera negara (🇮🇩 / 🇬🇧), indikator centang aktif, penutup otomatis *click-outside* & tombol *Esc*.
+- **Mesin Lokalisasi**: `languageStore.ts` (Zustand + `persist` ke `localStorage` key `sapa-language-storage`), sinkronisasi atribut `document.documentElement.lang`, serta kamus translasi bilingual komprehensif (`t(...)`) untuk Header, Breadcrumbs, Sidebar, Portal Overview, dan Theme Toggle.
 
 ---
 
