@@ -44,11 +44,12 @@
 - **Tahun**: Pemilihan tahun transaksi (2026).
 - **Sumber Antrean**: Pemilahan kanal pendaftaran antrean (All Sumber / Mobile JKN).
 
-### C. Tiga Visualisasi Grafik Batang Khusus [STATUS: AKTIF / LIVE]
-1. **Grafik Batang Horisontal Bulanan**:
-   - Membentang horizontal (sumbu Y = Bulan, sumbu X = Capaian %).
+### C. Visualisasi Analitik Khusus FKRTL [STATUS: AKTIF / LIVE]
+1. **Line Chart Bulanan — Tren Capaian Antrol (Baru)**:
+   - Visualisasi kurva garis halus (*SVG Interactive Line Chart*) dinamis yang menghubungkan tren capaian antrol per bulan secara kronologis.
    - Mengambil data dari **Timestamp Terbaru** (`max(Timestamp)`) pada penutupan setiap bulan dengan informasi snapshot berformat `MM/DD/YYYY HH:MM:SS` (contoh: `01/31/2026 23:59:59` s.d. `09/24/2026 03:14:56`).
-   - Garis batas target kinerja &ge;85%.
+   - Dilengkapi *area fill gradient* bernuansa BPJS (Emerald ke Biru), garis benchmark target 85%, *interactive data point markers*, dan *hover tooltip card* yang menampilkan capaian serta stempel waktu snapshot terbaru.
+   - Dilengkapi strip daftar kartu snapshot stempel waktu terbaru per bulan di bawah grafik yang tersinkronisasi interaktif dengan kurva.
 2. **Grafik Batang Vertikal Faskes**:
    - Membentang vertikal (sumbu X = Nama Faskes, sumbu Y = Capaian %).
    - Menampilkan peringkat rumah sakit dengan nilai persentase di atas batang dan dukungan horizontal scroll yang nyaman.

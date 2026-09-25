@@ -89,6 +89,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   });
   const [sortFaskesDesc, setSortFaskesDesc] = useState(true);
   const [sortPoliDesc, setSortPoliDesc] = useState(true);
+  const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useFkrtlAntrolData(filters, authReady);
 
@@ -404,75 +405,350 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* 1. GRAFIK BATANG HORISONTAL BULANAN (MENGAMBIL TIMESTAMP TERBARU) */}
+              {/* 1. LINE CHART BULANAN (MENGAMBIL TIMESTAMP TERBARU) */}
               <div className="glass-card rounded-2xl p-6 shadow-xl border border-emerald-500/20">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-emerald-500/20 gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-emerald-500/20 gap-3">
                   <div>
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                      Grafik Batang Horisontal Bulanan
+                      Line Chart Bulanan — Tren Capaian Antrol
                     </h3>
                     <p className="text-xs text-slate-300 mt-1">
-                      Data agregasi mengambil <span className="font-semibold text-emerald-400">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
+                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-emerald-400">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                      Target BPJS: &ge;85%
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/30">
+                      <span className="w-3.5 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                      <span className="text-[11px] font-semibold">Target BPJS: &ge;85%</span>
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/60" />
+                      <span className="text-[11px] font-semibold">Realisasi Capaian</span>
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-3.5">
-                  {data.trend_per_bulan.map((item, idx) => {
-                    const isTargetMet = item.avg_capaian >= 85;
-                    return (
-                      <div key={idx} className="group flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                        {/* Label Bulan & Keterangan Timestamp Terbaru */}
-                        <div className="w-full sm:w-52 shrink-0 flex sm:flex-col justify-between items-baseline sm:items-start">
-                          <span className="text-xs font-bold text-slate-200 group-hover:text-emerald-300 transition-colors">
-                            {item.month_full || item.month}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
-                            <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {/* Interactive Tooltip Banner saat Bulan di-hover */}
+                {hoveredMonthIndex !== null && data.trend_per_bulan[hoveredMonthIndex] && (() => {
+                  const activeItem = data.trend_per_bulan[hoveredMonthIndex];
+                  const met = activeItem.avg_capaian >= 85;
+                  return (
+                    <div className="mb-4 p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${met ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'}`}>
+                          {activeItem.month}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-2">
+                            <span>{activeItem.month_full || activeItem.month}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                              {met ? '★ Memenuhi Target (≥85%)' : '⚠️ Di Bawah Target (<85%)'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
+                            <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            {item.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}
-                          </span>
-                        </div>
-
-                        {/* Horizontal Bar Track & Fill */}
-                        <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-emerald-500/40 transition-colors overflow-hidden">
-                          {/* 85% Target Indicator line */}
-                          <div 
-                            style={{ left: '85%' }} 
-                            className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/70 z-10 pointer-events-none"
-                            title="Target 85%"
-                          />
-
-                          {/* Filled Horizontal Bar */}
-                          <div
-                            style={{ width: `${Math.min(Math.max(item.avg_capaian, 0), 100)}%` }}
-                            className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
-                              isTargetMet 
-                                ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
-                                : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#0284c7]'
-                            }`}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
+                            <span>Snapshot Timestamp: <strong className="text-emerald-300">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
                           </div>
-
-                          {/* Percentage Display */}
-                          <span className="absolute right-3 text-xs font-extrabold text-white drop-shadow-md z-20 flex items-center gap-1.5">
-                            {formatPercentID(item.avg_capaian)}
-                            {isTargetMet && (
-                              <span className="text-emerald-300 text-[10px]">★</span>
-                            )}
-                          </span>
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="text-right sm:border-l sm:border-slate-800 sm:pl-4">
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Capaian Antrol</div>
+                        <div className={`text-base font-extrabold font-mono ${met ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                          {formatPercentID(activeItem.avg_capaian)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* SVG Line Chart Viewport */}
+                {(() => {
+                  const ptsList = data.trend_per_bulan;
+                  const padL = 50;
+                  const padR = 40;
+                  const padT = 35;
+                  const padB = 45;
+                  const svgW = 920;
+                  const svgH = 260;
+                  const chartW = svgW - padL - padR;
+                  const chartH = svgH - padT - padB;
+
+                  const calcY = (val: number) => {
+                    const clamped = Math.min(Math.max(val, 0), 100);
+                    return padT + chartH - (clamped / 100) * chartH;
+                  };
+
+                  const coords = ptsList.map((item, idx) => {
+                    const x = padL + (ptsList.length > 1 ? (idx / (ptsList.length - 1)) * chartW : chartW / 2);
+                    const y = calcY(item.avg_capaian);
+                    return { x, y, item, idx };
+                  });
+
+                  // Cubic bezier spline for smooth curve
+                  let lineD = '';
+                  if (coords.length === 1) {
+                    lineD = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+                  } else if (coords.length > 1) {
+                    lineD = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+                    for (let i = 0; i < coords.length - 1; i++) {
+                      const p0 = coords[i === 0 ? 0 : i - 1];
+                      const p1 = coords[i];
+                      const p2 = coords[i + 1];
+                      const p3 = coords[i + 2 < coords.length ? i + 2 : i + 1];
+
+                      const cp1x = p1.x + (p2.x - p0.x) / 6;
+                      const cp1y = p1.y + (p2.y - p0.y) / 6;
+                      const cp2x = p2.x - (p3.x - p1.x) / 6;
+                      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+                      lineD += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+                    }
+                  }
+
+                  const areaD = coords.length > 0 
+                    ? `${lineD} L ${coords[coords.length - 1].x.toFixed(1)} ${(padT + chartH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padT + chartH).toFixed(1)} Z`
+                    : '';
+
+                  const target85Y = calcY(85);
+
+                  return (
+                    <div className="w-full overflow-x-auto select-none">
+                      <div className="min-w-[680px]">
+                        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto overflow-visible">
+                          <defs>
+                            <linearGradient id="lineGradBPJS" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#00529C" />
+                              <stop offset="35%" stopColor="#06B6D4" />
+                              <stop offset="70%" stopColor="#009B4D" />
+                              <stop offset="100%" stopColor="#10B981" />
+                            </linearGradient>
+                            <linearGradient id="areaGradBPJS" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="#10B981" stopOpacity="0.30" />
+                              <stop offset="45%" stopColor="#00529C" stopOpacity="0.12" />
+                              <stop offset="100%" stopColor="#00529C" stopOpacity="0.0" />
+                            </linearGradient>
+                            <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#10B981" floodOpacity="0.35" />
+                            </filter>
+                          </defs>
+
+                          {/* Grid Lines & Y Axis Labels (0, 25, 50, 75, 100) */}
+                          {[0, 25, 50, 75, 100].map((level) => {
+                            const y = calcY(level);
+                            return (
+                              <g key={level}>
+                                <line 
+                                  x1={padL} 
+                                  x2={padL + chartW} 
+                                  y1={y} 
+                                  y2={y} 
+                                  stroke="rgba(255, 255, 255, 0.08)" 
+                                  strokeDasharray="4 4" 
+                                />
+                                <text 
+                                  x={padL - 10} 
+                                  y={y + 3.5} 
+                                  textAnchor="end" 
+                                  className="text-[10px] fill-slate-400 font-mono"
+                                >
+                                  {level}%
+                                </text>
+                              </g>
+                            );
+                          })}
+
+                          {/* 85% Target Benchmark Line */}
+                          <g>
+                            <line 
+                              x1={padL} 
+                              x2={padL + chartW} 
+                              y1={target85Y} 
+                              y2={target85Y} 
+                              stroke="#F59E0B" 
+                              strokeDasharray="6 4" 
+                              strokeWidth="1.5" 
+                            />
+                            <rect 
+                              x={padL + chartW - 90} 
+                              y={target85Y - 10} 
+                              width="90" 
+                              height="18" 
+                              rx="4" 
+                              fill="rgba(15, 23, 42, 0.85)" 
+                              stroke="rgba(245, 158, 11, 0.5)" 
+                              strokeWidth="1" 
+                            />
+                            <text 
+                              x={padL + chartW - 45} 
+                              y={target85Y + 2.5} 
+                              textAnchor="middle" 
+                              className="text-[9px] fill-amber-300 font-bold tracking-wider"
+                            >
+                              TARGET 85%
+                            </text>
+                          </g>
+
+                          {/* Area Gradient Under Curve */}
+                          {areaD && (
+                            <path d={areaD} fill="url(#areaGradBPJS)" className="transition-all duration-700" />
+                          )}
+
+                          {/* The Glowing Curved Line */}
+                          {lineD && (
+                            <path 
+                              d={lineD} 
+                              fill="none" 
+                              stroke="url(#lineGradBPJS)" 
+                              strokeWidth="3.5" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              filter="url(#lineGlow)"
+                              className="transition-all duration-700"
+                            />
+                          )}
+
+                          {/* Interactive Vertical Hover Guides & Data Points */}
+                          {coords.map((pt) => {
+                            const isHovered = hoveredMonthIndex === pt.idx;
+                            const isTargetMet = pt.item.avg_capaian >= 85;
+
+                            return (
+                              <g key={pt.idx} className="transition-all">
+                                {/* Vertical dotted guide on hover */}
+                                {isHovered && (
+                                  <line 
+                                    x1={pt.x} 
+                                    y1={padT} 
+                                    x2={pt.x} 
+                                    y2={padT + chartH} 
+                                    stroke="rgba(16, 185, 129, 0.5)" 
+                                    strokeDasharray="3 3" 
+                                    strokeWidth="1.5" 
+                                  />
+                                )}
+
+                                {/* Outer Ring with Pulse */}
+                                <circle 
+                                  cx={pt.x} 
+                                  cy={pt.y} 
+                                  r={isHovered ? 9 : 6} 
+                                  fill="#020617" 
+                                  stroke={isTargetMet ? "#10B981" : "#38BDF8"} 
+                                  strokeWidth={isHovered ? 3 : 2} 
+                                  className="cursor-pointer transition-all duration-200"
+                                />
+
+                                {/* Inner Dot */}
+                                <circle 
+                                  cx={pt.x} 
+                                  cy={pt.y} 
+                                  r={isHovered ? 4.5 : 2.5} 
+                                  fill={isTargetMet ? "#34D399" : "#60A5FA"} 
+                                  className="pointer-events-none"
+                                />
+
+                                {/* Value pill above point */}
+                                <g transform={`translate(${pt.x}, ${pt.y - 14})`}>
+                                  <rect 
+                                    x="-24" 
+                                    y="-12" 
+                                    width="48" 
+                                    height="15" 
+                                    rx="4" 
+                                    fill={isHovered ? "rgba(16, 185, 129, 0.95)" : "rgba(15, 23, 42, 0.85)"} 
+                                    stroke={isHovered ? "#34D399" : isTargetMet ? "rgba(16, 185, 129, 0.5)" : "rgba(56, 189, 248, 0.4)"} 
+                                    strokeWidth="1" 
+                                    className="transition-colors"
+                                  />
+                                  <text 
+                                    textAnchor="middle" 
+                                    y="-1" 
+                                    className={`text-[9.5px] font-extrabold font-mono ${isHovered ? 'fill-slate-950 font-black' : isTargetMet ? 'fill-emerald-300' : 'fill-white'}`}
+                                  >
+                                    {formatPercentID(pt.item.avg_capaian)}
+                                  </text>
+                                </g>
+
+                                {/* Month Name label on X Axis */}
+                                <text 
+                                  x={pt.x} 
+                                  y={padT + chartH + 20} 
+                                  textAnchor="middle" 
+                                  className={`text-[11px] font-bold transition-colors cursor-pointer ${
+                                    isHovered ? 'fill-emerald-300 font-extrabold' : 'fill-slate-300'
+                                  }`}
+                                >
+                                  {pt.item.month}
+                                </text>
+
+                                {/* Transparent Hit Box to easily trigger hover */}
+                                <rect 
+                                  x={pt.x - (chartW / (coords.length * 2))} 
+                                  y={padT} 
+                                  width={chartW / coords.length} 
+                                  height={chartH + padB} 
+                                  fill="transparent" 
+                                  className="cursor-pointer"
+                                  onMouseEnter={() => setHoveredMonthIndex(pt.idx)}
+                                  onMouseLeave={() => setHoveredMonthIndex(null)}
+                                />
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Strip Detail Snapshot Timestamp Terbaru per Bulan */}
+                <div className="mt-5 pt-4 border-t border-emerald-500/20">
+                  <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Daftar Snapshot Timestamp Terbaru per Bulan
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      Klik/Arahkan kursor pada kartu untuk menyorot titik kurva
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2">
+                    {data.trend_per_bulan.map((item, idx) => {
+                      const isHovered = hoveredMonthIndex === idx;
+                      const met = item.avg_capaian >= 85;
+                      return (
+                        <div
+                          key={idx}
+                          onMouseEnter={() => setHoveredMonthIndex(idx)}
+                          onMouseLeave={() => setHoveredMonthIndex(null)}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                            isHovered
+                              ? 'bg-emerald-500/20 border-emerald-400 shadow-md shadow-emerald-500/20 -translate-y-0.5'
+                              : 'bg-slate-950/60 border-white/10 hover:border-emerald-500/40'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-xs font-bold text-white truncate">{item.month}</span>
+                            <span className={`text-[9px] font-extrabold ${met ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                              {formatPercentID(item.avg_capaian)}
+                            </span>
+                          </div>
+                          <div className="text-[9.5px] font-mono text-slate-400 truncate flex items-center gap-1" title={item.latest_timestamp}>
+                            <svg className="w-2.5 h-2.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="truncate">{item.latest_timestamp || 'N/A'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
