@@ -24,7 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 # Import the Database context and context injector
-from .db import get_db, set_tenant_context
+try:
+    from .db import get_db, set_tenant_context
+except (ImportError, ValueError):
+    try:
+        from db import get_db, set_tenant_context
+    except (ImportError, ValueError):
+        from api.db import get_db, set_tenant_context
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("sapa-api")
@@ -1133,8 +1139,6 @@ async def export_fkrtl_data(
             df_faskes_clean = pl.DataFrame({"Kdppk": pl.Series(dtype=pl.Utf8), "Kabupaten": pl.Series(dtype=pl.Utf8), "Kelas_RS": pl.Series(dtype=pl.Utf8), "Nama_RS": pl.Series(dtype=pl.Utf8)})
 
         # 2. Add Faskes attributes to df_antrol
-        from api.index import find_column_name, parse_date_info
-
         faskes_col = next((c for c in df_antrol.columns if c.lower() in ["nama fkrtl", "nama_fkrtl", "faskes", "nama faskes"]), None)
         if faskes_col and faskes_col != "Faskes":
             df_antrol = df_antrol.rename({faskes_col: "Faskes"})
