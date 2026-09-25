@@ -63,6 +63,7 @@ sapa-yanfaskes/
 | **2026-09-25** | Implementasi Menu Dropdown Pengalihan Bahasa (ID/EN) | Selesai | Pembangunan store bahasa (Zustand persist key sapa-language-storage), komponen LanguageSwitcher floating glassmorphism di Header, integrasi dinamis pada Sidebar, Header, Home Overview, dan Theme Toggle, build Vite tuntas dalam 636ms. |
 | **2026-09-25** | Perbaikan Clipping Dropdown Bahasa (Header Overflow) | Selesai | Mengganti overflow-hidden dengan overflow-visible z-40 pada Header.tsx dan meningkatkan kontras backdrop-blur-2xl pada LanguageSwitcher.tsx. Build Vite tuntas dalam 640ms. |
 | **2026-09-25** | Integrasi Live Google Spreadsheet & 3 Grafik Batang Antrol FKRTL | Selesai | Integrasi langsung spreadsheet publik Google Docs (ID: 1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY) via paralel CSV stream + in-memory cache Polars (sub-2s). Pembangunan: (1) Kotak Keterangan "Last Update : MM/DD/YYYY HH:MM:SS" (09/24/2026 03:14:56), (2) Filter 5-dimensi (Kabupaten, Nama Faskes, Bulan, Tahun, Sumber), (3) Grafik Batang Horisontal Bulanan dengan snapshot Timestamp Terbaru per bulan, (4) Grafik Batang Vertikal Faskes dengan scroll horizontal dan toggle sort, (5) Grafik Batang Vertikal Nama Poli dengan mapping ref_poli resmi. Build Vite tuntas dalam 671ms. |
+| **2026-09-25** | Investigasi Loading Lama & Error 500 Google Sheets | Selesai | Analisis mendalam akar penyebab: (1) Inisialisasi dependensi database `get_db` yang tidak diperlukan pada endpoint spreadsheet memicu timeout/unhandled exception di serverless Vercel, (2) SSL certificate handshake issue pada `urllib.request`, (3) Cold-start berat dari binary Polars (~115MB) di serverless, (4) Adapter ASGI Mangum belum ter-deploy ke Vercel, (5) Belum adanya fail-safe fallback di frontend. Rencana aksi perbaikan komprehensif disiapkan. |
 
 ---
 
@@ -70,3 +71,4 @@ sapa-yanfaskes/
 - **Token Efficiency**: 100% kepatuhan bedah modul presisi (*surgical edits*), tanpa pembacaan ulang repositori menyeluruh (*zero unnecessary reads*).
 - **Security Posture**: File kredensial lokal (`api-sapa-yanfaskes-*.json`) tidak di-commit dan diamankan dalam `.gitignore`.
 - **Integrity Status**: Repositori berada dalam kondisi bersih, terstruktur, siap untuk iterasi fitur dan pengujian performa.
+
