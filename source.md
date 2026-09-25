@@ -150,5 +150,12 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
    - **Line Chart Kanan**: Tren bulanan Capaian (Poin) dengan kurva `#44853b` dan garis target 100 poin.
 2. **Struktur Kolom Tabel Standar**:
    - `No`, `Nama Faskes`, `Tipe Faskes`, `Total Kunjungan`, `Tidak Sesuai`, `Sesuai`, `Persen Sesuai`, `Capaian`, `Status`.
+3. **Standar Cascading Dependent Filters**:
+   - Pilihan dropdown `Nama Faskes (FKRTL)` dan `Tipe Faskes` wajib terikat secara dependen (*cascading*) terhadap `Kabupaten`:
+     - **Jember**: 14 Faskes, 7 Tipe Faskes.
+     - **Bondowoso**: 3 Faskes (`RS BHAYANGKARA BONDOWOSO`, `RS MITRA MEDIKA`, `RSU dr. H. KOESNADI BONDOWOSO`), 3 Tipe Faskes (`RS Kelas B`, `RS Swasta Setara Type C`, `RS TNI Polri Kelas III`).
+     - **Lumajang**: 9 Faskes, 6 Tipe Faskes.
+   - Pilihan `Tipe Faskes` menyaring lebih lanjut faskes yang bertipe tersebut.
+   - Perubahan kabupaten wajib memicu auto-reset pilihan faskes dan tipe faskes ke "Semua" guna mengeliminasi error filter faskes luar daerah ataupun data kosong.
 
 

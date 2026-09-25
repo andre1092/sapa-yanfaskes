@@ -1602,15 +1602,27 @@ async def get_fkrtl_kepatuhan_nakes(
                 "capaian_nilai": c_nilai,
             })
 
-        # 4. Generate Comprehensive Filter Options (from all joined rows)
+        # 4. Generate Comprehensive Filter Options (Cascading / Dependent Filters)
         raw_kabupatens = sorted(list(set(r["kabupaten"] for r in all_joined if r["kabupaten"] and r["kabupaten"] != "-")))
         kabupaten_options = ["Semua Kabupaten"] + raw_kabupatens
 
-        raw_faskes = sorted(list(set(r["nama_ppk"] for r in all_joined if r["nama_ppk"])))
-        nama_ppk_options = ["Semua Faskes"] + raw_faskes
+        # Determine active county & facility type filters
+        kab_active = bool(kabupaten and kabupaten.strip() not in ("Semua", "Semua Kabupaten", "ALL", ""))
+        tipe_active = bool(tipe_faskes and tipe_faskes.strip() not in ("Semua", "Semua Tipe Faskes", "ALL", ""))
 
-        raw_tipes = sorted(list(set(r["tipe_faskes"] for r in all_joined if r["tipe_faskes"])))
+        # Rows eligible for Tipe Faskes dropdown (disaring berdasarkan kabupaten jika aktif)
+        tipe_pool = all_joined
+        if kab_active:
+            tipe_pool = [r for r in tipe_pool if r["kabupaten"].lower() == kabupaten.strip().lower()]
+        raw_tipes = sorted(list(set(r["tipe_faskes"] for r in tipe_pool if r["tipe_faskes"])))
         tipe_faskes_options = ["Semua Tipe Faskes"] + raw_tipes
+
+        # Rows eligible for Faskes dropdown (disaring berdasarkan kabupaten & tipe_faskes jika aktif)
+        faskes_pool = tipe_pool
+        if tipe_active and tipe_faskes.strip().lower() in [t.lower() for t in raw_tipes]:
+            faskes_pool = [r for r in faskes_pool if r["tipe_faskes"].lower() == tipe_faskes.strip().lower()]
+        raw_faskes = sorted(list(set(r["nama_ppk"] for r in faskes_pool if r["nama_ppk"])))
+        nama_ppk_options = ["Semua Faskes"] + raw_faskes
 
         # Preserve chronological month order
         present_months = set(r["bulan"] for r in all_joined if r["bulan"])
@@ -1620,10 +1632,19 @@ async def get_fkrtl_kepatuhan_nakes(
                 ordered_months.append(m)
         bulan_options = ["Semua Bulan"] + ordered_months
 
+        # Sanitize active filters against available options for the selected kabupaten
+        if kab_active and nama_ppk and nama_ppk.strip() not in ("Semua", "Semua Faskes", "ALL", ""):
+            if nama_ppk.strip().lower() not in [f.lower() for f in raw_faskes]:
+                nama_ppk = "Semua Faskes"
+
+        if kab_active and tipe_faskes and tipe_faskes.strip() not in ("Semua", "Semua Tipe Faskes", "ALL", ""):
+            if tipe_faskes.strip().lower() not in [t.lower() for t in raw_tipes]:
+                tipe_faskes = "Semua Tipe Faskes"
+
         # 5. Apply Active Filters
         filtered = all_joined
 
-        if kabupaten and kabupaten.strip() not in ("Semua", "Semua Kabupaten", "ALL", ""):
+        if kab_active:
             filtered = [r for r in filtered if r["kabupaten"].lower() == kabupaten.strip().lower()]
 
         if nama_ppk and nama_ppk.strip() not in ("Semua", "Semua Faskes", "ALL", ""):

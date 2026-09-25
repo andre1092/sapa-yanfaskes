@@ -133,6 +133,32 @@ export const NakesComplianceTab: React.FC = () => {
     fetchData();
   }, [selectedKabupaten, selectedNamaPpk, selectedBulan, selectedTipeFaskes]);
 
+  // Handlers for Cascading Filters (Dependent Dropdowns)
+  const handleKabupatenChange = (newKab: string) => {
+    setSelectedKabupaten(newKab);
+    // Otomatis reset faskes dan tipe faskes saat kabupaten berganti agar tidak ada faskes luar kabupaten
+    setSelectedNamaPpk('Semua Faskes');
+    setSelectedTipeFaskes('Semua Tipe Faskes');
+  };
+
+  const handleTipeFaskesChange = (newTipe: string) => {
+    setSelectedTipeFaskes(newTipe);
+    // Otomatis reset faskes saat tipe faskes berganti
+    setSelectedNamaPpk('Semua Faskes');
+  };
+
+  // Sinkronisasi otomatis jika nilai terpilih tidak ada dalam opsi API yang dikembalikan
+  useEffect(() => {
+    if (apiData?.filter_options) {
+      if (selectedNamaPpk !== 'Semua Faskes' && !apiData.filter_options.nama_ppk.includes(selectedNamaPpk)) {
+        setSelectedNamaPpk('Semua Faskes');
+      }
+      if (selectedTipeFaskes !== 'Semua Tipe Faskes' && !apiData.filter_options.tipe_faskes.includes(selectedTipeFaskes)) {
+        setSelectedTipeFaskes('Semua Tipe Faskes');
+      }
+    }
+  }, [apiData]);
+
   // Reset pagination when filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -297,7 +323,7 @@ export const NakesComplianceTab: React.FC = () => {
               </label>
               <select
                 value={selectedKabupaten}
-                onChange={(e) => setSelectedKabupaten(e.target.value)}
+                onChange={(e) => handleKabupatenChange(e.target.value)}
                 className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
               >
                 {filterOptions.kabupaten.map((kab) => (
@@ -351,7 +377,7 @@ export const NakesComplianceTab: React.FC = () => {
               </label>
               <select
                 value={selectedTipeFaskes}
-                onChange={(e) => setSelectedTipeFaskes(e.target.value)}
+                onChange={(e) => handleTipeFaskesChange(e.target.value)}
                 className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
               >
                 {filterOptions.tipe_faskes.map((tipe) => (

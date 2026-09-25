@@ -72,7 +72,12 @@
 - Terletak pada menu **FKRTL > Laporan Kepatuhan FKRTL** (`fkrtl-kepatuhan`).
 - **Tab 01. Jadwal Praktek Nakes - bobot 25% [STATUS: LIVE INTEGRASI SPREADSHEET]**:
   - **Koneksi Live Google Spreadsheet**: Terhubung langsung secara paralel ke Spreadsheet Jadwal Nakes (`1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU`) dan Master Referensi Faskes (`17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`) dengan *join match rate* 100% (228 baris).
-  - **Filter 4 Dimensi**: Kabupaten (Bondowoso, Jember, Lumajang), Nama Faskes (26 FKRTL), Bulan (Januari–September 2026), dan Tipe Faskes (RS Kelas B, Swasta Setara Type C, dll).
+  - **Filter 4 Dimensi dengan Cascading / Dependent Filtering Dinamis**:
+    - **Kabupaten**: Bondowoso, Jember, Lumajang (Master wilayah KC Jember).
+    - **Nama Faskes (FKRTL)**: Disaring secara dinamis (*dependent cascading*) hanya memuat faskes di kabupaten yang aktif (misal: 14 faskes saat Jember dipilih, 3 faskes saat Bondowoso dipilih, 9 faskes saat Lumajang dipilih).
+    - **Tipe Faskes**: Disaring secara dinamis (*dependent cascading*) hanya memuat tipe faskes yang ada di kabupaten terpilih (misal: 3 tipe faskes di Bondowoso).
+    - **Bulan**: Januari s.d. September 2026.
+    - **Mekanisme Auto-Reset Tangguh**: Pergantian kabupaten secara otomatis mereset nilai faskes/tipe faskes ke "Semua" dan melakukan sanitasi pada backend sehingga tidak terjadi anomali data faskes luar daerah ataupun filter kosong (*deadlock*).
   - **Kartu Ringkasan KPI**:
     - **"Persen Sesuai"**: Rata-rata dan tertimbang kesesuaian jadwal praktek dokter terhadap jadwal resmi dengan badge target 100%.
     - **"Capaian"**: Skor poin bertingkat (0, 25, 50, 75, 100) dengan penanda bobot 25%.
