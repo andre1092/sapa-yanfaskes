@@ -18,9 +18,9 @@
 - **Mode Tema (Theme Modes) [STATUS: AKTIF / LIVE]**:
   - 🌙 **Dark Glassmorphism**: Dominan Slate gelap (`#0B0F19` / `#0F172A`) berpadu gradasi hijau zamrud dan biru laut BPJS.
   - ☀️ **Light Glassmorphism**: Versi terang dengan frosted glass putih medis (`#F8FAFC`), kontras tinggi, border halus, dan aksen hijau-biru BPJS.
-  - 💻 **System Theme**: Mengikuti preferensi tema sistem operasi pengguna secara dinamis dan real-time via `matchMedia`.
+  - 💻 **System Theme (Sinkronisasi Waktu Komputer & OS)**: Mengikuti waktu lokal komputer pengguna secara cerdas (otomatis Mode Gelap pada pukul 18:00 – 05:59 dan Mode Terang pada pukul 06:00 – 17:59), serta sinkronisasi dinamis dengan preferensi skema warna OS via `matchMedia`, `focus`, dan `visibilitychange`.
   - **Komponen Kontrol**: `ThemeToggle` segmented control di header utama (`Header.tsx`) dan kartu pemilih visual di `AdminSettings.tsx`.
-  - **Zero-FOUC Engine**: Dilengkapi inline script anti-flicker di `index.html` dan sinkronisasi store Zustand persisten (`localStorage`).
+  - **Zero-FOUC Engine**: Dilengkapi inline script anti-flicker di `index.html` dan sinkronisasi store Zustand persisten (`localStorage`) dengan kalkulasi waktu instan.
 
 ### B. Pengalihan Bahasa Sistem (Language Switching)
 - **Bahasa yang Didukung**:

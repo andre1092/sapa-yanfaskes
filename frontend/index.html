@@ -21,8 +21,11 @@
               theme = parsed.state.theme;
             }
           }
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var effective = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+          var hour = new Date().getHours();
+          var isNight = hour < 6 || hour >= 18;
+          var prefersDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var systemEffective = (isNight || prefersDark) ? 'dark' : 'light';
+          var effective = theme === 'system' ? systemEffective : theme;
           document.documentElement.classList.remove('light', 'dark');
           document.documentElement.classList.add(effective);
           document.documentElement.style.colorScheme = effective;

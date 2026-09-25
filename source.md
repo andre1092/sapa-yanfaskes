@@ -70,3 +70,18 @@ Berdasarkan standarisasi evaluasi integrasi sistem antrean online BPJS Kesehatan
 ### Strategi Optimasi Data Engine (Sub-2-Second)
 - **Polars Lazy Evaluation**: Pemuatan data mentah ke memori, filtering, grouping, dan perhitungan agregat dilakukan dengan `pl.LazyFrame` untuk memastikan pemrosesan cepat dalam hitungan milidetik.
 - **Client Cache**: Pemanfaatan TanStack React Query pada sisi frontend dengan `staleTime: 5 menit` guna mencegah pemanggilan API berulang yang tidak diperlukan.
+
+---
+
+## 5. Algoritma Sinkronisasi Mode Sistem Berbasis Waktu Komputer (Time-Based Engine)
+
+Sesuai standar antarmuka web modern untuk otomatisasi tema sistem:
+- **Ambang Batas Waktu Komputer Lokal**:
+  - **Waktu Siang (Daytime)**: Pukul 06:00 s.d. 17:59 (jam $6 \le \text{hour} < 18$) $\rightarrow$ Menghasilkan tema terang (*Light Mode*), kecuali jika preferensi OS secara eksplisit aktif pada *prefers-color-scheme: dark*.
+  - **Waktu Malam (Nighttime)**: Pukul 18:00 s.d. 05:59 (jam $\ge 18 \lor < 6$) $\rightarrow$ Menghasilkan tema gelap (*Dark Mode*).
+- **Formula Evaluasi**:
+  $$\text{Effective Theme} = (\text{hour} < 6 \lor \text{hour} \ge 18 \lor \text{matchMedia}('\text{prefers-color-scheme: dark}').\text{matches}) \ ? \ \text{'dark'} : \text{'light'}$$
+- **Event Listeners**:
+  1. `change` pada `window.matchMedia('(prefers-color-scheme: dark)')`
+  2. `focus` & `visibilitychange` saat pengguna kembali ke jendela aktif
+  3. `setInterval` setiap 60.000 ms (1 menit) untuk mendeteksi transisi jam 18:00 dan 06:00 tanpa *refresh*.
