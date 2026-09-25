@@ -27,11 +27,20 @@ SAPA YANFASKES
 │   └── Deskripsi: Analisis performa rumah sakit dan fasilitas rujukan sekunder/tersier.
 │   └── Tab ID: 'fkrtl'
 │   └── Sub-Menu:
-│       └── 📊 Pemanfaatan Antrol FKRTL (Tab ID: 'fkrtl-antrol')
-│           ├── Indikator KPI Utama (Total Antrean, Total SEP, Rasio Pemanfaatan %)
-│           ├── Tren Bulanan Pemanfaatan Antrean Online
-│           ├── Analisis Agregasi per Faskes / Rumah Sakit
-│           └── Analisis Distribusi per Poliklinik Spesialis
+│       ├── 📊 Pemanfaatan Antrol FKRTL (Tab ID: 'fkrtl-antrol')
+│       │   ├── Indikator KPI Utama (Total Antrean, Total SEP, Rasio Pemanfaatan %)
+│       │   ├── Tren Bulanan Pemanfaatan Antrean Online
+│       │   ├── Analisis Agregasi per Faskes / Rumah Sakit
+│       │   └── Analisis Distribusi per Poliklinik Spesialis
+│       └── 📋 Laporan Kepatuhan FKRTL (Tab ID: 'fkrtl-kepatuhan') [BARU]
+│           ├── Tab 01. Jadwal Praktek Nakes (Kepatuhan jadwal dokter/nakes)
+│           ├── Tab 02. Penyelesaian Pengaduan (Kecepatan respon penanganan keluhan)
+│           ├── Tab 03. Umabl Peserta (Umpan Balik / Kepuasan Peserta JKN)
+│           ├── Tab 04. Update Display TT (Pemutakhiran ketersediaan tempat tidur)
+│           ├── Tab 05. Update TMO (Tempat Pelayanan Obat / Telemedicine)
+│           ├── Tab 06. Antrean & WTL (Waktu Tunggu Layanan poliklinik & farmasi)
+│           ├── Tab 07. Surkon (Penerbitan Surat Kontrol terjadwal)
+│           └── Tab 08. RME (Adopsi & Integrasi Rekam Medis Elektronik)
 │   └── Rute Frontend: '/fkrtl'
 │
 ├── ⚙️ 4. Settings (Admin & Pengaturan)
@@ -53,6 +62,7 @@ SAPA YANFASKES
 | **Home** | ✅ (Terbatas) | ✅ | ✅ | ✅ |
 | **FKTP** | ❌ | ✅ (Data Mandiri) | ✅ (Wilayah Kerja) | ✅ (Seluruh Data) |
 | **FKRTL - Antrol** | ❌ | ✅ (Data RS Bersangkutan) | ✅ (Wilayah Kerja) | ✅ (Nasional/Seluruh Data) |
+| **FKRTL - Kepatuhan** | ❌ | ✅ (Data RS Bersangkutan) | ✅ (Wilayah Kerja) | ✅ (Nasional/Seluruh Data) |
 | **Settings** | ❌ | ❌ | ✅ (Profil) | ✅ (Konfigurasi Penuh) |
 | **Log out** | ❌ | ✅ | ✅ | ✅ |
 

@@ -11,6 +11,7 @@ export interface TranslationDictionary {
   nav_fkrtl: string;
   nav_fkrtl_desc: string;
   nav_antrol: string;
+  nav_kepatuhan: string;
   nav_settings: string;
   nav_settings_desc: string;
   nav_logout: string;
@@ -27,6 +28,7 @@ export interface TranslationDictionary {
   bc_fktp: string;
   bc_fkrtl: string;
   bc_antrol: string;
+  bc_kepatuhan: string;
   bc_settings: string;
   title_home: string;
   sub_home: string;
@@ -36,6 +38,8 @@ export interface TranslationDictionary {
   sub_fkrtl: string;
   title_antrol: string;
   sub_antrol: string;
+  title_kepatuhan: string;
+  sub_kepatuhan: string;
   title_settings: string;
   sub_settings: string;
 
@@ -86,6 +90,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     nav_fkrtl: 'FKRTL',
     nav_fkrtl_desc: 'Fasilitas Rujukan',
     nav_antrol: 'Pemanfaatan Antrol',
+    nav_kepatuhan: 'Laporan Kepatuhan FKRTL',
     nav_settings: 'Pengaturan',
     nav_settings_desc: 'Konfigurasi Sistem',
     nav_logout: 'Keluar',
@@ -102,6 +107,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     bc_fktp: 'Faskes Primer / FKTP',
     bc_fkrtl: 'Faskes Rujukan / FKRTL',
     bc_antrol: 'FKRTL / Pemanfaatan Antrol',
+    bc_kepatuhan: 'FKRTL / Laporan Kepatuhan',
     bc_settings: 'Sistem / Pengaturan Admin',
     title_home: 'Portal Overview',
     sub_home: 'Selamat datang di Saluran Analisis Performa & Akselerasi Fasilitas Kesehatan',
@@ -111,6 +117,8 @@ export const translations: Record<Language, TranslationDictionary> = {
     sub_fkrtl: 'Monitoring Kinerja & Rujukan Fasilitas Kesehatan Rujukan Tingkat Lanjutan',
     title_antrol: 'Pemanfaatan Antrean Online FKRTL',
     sub_antrol: 'Monitoring & Analisis Pemanfaatan Antrol Terintegrasi Mobile JKN & Bridging RS',
+    title_kepatuhan: 'Laporan Kepatuhan FKRTL',
+    sub_kepatuhan: 'Monitoring & Evaluasi 8 Indikator Kepatuhan Layanan Fasilitas Kesehatan Rujukan',
     title_settings: 'Admin Settings',
     sub_settings: 'Manajemen Keamanan IAM, Database Context & Konfigurasi Sistem',
 
@@ -159,6 +167,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     nav_fkrtl: 'Referral Care',
     nav_fkrtl_desc: 'Referral Facilities',
     nav_antrol: 'Queue Utilization',
+    nav_kepatuhan: 'FKRTL Compliance Report',
     nav_settings: 'Settings',
     nav_settings_desc: 'System Configuration',
     nav_logout: 'Log Out',
@@ -175,6 +184,7 @@ export const translations: Record<Language, TranslationDictionary> = {
     bc_fktp: 'Primary Care / FKTP',
     bc_fkrtl: 'Referral Care / FKRTL',
     bc_antrol: 'FKRTL / Queue Utilization',
+    bc_kepatuhan: 'FKRTL / Compliance Report',
     bc_settings: 'System / Admin Settings',
     title_home: 'Portal Overview',
     sub_home: 'Welcome to Health Facility Performance Analysis & Acceleration Channel',
@@ -184,6 +194,8 @@ export const translations: Record<Language, TranslationDictionary> = {
     sub_fkrtl: 'Performance & Referral Monitoring of Advanced Referral Healthcare Facilities',
     title_antrol: 'FKRTL Online Queue Utilization',
     sub_antrol: 'Integrated Queue Monitoring & Analysis via Mobile JKN & Hospital Bridging',
+    title_kepatuhan: 'FKRTL Compliance Report',
+    sub_kepatuhan: 'Monitoring & Evaluation of 8 Referral Healthcare Facility Compliance Indicators',
     title_settings: 'Admin Settings',
     sub_settings: 'IAM Security Management, Database Context & System Configuration',
 

@@ -5,6 +5,7 @@ import type { NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BlankContentArea } from './components/BlankContentArea';
 import { PemanfaatanAntrolDashboard } from './components/PemanfaatanAntrolDashboard';
+import { LaporanKepatuhanDashboard } from './components/LaporanKepatuhanDashboard';
 import { AdminSettings } from './components/AdminSettings';
 
 // Environment Variables
@@ -126,6 +127,8 @@ function MainLayout() {
         <main className="flex-1 overflow-y-auto">
           {activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
             <PemanfaatanAntrolDashboard />
+          ) : activeTab === 'fkrtl-kepatuhan' ? (
+            <LaporanKepatuhanDashboard />
           ) : activeTab === 'admin' ? (
             <AdminSettings />
           ) : (

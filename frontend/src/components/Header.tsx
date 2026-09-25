@@ -38,6 +38,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
           subtitle: t('sub_antrol'),
           breadcrumb: t('bc_antrol'),
         };
+      case 'fkrtl-kepatuhan':
+        return {
+          title: t('title_kepatuhan'),
+          subtitle: t('sub_kepatuhan'),
+          breadcrumb: t('bc_kepatuhan'),
+        };
       case 'admin':
         return {
           title: t('title_settings'),

@@ -64,6 +64,19 @@
      - **Garis Target Dinamis**: Garis vertikal putus-putus Target 80% aktif hanya bila Sumber = Mobile JKN; Target 95% aktif hanya bila Sumber = All Sumber.
      - Mistar skala horizontal, pewarnaan batang adaptif, badge pencapaian target, dan tombol pengurutan.
 
+### D. Modul Laporan Kepatuhan FKRTL (8 Indikator Mutu Rumah Sakit) [STATUS: AKTIF / LIVE]
+- Terletak pada menu **FKRTL > Laporan Kepatuhan FKRTL** (`fkrtl-kepatuhan`).
+- Dilengkapi **8 Segmented Glassmorphism Tabs**:
+  1. 👨‍⚕️ **01. Jadwal Praktek Nakes**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes dengan sistem antrean online faskes (Target: ≥90%).
+  2. 📢 **02. Penyelesaian Pengaduan**: Kecepatan respon dan tingkat penuntasan keluhan peserta JKN di rumah sakit (Target: ≥95%).
+  3. 💬 **03. Umabl Peserta**: Evaluasi Indeks Kepuasan Peserta (IKP) melalui instrumen KESSAN (Target: ≥88%).
+  4. 🛏️ **04. Update Display TT**: Pemutakhiran real-time integrasi ketersediaan tempat tidur rawat inap (Target: ≥95%).
+  5. 💊 **05. Update TMO**: Pemutakhiran Tempat Pelayanan Obat kronis/PRB dan Telemedicine (Target: ≥85%).
+  6. ⏱️ **06. Antrean & WTL**: Pemantauan Waktu Tunggu Layanan poliklinik & farmasi serta integrasi sistem antrol (Target: ≥85%).
+  7. 📝 **07. Surkon**: Penerbitan Surat Kontrol terjadwal melalui bridging sistem elektronik (Target: ≥90%).
+  8. 📑 **08. RME**: Tingkat integrasi Rekam Medis Elektronik dengan platform SatuSehat & BPJS Kesehatan (Target: ≥95%).
+- Dilengkapi kartu statistik agregasi (Rata-rata Capaian, RS Patuh, RS Belum Patuh, Total RS), filter interaktif (Kabupaten, Status Kepatuhan), dan kotak live search rumah sakit.
+
 ---
 
 ## 3. Fitur Ekspor & Pelaporan (Export & Reporting Engine)

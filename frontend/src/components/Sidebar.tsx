@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useLanguageStore } from '../store/languageStore';
 
-export type NavTab = 'home' | 'fktp' | 'fkrtl' | 'fkrtl-antrol' | 'admin';
+export type NavTab = 'home' | 'fktp' | 'fkrtl' | 'fkrtl-antrol' | 'fkrtl-kepatuhan' | 'admin';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -108,6 +108,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: t('nav_antrol'),
           badge: 'Live',
           description: t('sub_antrol'),
+        },
+        {
+          id: 'fkrtl-kepatuhan',
+          label: t('nav_kepatuhan'),
+          badge: 'Baru',
+          description: t('sub_kepatuhan'),
         },
       ],
     },
