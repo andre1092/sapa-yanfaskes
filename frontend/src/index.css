@@ -4,47 +4,46 @@
 @custom-variant light (&:where(.light, .light *));
 
 :root {
-  /* Official BPJS Kesehatan Brand Hex Codes */
-  --bpjs-green: #009B4D;
-  --bpjs-green-deep: #007A3D;
-  --bpjs-emerald: #10B981;
-  --bpjs-blue: #00529C;
-  --bpjs-navy: #0A3C74;
-  --bpjs-navy-deep: #08284D;
-  --bpjs-cyan: #06B6D4;
-  --bpjs-sky: #38BDF8;
+  /* Official User-Specified BPJS Kesehatan Brand Color Palette */
+  --bpjs-navy: #2b4390;
+  --bpjs-green: #44853b;
+  --bpjs-mint-white: #f7fcfa;
+  --bpjs-soft-blue: #afbade;
+  --bpjs-sage: #83a67e;
+  --bpjs-mint-light: #d4ecd1;
+  --bpjs-slate-blue: #6573a1;
 
   /* Default (Dark Mode) - Executive Midnight Navy Glassmorphism */
-  --bg-main: #070D1A;
-  --text-main: #F8FAFC;
-  --text-muted: #94A3B8;
-  --panel-bg: rgba(10, 22, 45, 0.72);
-  --panel-border: rgba(16, 185, 129, 0.22);
+  --bg-main: #0c1427;
+  --text-main: #f7fcfa;
+  --text-muted: #afbade;
+  --panel-bg: rgba(16, 26, 52, 0.78);
+  --panel-border: rgba(175, 186, 222, 0.20);
   --panel-shadow: 0 16px 48px -8px rgba(0, 0, 0, 0.65);
-  --card-bg: rgba(13, 27, 54, 0.70);
-  --card-border: rgba(255, 255, 255, 0.10);
+  --card-bg: rgba(19, 31, 62, 0.75);
+  --card-border: rgba(175, 186, 222, 0.16);
   --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.40);
-  --input-bg: rgba(9, 18, 38, 0.75);
-  --input-border: rgba(255, 255, 255, 0.14);
-  --input-text: #F8FAFC;
-  --scrollbar-track: rgba(10, 22, 45, 0.70);
+  --input-bg: rgba(12, 20, 42, 0.85);
+  --input-border: rgba(175, 186, 222, 0.25);
+  --input-text: #f7fcfa;
+  --scrollbar-track: rgba(16, 26, 52, 0.70);
 }
 
 :root.light {
-  /* Light Mode - Medical Ice Blue & Crisp Executive BPJS Glassmorphism */
-  --bg-main: #F1F6FA;
-  --text-main: #0A2540;
-  --text-muted: #536B88;
-  --panel-bg: rgba(255, 255, 255, 0.78);
-  --panel-border: rgba(0, 82, 156, 0.16);
-  --panel-shadow: 0 16px 40px -10px rgba(0, 82, 156, 0.10);
-  --card-bg: rgba(255, 255, 255, 0.82);
-  --card-border: rgba(0, 82, 156, 0.12);
-  --card-shadow: 0 10px 30px -5px rgba(0, 82, 156, 0.08);
-  --input-bg: rgba(255, 255, 255, 0.85);
-  --input-border: rgba(0, 82, 156, 0.20);
-  --input-text: #0A2540;
-  --scrollbar-track: rgba(235, 243, 250, 0.80);
+  /* Light Mode - BPJS Kesehatan Neat, Clean & Structured Glassmorphism */
+  --bg-main: #f7fcfa;
+  --text-main: #2b4390;
+  --text-muted: #6573a1;
+  --panel-bg: rgba(255, 255, 255, 0.88);
+  --panel-border: rgba(175, 186, 222, 0.45);
+  --panel-shadow: 0 12px 36px -6px rgba(43, 67, 144, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --card-border: rgba(175, 186, 222, 0.38);
+  --card-shadow: 0 8px 24px -4px rgba(43, 67, 144, 0.06);
+  --input-bg: #ffffff;
+  --input-border: rgba(175, 186, 222, 0.55);
+  --input-text: #2b4390;
+  --scrollbar-track: #eaf3f0;
 }
 
 @layer base {
@@ -53,7 +52,7 @@
     background-color: var(--bg-main);
     color: var(--text-main);
     transition: background-color 0.3s ease, color 0.3s ease;
-    @apply antialiased selection:bg-emerald-500/30 selection:text-emerald-200;
+    @apply antialiased selection:bg-[#d4ecd1] selection:text-[#44853b];
   }
 }
 
@@ -77,8 +76,8 @@
 }
 
 .glass-card-hover:hover {
-  border-color: rgba(0, 155, 77, 0.45);
-  box-shadow: 0 16px 40px -10px rgba(0, 155, 77, 0.22), 0 8px 24px -6px rgba(0, 82, 156, 0.22);
+  border-color: rgba(68, 133, 59, 0.45);
+  box-shadow: 0 16px 36px -8px rgba(43, 67, 144, 0.12), 0 4px 12px -2px rgba(68, 133, 59, 0.10);
   transform: translateY(-2px);
 }
 
@@ -92,44 +91,44 @@
 }
 
 .glass-input:focus {
-  border-color: #009B4D;
-  box-shadow: 0 0 0 3px rgba(0, 155, 77, 0.25);
+  border-color: #2b4390;
+  box-shadow: 0 0 0 3px rgba(43, 67, 144, 0.20);
   outline: none;
 }
 
-/* BPJS Kesehatan Gradients */
+/* BPJS Kesehatan Gradients & Neat Buttons */
 .bpjs-gradient {
-  background: linear-gradient(135deg, #009B4D 0%, #007A3D 40%, #00529C 100%);
+  background: linear-gradient(135deg, #44853b 0%, #2b4390 100%);
 }
 
 .bpjs-gradient-blue {
-  background: linear-gradient(135deg, #00529C 0%, #0A3C74 60%, #08284D 100%);
+  background: linear-gradient(135deg, #2b4390 0%, #6573a1 60%, #0c1427 100%);
 }
 
 .bpjs-gradient-green {
-  background: linear-gradient(135deg, #009B4D 0%, #007A3D 60%, #04522B 100%);
+  background: linear-gradient(135deg, #44853b 0%, #83a67e 60%, #d4ecd1 100%);
 }
 
 .bpjs-gradient-btn {
-  background: linear-gradient(135deg, #009B4D 0%, #007A3D 35%, #00529C 100%);
+  background: linear-gradient(135deg, #44853b 0%, #2b4390 100%);
   color: #FFFFFF !important;
   transition: all 0.3s ease;
 }
 
 .bpjs-gradient-btn:hover {
-  background: linear-gradient(135deg, #00B056 0%, #008743 35%, #0866BD 100%);
-  box-shadow: 0 8px 25px -4px rgba(0, 155, 77, 0.35), 0 4px 15px -2px rgba(0, 82, 156, 0.35);
+  background: linear-gradient(135deg, #519c46 0%, #3553b0 100%);
+  box-shadow: 0 8px 24px -4px rgba(68, 133, 59, 0.35), 0 4px 12px -2px rgba(43, 67, 144, 0.35);
   transform: translateY(-1px);
 }
 
 .bpjs-gradient-text {
-  background: linear-gradient(135deg, #009B4D 0%, #10B981 30%, #00529C 80%, #0A3C74 100%);
+  background: linear-gradient(135deg, #44853b 0%, #83a67e 25%, #2b4390 75%, #6573a1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .bpjs-gradient-subtle {
-  background: linear-gradient(135deg, rgba(0, 155, 77, 0.08) 0%, rgba(0, 82, 156, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(68, 133, 59, 0.08) 0%, rgba(43, 67, 144, 0.08) 100%);
 }
 
 /* Custom Sleek Scrollbar */
@@ -141,9 +140,9 @@
   background: var(--scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(0, 155, 77, 0.6) 0%, rgba(0, 82, 156, 0.6) 100%);
+  background: linear-gradient(180deg, rgba(68, 133, 59, 0.6) 0%, rgba(43, 67, 144, 0.6) 100%);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(0, 155, 77, 0.9) 0%, rgba(0, 82, 156, 0.9) 100%);
+  background: linear-gradient(180deg, rgba(68, 133, 59, 0.9) 0%, rgba(43, 67, 144, 0.9) 100%);
 }

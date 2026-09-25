@@ -187,15 +187,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Top: Brand Logo Section */}
         <div className="flex flex-col">
-          <div className={`h-20 flex items-center border-b border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ${
+          <div className={`h-20 flex items-center border-b border-[#afbade]/30 dark:border-slate-800/80 transition-all duration-300 ${
             isHovered || isOpenMobile ? 'px-5 justify-between' : 'px-0 justify-center'
           }`}>
             <div className="flex items-center gap-3.5 min-w-0">
               {/* BPJS Emblem Icon */}
-              <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-[#009B4D] via-[#0A50A1] to-[#00529C] p-[1.5px] shadow-md shadow-emerald-600/25">
+              <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-tr from-[#44853b] via-[#6573a1] to-[#2b4390] p-[1.5px] shadow-md shadow-[#44853b]/25">
                 <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[10px] flex items-center justify-center">
                   <svg
-                    className="w-5 h-5 text-[#009B4D] dark:text-emerald-400"
+                    className="w-5 h-5 text-[#44853b] dark:text-emerald-400"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -215,10 +215,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 isHovered || isOpenMobile ? 'opacity-100' : 'opacity-0 w-0 h-0 overflow-hidden pointer-events-none'
               }`}>
                 <span className="font-extrabold text-base tracking-tight flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="text-[#00529C] dark:text-white">SAPA</span>
-                  <span className="text-[#009B4D] dark:text-emerald-400 font-black">YANFASKES</span>
+                  <span className="text-[#2b4390] dark:text-white">SAPA</span>
+                  <span className="text-[#44853b] dark:text-emerald-400 font-black">YANFASKES</span>
                 </span>
-                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 tracking-tight whitespace-nowrap">
+                <span className="text-[10px] font-medium text-[#6573a1] dark:text-slate-400 tracking-tight whitespace-nowrap">
                   Saluran Analisis Performa & Akselerasi
                 </span>
               </div>
@@ -228,7 +228,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {onCloseMobile && (
               <button
                 onClick={onCloseMobile}
-                className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+                className="lg:hidden p-1.5 rounded-lg text-[#6573a1] hover:text-[#2b4390] dark:text-slate-400 dark:hover:text-white transition-colors"
                 aria-label="Tutup sidebar"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -243,8 +243,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className={`px-3 mb-2.5 transition-opacity duration-200 ${
               isHovered || isOpenMobile ? 'opacity-100 block' : 'opacity-0 hidden'
             }`}>
-              <span className="text-[11px] font-bold text-[#00529C] dark:text-emerald-400 tracking-wider uppercase flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#009B4D]" />
+              <span className="text-[11px] font-bold text-[#2b4390] dark:text-emerald-400 tracking-wider uppercase flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#44853b]" />
                 Menu Navigasi
               </span>
             </div>
@@ -350,7 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     {/* Submenu Item */}
                     {hasChildren && isExpanded && (
-                      <div className="pl-6 pr-1 py-1 space-y-1 border-l-2 border-[#009B4D]/30 ml-4 my-1">
+                      <div className="pl-6 pr-1 py-1 space-y-1 border-l-2 border-[#44853b]/30 ml-4 my-1">
                         {item.children?.map((child) => {
                           const isChildCurrentActive = activeTab === child.id;
                           return (
@@ -362,14 +362,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               }}
                               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
                                 isChildCurrentActive
-                                  ? 'bg-gradient-to-r from-[#009B4D]/15 to-[#00529C]/15 text-[#00529C] dark:text-emerald-300 font-bold border border-[#009B4D]/30 shadow-sm'
-                                  : 'text-slate-600 dark:text-slate-400 hover:text-[#00529C] dark:hover:text-white hover:bg-blue-50/70 dark:hover:bg-slate-800/40'
+                                  ? 'bg-gradient-to-r from-[#44853b]/15 to-[#2b4390]/15 text-[#2b4390] dark:text-emerald-300 font-bold border border-[#44853b]/30 shadow-sm'
+                                  : 'text-[#6573a1] dark:text-slate-400 hover:text-[#2b4390] dark:hover:text-white hover:bg-[#d4ecd1]/30 dark:hover:bg-slate-800/40'
                               }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
-                                    isChildCurrentActive ? 'bg-[#009B4D]' : 'bg-slate-400'
+                                    isChildCurrentActive ? 'bg-[#44853b]' : 'bg-[#afbade]'
                                   }`}
                                 />
                                 <span className="truncate">{child.label}</span>
@@ -379,8 +379,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <span
                                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                                     isChildCurrentActive
-                                      ? 'bg-[#009B4D] text-white'
-                                      : 'bg-blue-100 text-[#00529C] dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40'
+                                      ? 'bg-[#44853b] text-white'
+                                      : 'bg-[#afbade]/30 text-[#2b4390] dark:bg-blue-950/60 dark:text-blue-300 border border-[#afbade]/40 dark:border-blue-800/40'
                                   }`}
                                 >
                                   {child.badge}
@@ -399,21 +399,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Bottom Section: User Info Card & Logout Button */}
-        <div className={`p-3 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/40 dark:bg-slate-950/50 backdrop-blur-md space-y-2.5 transition-all duration-300 ${
+        <div className={`p-3 border-t border-[#afbade]/30 dark:border-slate-800/80 bg-white/40 dark:bg-slate-950/50 backdrop-blur-md space-y-2.5 transition-all duration-300 ${
           isHovered || isOpenMobile ? 'px-4' : 'px-2 flex flex-col items-center'
         }`}>
           {/* User Profile Card */}
-          <div className={`flex items-center rounded-xl bg-white/80 dark:bg-slate-800/60 border border-blue-100 dark:border-emerald-500/20 shadow-sm transition-all ${
+          <div className={`flex items-center rounded-xl bg-white/80 dark:bg-slate-800/60 border border-[#afbade]/30 dark:border-emerald-500/20 shadow-sm transition-all ${
             isHovered || isOpenMobile ? 'gap-3 px-3 py-2.5 w-full' : 'p-2 justify-center'
           }`}>
             {user?.picture ? (
               <img
                 src={user.picture}
                 alt={userDisplayName}
-                className="w-8 h-8 rounded-full object-cover border border-[#009B4D]/40 shrink-0"
+                className="w-8 h-8 rounded-full object-cover border border-[#44853b]/40 shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#009B4D] to-[#00529C] flex items-center justify-center font-bold text-xs text-white shadow-md shadow-[#009B4D]/30 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#44853b] to-[#2b4390] flex items-center justify-center font-bold text-xs text-white shadow-md shadow-[#44853b]/30 shrink-0">
                 {userInitials}
               </div>
             )}
@@ -421,14 +421,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {(isHovered || isOpenMobile) && (
               <>
                 <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={userDisplayName}>
+                  <span className="text-xs font-bold text-[#2b4390] dark:text-slate-200 truncate" title={userDisplayName}>
                     {userDisplayName}
                   </span>
-                  <span className="text-[10px] text-[#00529C] dark:text-slate-400 font-medium truncate" title={user?.email || ''}>
+                  <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-medium truncate" title={user?.email || ''}>
                     {user?.email || t('user_role')}
                   </span>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-[#009B4D] ring-4 ring-[#009B4D]/20 shrink-0" title={t('user_status')} />
+                <div className="w-2 h-2 rounded-full bg-[#44853b] ring-4 ring-[#44853b]/20 shrink-0" title={t('user_status')} />
               </>
             )}
           </div>

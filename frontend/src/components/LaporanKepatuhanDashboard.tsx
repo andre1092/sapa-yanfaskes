@@ -259,35 +259,35 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto animate-fadeIn">
       {/* 1. Header Banner & Info */}
-      <div className="glass-card rounded-3xl p-6 sm:p-8 border border-emerald-500/20 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-500/10 via-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="glass-card rounded-3xl p-6 sm:p-8 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#44853b]/10 via-[#2b4390]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-[#44853b] dark:bg-emerald-400 animate-pulse" />
                 Laporan Kepatuhan FKRTL
               </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/10 text-sky-300 border border-blue-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#afbade]/20 text-[#2b4390] border border-[#afbade]/40 dark:bg-blue-500/10 dark:text-sky-300 dark:border-blue-500/20">
                 8 Indikator Terpadu
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#2b4390] dark:text-[#f7fcfa] tracking-tight">
               Monitoring & Analisis <span className="bpjs-gradient-text">Kepatuhan FKRTL</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#6573a1] dark:text-[#afbade] mt-1 max-w-2xl leading-relaxed">
               Instrumen evaluasi kepatuhan fasilitas kesehatan rujukan tingkat lanjutan (Rumah Sakit) terhadap 8 pilar standar mutu dan perjanjian kerja sama operasional BPJS Kesehatan.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="glass-panel px-4 py-2.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-md">
+            <div className="glass-panel px-4 py-2.5 rounded-2xl border border-[#afbade]/30 dark:border-white/10 flex items-center gap-3 shadow-md">
               <span className="text-2xl">{activeTabDef.icon}</span>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                <span className="text-[10px] uppercase font-bold text-[#6573a1] dark:text-slate-400 block tracking-wider">
                   Target Nasional {activeTabDef.shortName}
                 </span>
-                <span className="text-sm font-black text-emerald-400 font-mono">
+                <span className="text-sm font-black text-[#44853b] dark:text-emerald-400 font-mono">
                   &ge; {activeTabDef.targetPercent}%
                 </span>
               </div>
@@ -297,7 +297,7 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
       </div>
 
       {/* 2. TAB-TAB KEPATUHAN (8 INDIKATOR RESMI BPJS KESEHATAN) */}
-      <div className="glass-card rounded-2xl p-2 border border-white/10 shadow-lg overflow-x-auto custom-scrollbar">
+      <div className="glass-card rounded-2xl p-2 border border-[#afbade]/30 dark:border-white/10 shadow-lg overflow-x-auto custom-scrollbar">
         <div className="flex items-center gap-1.5 min-w-max">
           {COMPLIANCE_TABS.map((tab) => {
             const isActive = tab.id === activeTabId;
@@ -307,15 +307,15 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
                 onClick={() => setActiveTabId(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer select-none ${
                   isActive
-                    ? 'bpjs-gradient-btn text-white shadow-md shadow-emerald-950/40 border border-emerald-400/40'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border border-transparent'
+                    ? 'bpjs-gradient-btn text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/50'
+                    : 'text-[#6573a1] hover:text-[#2b4390] hover:bg-[#d4ecd1]/30 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60 border border-transparent'
                 }`}
               >
                 <span className="text-sm">{tab.icon}</span>
                 <span>{tab.name}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                    isActive ? 'bg-white/20 text-white' : 'bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-400'
                   }`}
                 >
                   {tab.targetPercent}%
@@ -328,89 +328,89 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
 
       {/* 3. Panel Ringkasan Indikator Terpilih & Statistik KPI */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-emerald-500/20 shadow-md">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-md">
+          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
             Rata-rata {activeTabDef.kpiLabel}
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-black text-white font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-[#2b4390] dark:text-[#f7fcfa] font-mono">
               {formatPercentID(stats.avgCapaian)}
             </span>
             <span
               className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 stats.avgCapaian >= activeTabDef.targetPercent
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
+                  : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'
               }`}
             >
               {stats.avgCapaian >= activeTabDef.targetPercent ? 'Tercapai' : 'Perlu Peningkatan'}
             </span>
           </div>
-          <span className="text-[10.5px] text-slate-400 mt-1 block">
+          <span className="text-[10.5px] text-[#6573a1] dark:text-slate-400 mt-1 block">
             Target Standar BPJS: &ge;{activeTabDef.targetPercent}%
           </span>
         </div>
 
-        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-white/10 shadow-md">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#afbade]/30 dark:border-white/10 shadow-md">
+          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
             Faskes Memenuhi Target (Patuh)
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-[#44853b] dark:text-emerald-400 font-mono">
               {stats.totalMet}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-[#6573a1] dark:text-slate-400">
               dari {stats.totalFaskes} RS ({formatPercentID(stats.totalFaskes ? (stats.totalMet / stats.totalFaskes) * 100 : 0)})
             </span>
           </div>
-          <span className="text-[10.5px] text-emerald-400/80 mt-1 block">
+          <span className="text-[10.5px] text-[#44853b] dark:text-emerald-400/80 mt-1 block font-semibold">
             ✓ Capaian &ge; {activeTabDef.targetPercent}%
           </span>
         </div>
 
-        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-white/10 shadow-md">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#afbade]/30 dark:border-white/10 shadow-md">
+          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
             Faskes Belum Memenuhi (Waspada)
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
               {stats.totalUnmet}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-[#6573a1] dark:text-slate-400">
               dari {stats.totalFaskes} RS
             </span>
           </div>
-          <span className="text-[10.5px] text-amber-400/80 mt-1 block">
+          <span className="text-[10.5px] text-amber-600 dark:text-amber-400/80 mt-1 block font-semibold">
             ⚠ Capaian &lt; {activeTabDef.targetPercent}%
           </span>
         </div>
 
-        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-blue-500/20 shadow-md">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+        <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#afbade]/30 dark:border-blue-500/20 shadow-md">
+          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
             Total Rumah Sakit Terdaftar
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-black text-sky-400 font-mono">
+            <span className="text-2xl sm:text-3xl font-black text-[#2b4390] dark:text-sky-400 font-mono">
               {stats.totalFaskes}
             </span>
-            <span className="text-xs text-slate-400">FKRTL Aktif</span>
+            <span className="text-xs text-[#6573a1] dark:text-slate-400">FKRTL Aktif</span>
           </div>
-          <span className="text-[10.5px] text-slate-400 mt-1 block">
+          <span className="text-[10.5px] text-[#6573a1] dark:text-slate-400 mt-1 block">
             Wilayah Kerja Kantor Cabang
           </span>
         </div>
       </div>
 
       {/* 4. Filter Bar & Kontrol Pencarian */}
-      <div className="glass-card rounded-2xl p-4 border border-white/10 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="glass-card rounded-2xl p-4 border border-[#afbade]/30 dark:border-white/10 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Filter Kabupaten */}
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-400">Kabupaten:</label>
+            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Kabupaten:</label>
             <select
               value={selectedKabupaten}
               onChange={(e) => setSelectedKabupaten(e.target.value)}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-emerald-400 cursor-pointer"
+              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
             >
               {kabupatenOptions.map((kab) => (
                 <option key={kab} value={kab} className="bg-slate-900 text-white">
@@ -422,11 +422,11 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
 
           {/* Filter Status Kepatuhan */}
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-400">Status:</label>
+            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Status:</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-emerald-400 cursor-pointer"
+              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
             >
               <option value="ALL" className="bg-slate-900 text-white">Semua Status</option>
               <option value="MET" className="bg-slate-900 text-white">Patuh (&ge;{activeTabDef.targetPercent}%)</option>
@@ -442,36 +442,36 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
             placeholder="Cari Nama Rumah Sakit / Kode PPK..."
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
-            className="glass-input w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+            className="glass-input w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#2b4390] dark:text-white placeholder-[#6573a1] dark:placeholder-slate-500 bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
           />
-          <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 text-[#6573a1] dark:text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
       </div>
 
       {/* 5. Tabel Matriks Kepatuhan Rumah Sakit */}
-      <div className="glass-card rounded-2xl shadow-xl border border-white/10 overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/40">
+      <div className="glass-card rounded-2xl shadow-xl border border-[#afbade]/30 dark:border-white/10 overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-[#afbade]/30 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#f0f7f4] dark:bg-slate-900/40">
           <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+            <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
               Matriks Kepatuhan: {activeTabDef.name}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
               {activeTabDef.description}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">
-              Menampilkan <span className="font-bold text-white">{filteredRows.length}</span> fasilitas kesehatan
+            <span className="text-xs text-[#6573a1] dark:text-slate-400">
+              Menampilkan <span className="font-bold text-[#2b4390] dark:text-white">{filteredRows.length}</span> fasilitas kesehatan
             </span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px] font-bold tracking-wider border-b border-slate-800">
+            <thead className="bg-[#e6f2ed] dark:bg-slate-900/80 text-[#2b4390] dark:text-[#afbade] uppercase text-[10px] font-bold tracking-wider border-b border-[#afbade]/30 dark:border-slate-800">
               <tr>
                 <th className="py-3 px-4">No</th>
                 <th className="py-3 px-4">Kode PPK</th>
@@ -484,10 +484,10 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
                 <th className="py-3 px-4 text-right">Update Terakhir</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
+            <tbody className="divide-y divide-[#afbade]/20 dark:divide-slate-800/60 font-medium">
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 italic">
+                  <td colSpan={9} className="py-12 text-center text-[#6573a1] dark:text-slate-400 italic">
                     Tidak ada data fasilitas kesehatan yang sesuai dengan filter.
                   </td>
                 </tr>
@@ -497,51 +497,51 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
                   return (
                     <tr
                       key={row.kdppk}
-                      className="hover:bg-slate-800/40 transition-colors group"
+                      className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
                     >
-                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">{idx + 1}</td>
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-300">{row.kdppk}</td>
-                      <td className="py-3.5 px-4 font-bold text-white group-hover:text-emerald-300 transition-colors">
+                      <td className="py-3.5 px-4 text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">{idx + 1}</td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#2b4390] dark:text-slate-300">{row.kdppk}</td>
+                      <td className="py-3.5 px-4 font-bold text-[#2b4390] dark:text-white group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors">
                         {row.faskes}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-300">{row.kabupaten}</td>
+                      <td className="py-3.5 px-4 text-[#2b4390] dark:text-slate-300">{row.kabupaten}</td>
                       <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-slate-800 text-slate-300 border border-white/5">
+                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[#d4ecd1]/50 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300 border border-[#afbade]/30 dark:border-white/5">
                           {row.kelas}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-center font-mono text-slate-300">
-                        {row.numerator} / {row.denominator} <span className="text-[10px] text-slate-500">({row.unit})</span>
+                      <td className="py-3.5 px-4 text-center font-mono text-[#2b4390] dark:text-slate-300">
+                        {row.numerator} / {row.denominator} <span className="text-[10px] text-[#6573a1] dark:text-slate-500">({row.unit})</span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <div className="w-20 bg-slate-800 rounded-full h-2 overflow-hidden border border-white/5">
+                          <div className="w-20 bg-[#afbade]/20 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-[#afbade]/30 dark:border-white/5">
                             <div
                               style={{ width: `${Math.min(row.capaian, 100)}%` }}
                               className={`h-full rounded-full transition-all duration-500 ${
                                 isMet
-                                  ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                                  ? 'bg-gradient-to-r from-[#44853b] to-[#83a67e]'
                                   : 'bg-gradient-to-r from-amber-500 to-rose-400'
                               }`}
                             />
                           </div>
-                          <span className="font-mono font-bold text-white text-[11px]">
+                          <span className="font-mono font-bold text-[#2b4390] dark:text-white text-[11px]">
                             {formatPercentID(row.capaian)}
                           </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         {isMet ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
                             ✓ Patuh
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
                             ⚠ Belum Patuh
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-[11px] text-slate-400">
+                      <td className="py-3.5 px-4 text-right font-mono text-[11px] text-[#6573a1] dark:text-slate-400">
                         {row.lastUpdate}
                       </td>
                     </tr>

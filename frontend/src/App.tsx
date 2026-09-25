@@ -102,9 +102,9 @@ function MainLayout() {
     <div className="relative min-h-screen flex flex-row overflow-x-hidden">
       {/* Dynamic Ambient Background Aura (BPJS Green & Blue Lighting Refractions) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-32 -left-20 w-[650px] h-[650px] bg-[#009B4D]/18 dark:bg-[#009B4D]/25 rounded-full blur-[140px]" />
-        <div className="absolute top-1/4 -right-32 w-[650px] h-[650px] bg-[#00529C]/20 dark:bg-[#00529C]/30 rounded-full blur-[150px]" />
-        <div className="absolute -bottom-40 left-1/3 w-[700px] h-[550px] bg-[#0A3C74]/15 dark:bg-[#10B981]/15 rounded-full blur-[160px]" />
+        <div className="absolute -top-32 -left-20 w-[650px] h-[650px] bg-[#44853b]/15 dark:bg-[#44853b]/25 rounded-full blur-[140px]" />
+        <div className="absolute top-1/4 -right-32 w-[650px] h-[650px] bg-[#2b4390]/15 dark:bg-[#2b4390]/25 rounded-full blur-[150px]" />
+        <div className="absolute -bottom-40 left-1/3 w-[700px] h-[550px] bg-[#6573a1]/10 dark:bg-[#83a67e]/15 rounded-full blur-[160px]" />
       </div>
 
       {/* Left Sidebar */}

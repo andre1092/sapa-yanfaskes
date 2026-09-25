@@ -7,16 +7,16 @@
 
 ## 1. Parameter Resmi Institusi BPJS Kesehatan
 
-### Identitas Merek & Palet Warna Resmi
-- **Warna Utama (Primary Green)**:
-  - Kode Heksadesimal: `#009B4D` / `#00A86B` (BPJS Green)
-  - Nuansa Gelap: `#007A3D`
-  - Nuansa Terang: `#10B981` / Emerald
-- **Warna Pendukung (Secondary Blue)**:
-  - Kode Heksadesimal: `#00529C` / `#0A50A1` (BPJS Blue)
-  - Nuansa Gelap: `#0F172A` / `#1E293B` (Slate Background)
-  - Aksen Tambahan: `#06B6D4` (Cyan Accent untuk Glassmorphism)
-- **Desain Antarmuka**: Glassmorphism Refined 70% Transparency Level (Backdrop-filter blur 20px saturate 180%, border semi-transparan `rgba(255, 255, 255, 0.10)` & `rgba(16, 185, 129, 0.20)`, translusen `rgba(15, 23, 42, 0.70)` pada Dark Mode dan `rgba(255, 255, 255, 0.70)` pada Light Mode).
+### Identitas Merek & Palet Warna Resmi (Clean, Neat & Structured BPJS Style)
+- **Kombinasi 7 Warna Standar Resmi**:
+  1. `#2b4390` / `rgba(43, 67, 144, 1)`: Royal Navy Blue (BPJS Primary Blue) — Identitas utama institusi, teks heading, dan penegasan visual.
+  2. `#44853b` / `rgba(68, 133, 59, 1)`: Forest Green (BPJS Primary Green) — Warna aksen primer kesehatan dan capaian target patuh.
+  3. `#f7fcfa` / `rgba(247, 252, 250, 1)`: Clean Mint White — Warna dasar latar belakang Light Mode dan kontras teks Dark Mode.
+  4. `#afbade` / `rgba(175, 186, 222, 1)`: Soft Periwinkle — Garis pembatas (border), divider, dan badge netral.
+  5. `#83a67e` / `rgba(131, 166, 126, 1)`: Sage Green — Aksen border sekunder dan gradasi indikator keberhasilan.
+  6. `#d4ecd1` / `rgba(212, 236, 209, 1)`: Mint Light Tint — Latar belakang badge status Patuh, hover tint, dan sorotan lembut.
+  7. `#6573a1` / `rgba(101, 115, 161, 1)`: Slate Blue Midtone — Teks sekunder, label filter, dan deskripsi berstruktur rapi.
+- **Desain Antarmuka**: Glassmorphism Refined 70% Transparency Level dengan kontras adaptif tinggi (High Contrast & Zero Invisible Text), memastikan keterbacaan 100% pada Light Mode dan Dark Mode.
 
 ---
 

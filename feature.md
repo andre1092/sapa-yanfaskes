@@ -7,20 +7,24 @@
 
 ## 1. Fitur Utama Sistem (Core Features)
 
-### A. Desain Antarmuka & Tema BPJS Kesehatan (BPJS Health Glassmorphism Theme)
-- **Karakteristik Visual Utama**:
-  - 🌿 **Warna Utama (BPJS Green)**: `#009B4D` / Emerald `#10B981` (melambangkan keandalan pelayanan kesehatan dan mutu fasilitas).
-  - 🌊 **Warna Sekunder (BPJS Blue)**: `#00529C` / `#0A50A1` (melambangkan jaminan sosial yang kokoh dan integritas data terpusat).
-  - 🪟 **Efek Glassmorphism Modern**:
-    - Kartu dan panel translusen berkalibrasi 70% transparansi (`.glass-panel`, `.glass-card`, `.glass-input`, sidebar) dengan *backdrop blur* 20px, *optical saturation* 180%, dan garis tepi cahaya lembut (`border-emerald-500/20` & `border-white/10`).
-    - *Ambient Lighting Aura*: Dua bola cahaya gradasi hijau dan biru di latar belakang aplikasi yang dibiaskan oleh kaca panel.
-    - Kontras teks tinggi (*accessible high-contrast*) dengan keterbacaan optimal di atas panel kaca gelap.
+### A. Desain Antarmuka & Tema BPJS Kesehatan (Clean, Neat & Structured BPJS Theme) [STATUS: AKTIF / LIVE]
+- **Karakteristik Visual & Palet Warna Standar (Kombinasi 7 Warna Resmi BPJS)**:
+  - 🏛️ **Royal Navy Blue (`#2b4390`)**: Identitas utama institusi BPJS, teks judul/heading, nilai KPI primer, dan border aktif.
+  - 🌿 **Forest Green (`#44853b`)**: Simbol kesehatan, capaian target patuh, tombol gradasi aksi (`bpjs-gradient-btn`), dan pulsator aktif.
+  - ⚪ **Clean Mint White (`#f7fcfa`)**: Dasar latar belakang Light Mode dan kontras teks utama pada Dark Mode.
+  - 🪟 **Soft Periwinkle (`#afbade`)**: Garis batas kartu (*border*), divider elegan, dan aksen latar netral.
+  - 🍃 **Sage Green (`#83a67e`)**: Aksen gradasi pencapaian, garis tepi sekunder, dan penanda harmoni visual.
+  - 🟢 **Mint Light Tint (`#d4ecd1`)**: Latar belakang badge status Patuh, badge indikator aktif, dan efek hover baris tabel yang lembut.
+  - 🔷 **Slate Blue Midtone (`#6573a1`)**: Tipografi sekunder, label filter berstruktur, dan deskripsi indikator yang terbaca tajam.
+- **Penyempurnaan Aksesibilitas & Kontras Adaptif (Zero Invisible Text)**:
+  - Mengeliminasi masalah teks putih di atas kartu putih pada mode siang/terang (Light Mode).
+  - Seluruh komponen (Dashboard Kepatuhan, Antrol, Header, Sidebar) secara dinamis menggunakan utilitas warna adaptif: `text-[#2b4390] dark:text-[#f7fcfa]` untuk judul dan angka KPI, serta `text-[#6573a1] dark:text-[#afbade]` untuk keterangan.
+  - Badge kepatuhan menggunakan latar belakang `#d4ecd1` dengan teks `#44853b` yang kontras dan berwibawa di mode terang.
 - **Mode Tema (Theme Modes) [STATUS: AKTIF / LIVE]**:
-  - 🌙 **Dark Glassmorphism**: Dominan Slate gelap (`#0B0F19` / `#0F172A`) berpadu gradasi hijau zamrud dan biru laut BPJS.
-  - ☀️ **Light Glassmorphism**: Versi terang dengan frosted glass putih medis (`#F8FAFC`), kontras tinggi, border halus, dan aksen hijau-biru BPJS.
-  - 💻 **System Theme (Sinkronisasi Waktu Komputer & OS)**: Mengikuti waktu lokal komputer pengguna secara cerdas (otomatis Mode Gelap pada pukul 18:00 – 05:59 dan Mode Terang pada pukul 06:00 – 17:59), serta sinkronisasi dinamis dengan preferensi skema warna OS via `matchMedia`, `focus`, dan `visibilitychange`.
+  - 🌙 **Dark Glassmorphism**: Slate gelap dalam (`#0c1427` / `#0f172a`) berpadu gradasi `#44853b` dan `#2b4390`.
+  - ☀️ **Light Glassmorphism**: Medis bersih `#f7fcfa` dengan kartu putih terstruktur, border `#afbade`/`#83a67e`, dan teks `#2b4390` yang tajam.
+  - 💻 **System Theme (Sinkronisasi Waktu Komputer & OS)**: Mengikuti waktu lokal komputer pengguna secara cerdas (otomatis Mode Gelap pada pukul 18:00 – 05:59 dan Mode Terang pada pukul 06:00 – 17:59), serta sinkronisasi dinamis dengan preferensi skema warna OS.
   - **Komponen Kontrol**: `ThemeToggle` segmented control di header utama (`Header.tsx`) dan kartu pemilih visual di `AdminSettings.tsx`.
-  - **Zero-FOUC Engine**: Dilengkapi inline script anti-flicker di `index.html` dan sinkronisasi store Zustand persisten (`localStorage`) dengan kalkulasi waktu instan.
 
 ### B. Pengalihan Bahasa Sistem (Language Switching) [STATUS: AKTIF / LIVE]
 - **Bahasa yang Didukung**:

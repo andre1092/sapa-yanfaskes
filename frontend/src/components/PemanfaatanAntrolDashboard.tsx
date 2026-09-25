@@ -174,21 +174,21 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
       {/* 1. KOTAK KETERANGAN: "Last Update : ...." & Header Utama */}
-      <div className="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900/60 to-blue-950/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl border border-[#83a67e]/30 dark:border-emerald-500/30 bg-gradient-to-r from-[#d4ecd1]/30 via-white/50 to-[#afbade]/20 dark:from-emerald-950/40 dark:via-slate-900/60 dark:to-blue-950/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-emerald-500/40" />
+            <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-[#44853b]/40" />
             <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#2b4390] dark:text-white tracking-tight">
                 Pemanfaatan Sistem Antrean Online FKRTL
               </h2>
               {/* Kotak Keterangan Last Update sesuai instruksi spesifik pengguna */}
               <div className="mt-1 flex items-center gap-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-bold text-xs sm:text-sm tracking-wide shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#d4ecd1] border border-[#83a67e]/40 text-[#44853b] dark:bg-emerald-500/20 dark:border-emerald-400/40 dark:text-emerald-300 font-bold text-xs sm:text-sm tracking-wide shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-[#44853b] dark:bg-emerald-400 animate-pulse" />
                   <span>Last Update : {lastUpdate}</span>
                 </div>
-                <span className="text-[11px] text-slate-300 hidden sm:inline">
+                <span className="text-[11px] text-[#6573a1] dark:text-slate-300 hidden sm:inline">
                   (Live Data Google Sheets)
                 </span>
               </div>
@@ -203,20 +203,20 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             <button 
               onClick={() => setOpenDropdown(openDropdown === 'faskes' ? null : 'faskes')}
               disabled={downloadingType === 'faskes'}
-              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all active:scale-95 cursor-pointer"
+              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/40 transition-all active:scale-95 cursor-pointer"
             >
               <span>{downloadingType === 'faskes' ? '⏳ Mengunduh...' : '💾 Unduh Data RS'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {openDropdown === 'faskes' && (
-              <div className="absolute right-0 mt-2 w-56 glass-panel border border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+              <div className="absolute right-0 mt-2 w-56 glass-panel border border-[#afbade]/40 dark:border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden bg-white/95 dark:bg-slate-900/95">
+                <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
                   Format Excel (.xlsx)
                 </button>
-                <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+                <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
                   Format Gambar (.JPEG)
                 </button>
-                <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors cursor-pointer">
+                <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors cursor-pointer">
                   Format CSV (.csv)
                 </button>
               </div>
@@ -228,20 +228,20 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             <button 
               onClick={() => setOpenDropdown(openDropdown === 'poli' ? null : 'poli')}
               disabled={downloadingType === 'poli'}
-              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all active:scale-95 cursor-pointer"
+              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/40 transition-all active:scale-95 cursor-pointer"
             >
               <span>{downloadingType === 'poli' ? '⏳ Mengunduh...' : '💾 Unduh Data Poli'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {openDropdown === 'poli' && (
-              <div className="absolute right-0 mt-2 w-56 glass-panel border border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
-                <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+              <div className="absolute right-0 mt-2 w-56 glass-panel border border-[#afbade]/40 dark:border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden bg-white/95 dark:bg-slate-900/95">
+                <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
                   Format Excel (.xlsx)
                 </button>
-                <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
+                <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
                   Format Gambar (.JPEG)
                 </button>
-                <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors cursor-pointer">
+                <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors cursor-pointer">
                   Format CSV (.csv)
                 </button>
               </div>
@@ -255,8 +255,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
         {/* Kolom Kiri: KPI Card & Kontrol Filtering (Col span 3.5 / 12) */}
         <div className="lg:col-span-4 xl:col-span-3 space-y-5">
           {/* KPI Pemanfaatan Antrol Card */}
-          <div className="glass-card rounded-2xl overflow-hidden border border-emerald-500/30 shadow-xl shadow-emerald-950/20">
-            <div className="bpjs-gradient px-4 py-3.5 text-center border-b border-emerald-400/30 shadow-sm">
+          <div className="glass-card rounded-2xl overflow-hidden border border-[#83a67e]/30 dark:border-emerald-500/30 shadow-xl shadow-[#2b4390]/10">
+            <div className="bpjs-gradient px-4 py-3.5 text-center border-b border-[#83a67e]/30 shadow-sm">
               <h3 className="text-base font-bold text-white tracking-wide flex items-center justify-center gap-2">
                 <svg className="w-5 h-5 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -265,12 +265,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
               </h3>
               <p className="text-xs font-medium text-emerald-100 mt-0.5">Periode {selectedPeriod}</p>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-md py-6 text-center">
-              <span className="text-4xl font-extrabold text-white tracking-tight drop-shadow-md">
+            <div className="bg-[#f0f7f4] dark:bg-slate-900/80 backdrop-blur-md py-6 text-center">
+              <span className="text-4xl font-extrabold text-[#2b4390] dark:text-white tracking-tight drop-shadow-md">
                 {formatPercentID(kpiValue)}
               </span>
               <div className="mt-2.5 flex items-center justify-center gap-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40 shadow-sm">
                   Target BPJS: &ge;85%
                 </span>
               </div>
@@ -278,17 +278,17 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           </div>
 
           {/* Panel Kontrol Filter (Urutan: Kabupaten, Nama Faskes, Bulan, Tahun, Sumber) */}
-          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-lg border border-emerald-500/20">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-lg border border-[#afbade]/30 dark:border-emerald-500/20">
+            <div className="flex items-center justify-between border-b border-[#afbade]/30 dark:border-slate-800 pb-2.5">
+              <span className="text-xs font-bold text-[#2b4390] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-[#44853b] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 Filter Analitik
               </span>
               <button
                 onClick={handleResetFilter}
-                className="text-[11px] font-semibold text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                className="text-[11px] font-semibold text-[#6573a1] hover:text-[#44853b] dark:text-slate-400 dark:hover:text-emerald-300 transition-colors cursor-pointer"
               >
                 Reset
               </button>
@@ -296,11 +296,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Filter 1: Kabupaten */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">1. Kabupaten</label>
+              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">1. Kabupaten</label>
               <select
                 value={filters.kabupaten || '(All)'}
                 onChange={(e) => handleFilterChange('kabupaten', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
               >
                 {filterOptions.kabupaten.map((k) => (
                   <option key={k} value={k} className="bg-slate-900 text-white">
@@ -312,11 +312,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Filter 2: Nama Faskes */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">2. Nama Faskes</label>
+              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">2. Nama Faskes</label>
               <select
                 value={filters.nama_rs || '(All)'}
                 onChange={(e) => handleFilterChange('nama_rs', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
               >
                 {filterOptions.nama_rs?.map((n) => (
                   <option key={n} value={n} className="bg-slate-900 text-white truncate">
@@ -328,11 +328,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Filter 3: Bulan */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">3. Bulan</label>
+              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">3. Bulan</label>
               <select
                 value={filters.bulan || '(All)'}
                 onChange={(e) => handleFilterChange('bulan', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
               >
                 {filterOptions.bulan.map((b) => (
                   <option key={b} value={b} className="bg-slate-900 text-white">
@@ -344,11 +344,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Filter 4: Tahun */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">4. Tahun</label>
+              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">4. Tahun</label>
               <select
                 value={filters.tahun || '2026'}
                 onChange={(e) => handleFilterChange('tahun', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
               >
                 {filterOptions.tahun.map((y) => (
                   <option key={y} value={y} className="bg-slate-900 text-white">
@@ -360,11 +360,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
             {/* Filter 5: Sumber */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">5. Sumber</label>
+              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">5. Sumber</label>
               <select
                 value={filters.sumber || 'All Sumber'}
                 onChange={(e) => handleFilterChange('sumber', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
               >
                 {filterOptions.sumber.map((s) => (
                   <option key={s} value={s} className="bg-slate-900 text-white">
@@ -376,9 +376,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           </div>
 
           {/* Kotak Keterangan Analisis & Kebijakan */}
-          <div className="glass-card rounded-2xl p-4.5 text-slate-300 text-xs leading-relaxed space-y-1.5 border border-white/10">
-            <span className="font-bold text-emerald-300 block flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="glass-card rounded-2xl p-4.5 text-[#6573a1] dark:text-slate-300 text-xs leading-relaxed space-y-1.5 border border-[#afbade]/30 dark:border-white/10">
+            <span className="font-bold text-[#44853b] dark:text-emerald-300 block flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Keterangan Analisis:
@@ -412,32 +412,32 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           ) : (
             <>
               {/* 1. LINE CHART BULANAN (MENGAMBIL TIMESTAMP TERBARU) */}
-              <div className="glass-card rounded-2xl p-6 shadow-xl border border-emerald-500/20">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-emerald-500/20 gap-3">
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-[#afbade]/30 dark:border-emerald-500/20">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[#afbade]/30 dark:border-emerald-500/20 gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                    <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
                       Line Chart Bulanan — Tren Capaian Antrol
                     </h3>
-                    <p className="text-xs text-slate-300 mt-1">
-                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-emerald-400">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
+                    <p className="text-xs text-[#6573a1] dark:text-slate-300 mt-1">
+                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-[#44853b] dark:text-emerald-400">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     {showTarget80 && (
-                      <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/30">
-                        <span className="w-3 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
+                      <span className="flex items-center gap-1.5 text-xs text-[#2b4390] bg-[#afbade]/20 px-2.5 py-1 rounded-lg border border-[#afbade]/40 dark:text-sky-300 dark:bg-sky-500/10 dark:border-sky-500/30">
+                        <span className="w-3 h-0.5 border-t-2 border-dashed border-[#2b4390] dark:border-sky-400 inline-block" />
                         <span className="text-[11px] font-semibold">Target MJKN: 80%</span>
                       </span>
                     )}
                     {showTarget95 && (
-                      <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                        <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                      <span className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">
+                        <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-600 dark:border-amber-400 inline-block" />
                         <span className="text-[11px] font-semibold">Target All Sumber: 95%</span>
                       </span>
                     )}
-                    <span className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/60" />
+                    <span className="flex items-center gap-1.5 text-xs text-[#44853b] bg-[#d4ecd1] px-2.5 py-1 rounded-lg border border-[#83a67e]/40 dark:text-emerald-300 dark:bg-emerald-500/10 dark:border-emerald-500/30">
+                      <span className="w-2 h-2 rounded-full bg-[#44853b] dark:bg-emerald-400 inline-block shadow-sm shadow-[#44853b]/60" />
                       <span className="text-[11px] font-semibold">Realisasi</span>
                     </span>
                   </div>
@@ -448,29 +448,29 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   const activeItem = data.trend_per_bulan[hoveredMonthIndex];
                   const met = activeItem.avg_capaian >= 85;
                   return (
-                    <div className="mb-4 p-3 rounded-xl bg-slate-900/90 border border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+                    <div className="mb-4 p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-[#83a67e]/40 dark:border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${met ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'}`}>
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40' : 'bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/50 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40'}`}>
                           {activeItem.month}
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-white flex items-center gap-2">
+                          <div className="text-xs font-bold text-[#2b4390] dark:text-white flex items-center gap-2">
                             <span>{activeItem.month_full || activeItem.month}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'}`}>
                               {met ? '★ Memenuhi Target (≥85%)' : '⚠️ Di Bawah Target (<85%)'}
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
-                            <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="text-[11px] text-[#6573a1] dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
+                            <svg className="w-3.5 h-3.5 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>Snapshot Timestamp: <strong className="text-emerald-300">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
+                            <span>Snapshot Timestamp: <strong className="text-[#44853b] dark:text-emerald-300">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
                           </div>
                         </div>
                       </div>
-                      <div className="text-right sm:border-l sm:border-slate-800 sm:pl-4">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Capaian Antrol</div>
-                        <div className={`text-base font-extrabold font-mono ${met ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                      <div className="text-right sm:border-l sm:border-[#afbade]/30 dark:sm:border-slate-800 sm:pl-4">
+                        <div className="text-[10px] uppercase tracking-wider text-[#6573a1] dark:text-slate-400 font-bold">Capaian Antrol</div>
+                        <div className={`text-base font-extrabold font-mono ${met ? 'text-[#44853b] dark:text-emerald-400' : 'text-[#2b4390] dark:text-cyan-400'}`}>
                           {formatPercentID(activeItem.avg_capaian)}
                         </div>
                       </div>
@@ -535,18 +535,18 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto overflow-visible">
                           <defs>
                             <linearGradient id="lineGradBPJS" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#00529C" />
-                              <stop offset="35%" stopColor="#06B6D4" />
-                              <stop offset="70%" stopColor="#009B4D" />
-                              <stop offset="100%" stopColor="#10B981" />
+                              <stop offset="0%" stopColor="#2b4390" />
+                              <stop offset="35%" stopColor="#6573a1" />
+                              <stop offset="70%" stopColor="#44853b" />
+                              <stop offset="100%" stopColor="#83a67e" />
                             </linearGradient>
                             <linearGradient id="areaGradBPJS" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="#10B981" stopOpacity="0.30" />
-                              <stop offset="45%" stopColor="#00529C" stopOpacity="0.12" />
-                              <stop offset="100%" stopColor="#00529C" stopOpacity="0.0" />
+                              <stop offset="0%" stopColor="#44853b" stopOpacity="0.25" />
+                              <stop offset="60%" stopColor="#2b4390" stopOpacity="0.08" />
+                              <stop offset="100%" stopColor="#2b4390" stopOpacity="0.0" />
                             </linearGradient>
                             <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-                              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#10B981" floodOpacity="0.35" />
+                              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#44853b" floodOpacity="0.30" />
                             </filter>
                           </defs>
 
@@ -560,14 +560,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   x2={padL + chartW} 
                                   y1={y} 
                                   y2={y} 
-                                  stroke="rgba(255, 255, 255, 0.08)" 
+                                  stroke="currentColor" 
+                                  className="text-slate-300 dark:text-slate-800"
                                   strokeDasharray="4 4" 
                                 />
                                 <text 
                                   x={padL - 10} 
                                   y={y + 3.5} 
                                   textAnchor="end" 
-                                  className="text-[10px] fill-slate-400 font-mono"
+                                  className="text-[10px] fill-[#6573a1] dark:fill-slate-400 font-mono"
                                 >
                                   {level}%
                                 </text>
@@ -583,7 +584,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 x2={padL + chartW} 
                                 y1={target80Y} 
                                 y2={target80Y} 
-                                stroke="#38BDF8" 
+                                stroke="#2b4390" 
                                 strokeDasharray="5 3" 
                                 strokeWidth="1.2" 
                               />
@@ -593,15 +594,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 width="96" 
                                 height="16" 
                                 rx="3" 
-                                fill="rgba(15, 23, 42, 0.85)" 
-                                stroke="rgba(56, 189, 248, 0.5)" 
+                                fill="rgba(43, 67, 144, 0.9)" 
+                                stroke="rgba(175, 186, 222, 0.6)" 
                                 strokeWidth="1" 
                               />
                               <text 
                                 x={padL + chartW - 48} 
                                 y={target80Y + 2.5} 
                                 textAnchor="middle" 
-                                className="text-[8.5px] fill-sky-300 font-bold tracking-wider"
+                                className="text-[8.5px] fill-white font-bold tracking-wider"
                               >
                                 TARGET MJKN 80%
                               </text>
@@ -626,7 +627,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 width="124" 
                                 height="16" 
                                 rx="3" 
-                                fill="rgba(15, 23, 42, 0.85)" 
+                                fill="rgba(245, 158, 11, 0.95)" 
                                 stroke="rgba(245, 158, 11, 0.5)" 
                                 strokeWidth="1" 
                               />
@@ -634,7 +635,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 x={padL + chartW - 62} 
                                 y={target95Y + 2.5} 
                                 textAnchor="middle" 
-                                className="text-[8.5px] fill-amber-300 font-bold tracking-wider"
+                                className="text-[8.5px] fill-white font-bold tracking-wider"
                               >
                                 TARGET ALL SUMBER 95%
                               </text>
@@ -674,7 +675,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                     y1={padT} 
                                     x2={pt.x} 
                                     y2={padT + chartH} 
-                                    stroke="rgba(16, 185, 129, 0.5)" 
+                                    stroke="rgba(68, 133, 59, 0.6)" 
                                     strokeDasharray="3 3" 
                                     strokeWidth="1.5" 
                                   />
@@ -685,8 +686,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   cx={pt.x} 
                                   cy={pt.y} 
                                   r={isHovered ? 9 : 6} 
-                                  fill="#020617" 
-                                  stroke={isTargetMet ? "#10B981" : "#38BDF8"} 
+                                  fill="#ffffff" 
+                                  stroke={isTargetMet ? "#44853b" : "#2b4390"} 
                                   strokeWidth={isHovered ? 3 : 2} 
                                   className="cursor-pointer transition-all duration-200"
                                 />
@@ -696,7 +697,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   cx={pt.x} 
                                   cy={pt.y} 
                                   r={isHovered ? 4.5 : 2.5} 
-                                  fill={isTargetMet ? "#34D399" : "#60A5FA"} 
+                                  fill={isTargetMet ? "#44853b" : "#2b4390"} 
                                   className="pointer-events-none"
                                 />
 
@@ -708,15 +709,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                     width="48" 
                                     height="15" 
                                     rx="4" 
-                                    fill={isHovered ? "rgba(16, 185, 129, 0.95)" : "rgba(15, 23, 42, 0.85)"} 
-                                    stroke={isHovered ? "#34D399" : isTargetMet ? "rgba(16, 185, 129, 0.5)" : "rgba(56, 189, 248, 0.4)"} 
+                                    fill={isHovered ? "#2b4390" : isTargetMet ? "#44853b" : "#6573a1"} 
+                                    stroke="#ffffff" 
                                     strokeWidth="1" 
-                                    className="transition-colors"
+                                    className="transition-colors shadow-sm"
                                   />
                                   <text 
                                     textAnchor="middle" 
                                     y="-1" 
-                                    className={`text-[9.5px] font-extrabold font-mono ${isHovered ? 'fill-slate-950 font-black' : isTargetMet ? 'fill-emerald-300' : 'fill-white'}`}
+                                    className="text-[9.5px] font-extrabold font-mono fill-white"
                                   >
                                     {formatPercentID(pt.item.avg_capaian)}
                                   </text>
@@ -728,7 +729,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   y={padT + chartH + 20} 
                                   textAnchor="middle" 
                                   className={`text-[11px] font-bold transition-colors cursor-pointer ${
-                                    isHovered ? 'fill-emerald-300 font-extrabold' : 'fill-slate-300'
+                                    isHovered ? 'fill-[#44853b] dark:fill-emerald-300 font-extrabold' : 'fill-[#2b4390] dark:fill-slate-300'
                                   }`}
                                 >
                                   {pt.item.month}
@@ -755,15 +756,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 })()}
 
                 {/* Strip Detail Snapshot Timestamp Terbaru per Bulan */}
-                <div className="mt-5 pt-4 border-t border-emerald-500/20">
-                  <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <div className="mt-5 pt-4 border-t border-[#afbade]/30 dark:border-emerald-500/20">
+                  <div className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3.5 h-3.5 text-[#44853b] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Daftar Snapshot Timestamp Terbaru per Bulan
                     </span>
-                    <span className="text-[10px] text-slate-400 font-normal">
+                    <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-normal">
                       Klik/Arahkan kursor pada kartu untuk menyorot titik kurva
                     </span>
                   </div>
@@ -779,18 +780,18 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           onMouseLeave={() => setHoveredMonthIndex(null)}
                           className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                             isHovered
-                              ? 'bg-emerald-500/20 border-emerald-400 shadow-md shadow-emerald-500/20 -translate-y-0.5'
-                              : 'bg-slate-950/60 border-white/10 hover:border-emerald-500/40'
+                              ? 'bg-[#d4ecd1]/50 border-[#44853b] shadow-md shadow-[#44853b]/20 -translate-y-0.5 dark:bg-emerald-500/20 dark:border-emerald-400'
+                              : 'bg-white/70 dark:bg-slate-950/60 border-[#afbade]/30 dark:border-white/10 hover:border-[#44853b]/40'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-xs font-bold text-white truncate">{item.month}</span>
-                            <span className={`text-[9px] font-extrabold ${met ? 'text-emerald-400' : 'text-cyan-400'}`}>
+                            <span className="text-xs font-bold text-[#2b4390] dark:text-white truncate">{item.month}</span>
+                            <span className={`text-[9px] font-extrabold ${met ? 'text-[#44853b] dark:text-emerald-400' : 'text-[#6573a1] dark:text-cyan-400'}`}>
                               {formatPercentID(item.avg_capaian)}
                             </span>
                           </div>
-                          <div className="text-[9.5px] font-mono text-slate-400 truncate flex items-center gap-1" title={item.latest_timestamp}>
-                            <svg className="w-2.5 h-2.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="text-[9.5px] font-mono text-[#6573a1] dark:text-slate-400 truncate flex items-center gap-1" title={item.latest_timestamp}>
+                            <svg className="w-2.5 h-2.5 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span className="truncate">{item.latest_timestamp || 'N/A'}</span>
@@ -805,34 +806,34 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
               {/* GRID 2 KOLOM BERDAMPINGAN: GRAFIK FASKES (KIRI) & GRAFIK NAMA POLI (KANAN) */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* 2. GRAFIK BATANG HORISONTAL FASKES (KIRI) */}
-                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-white/10 flex flex-col justify-between">
+                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-[#afbade]/30 dark:border-white/10 flex flex-col justify-between">
                   <div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-slate-800 gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[#afbade]/30 dark:border-slate-800 gap-3">
                       <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-sm shadow-blue-400/50" />
+                        <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#2b4390] shadow-sm shadow-[#2b4390]/50" />
                           Grafik Batang Horisontal Faskes
                         </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
                           Capaian pemanfaatan antrol per Rumah Sakit FKRTL
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#afbade]/20 hover:bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <span>{sortFaskesDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
                         </button>
                         {showTarget80 && (
-                          <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-[#2b4390] bg-[#afbade]/20 px-2 py-0.5 rounded-lg border border-[#afbade]/40 dark:text-sky-300 dark:bg-sky-500/10 dark:border-sky-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-[#2b4390] dark:border-sky-400 inline-block" />
                             <span className="text-[10.5px] font-semibold">Target MJKN: 80%</span>
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-600 dark:border-amber-400 inline-block" />
                             <span className="text-[10.5px] font-semibold">Target All Sumber: 95%</span>
                           </span>
                         )}
@@ -840,8 +841,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </div>
 
                     {/* Horizontal Scale Ruler Header */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-slate-400 font-mono">
-                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-slate-500">
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-[#6573a1] dark:text-slate-400 font-mono">
+                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-[#6573a1] dark:text-slate-500">
                         Nama FKRTL
                       </div>
                       <div className="flex-1 relative h-5">
@@ -850,12 +851,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
                         <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden md:inline">75%</span>
                         {showTarget80 && (
-                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-sky-400 font-bold bg-slate-900/90 px-1 rounded border border-sky-500/30">
+                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-[#2b4390] dark:text-sky-400 font-bold bg-[#afbade]/30 dark:bg-slate-900/90 px-1 rounded border border-[#afbade]/50 dark:border-sky-500/30">
                             80%
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-400 font-bold bg-slate-900/90 px-1 rounded border border-amber-500/30">
+                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-slate-900/90 px-1 rounded border border-amber-300 dark:border-amber-500/30">
                             95%
                           </span>
                         )}
@@ -866,7 +867,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     {/* Horizontal Bars List */}
                     <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
                       {sortedFaskes.length === 0 ? (
-                        <div className="w-full py-16 text-center text-slate-400 text-xs italic">
+                        <div className="w-full py-16 text-center text-[#6573a1] dark:text-slate-400 text-xs italic">
                           Tidak ada data Faskes
                         </div>
                       ) : (
@@ -878,11 +879,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 
                           return (
-                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
                               {/* Nama Faskes (Sumbu Y) */}
                               <div className="w-32 sm:w-44 shrink-0 text-right">
                                 <span 
-                                  className="text-xs font-bold text-slate-300 group-hover:text-cyan-300 transition-colors line-clamp-1 block"
+                                  className="text-xs font-bold text-[#2b4390] dark:text-slate-300 group-hover:text-[#44853b] dark:group-hover:text-cyan-300 transition-colors line-clamp-1 block"
                                   title={f.faskes}
                                 >
                                   {f.faskes.replace(/\(.*?\)/g, '').trim()}
@@ -890,12 +891,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               </div>
 
                               {/* Horizontal Bar Track & Fill */}
-                              <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-blue-500/40 transition-colors overflow-hidden">
+                              <div className="flex-1 bg-slate-200/80 dark:bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-[#afbade]/30 dark:border-white/10 group-hover:border-[#2b4390]/40 dark:group-hover:border-blue-500/40 transition-colors overflow-hidden">
                                 {/* Garis Target Vertikal 80% (Hanya muncul jika filter sumber Mobile JKN) */}
                                 {showTarget80 && (
                                   <div 
                                     style={{ left: '80%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-sky-400/90 z-20 pointer-events-none"
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-[#2b4390] dark:border-sky-400/90 z-20 pointer-events-none"
                                     title="Garis Target Mobile JKN (80%)"
                                   />
                                 )}
@@ -904,7 +905,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 {showTarget95 && (
                                   <div 
                                     style={{ left: '95%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/90 z-20 pointer-events-none"
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-600 dark:border-amber-400/90 z-20 pointer-events-none"
                                     title="Garis Target All Sumber (95%)"
                                   />
                                 )}
@@ -914,8 +915,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   style={{ width: `${widthPercent}%` }}
                                   className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
                                     isMet 
-                                      ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
-                                      : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#38BDF8]'
+                                      ? 'bg-gradient-to-r from-[#2b4390] via-[#44853b] to-[#83a67e]' 
+                                      : 'bg-gradient-to-r from-[#2b4390] via-[#6573a1] to-[#afbade]'
                                   }`}
                                 >
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
@@ -924,16 +925,16 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 {/* Percentage Display & Target Badges */}
                                 <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
                                   {showTarget95 && isTarget95 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 font-bold">
                                       ★ &ge;95%
                                     </span>
                                   )}
                                   {showTarget80 && isTarget80 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30 font-bold">
                                       ✓ &ge;80%
                                     </span>
                                   )}
-                                  <span className="text-xs font-mono font-black text-white">
+                                  <span className="text-xs font-mono font-black text-white drop-shadow-sm">
                                     {formatPercentID(f.avg_capaian)}
                                   </span>
                                 </div>
@@ -947,34 +948,34 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 </div>
 
                 {/* 3. GRAFIK BATANG HORISONTAL NAMA POLI (KANAN) */}
-                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-white/10 flex flex-col justify-between">
+                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-[#afbade]/30 dark:border-white/10 flex flex-col justify-between">
                   <div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-slate-800 gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[#afbade]/30 dark:border-slate-800 gap-3">
                       <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                        <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
                           Grafik Batang Horisontal Nama Poli
                         </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
                           Capaian pemanfaatan antrol berdasarkan Poliklinik BPJS
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => setSortPoliDesc(!sortPoliDesc)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#afbade]/20 hover:bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <span>{sortPoliDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
                         </button>
                         {showTarget80 && (
-                          <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-[#2b4390] bg-[#afbade]/20 px-2 py-0.5 rounded-lg border border-[#afbade]/40 dark:text-sky-300 dark:bg-sky-500/10 dark:border-sky-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-[#2b4390] dark:border-sky-400 inline-block" />
                             <span className="text-[10.5px] font-semibold">Target MJKN: 80%</span>
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-600 dark:border-amber-400 inline-block" />
                             <span className="text-[10.5px] font-semibold">Target All Sumber: 95%</span>
                           </span>
                         )}
@@ -982,8 +983,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </div>
 
                     {/* Horizontal Scale Ruler Header */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-slate-400 font-mono">
-                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-slate-500">
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-[#6573a1] dark:text-slate-400 font-mono">
+                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-[#6573a1] dark:text-slate-500">
                         Nama Poli Spesialis
                       </div>
                       <div className="flex-1 relative h-5">
@@ -992,12 +993,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
                         <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden md:inline">75%</span>
                         {showTarget80 && (
-                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-sky-400 font-bold bg-slate-900/90 px-1 rounded border border-sky-500/30">
+                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-[#2b4390] dark:text-sky-400 font-bold bg-[#afbade]/30 dark:bg-slate-900/90 px-1 rounded border border-[#afbade]/50 dark:border-sky-500/30">
                             80%
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-400 font-bold bg-slate-900/90 px-1 rounded border border-amber-500/30">
+                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-slate-900/90 px-1 rounded border border-amber-300 dark:border-amber-500/30">
                             95%
                           </span>
                         )}
@@ -1008,7 +1009,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     {/* Horizontal Bars List */}
                     <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
                       {sortedPoli.length === 0 ? (
-                        <div className="w-full py-16 text-center text-slate-400 text-xs italic">
+                        <div className="w-full py-16 text-center text-[#6573a1] dark:text-slate-400 text-xs italic">
                           Tidak ada data Poli
                         </div>
                       ) : (
@@ -1020,11 +1021,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 
                           return (
-                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
                               {/* Nama Poli (Sumbu Y) */}
                               <div className="w-32 sm:w-44 shrink-0 text-right">
                                 <span 
-                                  className="text-xs font-bold text-slate-300 group-hover:text-emerald-300 transition-colors line-clamp-1 block"
+                                  className="text-xs font-bold text-[#2b4390] dark:text-slate-300 group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors line-clamp-1 block"
                                   title={p.poli}
                                 >
                                   {p.poli}
@@ -1032,12 +1033,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               </div>
 
                               {/* Horizontal Bar Track & Fill */}
-                              <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-emerald-500/40 transition-colors overflow-hidden">
+                              <div className="flex-1 bg-slate-200/80 dark:bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-[#afbade]/30 dark:border-white/10 group-hover:border-[#44853b]/40 dark:group-hover:border-emerald-500/40 transition-colors overflow-hidden">
                                 {/* Garis Target Vertikal 80% (Hanya muncul jika filter sumber Mobile JKN) */}
                                 {showTarget80 && (
                                   <div 
                                     style={{ left: '80%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-sky-400/90 z-20 pointer-events-none"
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-[#2b4390] dark:border-sky-400/90 z-20 pointer-events-none"
                                     title="Garis Target Mobile JKN (80%)"
                                   />
                                 )}
@@ -1046,7 +1047,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 {showTarget95 && (
                                   <div 
                                     style={{ left: '95%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/90 z-20 pointer-events-none"
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-600 dark:border-amber-400/90 z-20 pointer-events-none"
                                     title="Garis Target All Sumber (95%)"
                                   />
                                 )}
@@ -1056,8 +1057,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   style={{ width: `${widthPercent}%` }}
                                   className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
                                     isMet 
-                                      ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
-                                      : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#38BDF8]'
+                                      ? 'bg-gradient-to-r from-[#2b4390] via-[#44853b] to-[#83a67e]' 
+                                      : 'bg-gradient-to-r from-[#2b4390] via-[#6573a1] to-[#afbade]'
                                   }`}
                                 >
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
@@ -1066,16 +1067,16 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 {/* Percentage Display & Target Badges */}
                                 <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
                                   {showTarget95 && isTarget95 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 font-bold">
                                       ★ &ge;95%
                                     </span>
                                   )}
                                   {showTarget80 && isTarget80 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30 font-bold">
                                       ✓ &ge;80%
                                     </span>
                                   )}
-                                  <span className="text-xs font-mono font-black text-white">
+                                  <span className="text-xs font-mono font-black text-white drop-shadow-sm">
                                     {formatPercentID(p.avg_capaian)}
                                   </span>
                                 </div>
