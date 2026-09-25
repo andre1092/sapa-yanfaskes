@@ -1,10 +1,14 @@
 import os
+import io
+import time
 import json
 import re
 import traceback
 import logging
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 import requests
 
 from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie
@@ -213,7 +217,41 @@ def parse_date_info(val: Any):
         sort_key = f"{year:04d}{month:02d}"
         return year_str, month_full_str, month_short_str, sort_key, month
         
-    return None, None, None, None, None
+def format_timestamp_standard(ts_str: Any) -> str:
+    """
+    Standardize timestamp strings to 'MM/DD/YYYY HH:MM:SS' format.
+    Example: '9/24/2026 3:14:56' -> '09/24/2026 03:14:56'
+    """
+    if ts_str is None:
+        return "No data available."
+    s = str(ts_str).strip()
+    if not s or s == "No data available.":
+        return "No data available."
+    for fmt in ('%m/%d/%Y %H:%M:%S', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M:%S %p', '%d/%m/%Y %H:%M:%S'):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.strftime('%m/%d/%Y %H:%M:%S')
+        except:
+            pass
+    try:
+        parts = s.split(' ')
+        if len(parts) == 2:
+            d_parts = [int(p) for p in re.split(r'[/-]', parts[0])]
+            t_parts = [int(p) for p in parts[1].split(':')]
+            if len(d_parts) == 3:
+                if len(t_parts) == 2:
+                    t_parts.append(0)
+                if d_parts[0] > 1000:
+                    year, month, day = d_parts[0], d_parts[1], d_parts[2]
+                else:
+                    month, day, year = d_parts[0], d_parts[1], d_parts[2]
+                    if month > 12 and day <= 12:
+                        month, day = day, month
+                dt = datetime(year, month, day, t_parts[0], t_parts[1], t_parts[2])
+                return dt.strftime('%m/%d/%Y %H:%M:%S')
+    except Exception:
+        pass
+    return s
 
 
 def get_sheets_service():
@@ -332,7 +370,61 @@ def generate_mock_multi_sheets():
         "ref_poli": df_ref_poli
     }
 
+SHEET_GIDS = {
+    "DB_FASKES": "0",
+    "DB_LAP_ANTROL_FKRTL": "861718582",
+    "antrol_by_poli": "565078682",
+    "ref_poli": "1213587497"
+}
+
+_SHEETS_CACHE: Dict[str, Tuple[float, pl.DataFrame]] = {}
+_CACHE_TTL = 300  # 5 minutes cache TTL for sub-2-second response time
+
+def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str) -> Tuple[str, pl.DataFrame]:
+    cache_key = f"{spreadsheet_id}_{sheet_name}"
+    now = time.time()
+    if cache_key in _SHEETS_CACHE:
+        cached_time, df = _SHEETS_CACHE[cache_key]
+        if (now - cached_time) < _CACHE_TTL:
+            return sheet_name, df
+            
+    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            content = resp.read()
+            df = pl.read_csv(io.BytesIO(content), infer_schema_length=0)
+            _SHEETS_CACHE[cache_key] = (now, df)
+            return sheet_name, df
+    except Exception as e:
+        logger.error(f"Failed to fetch CSV for {sheet_name} (gid={gid}) from Google Sheets: {e}")
+        if cache_key in _SHEETS_CACHE:
+            return sheet_name, _SHEETS_CACHE[cache_key][1]
+        return sheet_name, pl.DataFrame()
+
+def fetch_live_google_sheets(spreadsheet_id: str) -> Dict[str, pl.DataFrame]:
+    try:
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [
+                executor.submit(fetch_single_sheet_csv, spreadsheet_id, name, gid)
+                for name, gid in SHEET_GIDS.items()
+            ]
+            results = dict([f.result() for f in futures])
+            
+        if results.get("DB_LAP_ANTROL_FKRTL") is not None and not results["DB_LAP_ANTROL_FKRTL"].is_empty():
+            return results
+    except Exception as e:
+        logger.error(f"Error in parallel live fetch of Google Sheets: {e}")
+        
+    return {}
+
 def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str]) -> Dict[str, pl.DataFrame]:
+    # 1. First priority: Live public Google Sheets CSV export (100% free, real live data, sub-second)
+    live_dfs = fetch_live_google_sheets(spreadsheet_id)
+    if live_dfs.get("DB_LAP_ANTROL_FKRTL") is not None and not live_dfs["DB_LAP_ANTROL_FKRTL"].is_empty():
+        return live_dfs
+
+    # 2. Second priority: Google Sheets API with service account if available
     service = get_sheets_service()
     if not service:
         return generate_mock_multi_sheets()
@@ -537,7 +629,7 @@ async def get_fkrtl_antrol_stats(
                 .alias("Capaian")
             )
 
-        # 5. Extract Last Update from the final row of DB_LAP_ANTROL_FKRTL
+        # 5. Extract Last Update from DB_LAP_ANTROL_FKRTL
         last_update_str = "No data available."
 
         ts_col_antrol = find_column_name(df_antrol, ["timestamp", "waktu", "tanggal", "time"])
@@ -548,8 +640,8 @@ async def get_fkrtl_antrol_stats(
             
         non_empty_ts = [t for t in raw_ts_list if t]
         if non_empty_ts:
-            # Exact value from the final row of the spreadsheet
-            last_update_str = non_empty_ts[-1]
+            # Format to strict MM/DD/YYYY HH:MM:SS
+            last_update_str = format_timestamp_standard(non_empty_ts[-1])
 
         # 6. Parse Timestamps in df_antrol (handles '8/25/2026 5:32:44', '2026-08-25', etc.)
         parsed_antrol = [parse_date_info(ts) for ts in raw_ts_list]
@@ -579,11 +671,17 @@ async def get_fkrtl_antrol_stats(
         # 7. Map each BulanTahun to its LATEST Timestamp in DB_LAP_ANTROL_FKRTL
         # Rows appended chronologically: later rows contain newer snapshots for each month
         latest_ts_by_month: Dict[str, str] = {}
+        latest_ts_formatted_by_month: Dict[str, str] = {}
         for row in df_antrol.iter_rows(named=True):
             bt = row.get("BulanTahun")
+            bts = row.get("BulanTahunShort")
             raw_ts = row.get("RawTimestamp")
             if bt and raw_ts:
                 latest_ts_by_month[bt] = raw_ts
+                formatted_ts = format_timestamp_standard(raw_ts)
+                latest_ts_formatted_by_month[bt] = formatted_ts
+                if bts:
+                    latest_ts_formatted_by_month[bts] = formatted_ts
 
         all_latest_ts = list(latest_ts_by_month.values())
 
@@ -866,7 +964,7 @@ async def get_fkrtl_antrol_stats(
         trend_query = (
             trend_base
             .filter(pl.col("SortKey").is_not_null() & pl.col("BulanTahunShort").is_not_null())
-            .group_by(["SortKey", "BulanTahunShort"])
+            .group_by(["SortKey", "BulanTahunShort", "BulanTahun"])
             .agg([
                 pl.col(num_col).sum().alias("sum_num"),
                 pl.col(den_col).sum().alias("sum_den")
@@ -880,7 +978,12 @@ async def get_fkrtl_antrol_stats(
             .sort("SortKey")
         )
         trend_per_bulan = [
-            {"month": r["BulanTahunShort"], "avg_capaian": round(r["avg_capaian"], 2)}
+            {
+                "month": r["BulanTahunShort"],
+                "month_full": r.get("BulanTahun", r["BulanTahunShort"]),
+                "avg_capaian": round(r["avg_capaian"], 2),
+                "latest_timestamp": latest_ts_formatted_by_month.get(r.get("BulanTahun", ""), latest_ts_formatted_by_month.get(r["BulanTahunShort"], ""))
+            }
             for r in trend_query.to_dicts()
         ]
 
@@ -999,20 +1102,17 @@ async def export_fkrtl_data(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        from core.google.sheets_service import GoogleSheetsService
-        from database.models import User
-        from database.connection import get_db
-
-        sheets_service = GoogleSheetsService(db)
-        credentials_data = await sheets_service.get_user_credentials(user.id)
-        if not credentials_data:
-            raise HTTPException(status_code=401, detail="Google account not connected")
-
-        datasets = await sheets_service.get_all_sheets_data(user.id, spreadsheet_id)
-        
-        df_antrol = datasets.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
-        df_poli = datasets.get("antrol_by_poli", pl.DataFrame())
-        df_faskes = datasets.get("DB_FASKES", pl.DataFrame())
+        ranges = [
+            "DB_FASKES!A:Z",
+            "DB_LAP_ANTROL_FKRTL!A:Z",
+            "antrol_by_poli!A:Z",
+            "ref_poli!A:Z"
+        ]
+        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges)
+        df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
+        df_poli = sheets_data.get("antrol_by_poli", pl.DataFrame())
+        df_faskes = sheets_data.get("DB_FASKES", pl.DataFrame())
+        df_ref_poli = sheets_data.get("ref_poli", pl.DataFrame())
 
         if df_antrol.is_empty():
             return {"status": "no_data", "data": []}

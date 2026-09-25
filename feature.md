@@ -33,22 +33,30 @@
 
 ## 2. Fitur Analisis & Visualisasi Data (Data Analytics & Visualization)
 
-### A. Filter Multi-Dimensi Berkecepatan Tinggi
-- **Filter Periode / Waktu**: Filter tahunan dan bulanan dengan pemilahan data instan via Polars LazyFrame di backend.
-- **Filter Wilayah**: Berdasarkan Kabupaten / Kota.
-- **Filter Kelas Rumah Sakit**: Kelas A, Kelas B, Kelas C, dan Kelas D.
-- **Filter Faskes / Rumah Sakit**: Pencarian autokomplet nama RS dengan penggabungan cerdas atribut *fallback*.
-- **Filter Poliklinik**: Analisis spesifik poli rawat jalan (Penyakit Dalam, Anak, Kebidanan, Bedah, dll).
+### A. Integrasi Live Google Spreadsheet & Kotak Keterangan Last Update [STATUS: AKTIF / LIVE]
+- **Sumber Data Langsung**: Terhubung langsung ke spreadsheet publik Google Docs (`1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY`) tanpa biaya API berbayar dengan respons sub-2 detik.
+- **Kotak Keterangan Last Update**: Terletak di bagian atas dashboard dengan format baku `"Last Update : MM/DD/YYYY HH:MM:SS"` (misal: `09/24/2026 03:14:56`) yang diambil dari baris timestamp terakhir data spreadsheet.
 
-### B. Kartu Indikator Kinerja Utama (KPI Indicator Cards)
-- **Total Antrean Terbit**: Menampilkan agregat pemanfaatan antrean melalui kanal Mobile JKN dan Bridging.
-- **Total SEP RJTL**: Menampilkan total kunjungan rawat jalan tingkat lanjutan.
-- **Rasio Pemanfaatan (%)**: Persentase kepatuhan dengan penanda visual warna status (Hijau $\ge 85\%$, Kuning $60-84\%$, Merah $<60\%$).
+### B. Filter Multi-Dimensi (5 Dimensi Terhubung) [STATUS: AKTIF / LIVE]
+- **Kabupaten**: Pemilihan wilayah (Semua Kabupaten, Bondowoso, Jember, Lumajang).
+- **Nama Faskes**: Opsi daftar rumah sakit FKRTL yang secara dinamis tersaring sesuai Kabupaten yang dipilih.
+- **Bulan**: Pemilihan periode bulan (Semua Bulan, September 2026, Agustus 2026, dst.).
+- **Tahun**: Pemilihan tahun transaksi (2026).
+- **Sumber Antrean**: Pemilahan kanal pendaftaran antrean (All Sumber / Mobile JKN).
 
-### C. Visualisasi Interaktif Plotly.js
-- **Grafik Tren Garis & Batang**: Menampilkan pergerakan pemanfaatan antrol dari bulan ke bulan.
-- **Grafik Agregasi per Faskes**: Komparasi performa antrean antar faskes dalam wilayah kerja.
-- **Grafik Distribusi per Poliklinik**: Identifikasi poli dengan adopsi antrol tertinggi dan terendah.
+### C. Tiga Visualisasi Grafik Batang Khusus [STATUS: AKTIF / LIVE]
+1. **Grafik Batang Horisontal Bulanan**:
+   - Membentang horizontal (sumbu Y = Bulan, sumbu X = Capaian %).
+   - Mengambil data dari **Timestamp Terbaru** (`max(Timestamp)`) pada penutupan setiap bulan dengan informasi snapshot berformat `MM/DD/YYYY HH:MM:SS` (contoh: `01/31/2026 23:59:59` s.d. `09/24/2026 03:14:56`).
+   - Garis batas target kinerja &ge;85%.
+2. **Grafik Batang Vertikal Faskes**:
+   - Membentang vertikal (sumbu X = Nama Faskes, sumbu Y = Capaian %).
+   - Menampilkan peringkat rumah sakit dengan nilai persentase di atas batang dan dukungan horizontal scroll yang nyaman.
+   - Tombol toggle sortir urutan capaian (Tertinggi / Terendah).
+3. **Grafik Batang Vertikal Nama Poli**:
+   - Membentang vertikal (sumbu X = Nama Poli resmi dari master `ref_poli`, sumbu Y = Capaian %).
+   - Menampilkan persentase kepatuhan antrol per poliklinik spesialis dengan scroll horizontal.
+   - Tombol toggle sortir urutan capaian.
 
 ---
 

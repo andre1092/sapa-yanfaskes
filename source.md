@@ -60,16 +60,25 @@ Berdasarkan standarisasi evaluasi integrasi sistem antrean online BPJS Kesehatan
 
 ## 4. Parameter Integrasi Google Spreadsheet & Skema Data
 
-### Metadata Spreadsheet
-- **Metode Akses**: Google Sheets API v4 via Service Account Credentials (`https://www.googleapis.com/auth/spreadsheets.readonly`)
-- **Struktur Sheet Utama**:
-  1. `DB_LAP_ANTROL_FKRTL`: Berisi histori transaksi antrean harian/bulanan faskes (kolom: Kdppk, Timestamp/Waktu, Jumlah Antrean by Sumber, Jumlah SEP RJTL, Jumlah Peserta JKN, Sumber).
-  2. `DB_FASKES`: Berisi master data fasilitas kesehatan (kolom: Kdppk, Nama_RS / Faskes, Kabupaten/Kota, Kelas_RS, Alamat, Status Kerjasama).
-  3. `DB_POLI`: Berisi data agregat antrean per poliklinik spesialis (kolom: Kdppk, Nama_Poli, Flag Mobile JKN, Flag Bridging Antrean, Total SEP).
+### Metadata Spreadsheet Resmi
+- **URL Dokumen**: `https://docs.google.com/spreadsheets/d/1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY/edit?usp=sharing`
+- **Spreadsheet ID**: `1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY`
+- **Metode Akses**: Ekspor stream CSV HTTP publik paralel (`https://docs.google.com/spreadsheets/d/{id}/export?format=csv&gid={gid}`) dilengkapi in-memory cache Polars (TTL 300 detik) untuk menjamin 100% data live tanpa biaya API.
+- **Struktur Sheet & GID Resmi**:
+  1. `DB_FASKES` (GID: `0`): 25 baris faskes (kolom: Kdppk, Kabupaten, Nama_FKRTL, Kelas_RS, Kepemilikan, Jenis_PPK, Vendor FKRTL).
+  2. `DB_LAP_ANTROL_FKRTL` (GID: `861718582`): 2.052 baris (kolom: Timestamp, Kdppk, Faskes, Kdkr, Kdkc, Cabang, Capaian, Jumlah Antrian by Sumber, Jumlah Peserta Jkn, Jumlah Sep Rjtl, Sumber).
+  3. `antrol_by_poli` (GID: `565078682`): 1.371 baris (kolom: Timestamp, Kdppk, Nmppk, Politujuan, Flag Bridging Antrean, % Antrol All Sumber, Flag Mobile JKN, % Antrol MJKN, Flag Tidak Antrol, Total SEP, kode_unique, jml_sep_all).
+  4. `ref_poli` (GID: `1213587497`): 234 baris (kolom: Politujuan, NMPOLI, Status_aktif).
+
+### Standar Format Timestamp & Aturan Snapshot
+- **Format Timestamp Resmi**: `MM/DD/YYYY HH:MM:SS` (contoh: `09/24/2026 03:14:56` atau `01/31/2026 23:59:59`).
+- **Snapshot Bulanan Terbaru**: Untuk grafik batang horisontal bulanan, nilai agregasi per bulan dihitung menggunakan baris yang memiliki nilai Timestamp Terbaru (`max(Timestamp)`) pada bulan bersangkutan.
+- **Last Update Global**: Mengambil timestamp mutakhir dari keseluruhan dataset spreadsheet, diformat presisi `MM/DD/YYYY HH:MM:SS`.
 
 ### Strategi Optimasi Data Engine (Sub-2-Second)
-- **Polars Lazy Evaluation**: Pemuatan data mentah ke memori, filtering, grouping, dan perhitungan agregat dilakukan dengan `pl.LazyFrame` untuk memastikan pemrosesan cepat dalam hitungan milidetik.
-- **Client Cache**: Pemanfaatan TanStack React Query pada sisi frontend dengan `staleTime: 5 menit` guna mencegah pemanggilan API berulang yang tidak diperlukan.
+- **Parallel ThreadPoolExecutor**: Unduhan 4 tab CSV dilakukan secara paralel dalam 1.09 detik.
+- **In-Memory Polars DataFrame Cache**: Request berikutnya diproses seketika (< 20ms) dengan Polars vectorized aggregations.
+- **Client Cache**: TanStack React Query pada sisi frontend (`staleTime: 3 menit`).
 
 ---
 

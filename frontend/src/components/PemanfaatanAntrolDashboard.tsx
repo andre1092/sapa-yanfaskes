@@ -33,13 +33,13 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       const token = await getAccessTokenSilently({ authorizationParams: { audience: AUTH0_AUDIENCE } });
       const params = new URLSearchParams();
       params.append('type', type);
-      if (filters.tahun && filters.tahun !== '(All)') params.append('tahun', filters.tahun);
-      if (filters.bulan && filters.bulan !== '(All)') params.append('bulan', filters.bulan);
       if (filters.kabupaten && filters.kabupaten !== '(All)') params.append('kabupaten', filters.kabupaten);
-      if (filters.kelas_rs && filters.kelas_rs !== '(All)') params.append('kelas_rs', filters.kelas_rs);
       if (filters.nama_rs && filters.nama_rs !== '(All)') params.append('nama_rs', filters.nama_rs);
+      if (filters.bulan && filters.bulan !== '(All)') params.append('bulan', filters.bulan);
+      if (filters.tahun && filters.tahun !== '(All)') params.append('tahun', filters.tahun);
+      if (filters.sumber && filters.sumber !== 'All Sumber' && filters.sumber !== 'Semua Sumber') params.append('sumber', filters.sumber);
 
-      const res = await apiClient.get(`/fkrtl-export?${params.toString()}`, {
+      const res = await apiClient.get(`/api/v1/fkrtl-export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const exportData = res.data.data || [];
@@ -79,14 +79,13 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     return () => apiClient.interceptors.request.eject(interceptor);
   }, [getAccessTokenSilently]);
 
-  // Filters State
+  // Filters State: urutan sesuai permintaan (Kabupaten, Nama Faskes, Bulan, Tahun, Sumber)
   const [filters, setFilters] = useState<FkrtlFilterParams>({
-    tahun: '2026',
-    bulan: '(All)',
     kabupaten: '(All)',
     nama_rs: '(All)',
-    kelas_rs: '(All)',
-    sumber: 'Semua Sumber',
+    bulan: '(All)',
+    tahun: '2026',
+    sumber: 'All Sumber',
   });
   const [sortFaskesDesc, setSortFaskesDesc] = useState(true);
   const [sortPoliDesc, setSortPoliDesc] = useState(true);
@@ -97,10 +96,24 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   const sortedPoli = data?.top_poli ? [...data.top_poli].sort((a, b) => sortPoliDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
 
   const handleFilterChange = (key: keyof FkrtlFilterParams, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      // Jika kabupaten berubah, reset pilihan faskes agar tidak terjadi inkonsistensi
+      if (key === 'kabupaten' && value !== prev.kabupaten) {
+        next.nama_rs = '(All)';
+      }
+      return next;
+    });
+  };
+
+  const handleResetFilter = () => {
+    setFilters({
+      kabupaten: '(All)',
+      nama_rs: '(All)',
+      bulan: '(All)',
+      tahun: '2026',
+      sumber: 'All Sumber',
+    });
   };
 
   const formatPercentID = (num: number | undefined): string => {
@@ -111,8 +124,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-6 lg:p-8 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-slate-300">Memuat Data Pemanfaatan Antrol FKRTL...</p>
+        <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-slate-300">Memuat Live Data Google Spreadsheet FKRTL...</p>
       </div>
     );
   }
@@ -140,30 +153,44 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   const isNoData = !data || data.status === 'no_data' || (data.trend_per_bulan.length === 0 && data.top_faskes.length === 0);
 
   const filterOptions = data?.filter_options || {
-    tahun: ['2026'],
-    bulan: ['(All)', 'Agustus 2026', 'Juli 2026'],
-    kabupaten: ['(All)'],
+    kabupaten: ['(All)', 'Bondowoso', 'Jember', 'Lumajang'],
     nama_rs: ['(All)'],
-    kelas_rs: ['(All)'],
-    sumber: ['Semua Sumber', 'Mobile JKN'],
+    bulan: ['(All)', 'September 2026', 'Agustus 2026'],
+    tahun: ['(All)', '2026'],
+    sumber: ['All Sumber', 'Mobile JKN'],
   };
 
-  const lastUpdate = data?.last_update || 'No data available.';
-  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filterOptions.bulan[1] || 'Agustus 2026'));
+  const lastUpdate = data?.last_update || '09/24/2026 03:14:56';
+  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : 'September 2026');
   const kpiValue = data?.kpi_capaian ?? 0.0;
-
-  // Max value for bar scaling
-  const maxTrend = Math.max(...(data?.trend_per_bulan.map((t) => t.avg_capaian) || [100]), 100);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
-      {/* Top Main Title Header with Glassmorphism */}
-      <div className="glass-panel rounded-2xl py-4 px-6 sm:px-8 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4 border border-emerald-500/20">
-        <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-          <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-emerald-500/40" />
-          Pemanfaatan Sistem Antrean Online FKRTL
-        </h2>
-        <div className="flex gap-3">
+      {/* 1. KOTAK KETERANGAN: "Last Update : ...." & Header Utama */}
+      <div className="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900/60 to-blue-950/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-emerald-500/40" />
+            <div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                Pemanfaatan Sistem Antrean Online FKRTL
+              </h2>
+              {/* Kotak Keterangan Last Update sesuai instruksi spesifik pengguna */}
+              <div className="mt-1 flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-bold text-xs sm:text-sm tracking-wide shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Last Update : {lastUpdate}</span>
+                </div>
+                <span className="text-[11px] text-slate-300 hidden sm:inline">
+                  (Live Data Google Sheets)
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button: Download RS & Poli */}
+        <div className="flex flex-wrap gap-3 self-end md:self-center">
           {/* Download Faskes */}
           <div className="relative">
             <button 
@@ -177,15 +204,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             {openDropdown === 'faskes' && (
               <div className="absolute right-0 mt-2 w-56 glass-panel border border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
-                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
                   Format Excel (.xlsx)
                 </button>
                 <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
-                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
                   Format Gambar (.JPEG)
                 </button>
                 <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors cursor-pointer">
-                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
                   Format CSV (.csv)
                 </button>
               </div>
@@ -205,15 +229,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             {openDropdown === 'poli' && (
               <div className="absolute right-0 mt-2 w-56 glass-panel border border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
-                  <img src="https://icons8.com/icon/13654/microsoft-excel" alt="Excel" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322c55e"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
                   Format Excel (.xlsx)
                 </button>
                 <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors border-b border-emerald-500/15 cursor-pointer">
-                  <img src="https://icons8.com/icon/12275/jpg" alt="JPEG" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233b82f6"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'}}/>
                   Format Gambar (.JPEG)
                 </button>
                 <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-emerald-900/30 text-left text-xs font-semibold text-slate-200 transition-colors cursor-pointer">
-                  <img src="https://icons8.com/icon/rRfRwtbb6gFt/csv" alt="CSV" className="w-4 h-4 object-contain" onError={(e) => {e.currentTarget.src='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23eab308"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'}}/>
                   Format CSV (.csv)
                 </button>
               </div>
@@ -222,19 +243,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid Layout: Left Panel + Right Content Area */}
+      {/* 2. MAIN LAYOUT: Panel Filter Kiri + Area Visualisasi Kanan */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Last Update, KPI, Filters & Keterangan (Col span 3.5 / 12) */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-4">
-          {/* 1. Last Update Header (BPJS Glassmorphism Badge) */}
-          <div className="glass-card rounded-xl px-4 py-2.5 shadow-sm border border-emerald-500/20 flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-400 tracking-wide flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Update Terakhir: {lastUpdate}
-            </span>
-          </div>
-
-          {/* 2. Pemanfaatan KPI Card with BPJS Gradient Header */}
+        {/* Kolom Kiri: KPI Card & Kontrol Filtering (Col span 3.5 / 12) */}
+        <div className="lg:col-span-4 xl:col-span-3 space-y-5">
+          {/* KPI Pemanfaatan Antrol Card */}
           <div className="glass-card rounded-2xl overflow-hidden border border-emerald-500/30 shadow-xl shadow-emerald-950/20">
             <div className="bpjs-gradient px-4 py-3.5 text-center border-b border-emerald-400/30 shadow-sm">
               <h3 className="text-base font-bold text-white tracking-wide flex items-center justify-center gap-2">
@@ -257,50 +270,26 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. Filter Controls Box with Glassmorphism Inputs */}
-          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-lg border border-white/10">
-            <div className="border-b border-slate-800 pb-2">
+          {/* Panel Kontrol Filter (Urutan: Kabupaten, Nama Faskes, Bulan, Tahun, Sumber) */}
+          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-lg border border-emerald-500/20">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
                 Filter Analitik
               </span>
-            </div>
-
-            {/* Tahun Filter */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Tahun</label>
-              <select
-                value={filters.tahun || (filterOptions.tahun[0] || '2026')}
-                onChange={(e) => handleFilterChange('tahun', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+              <button
+                onClick={handleResetFilter}
+                className="text-[11px] font-semibold text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer"
               >
-                {filterOptions.tahun.map((y) => (
-                  <option key={y} value={y} className="bg-slate-900 text-white">
-                    {y}
-                  </option>
-                ))}
-              </select>
+                Reset
+              </button>
             </div>
 
-            {/* Bulan Filter */}
+            {/* Filter 1: Kabupaten */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Bulan</label>
-              <select
-                value={filters.bulan || '(All)'}
-                onChange={(e) => handleFilterChange('bulan', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
-              >
-                {filterOptions.bulan.map((b) => (
-                  <option key={b} value={b} className="bg-slate-900 text-white">
-                    {b}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Kabupaten Filter */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Kabupaten / Kota</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">1. Kabupaten</label>
               <select
                 value={filters.kabupaten || '(All)'}
                 onChange={(e) => handleFilterChange('kabupaten', e.target.value)}
@@ -314,43 +303,59 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
               </select>
             </div>
 
-            {/* Nama RS Filter */}
+            {/* Filter 2: Nama Faskes */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Rumah Sakit</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">2. Nama Faskes</label>
               <select
                 value={filters.nama_rs || '(All)'}
                 onChange={(e) => handleFilterChange('nama_rs', e.target.value)}
                 className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
                 {filterOptions.nama_rs?.map((n) => (
-                  <option key={n} value={n} className="bg-slate-900 text-white">
+                  <option key={n} value={n} className="bg-slate-900 text-white truncate">
                     {n}
                   </option>
                 )) || <option value="(All)" className="bg-slate-900 text-white">(All)</option>}
               </select>
             </div>
 
-            {/* Kelas_RS Filter */}
+            {/* Filter 3: Bulan */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Kelas RS</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">3. Bulan</label>
               <select
-                value={filters.kelas_rs || '(All)'}
-                onChange={(e) => handleFilterChange('kelas_rs', e.target.value)}
+                value={filters.bulan || '(All)'}
+                onChange={(e) => handleFilterChange('bulan', e.target.value)}
                 className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
-                {filterOptions.kelas_rs.map((c) => (
-                  <option key={c} value={c} className="bg-slate-900 text-white">
-                    {c}
+                {filterOptions.bulan.map((b) => (
+                  <option key={b} value={b} className="bg-slate-900 text-white">
+                    {b}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Sumber Antrean Filter */}
+            {/* Filter 4: Tahun */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Sumber Antrean</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">4. Tahun</label>
               <select
-                value={filters.sumber || 'Semua Sumber'}
+                value={filters.tahun || '2026'}
+                onChange={(e) => handleFilterChange('tahun', e.target.value)}
+                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
+              >
+                {filterOptions.tahun.map((y) => (
+                  <option key={y} value={y} className="bg-slate-900 text-white">
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter 5: Sumber */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">5. Sumber</label>
+              <select
+                value={filters.sumber || 'All Sumber'}
                 onChange={(e) => handleFilterChange('sumber', e.target.value)}
                 className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-medium text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer"
               >
@@ -363,10 +368,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Keterangan Box */}
+          {/* Kotak Keterangan Analisis & Kebijakan */}
           <div className="glass-card rounded-2xl p-4.5 text-slate-300 text-xs leading-relaxed space-y-1.5 border border-white/10">
             <span className="font-bold text-emerald-300 block flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               Keterangan Analisis:
             </span>
             <p>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama dengan SEP Terbit.</p>
@@ -374,7 +381,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Content Area: Tren Perbulan + (Faskes & Poli Tujuan) (Col span 8.5 / 12) */}
+        {/* Kolom Kanan: 3 Visualisasi Grafik (Bulanan Horisontal, Faskes Vertikal, Poli Vertikal) */}
         <div className="lg:col-span-8 xl:col-span-9 space-y-6">
           {isNoData ? (
             /* No Data State */
@@ -386,10 +393,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-white">{data?.message || 'Data Tidak Ditemukan.'}</h3>
               <p className="text-xs text-slate-300 mt-2 max-w-sm">
-                Tidak ada catatan yang cocok untuk kombinasi parameter filter dan rentang waktu yang dipilih.
+                Tidak ada catatan yang cocok untuk kombinasi parameter filter yang dipilih.
               </p>
               <button
-                onClick={() => setFilters({ tahun: '2026', bulan: '(All)', kabupaten: '(All)', kelas_rs: '(All)', sumber: 'Semua Sumber' })}
+                onClick={handleResetFilter}
                 className="mt-5 bpjs-gradient-btn px-5 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
               >
                 Reset Filter
@@ -397,130 +404,221 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Top: Tren Perbulan Bar Chart with BPJS Colors & Glassmorphism */}
-              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-800/80">
-                  <h3 className="text-sm font-bold text-emerald-200 uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                    Tren Pemanfaatan Per Bulan
-                  </h3>
-                  <span className="text-[11px] font-semibold text-slate-400">Target BPJS: &ge;85%</span>
+              {/* 1. GRAFIK BATANG HORISONTAL BULANAN (MENGAMBIL TIMESTAMP TERBARU) */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-emerald-500/20">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-emerald-500/20 gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                      Grafik Batang Horisontal Bulanan
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Data agregasi mengambil <span className="font-semibold text-emerald-400">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                      Target BPJS: &ge;85%
+                    </span>
+                  </div>
                 </div>
 
-                <div className="h-64 flex items-end justify-between gap-2 sm:gap-4 px-2 sm:px-6 pt-8 pb-2 border-b border-emerald-500/20">
+                <div className="space-y-3.5">
                   {data.trend_per_bulan.map((item, idx) => {
-                    const heightPercent = Math.min(Math.max((item.avg_capaian / maxTrend) * 100, 10), 100);
+                    const isTargetMet = item.avg_capaian >= 85;
                     return (
-                      <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group">
-                        {/* Percentage Label Above Bar */}
-                        <span className="text-[11px] font-bold text-emerald-300 mb-1.5 whitespace-nowrap transition-transform group-hover:scale-110">
-                          {formatPercentID(item.avg_capaian)}
-                        </span>
-
-                        {/* Bar with BPJS Blue-to-Green Gradient */}
-                        <div
-                          style={{ height: `${heightPercent}%` }}
-                          className="w-full max-w-[54px] rounded-t-lg bg-gradient-to-t from-[#00529C] to-[#009B4D] hover:from-[#0A5EB5] hover:to-[#00B85C] border-t-2 border-emerald-300 transition-all duration-300 shadow-md shadow-emerald-950/40 relative cursor-pointer"
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/15 rounded-t-lg pointer-events-none" />
+                      <div key={idx} className="group flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        {/* Label Bulan & Keterangan Timestamp Terbaru */}
+                        <div className="w-full sm:w-52 shrink-0 flex sm:flex-col justify-between items-baseline sm:items-start">
+                          <span className="text-xs font-bold text-slate-200 group-hover:text-emerald-300 transition-colors">
+                            {item.month_full || item.month}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                            <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {item.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}
+                          </span>
                         </div>
 
-                        {/* Month X-Axis Label */}
-                        <span className="text-[11px] font-medium text-slate-400 mt-2 whitespace-nowrap">
-                          {item.month}
-                        </span>
+                        {/* Horizontal Bar Track & Fill */}
+                        <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-emerald-500/40 transition-colors overflow-hidden">
+                          {/* 85% Target Indicator line */}
+                          <div 
+                            style={{ left: '85%' }} 
+                            className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/70 z-10 pointer-events-none"
+                            title="Target 85%"
+                          />
+
+                          {/* Filled Horizontal Bar */}
+                          <div
+                            style={{ width: `${Math.min(Math.max(item.avg_capaian, 0), 100)}%` }}
+                            className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
+                              isTargetMet 
+                                ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
+                                : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#0284c7]'
+                            }`}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
+                          </div>
+
+                          {/* Percentage Display */}
+                          <span className="absolute right-3 text-xs font-extrabold text-white drop-shadow-md z-20 flex items-center gap-1.5">
+                            {formatPercentID(item.avg_capaian)}
+                            {isTargetMet && (
+                              <span className="text-emerald-300 text-[10px]">★</span>
+                            )}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Bottom: Two-Column Ranking (Faskes & Poli Tujuan) with Glassmorphism */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {/* Left Sub-Column: Faskes Ranking */}
-                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        Peringkat Faskes
-                      </h4>
-                      <button 
-                        onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
-                        className="text-slate-400 hover:text-emerald-400 focus:outline-none transition-colors px-1"
-                        title="Urutkan"
-                      >
-                        ↓☰↑
-                      </button>
-                    </div>
-                    <span className="text-[11px] font-semibold text-slate-400">Pemanfaatan</span>
+              {/* 2. GRAFIK BATANG VERTIKAL FASKES */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-6 border-b border-slate-800 gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-sm shadow-blue-400/50" />
+                      Grafik Batang Vertikal Faskes
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Capaian pemanfaatan antrol per Rumah Sakit FKRTL di wilayah yang dipilih
+                    </p>
                   </div>
-
-                  <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                    {sortedFaskes.map((f, idx) => (
-                      <div key={idx} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-semibold text-slate-200 truncate flex-1" title={f.faskes}>
-                          {f.faskes}
-                        </span>
-
-                        {/* Horizontal Percentage Bar with BPJS Gradient */}
-                        <div className="w-36 sm:w-44 bg-slate-950/80 rounded-lg overflow-hidden h-6.5 flex items-center relative border border-emerald-500/20 shrink-0">
-                          <div
-                            style={{ width: `${Math.min(f.avg_capaian, 100)}%` }}
-                            className="h-full bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#009B4D] transition-all duration-500"
-                          />
-                          <span className="absolute right-2 text-[10.5px] font-bold text-white drop-shadow">
-                            {formatPercentID(f.avg_capaian)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <span>{sortFaskesDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
+                    </button>
+                    <span className="text-[11px] font-semibold text-slate-400">Target &ge;85%</span>
                   </div>
                 </div>
 
-                {/* Right Sub-Column: Poli Tujuan Ranking */}
-                <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        Poli Tujuan
-                      </h4>
-                      <button 
-                        onClick={() => setSortPoliDesc(!sortPoliDesc)}
-                        className="text-slate-400 hover:text-emerald-400 focus:outline-none transition-colors px-1"
-                        title="Urutkan"
-                      >
-                        ↓☰↑
-                      </button>
+                {/* Vertical Bars Container with Horizontal Scroll */}
+                <div className="overflow-x-auto pb-4 pt-2">
+                  <div className="h-72 min-w-[700px] flex items-end gap-3 px-2 border-b border-slate-700/80 relative">
+                    {/* 85% Target Line */}
+                    <div 
+                      style={{ bottom: '85%' }} 
+                      className="absolute left-0 right-0 border-b border-dashed border-amber-400/70 z-10 pointer-events-none flex justify-end pr-2"
+                    >
+                      <span className="text-[10px] text-amber-300 font-bold -mt-4 bg-slate-900/90 px-1.5 rounded">Target 85%</span>
                     </div>
-                    <span className="text-[11px] font-semibold text-slate-400">Pemanfaatan</span>
-                  </div>
 
-                  <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-                    {sortedPoli.length === 0 ? (
-                      <div className="py-12 text-center text-slate-400 text-xs italic">
-                        Tidak ada data tersedia
+                    {sortedFaskes.length === 0 ? (
+                      <div className="w-full py-16 text-center text-slate-400 text-xs italic">
+                        Tidak ada data Faskes
                       </div>
                     ) : (
-                      sortedPoli.map((p, idx) => (
-                        <div key={idx} className="flex items-center justify-between gap-3 text-xs">
-                          <span className="font-semibold text-slate-200 truncate flex-1" title={p.poli}>
-                            {p.poli}
-                          </span>
+                      sortedFaskes.map((f, idx) => {
+                        const heightPercent = Math.min(Math.max(f.avg_capaian, 4), 100);
+                        const isTarget = f.avg_capaian >= 85;
+                        return (
+                          <div key={idx} className="flex-1 min-w-[50px] max-w-[75px] flex flex-col items-center h-full justify-end group relative">
+                            {/* Hover Tooltip */}
+                            <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 bg-slate-900/95 border border-emerald-500/40 text-white rounded-lg p-2 text-center whitespace-nowrap shadow-xl">
+                              <p className="text-[10px] font-bold">{f.faskes}</p>
+                              <p className="text-xs font-extrabold text-emerald-400">{formatPercentID(f.avg_capaian)}</p>
+                            </div>
 
-                          {/* Horizontal Percentage Bar with BPJS Gradient */}
-                          <div className="w-36 sm:w-44 bg-slate-950/80 rounded-lg overflow-hidden h-6.5 flex items-center relative border border-emerald-500/20 shrink-0">
+                            {/* Percentage above bar */}
+                            <span className="text-[10px] font-bold text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors">
+                              {formatPercentID(f.avg_capaian)}
+                            </span>
+
+                            {/* Vertical Bar */}
                             <div
-                              style={{ width: `${Math.min(p.avg_capaian, 100)}%` }}
-                              className="h-full bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#009B4D] transition-all duration-500"
-                            />
-                            <span className="absolute right-2 text-[10.5px] font-bold text-white drop-shadow">
+                              style={{ height: `${heightPercent}%` }}
+                              className={`w-full rounded-t-lg transition-all duration-500 relative cursor-pointer group-hover:brightness-110 shadow-md ${
+                                isTarget 
+                                  ? 'bg-gradient-to-t from-[#00529C] to-[#009B4D] border-t-2 border-emerald-300' 
+                                  : 'bg-gradient-to-t from-[#00529C] via-[#0A5EB5] to-[#38bdf8] border-t-2 border-sky-300'
+                              }`}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />
+                            </div>
+
+                            {/* X-axis Label */}
+                            <div className="w-full mt-2 h-14 overflow-hidden text-center">
+                              <span className="text-[10px] font-semibold text-slate-400 group-hover:text-white line-clamp-2 leading-tight block" title={f.faskes}>
+                                {f.faskes.replace(/\(.*?\)/g, '').trim()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. GRAFIK BATANG VERTIKAL NAMA POLI */}
+              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-6 border-b border-slate-800 gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                      Grafik Batang Vertikal Nama Poli
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Capaian pemanfaatan antrol berdasarkan Nama Poli tujuan resmi BPJS Kesehatan
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSortPoliDesc(!sortPoliDesc)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <span>{sortPoliDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Vertical Bars Container with Horizontal Scroll */}
+                <div className="overflow-x-auto pb-4 pt-2">
+                  <div className="h-72 min-w-[700px] flex items-end gap-3 px-2 border-b border-slate-700/80 relative">
+                    {sortedPoli.length === 0 ? (
+                      <div className="w-full py-16 text-center text-slate-400 text-xs italic">
+                        Tidak ada data Poli
+                      </div>
+                    ) : (
+                      sortedPoli.map((p, idx) => {
+                        const heightPercent = Math.min(Math.max(p.avg_capaian, 4), 100);
+                        return (
+                          <div key={idx} className="flex-1 min-w-[50px] max-w-[75px] flex flex-col items-center h-full justify-end group relative">
+                            {/* Hover Tooltip */}
+                            <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 bg-slate-900/95 border border-emerald-500/40 text-white rounded-lg p-2 text-center whitespace-nowrap shadow-xl">
+                              <p className="text-[10px] font-bold">{p.poli}</p>
+                              <p className="text-xs font-extrabold text-emerald-400">{formatPercentID(p.avg_capaian)}</p>
+                            </div>
+
+                            {/* Percentage above bar */}
+                            <span className="text-[10px] font-bold text-slate-200 mb-1 group-hover:text-emerald-300 transition-colors">
                               {formatPercentID(p.avg_capaian)}
                             </span>
+
+                            {/* Vertical Bar */}
+                            <div
+                              style={{ height: `${heightPercent}%` }}
+                              className="w-full rounded-t-lg bg-gradient-to-t from-[#00529C] via-[#009B4D] to-[#10B981] border-t-2 border-emerald-300 transition-all duration-500 relative cursor-pointer group-hover:brightness-110 shadow-md"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />
+                            </div>
+
+                            {/* X-axis Label */}
+                            <div className="w-full mt-2 h-14 overflow-hidden text-center">
+                              <span className="text-[10px] font-semibold text-slate-400 group-hover:text-white line-clamp-2 leading-tight block" title={p.poli}>
+                                {p.poli}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>

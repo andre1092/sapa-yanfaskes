@@ -17,7 +17,12 @@ export interface FkrtlAntrolStats {
   selected_period?: string;
   kpi_capaian: number;
   total_records?: number;
-  trend_per_bulan: Array<{ month: string; avg_capaian: number }>;
+  trend_per_bulan: Array<{
+    month: string;
+    month_full?: string;
+    avg_capaian: number;
+    latest_timestamp?: string;
+  }>;
   top_faskes: Array<{ faskes: string; avg_capaian: number }>;
   top_poli: Array<{ poli: string; avg_capaian: number }>;
   filter_options: {
