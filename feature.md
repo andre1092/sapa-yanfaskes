@@ -45,19 +45,23 @@
 - **Sumber Antrean**: Pemilahan kanal pendaftaran antrean (All Sumber / Mobile JKN).
 
 ### C. Visualisasi Analitik Khusus FKRTL [STATUS: AKTIF / LIVE]
-1. **Line Chart Bulanan — Tren Capaian Antrol (Baru)**:
+1. **Line Chart Bulanan — Tren Capaian Antrol**:
    - Visualisasi kurva garis halus (*SVG Interactive Line Chart*) dinamis yang menghubungkan tren capaian antrol per bulan secara kronologis.
    - Mengambil data dari **Timestamp Terbaru** (`max(Timestamp)`) pada penutupan setiap bulan dengan informasi snapshot berformat `MM/DD/YYYY HH:MM:SS` (contoh: `01/31/2026 23:59:59` s.d. `09/24/2026 03:14:56`).
-   - Dilengkapi *area fill gradient* bernuansa BPJS (Emerald ke Biru), garis benchmark target 85%, *interactive data point markers*, dan *hover tooltip card* yang menampilkan capaian serta stempel waktu snapshot terbaru.
+   - Dilengkapi *area fill gradient* bernuansa BPJS (Emerald ke Biru), garis benchmark target ganda (**Target Mobile JKN = 80%** dan **Target All Sumber = 95%**), *interactive data point markers*, dan *hover tooltip card* yang menampilkan capaian serta stempel waktu snapshot terbaru.
    - Dilengkapi strip daftar kartu snapshot stempel waktu terbaru per bulan di bawah grafik yang tersinkronisasi interaktif dengan kurva.
-2. **Grafik Batang Vertikal Faskes**:
-   - Membentang vertikal (sumbu X = Nama Faskes, sumbu Y = Capaian %).
-   - Menampilkan peringkat rumah sakit dengan nilai persentase di atas batang dan dukungan horizontal scroll yang nyaman.
-   - Tombol toggle sortir urutan capaian (Tertinggi / Terendah).
-3. **Grafik Batang Vertikal Nama Poli**:
-   - Membentang vertikal (sumbu X = Nama Poli resmi dari master `ref_poli`, sumbu Y = Capaian %).
-   - Menampilkan persentase kepatuhan antrol per poliklinik spesialis dengan scroll horizontal.
-   - Tombol toggle sortir urutan capaian.
+2. **Grafik Batang Horisontal Faskes [BARU / STATUS: AKTIF]**:
+   - Membentang horizontal (sumbu Y = Nama Faskes / Rumah Sakit, sumbu X = Capaian 0% s.d. 100%).
+   - Dilengkapi **Dua Garis Target Vertikal**:
+     - 🎯 **Target Antrol Mobile JKN = 80%** (garis putus-putus Cyan/Sky dengan penanda badge).
+     - 🎯 **Target Antrol All Sumber = 95%** (garis putus-putus Amber/Gold dengan penanda badge).
+   - Dilengkapi mistar skala horizontal (0%, 25%, 50%, 75%, 80%, 95%, 100%), pewarnaan batang dinamis (*Emerald* untuk `≥95%` ★, *Cyan-Green* untuk `≥80%` ✓, *Sky Blue* untuk `<80%`), badge status capaian, dan tombol sortir capaian (Tertinggi ↓ / Terendah ↑).
+3. **Grafik Batang Horisontal Nama Poli [BARU / STATUS: AKTIF]**:
+   - Membentang horizontal (sumbu Y = Nama Poli resmi dari master `ref_poli`, sumbu X = Capaian 0% s.d. 100%).
+   - Dilengkapi **Dua Garis Target Vertikal**:
+     - 🎯 **Target Antrol Mobile JKN = 80%** (garis putus-putus Cyan/Sky dengan penanda badge).
+     - 🎯 **Target Antrol All Sumber = 95%** (garis putus-putus Amber/Gold dengan penanda badge).
+   - Dilengkapi mistar skala horizontal, pewarnaan batang dinamis, indikator badge kepatuhan target, dan tombol sortir urutan capaian.
 
 ---
 
