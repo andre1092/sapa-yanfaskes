@@ -1361,3 +1361,6 @@ async def export_fkrtl_data(
             status_code=500,
             detail=f"Internal Server Error in data export: {str(e)}"
         )
+
+# Alias handler for Vercel Serverless Function entry point
+handler = app
