@@ -14,12 +14,21 @@ import requests
 from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import polars as pl
+try:
+    import polars as pl
+    HAS_POLARS = True
+except Exception:
+    pl = None
+    HAS_POLARS = False
 import jwt
 import uuid
 from jwt import PyJWKClient
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    HAS_GOOGLE_CLIENT = True
+except (ImportError, ModuleNotFoundError):
+    HAS_GOOGLE_CLIENT = False
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
@@ -281,9 +290,10 @@ def format_timestamp_standard(ts_str: Any) -> str:
 
 
 def get_sheets_service():
+    if not HAS_GOOGLE_CLIENT:
+        return None
     gcp_creds = os.environ.get("GCP_SA_CREDENTIALS_BASE64") or os.environ.get("GCP_SA_CREDENTIALS_JSON")
     if not gcp_creds:
-        logger.warning("No GCP Credentials found in environment variables. Using mock data.")
         return None
     try:
         import base64
