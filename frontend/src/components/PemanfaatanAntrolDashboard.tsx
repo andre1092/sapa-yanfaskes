@@ -96,6 +96,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   const sortedFaskes = data?.top_faskes ? [...data.top_faskes].sort((a, b) => sortFaskesDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
   const sortedPoli = data?.top_poli ? [...data.top_poli].sort((a, b) => sortPoliDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
 
+  // Logika Target Dinamis berdasarkan Filter Sumber
+  const isMobileJKN = filters.sumber === 'Mobile JKN';
+  const isAllSumber = filters.sumber === 'All Sumber' || !filters.sumber || filters.sumber === '(All)';
+  const showTarget80 = isMobileJKN;
+  const showTarget95 = isAllSumber;
+
   const handleFilterChange = (key: keyof FkrtlFilterParams, value: string) => {
     setFilters((prev) => {
       const next = { ...prev, [key]: value };
@@ -418,14 +424,18 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/30">
-                      <span className="w-3 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
-                      <span className="text-[11px] font-semibold">Target MJKN: 80%</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                      <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
-                      <span className="text-[11px] font-semibold">Target All Sumber: 95%</span>
-                    </span>
+                    {showTarget80 && (
+                      <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/30">
+                        <span className="w-3 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
+                        <span className="text-[11px] font-semibold">Target MJKN: 80%</span>
+                      </span>
+                    )}
+                    {showTarget95 && (
+                      <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
+                        <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                        <span className="text-[11px] font-semibold">Target All Sumber: 95%</span>
+                      </span>
+                    )}
                     <span className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-400/60" />
                       <span className="text-[11px] font-semibold">Realisasi</span>
@@ -566,66 +576,70 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           })}
 
                           {/* 80% Target Benchmark Line (Mobile JKN) */}
-                          <g>
-                            <line 
-                              x1={padL} 
-                              x2={padL + chartW} 
-                              y1={target80Y} 
-                              y2={target80Y} 
-                              stroke="#38BDF8" 
-                              strokeDasharray="5 3" 
-                              strokeWidth="1.2" 
-                            />
-                            <rect 
-                              x={padL + chartW - 96} 
-                              y={target80Y - 9} 
-                              width="96" 
-                              height="16" 
-                              rx="3" 
-                              fill="rgba(15, 23, 42, 0.85)" 
-                              stroke="rgba(56, 189, 248, 0.5)" 
-                              strokeWidth="1" 
-                            />
-                            <text 
-                              x={padL + chartW - 48} 
-                              y={target80Y + 2.5} 
-                              textAnchor="middle" 
-                              className="text-[8.5px] fill-sky-300 font-bold tracking-wider"
-                            >
-                              TARGET MJKN 80%
-                            </text>
-                          </g>
+                          {showTarget80 && (
+                            <g>
+                              <line 
+                                x1={padL} 
+                                x2={padL + chartW} 
+                                y1={target80Y} 
+                                y2={target80Y} 
+                                stroke="#38BDF8" 
+                                strokeDasharray="5 3" 
+                                strokeWidth="1.2" 
+                              />
+                              <rect 
+                                x={padL + chartW - 96} 
+                                y={target80Y - 9} 
+                                width="96" 
+                                height="16" 
+                                rx="3" 
+                                fill="rgba(15, 23, 42, 0.85)" 
+                                stroke="rgba(56, 189, 248, 0.5)" 
+                                strokeWidth="1" 
+                              />
+                              <text 
+                                x={padL + chartW - 48} 
+                                y={target80Y + 2.5} 
+                                textAnchor="middle" 
+                                className="text-[8.5px] fill-sky-300 font-bold tracking-wider"
+                              >
+                                TARGET MJKN 80%
+                              </text>
+                            </g>
+                          )}
 
                           {/* 95% Target Benchmark Line (All Sumber) */}
-                          <g>
-                            <line 
-                              x1={padL} 
-                              x2={padL + chartW} 
-                              y1={target95Y} 
-                              y2={target95Y} 
-                              stroke="#F59E0B" 
-                              strokeDasharray="6 4" 
-                              strokeWidth="1.5" 
-                            />
-                            <rect 
-                              x={padL + chartW - 124} 
-                              y={target95Y - 9} 
-                              width="124" 
-                              height="16" 
-                              rx="3" 
-                              fill="rgba(15, 23, 42, 0.85)" 
-                              stroke="rgba(245, 158, 11, 0.5)" 
-                              strokeWidth="1" 
-                            />
-                            <text 
-                              x={padL + chartW - 62} 
-                              y={target95Y + 2.5} 
-                              textAnchor="middle" 
-                              className="text-[8.5px] fill-amber-300 font-bold tracking-wider"
-                            >
-                              TARGET ALL SUMBER 95%
-                            </text>
-                          </g>
+                          {showTarget95 && (
+                            <g>
+                              <line 
+                                x1={padL} 
+                                x2={padL + chartW} 
+                                y1={target95Y} 
+                                y2={target95Y} 
+                                stroke="#F59E0B" 
+                                strokeDasharray="6 4" 
+                                strokeWidth="1.5" 
+                              />
+                              <rect 
+                                x={padL + chartW - 124} 
+                                y={target95Y - 9} 
+                                width="124" 
+                                height="16" 
+                                rx="3" 
+                                fill="rgba(15, 23, 42, 0.85)" 
+                                stroke="rgba(245, 158, 11, 0.5)" 
+                                strokeWidth="1" 
+                              />
+                              <text 
+                                x={padL + chartW - 62} 
+                                y={target95Y + 2.5} 
+                                textAnchor="middle" 
+                                className="text-[8.5px] fill-amber-300 font-bold tracking-wider"
+                              >
+                                TARGET ALL SUMBER 95%
+                              </text>
+                            </g>
+                          )}
 
                           {/* Area Gradient Under Curve */}
                           {areaD && (
@@ -788,257 +802,290 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* 2. GRAFIK BATANG HORISONTAL FASKES */}
-              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-6 border-b border-slate-800 gap-3">
+              {/* GRID 2 KOLOM BERDAMPINGAN: GRAFIK FASKES (KIRI) & GRAFIK NAMA POLI (KANAN) */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {/* 2. GRAFIK BATANG HORISONTAL FASKES (KIRI) */}
+                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-white/10 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-sm shadow-blue-400/50" />
-                      Grafik Batang Horisontal Faskes
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Capaian pemanfaatan antrol per Rumah Sakit FKRTL di wilayah yang dipilih
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <button
-                      onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <span>{sortFaskesDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
-                    </button>
-                    <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/30">
-                      <span className="w-3 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
-                      <span className="text-[11px] font-semibold">Target MJKN: 80%</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                      <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
-                      <span className="text-[11px] font-semibold">Target All Sumber: 95%</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Horizontal Scale Ruler Header */}
-                <div className="flex items-center gap-3 sm:gap-4 mb-2 text-[10px] text-slate-400 font-mono">
-                  <div className="w-40 sm:w-60 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-slate-500">
-                    Nama FKRTL
-                  </div>
-                  <div className="flex-1 relative h-5">
-                    <span className="absolute left-0 bottom-0">0%</span>
-                    <span className="absolute left-1/4 -translate-x-1/2 bottom-0 hidden sm:inline">25%</span>
-                    <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
-                    <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden sm:inline">75%</span>
-                    <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-sky-400 font-bold bg-slate-900/90 px-1 rounded border border-sky-500/30">
-                      80%
-                    </span>
-                    <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-400 font-bold bg-slate-900/90 px-1 rounded border border-amber-500/30">
-                      95%
-                    </span>
-                    <span className="absolute right-0 bottom-0">100%</span>
-                  </div>
-                </div>
-
-                {/* Horizontal Bars List */}
-                <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
-                  {sortedFaskes.length === 0 ? (
-                    <div className="w-full py-16 text-center text-slate-400 text-xs italic">
-                      Tidak ada data Faskes
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-slate-800 gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-sm shadow-blue-400/50" />
+                          Grafik Batang Horisontal Faskes
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Capaian pemanfaatan antrol per Rumah Sakit FKRTL
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span>{sortFaskesDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
+                        </button>
+                        {showTarget80 && (
+                          <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
+                            <span className="text-[10.5px] font-semibold">Target MJKN: 80%</span>
+                          </span>
+                        )}
+                        {showTarget95 && (
+                          <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                            <span className="text-[10.5px] font-semibold">Target All Sumber: 95%</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    sortedFaskes.map((f, idx) => {
-                      const widthPercent = Math.min(Math.max(f.avg_capaian, 0), 100);
-                      const isTarget95 = f.avg_capaian >= 95;
-                      const isTarget80 = f.avg_capaian >= 80;
 
-                      return (
-                        <div key={idx} className="group flex items-center gap-3 sm:gap-4 hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
-                          {/* Nama Faskes (Sumbu Y) */}
-                          <div className="w-40 sm:w-60 shrink-0 text-right">
-                            <span 
-                              className="text-xs font-bold text-slate-300 group-hover:text-cyan-300 transition-colors line-clamp-1 block"
-                              title={f.faskes}
-                            >
-                              {f.faskes.replace(/\(.*?\)/g, '').trim()}
-                            </span>
-                          </div>
+                    {/* Horizontal Scale Ruler Header */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-slate-400 font-mono">
+                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-slate-500">
+                        Nama FKRTL
+                      </div>
+                      <div className="flex-1 relative h-5">
+                        <span className="absolute left-0 bottom-0">0%</span>
+                        <span className="absolute left-1/4 -translate-x-1/2 bottom-0 hidden md:inline">25%</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
+                        <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden md:inline">75%</span>
+                        {showTarget80 && (
+                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-sky-400 font-bold bg-slate-900/90 px-1 rounded border border-sky-500/30">
+                            80%
+                          </span>
+                        )}
+                        {showTarget95 && (
+                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-400 font-bold bg-slate-900/90 px-1 rounded border border-amber-500/30">
+                            95%
+                          </span>
+                        )}
+                        <span className="absolute right-0 bottom-0">100%</span>
+                      </div>
+                    </div>
 
-                          {/* Horizontal Bar Track & Fill */}
-                          <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-blue-500/40 transition-colors overflow-hidden">
-                            {/* Garis Target Vertikal 80% (Mobile JKN) */}
-                            <div 
-                              style={{ left: '80%' }} 
-                              className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-sky-400/80 z-20 pointer-events-none"
-                              title="Garis Target Mobile JKN (80%)"
-                            />
-
-                            {/* Garis Target Vertikal 95% (All Sumber) */}
-                            <div 
-                              style={{ left: '95%' }} 
-                              className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/90 z-20 pointer-events-none"
-                              title="Garis Target All Sumber (95%)"
-                            />
-
-                            {/* Filled Horizontal Bar */}
-                            <div
-                              style={{ width: `${widthPercent}%` }}
-                              className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
-                                isTarget95 
-                                  ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
-                                  : isTarget80
-                                  ? 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#009B4D]'
-                                  : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#38BDF8]'
-                              }`}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
-                            </div>
-
-                            {/* Percentage Display & Target Badges */}
-                            <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
-                              {isTarget95 ? (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                                  ★ &ge;95%
-                                </span>
-                              ) : isTarget80 ? (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
-                                  ✓ &ge;80%
-                                </span>
-                              ) : null}
-                              <span className="text-xs font-mono font-black text-white">
-                                {formatPercentID(f.avg_capaian)}
-                              </span>
-                            </div>
-                          </div>
+                    {/* Horizontal Bars List */}
+                    <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
+                      {sortedFaskes.length === 0 ? (
+                        <div className="w-full py-16 text-center text-slate-400 text-xs italic">
+                          Tidak ada data Faskes
                         </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+                      ) : (
+                        sortedFaskes.map((f, idx) => {
+                          const widthPercent = Math.min(Math.max(f.avg_capaian, 0), 100);
+                          const isTarget95 = f.avg_capaian >= 95;
+                          const isTarget80 = f.avg_capaian >= 80;
 
-              {/* 3. GRAFIK BATANG HORISONTAL NAMA POLI */}
-              <div className="glass-card rounded-2xl p-6 shadow-xl border border-white/10">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-6 border-b border-slate-800 gap-3">
+                          const isMet = showTarget95 ? isTarget95 : isTarget80;
+
+                          return (
+                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                              {/* Nama Faskes (Sumbu Y) */}
+                              <div className="w-32 sm:w-44 shrink-0 text-right">
+                                <span 
+                                  className="text-xs font-bold text-slate-300 group-hover:text-cyan-300 transition-colors line-clamp-1 block"
+                                  title={f.faskes}
+                                >
+                                  {f.faskes.replace(/\(.*?\)/g, '').trim()}
+                                </span>
+                              </div>
+
+                              {/* Horizontal Bar Track & Fill */}
+                              <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-blue-500/40 transition-colors overflow-hidden">
+                                {/* Garis Target Vertikal 80% (Hanya muncul jika filter sumber Mobile JKN) */}
+                                {showTarget80 && (
+                                  <div 
+                                    style={{ left: '80%' }} 
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-sky-400/90 z-20 pointer-events-none"
+                                    title="Garis Target Mobile JKN (80%)"
+                                  />
+                                )}
+
+                                {/* Garis Target Vertikal 95% (Hanya muncul jika filter sumber All Sumber) */}
+                                {showTarget95 && (
+                                  <div 
+                                    style={{ left: '95%' }} 
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/90 z-20 pointer-events-none"
+                                    title="Garis Target All Sumber (95%)"
+                                  />
+                                )}
+
+                                {/* Filled Horizontal Bar */}
+                                <div
+                                  style={{ width: `${widthPercent}%` }}
+                                  className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
+                                    isMet 
+                                      ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
+                                      : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#38BDF8]'
+                                  }`}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
+                                </div>
+
+                                {/* Percentage Display & Target Badges */}
+                                <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
+                                  {showTarget95 && isTarget95 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                                      ★ &ge;95%
+                                    </span>
+                                  )}
+                                  {showTarget80 && isTarget80 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                                      ✓ &ge;80%
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-mono font-black text-white">
+                                    {formatPercentID(f.avg_capaian)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. GRAFIK BATANG HORISONTAL NAMA POLI (KANAN) */}
+                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-white/10 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                      Grafik Batang Horisontal Nama Poli
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Capaian pemanfaatan antrol berdasarkan Nama Poli tujuan resmi BPJS Kesehatan
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <button
-                      onClick={() => setSortPoliDesc(!sortPoliDesc)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <span>{sortPoliDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
-                    </button>
-                    <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2.5 py-1 rounded-lg border border-sky-500/30">
-                      <span className="w-3 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
-                      <span className="text-[11px] font-semibold">Target MJKN: 80%</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                      <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
-                      <span className="text-[11px] font-semibold">Target All Sumber: 95%</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Horizontal Scale Ruler Header */}
-                <div className="flex items-center gap-3 sm:gap-4 mb-2 text-[10px] text-slate-400 font-mono">
-                  <div className="w-40 sm:w-60 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-slate-500">
-                    Nama Poli Spesialis
-                  </div>
-                  <div className="flex-1 relative h-5">
-                    <span className="absolute left-0 bottom-0">0%</span>
-                    <span className="absolute left-1/4 -translate-x-1/2 bottom-0 hidden sm:inline">25%</span>
-                    <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
-                    <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden sm:inline">75%</span>
-                    <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-sky-400 font-bold bg-slate-900/90 px-1 rounded border border-sky-500/30">
-                      80%
-                    </span>
-                    <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-400 font-bold bg-slate-900/90 px-1 rounded border border-amber-500/30">
-                      95%
-                    </span>
-                    <span className="absolute right-0 bottom-0">100%</span>
-                  </div>
-                </div>
-
-                {/* Horizontal Bars List */}
-                <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
-                  {sortedPoli.length === 0 ? (
-                    <div className="w-full py-16 text-center text-slate-400 text-xs italic">
-                      Tidak ada data Poli
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-slate-800 gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                          Grafik Batang Horisontal Nama Poli
+                        </h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Capaian pemanfaatan antrol berdasarkan Poliklinik BPJS
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setSortPoliDesc(!sortPoliDesc)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <span>{sortPoliDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
+                        </button>
+                        {showTarget80 && (
+                          <span className="flex items-center gap-1.5 text-xs text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-sky-400 inline-block" />
+                            <span className="text-[10.5px] font-semibold">Target MJKN: 80%</span>
+                          </span>
+                        )}
+                        {showTarget95 && (
+                          <span className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-400 inline-block" />
+                            <span className="text-[10.5px] font-semibold">Target All Sumber: 95%</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    sortedPoli.map((p, idx) => {
-                      const widthPercent = Math.min(Math.max(p.avg_capaian, 0), 100);
-                      const isTarget95 = p.avg_capaian >= 95;
-                      const isTarget80 = p.avg_capaian >= 80;
 
-                      return (
-                        <div key={idx} className="group flex items-center gap-3 sm:gap-4 hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
-                          {/* Nama Poli (Sumbu Y) */}
-                          <div className="w-40 sm:w-60 shrink-0 text-right">
-                            <span 
-                              className="text-xs font-bold text-slate-300 group-hover:text-emerald-300 transition-colors line-clamp-1 block"
-                              title={p.poli}
-                            >
-                              {p.poli}
-                            </span>
-                          </div>
+                    {/* Horizontal Scale Ruler Header */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-slate-400 font-mono">
+                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-slate-500">
+                        Nama Poli Spesialis
+                      </div>
+                      <div className="flex-1 relative h-5">
+                        <span className="absolute left-0 bottom-0">0%</span>
+                        <span className="absolute left-1/4 -translate-x-1/2 bottom-0 hidden md:inline">25%</span>
+                        <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
+                        <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden md:inline">75%</span>
+                        {showTarget80 && (
+                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-sky-400 font-bold bg-slate-900/90 px-1 rounded border border-sky-500/30">
+                            80%
+                          </span>
+                        )}
+                        {showTarget95 && (
+                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-400 font-bold bg-slate-900/90 px-1 rounded border border-amber-500/30">
+                            95%
+                          </span>
+                        )}
+                        <span className="absolute right-0 bottom-0">100%</span>
+                      </div>
+                    </div>
 
-                          {/* Horizontal Bar Track & Fill */}
-                          <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-emerald-500/40 transition-colors overflow-hidden">
-                            {/* Garis Target Vertikal 80% (Mobile JKN) */}
-                            <div 
-                              style={{ left: '80%' }} 
-                              className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-sky-400/80 z-20 pointer-events-none"
-                              title="Garis Target Mobile JKN (80%)"
-                            />
-
-                            {/* Garis Target Vertikal 95% (All Sumber) */}
-                            <div 
-                              style={{ left: '95%' }} 
-                              className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/90 z-20 pointer-events-none"
-                              title="Garis Target All Sumber (95%)"
-                            />
-
-                            {/* Filled Horizontal Bar */}
-                            <div
-                              style={{ width: `${widthPercent}%` }}
-                              className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
-                                isTarget95 
-                                  ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
-                                  : isTarget80
-                                  ? 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#009B4D]'
-                                  : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#38BDF8]'
-                              }`}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
-                            </div>
-
-                            {/* Percentage Display & Target Badges */}
-                            <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
-                              {isTarget95 ? (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                                  ★ &ge;95%
-                                </span>
-                              ) : isTarget80 ? (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
-                                  ✓ &ge;80%
-                                </span>
-                              ) : null}
-                              <span className="text-xs font-mono font-black text-white">
-                                {formatPercentID(p.avg_capaian)}
-                              </span>
-                            </div>
-                          </div>
+                    {/* Horizontal Bars List */}
+                    <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
+                      {sortedPoli.length === 0 ? (
+                        <div className="w-full py-16 text-center text-slate-400 text-xs italic">
+                          Tidak ada data Poli
                         </div>
-                      );
-                    })
-                  )}
+                      ) : (
+                        sortedPoli.map((p, idx) => {
+                          const widthPercent = Math.min(Math.max(p.avg_capaian, 0), 100);
+                          const isTarget95 = p.avg_capaian >= 95;
+                          const isTarget80 = p.avg_capaian >= 80;
+
+                          const isMet = showTarget95 ? isTarget95 : isTarget80;
+
+                          return (
+                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                              {/* Nama Poli (Sumbu Y) */}
+                              <div className="w-32 sm:w-44 shrink-0 text-right">
+                                <span 
+                                  className="text-xs font-bold text-slate-300 group-hover:text-emerald-300 transition-colors line-clamp-1 block"
+                                  title={p.poli}
+                                >
+                                  {p.poli}
+                                </span>
+                              </div>
+
+                              {/* Horizontal Bar Track & Fill */}
+                              <div className="flex-1 bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-white/10 group-hover:border-emerald-500/40 transition-colors overflow-hidden">
+                                {/* Garis Target Vertikal 80% (Hanya muncul jika filter sumber Mobile JKN) */}
+                                {showTarget80 && (
+                                  <div 
+                                    style={{ left: '80%' }} 
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-sky-400/90 z-20 pointer-events-none"
+                                    title="Garis Target Mobile JKN (80%)"
+                                  />
+                                )}
+
+                                {/* Garis Target Vertikal 95% (Hanya muncul jika filter sumber All Sumber) */}
+                                {showTarget95 && (
+                                  <div 
+                                    style={{ left: '95%' }} 
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-400/90 z-20 pointer-events-none"
+                                    title="Garis Target All Sumber (95%)"
+                                  />
+                                )}
+
+                                {/* Filled Horizontal Bar */}
+                                <div
+                                  style={{ width: `${widthPercent}%` }}
+                                  className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
+                                    isMet 
+                                      ? 'bg-gradient-to-r from-[#00529C] via-[#009B4D] to-[#10B981]' 
+                                      : 'bg-gradient-to-r from-[#00529C] via-[#0A5EB5] to-[#38BDF8]'
+                                  }`}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
+                                </div>
+
+                                {/* Percentage Display & Target Badges */}
+                                <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
+                                  {showTarget95 && isTarget95 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                                      ★ &ge;95%
+                                    </span>
+                                  )}
+                                  {showTarget80 && isTarget80 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                                      ✓ &ge;80%
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-mono font-black text-white">
+                                    {formatPercentID(p.avg_capaian)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
