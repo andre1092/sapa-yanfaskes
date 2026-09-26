@@ -19,6 +19,7 @@ interface TabDefinition {
   shortName: string;
   icon: string;
   targetPercent: number;
+  badgeLabel?: string;
   description: string;
   kpiLabel: string;
 }
@@ -31,6 +32,7 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     shortName: 'Jadwal Praktek Nakes',
     icon: '👨‍⚕️',
     targetPercent: 100,
+    badgeLabel: '25%',
     description: 'Definisi: kesesuaian antara jadwal praktik dokter/nakes pada Aplikasi HFIS dengan data pelayanan pasien pada aplikasi atau sistem informasi yang menyimpan data pelayanan pasien di FKRTL - Bobot 25%',
     kpiLabel: 'Kesesuaian Jadwal Nakes',
   },
@@ -41,6 +43,7 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     shortName: 'Penyelesaian Pengaduan',
     icon: '📢',
     targetPercent: 100,
+    badgeLabel: '20%',
     description: 'Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%',
     kpiLabel: 'Tingkat Penyelesaian Keluhan',
   },
@@ -373,7 +376,7 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
                     isActive ? 'bg-white/20 text-white' : 'bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-400'
                   }`}
                 >
-                  {tab.targetPercent}%
+                  {tab.badgeLabel ?? `${tab.targetPercent}%`}
                 </span>
               </button>
             );
