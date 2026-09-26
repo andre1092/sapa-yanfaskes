@@ -237,5 +237,76 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
 4. **Cascading Dependent Filters**:
    - Dropdown `Kabupaten`, `Nama Faskes`, `Bulan`, dan `Tipe Faskes` saling sinkron secara hierarkis seperti pada Tab 01.
 
+---
+
+## 9. INDIKATOR 03: PELAKSANAAN UMPAN BALIK PESERTA (CUSTOMER FEEDBACK / KESSAN) - BOBOT 10%
+
+- **Definisi Resmi**: Pengukuran dinilai berdasarkan jumlah responden yang memberikan umpan balik/customer feedback (KESSAN) terhadap mutu pelayanan rawat inap dan rawat jalan di FKRTL.
+- **Bobot Indikator**: **10%** dari total evaluasi kepatuhan mutu FKRTL.
+- **Target Nasional**: **$\ge 100\%$ dari target** responden yang ditentukan.
+
+### A. Metadata Sumber Data Google Spreadsheet
+1. **Dataset Realisasi KESSAN**:
+   - **URL Spreadsheet**: `https://docs.google.com/spreadsheets/d/148m1t4Z-jaagUFRuJ-ClCUdVvHQyLdSVjQ3fsxoRzj8/edit?usp=sharing`
+   - **Spreadsheet ID**: `148m1t4Z-jaagUFRuJ-ClCUdVvHQyLdSVjQ3fsxoRzj8`
+   - **Jumlah Baris Data**: 228 baris data live.
+   - **Struktur Kolom Asli**: `Kode FKRTL`, `Nama FKRTL`, `Tipe Faskes`, `Capaian`, `Jlh Kunjungan`, `Jlh Responden`, `Target`, `% Jlh Responden Target`, `Capaian`, `bulan`.
+   - **Rentang Periode**: Januari 2026 s.d. September 2026 (9 bulan).
+2. **Dataset Referensi Fasilitas Kesehatan (Master FKRTL)**:
+   - **URL Spreadsheet**: `https://docs.google.com/spreadsheets/d/17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs/edit?usp=sharing`
+   - **Spreadsheet ID**: `17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`
+   - **Kecocokan Relasional**: 100% terhubung via `Kode FKRTL` $\leftrightarrow$ `kode_ppk` master faskes (26 faskes unik KC Jember).
+
+### B. Standar Penentuan Target Responden KESSAN Berdasarkan Populasi Kunjungan
+Sesuai dengan pedoman BPJS Kesehatan:
+| Jumlah Kunjungan (Populasi) | Jumlah Responden (Target) |
+| :--- | :--- |
+| 30 – 100 | 30 |
+| 101 – 200 | 80 |
+| 201 – 500 | 132 |
+| 501 – 1.000 | 217 |
+| 1.001 – 5.000 | 278 |
+| 5.001 – 10.000 | 357 |
+| 10.001 – 50.000 | 370 |
+| 50.001 – 100.000 | 381 |
+| > 100.000 | 384 |
+
+### C. Algoritma Perhitungan Capaian Poin (0 s.d. 100)
+1. **Formula Persentase Target**:
+   $$\% \text{ Jlh Responden Target} = \left(\frac{\text{Jlh Responden}}{\text{Target}}\right) \times 100\%$$
+2. **Logika Skala Capaian Poin**:
+   - $\% \text{ Jlh Responden Target} \ge 100\% \rightarrow \text{Capaian} = 100$
+   - $75\% \le \% \text{ Jlh Responden Target} < 100\% \rightarrow \text{Capaian} = 75$
+   - $50\% \le \% \text{ Jlh Responden Target} < 75\% \rightarrow \text{Capaian} = 50$
+   - $25\% \le \% \text{ Jlh Responden Target} < 50\% \rightarrow \text{Capaian} = 25$
+   - $\% \text{ Jlh Responden Target} < 25\% \rightarrow \text{Capaian} = 0$
+   - Faskes tanpa kunjungan atau $\text{Target} = 0 \rightarrow \text{Capaian} = 100$
+3. **Status Kepatuhan**:
+   - **Tercapai**: jika $\text{Capaian} \ge 100$.
+   - **Belum Tercapai**: jika $\text{Capaian} < 100$.
+4. **Deduplikasi Baris Faskes & Penjumlahan Metrik (Sum)**:
+   - Faskes unik (`kode_ppk`) hanya muncul 1 baris pada tabel matriks kepatuhan.
+   - Jlh Kunjungan = $\sum(\text{kunjungan})$
+   - Jlh Responden = $\sum(\text{responden})$
+   - Target = $\sum(\text{target})$
+   - $\% \text{ Jlh Responden Target}$ = $(\sum\text{responden} / \sum\text{target}) \times 100\%$
+
+### D. Standar Tampilan Antarmuka (Dashboard & Matriks)
+1. **Header Banner**:
+   - Judul: **Pelaksanaan**
+   - Judul Gradien: **Umpan Balik Peserta (Customer Feedback)**
+   - Sub Judul: **Pengukuran dinilai berdasarkan jumlah responden yang memberikan umpan balik/customer feedback - bobot 10%**
+   - Target Nasional Badge: **Target Nasional Umabl Peserta $\ge$ 100% dari target**
+2. **Dua Line Chart Berdampingan (Terpisah Kanan & Kiri)**:
+   - **Kiri (Biru BPJS `#2b4390`)**: `% Jlh Responden Target` dengan garis target $\ge 100\%$.
+   - **Kanan (Hijau BPJS `#44853b`)**: `Capaian` (Poin) dengan garis target 100 Poin.
+3. **Tabel Standar KESSAN**:
+   - Tabel pedoman 9 baris tier populasi kunjungan vs target responden.
+   - Mockup visual representasi ulasan KESSAN ala aplikasi BPJS Kesehatan.
+4. **Kolom Tabel Matriks Kepatuhan**:
+   - `No`, `Nama Faskes`, `Tipe Faskes`, `Jlh Kunjungan`, `Jlh Responden`, `Target`, `% Jlh Responden Target`, `Capaian`, `Status`.
+5. **Default Tampilan Bulan**:
+   - Diinisialisasi langsung ke bulan terakhir (**September 2026**).
+
 
 

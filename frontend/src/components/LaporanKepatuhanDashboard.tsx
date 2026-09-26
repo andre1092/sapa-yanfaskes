@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { NakesComplianceTab } from './NakesComplianceTab';
 import { PengaduanComplianceTab } from './PengaduanComplianceTab';
+import { UmablComplianceTab } from './UmablComplianceTab';
 
 export type ComplianceTabId =
   | '01-nakes'
@@ -19,6 +20,7 @@ interface TabDefinition {
   shortName: string;
   icon: string;
   targetPercent: number;
+  targetLabel?: string;
   badgeLabel?: string;
   description: string;
   kpiLabel: string;
@@ -50,12 +52,14 @@ const COMPLIANCE_TABS: TabDefinition[] = [
   {
     id: '03-umabl',
     code: '03',
-    name: '03. Umabl Peserta',
+    name: '03. Umbal Peserta',
     shortName: 'Umabl Peserta',
     icon: '💬',
-    targetPercent: 88,
-    description: 'Monitoring evaluasi Umpan Balik dan Indeks Kepuasan Peserta (KESSAN / IKP) terhadap pelayanan rawat inap & jalan.',
-    kpiLabel: 'Indeks Umpan Balik Peserta',
+    targetPercent: 100,
+    targetLabel: '≥ 100% dari target',
+    badgeLabel: '10%',
+    description: 'Pengukuran dinilai berdasarkan jumlah responden yang memberikan umpan balik/customer feedback - bobot 10%',
+    kpiLabel: 'Pelaksanaan Umpan Balik Peserta',
   },
   {
     id: '04-display-tt',
@@ -129,9 +133,9 @@ const TAB_HEADER_INFO: Record<ComplianceTabId, HeaderInfo> = {
       'Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%',
   },
   '03-umabl': {
-    title: 'Monitoring & Evaluasi',
-    gradientTitle: 'Umabl Peserta (KESSAN)',
-    subtitle: 'Evaluasi kepuasan peserta JKN melalui KESSAN terhadap mutu layanan rawat jalan dan inap - bobot 10%',
+    title: 'Pelaksanaan',
+    gradientTitle: 'Umpan Balik Peserta (Customer Feedback)',
+    subtitle: 'Pengukuran dinilai berdasarkan jumlah responden yang memberikan umpan balik/customer feedback - bobot 10%',
   },
   '04-display-tt': {
     title: 'Kepatuhan & Pemutakhiran',
@@ -346,7 +350,7 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
                   Target Nasional {activeTabDef.shortName}
                 </span>
                 <span className="text-sm font-black text-[#44853b] dark:text-emerald-400 font-mono">
-                  &ge; {activeTabDef.targetPercent}%
+                  {activeTabDef.targetLabel ?? `≥ ${activeTabDef.targetPercent}%`}
                 </span>
               </div>
             </div>
@@ -384,11 +388,13 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* RENDER TAB KEPATUHAN: TAB 01 (NAKES), TAB 02 (PENGADUAN), ATAU TAB LAINNYA */}
+      {/* RENDER TAB KEPATUHAN: TAB 01 (NAKES), TAB 02 (PENGADUAN), TAB 03 (UMABL), ATAU TAB LAINNYA */}
       {activeTabId === '01-nakes' ? (
         <NakesComplianceTab />
       ) : activeTabId === '02-pengaduan' ? (
         <PengaduanComplianceTab />
+      ) : activeTabId === '03-umabl' ? (
+        <UmablComplianceTab />
       ) : (
         <>
           {/* 3. Panel Ringkasan Indikator Terpilih & Statistik KPI */}
