@@ -175,7 +175,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
   const liveSyncAntrol = useSyncStore((s) => s.lastUpdateAntrol);
   const lastUpdate = liveSyncAntrol || data?.last_update || '09/24/2026 03:14:56';
-  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : 'September 2026');
+  const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filters.tahun !== '(All)' ? `Tahun ${filters.tahun} (Semua Bulan)` : 'Tahun 2026 (Semua Bulan)'));
   const kpiValue = data?.kpi_capaian ?? 0.0;
 
   return (
@@ -270,7 +270,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 </svg>
                 Pemanfaatan Antrol
               </h3>
-              <p className="text-xs font-medium text-emerald-100 mt-0.5">Periode {selectedPeriod}</p>
+              <p className="text-xs font-medium text-emerald-100 mt-0.5">
+                {filters.bulan === '(All)' ? `Akumulasi ${selectedPeriod}` : `Periode ${selectedPeriod}`}
+              </p>
             </div>
             <div className="bg-[#f0f7f4] dark:bg-slate-900/80 backdrop-blur-md py-6 text-center">
               <span className="text-4xl font-extrabold text-[#2b4390] dark:text-white tracking-tight drop-shadow-md">
@@ -497,10 +499,18 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   const chartW = svgW - padL - padR;
                   const chartH = svgH - padT - padB;
 
+                  // Calculate dynamic max domain for Y-axis (handles >100% like Jan 26: 102.44%)
+                  const maxVal = ptsList.reduce((acc, item) => {
+                    const v = typeof item?.avg_capaian === 'number' && !isNaN(item.avg_capaian) ? item.avg_capaian : 0;
+                    return Math.max(acc, v);
+                  }, 100);
+
+                  const yDomainMax = maxVal > 100 ? (maxVal > 110 ? 120 : 115) : 100;
+
                   const calcY = (val: number | undefined) => {
                     const num = typeof val === 'number' && !isNaN(val) ? val : 0;
-                    const clamped = Math.min(Math.max(num, 0), 100);
-                    return padT + chartH - (clamped / 100) * chartH;
+                    const clamped = Math.min(Math.max(num, 0), yDomainMax);
+                    return padT + chartH - (clamped / yDomainMax) * chartH;
                   };
 
                   const coords = ptsList.map((item, idx) => {
@@ -558,9 +568,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                             </filter>
                           </defs>
 
-                          {/* Grid Lines & Y Axis Labels (0, 25, 50, 75, 100) */}
-                          {[0, 25, 50, 75, 100].map((level) => {
+                          {/* Grid Lines & Y Axis Labels (Dynamic domain support) */}
+                          {(yDomainMax > 100 ? [0, 25, 50, 75, 100, yDomainMax] : [0, 25, 50, 75, 100]).map((level) => {
                             const y = calcY(level);
+                            const is100 = level === 100 && yDomainMax > 100;
                             return (
                               <g key={level}>
                                 <line 
@@ -569,14 +580,14 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                   y1={y} 
                                   y2={y} 
                                   stroke="currentColor" 
-                                  className="text-slate-300 dark:text-slate-800"
-                                  strokeDasharray="4 4" 
+                                  className={is100 ? "text-[#44853b]/40 dark:text-emerald-500/40" : "text-slate-300 dark:text-slate-800"}
+                                  strokeDasharray={is100 ? "3 3" : "4 4"} 
                                 />
                                 <text 
                                   x={padL - 10} 
                                   y={y + 3.5} 
                                   textAnchor="end" 
-                                  className="text-[10px] fill-[#6573a1] dark:fill-slate-400 font-mono"
+                                  className={`text-[10px] font-mono ${is100 ? "fill-[#44853b] dark:fill-emerald-400 font-bold" : "fill-[#6573a1] dark:fill-slate-400"}`}
                                 >
                                   {level}%
                                 </text>
@@ -584,7 +595,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                             );
                           })}
 
-                          {/* 80% Target Benchmark Line (Mobile JKN) */}
+                          {/* 80% Target Benchmark Line (Mobile JKN) - Posisi kiri anti-collision */}
                           {showTarget80 && (
                             <g>
                               <line 
@@ -597,27 +608,27 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 strokeWidth="1.2" 
                               />
                               <rect 
-                                x={padL + chartW - 96} 
-                                y={target80Y - 9} 
-                                width="96" 
-                                height="16" 
+                                x={padL + 6} 
+                                y={target80Y - 16} 
+                                width="82" 
+                                height="14" 
                                 rx="3" 
-                                fill="rgba(43, 67, 144, 0.9)" 
+                                fill="rgba(43, 67, 144, 0.92)" 
                                 stroke="rgba(175, 186, 222, 0.6)" 
                                 strokeWidth="1" 
                               />
                               <text 
-                                x={padL + chartW - 48} 
-                                y={target80Y + 2.5} 
+                                x={padL + 47} 
+                                y={target80Y - 5.5} 
                                 textAnchor="middle" 
-                                className="text-[8.5px] fill-white font-bold tracking-wider"
+                                className="text-[8px] fill-white font-bold tracking-wider"
                               >
-                                TARGET MJKN 80%
+                                TARGET 80%
                               </text>
                             </g>
                           )}
 
-                          {/* 95% Target Benchmark Line (All Sumber) */}
+                          {/* 95% Target Benchmark Line (All Sumber) - Posisi kiri anti-collision */}
                           {showTarget95 && (
                             <g>
                               <line 
@@ -630,22 +641,22 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 strokeWidth="1.5" 
                               />
                               <rect 
-                                x={padL + chartW - 124} 
-                                y={target95Y - 9} 
-                                width="124" 
-                                height="16" 
+                                x={padL + 6} 
+                                y={target95Y - 16} 
+                                width="82" 
+                                height="14" 
                                 rx="3" 
                                 fill="rgba(245, 158, 11, 0.95)" 
                                 stroke="rgba(245, 158, 11, 0.5)" 
                                 strokeWidth="1" 
                               />
                               <text 
-                                x={padL + chartW - 62} 
-                                y={target95Y + 2.5} 
+                                x={padL + 47} 
+                                y={target95Y - 5.5} 
                                 textAnchor="middle" 
-                                className="text-[8.5px] fill-white font-bold tracking-wider"
+                                className="text-[8px] fill-white font-bold tracking-wider"
                               >
-                                TARGET ALL SUMBER 95%
+                                TARGET 95%
                               </text>
                             </g>
                           )}

@@ -980,7 +980,7 @@ async def get_fkrtl_antrol_stats(
                 "status": "no_data",
                 "message": "No data available.",
                 "last_update": last_update_str,
-                "selected_period": bulan or (available_months[1] if len(available_months) > 1 else "Agustus 2026"),
+                "selected_period": bulan if (bulan and bulan != "(All)") else f"Tahun {tahun or '2026'} (Semua Bulan)",
                 "kpi_capaian": 0.0,
                 "trend_per_bulan": [],
                 "top_faskes": [],
@@ -1104,10 +1104,8 @@ async def get_fkrtl_antrol_stats(
         # Period Label for KPI Card
         if bulan and bulan != "(All)":
             period_label = bulan
-        elif len(available_months) > 1:
-            period_label = available_months[1]  # First actual month after "(All)"
         else:
-            period_label = "Agustus 2026"
+            period_label = f"Tahun {tahun or '2026'} (Semua Bulan)"
 
         return {
             "status": "success",
