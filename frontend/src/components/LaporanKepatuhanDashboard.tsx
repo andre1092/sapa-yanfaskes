@@ -3,6 +3,7 @@ import { NakesComplianceTab } from './NakesComplianceTab';
 import { PengaduanComplianceTab } from './PengaduanComplianceTab';
 import { UmablComplianceTab } from './UmablComplianceTab';
 import { DisplayTtComplianceTab } from './DisplayTtComplianceTab';
+import { useSyncStore } from '../store/syncStore';
 
 export type ComplianceTabId =
   | '01-nakes'
@@ -319,6 +320,18 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
     return val.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
   };
 
+  const { lastUpdateNakes, lastUpdatePengaduan, lastUpdateUmabl, lastUpdateDisplayTt, lastUpdateAll } = useSyncStore();
+
+  const activeLiveSync = useMemo(() => {
+    switch (activeTabId) {
+      case '01-nakes': return lastUpdateNakes || lastUpdateAll;
+      case '02-pengaduan': return lastUpdatePengaduan || lastUpdateAll;
+      case '03-umabl': return lastUpdateUmabl || lastUpdateAll;
+      case '04-display-tt': return lastUpdateDisplayTt || lastUpdateAll;
+      default: return lastUpdateAll;
+    }
+  }, [activeTabId, lastUpdateNakes, lastUpdatePengaduan, lastUpdateUmabl, lastUpdateDisplayTt, lastUpdateAll]);
+
   const headerInfo = TAB_HEADER_INFO[activeTabId] || TAB_HEADER_INFO['01-nakes'];
 
   return (
@@ -346,6 +359,19 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Live Sync Last Update badge */}
+            <div className="glass-panel px-4 py-2.5 rounded-2xl border border-[#83a67e]/40 dark:border-emerald-500/30 flex items-center gap-2.5 shadow-md bg-[#d4ecd1]/30 dark:bg-emerald-950/20">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] dark:bg-emerald-400 animate-pulse" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#6573a1] dark:text-slate-400 block tracking-wider">
+                  Last Update :
+                </span>
+                <span className="text-xs font-black text-[#44853b] dark:text-emerald-300 font-mono">
+                  {activeLiveSync || '26/09/2026 08:00:00'}
+                </span>
+              </div>
+            </div>
+
             <div className="glass-panel px-4 py-2.5 rounded-2xl border border-[#afbade]/30 dark:border-white/10 flex items-center gap-3 shadow-md">
               <span className="text-2xl">{activeTabDef.icon}</span>
               <div>

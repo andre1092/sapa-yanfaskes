@@ -4,6 +4,7 @@ import { useFkrtlAntrolData } from '../hooks/useDashboardData';
 import type { FkrtlFilterParams } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
 import { exportToCSV, exportToExcel, exportToJPEG } from '../utils/exportUtils';
+import { useSyncStore } from '../store/syncStore';
 
 const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
@@ -167,7 +168,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     sumber: ['All Sumber', 'Mobile JKN'],
   };
 
-  const lastUpdate = data?.last_update || '09/24/2026 03:14:56';
+  const liveSyncAntrol = useSyncStore((s) => s.lastUpdateAntrol);
+  const lastUpdate = liveSyncAntrol || data?.last_update || '09/24/2026 03:14:56';
   const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : 'September 2026');
   const kpiValue = data?.kpi_capaian ?? 0.0;
 

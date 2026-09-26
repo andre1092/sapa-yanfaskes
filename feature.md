@@ -127,15 +127,24 @@
 
 ---
 
-## 5. Fitur Pengaturan & Manajemen Admin (Admin Settings) [STATUS: AKTIF / LIVE]
+## 5. Fitur Pengaturan & Manajemen Admin (Admin Settings) [STATUS: AKTIF / LIVE - 4 TAB TERINTEGRASI]
 - **Palet Warna Harmonis (7 Warna Resmi BPJS)**: Implementasi penuh token `#2b4390`, `#44853b`, `#f7fcfa`, `#afbade`, `#83a67e`, `#d4ecd1`, `#6573a1` dengan kontras adaptif bebas teks putih pudar (*zero invisible text*).
-- **Executive Banner Header**: Dilengkapi penanda status aktif `SISTEM & PENGATURAN ADMINISTRATOR` dan kartu pemantauan status operasional live (Latensi respons sub-2s).
-- **Manajemen Cache & Sinkronisasi Data FKRTL**:
-  - Tombol sinkronisasi langsung (*live cache invalidation*) untuk modul Pemanfaatan Antrol FKRTL (2.052 baris data).
-  - Tombol sinkronisasi langsung untuk modul Laporan Kepatuhan Mutu FKRTL (Tab 01 Jadwal Nakes & Tab 02 Pengaduan).
-  - Indikator riwayat stempel waktu (*last synced timestamp*) yang informatif dan responsif.
-- **Preferensi Tampilan Glassmorphism (Expanded Theme Toggle)**:
-  - Kartu pemilih tema Terang, Gelap, dan Sistem dengan penanda status aktif (*pill badge*) dan kontras tajam.
-- **Spesifikasi DevSecOps & Infrastruktur**:
-  - Matriks informasi runtime engine (FastAPI + Polars Serverless), design system BPJS, isolasi Zero-Trust IAM, dan efisiensi biaya 100% Free Resources.
+- **Struktur 4 Tab Glassmorphism**:
+  1. 👤 **Tab Profil**:
+     - Form penyuntingan data diri: Nama Lengkap Administrator, Username, Alamat Email Resmi, dan opsi Ubah Kata Sandi (Password).
+     - Tombol Simpan 100% fungsional dengan persistensi data lokal di store `userStore.ts`.
+     - Dialog Konfirmasi Khusus Verifikasi Email: Saat email diubah dan disimpan, muncul dialog interaktif *"Info Sapa Yanfaskes: Harap verifikasi akun Anda untuk mengaktifkan fitur-fitur pada SAPA YANFASKES"*.
+     - Surat Digital Simulasi No-Reply Official (`no-reply@sapa-yanfaskes.bpjs-kesehatan.go.id`): Berisi link verifikasi ber-token serta tombol *"VERIFIKASI SEKARANG"* dan tautan langsung untuk membuka webmail pengguna.
+  2. 🏥 **Tab Integrasi Data FKTP**:
+     - Ruang kerja persiapan integrasi data fasilitas kesehatan tingkat pertama (Puskesmas, Klinik Pratama, DPP) berdesain Glassmorphism BPJS rapi.
+  3. 🏢 **Tab Integrasi Data FKRTL**:
+     - Tombol-tombol integrasi live untuk setiap modul: Pemanfaatan Antrol, Tab 01 Nakes, Tab 02 Pengaduan, Tab 03 Umabl, Tab 04 Display TT, dan Tombol Master Sinkronisasi Semua Modul.
+     - Perekaman stempel waktu riil (*real-time timestamp*) pada saat tombol diklik melalui store persist `syncStore.ts`.
+     - Stempel waktu otomatis disebarkan dan ditampilkan sebagai informasi *Last Update : ...* pada menu Pemanfaatan Antrol dan banner header Laporan Kepatuhan FKRTL.
+  4. 👥 **Tab User Setting (Manajemen Pengguna)**:
+     - Tabel komprehensif daftar pengguna: Username, Nama Lengkap, Email Akun, Kata Sandi dengan tombol toggle Show/Hide (👁️), Peran/Role (Super Administrator, Administrator KC, Verifikator Yanfaskes, Viewer Direksi), Status Akun, dan Terakhir Masuk.
+     - Fitur *Live Search* instan dan *Filter Role* interaktif.
+     - Operasi Tambah Pengguna Baru (+) dengan form modal Glassmorphism validasi lengkap.
+     - Operasi Edit Pengguna (✏️) untuk memperbarui hak akses, email, dan password.
+     - Operasi Hapus Pengguna (🗑️) dengan dialog konfirmasi aman dan proteksi penghapusan akun Super Administrator.
 

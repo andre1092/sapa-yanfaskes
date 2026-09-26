@@ -44,9 +44,14 @@ SAPA YANFASKES
 │   └── Rute Frontend: '/fkrtl'
 │
 ├── ⚙️ 4. Settings (Admin & Pengaturan)
-│   └── Deskripsi: Pengaturan konfigurasi faskes, sinkronisasi Google Spreadsheet, manajemen kredensial, dan preferensi akun.
+│   └── Deskripsi: Pengaturan konfigurasi faskes, profil admin, integrasi Google Spreadsheet, dan manajemen pengguna.
 │   └── Tab ID: 'admin'
 │   └── Rute Frontend: '/settings'
+│   └── Tab Pengaturan Internal:
+│       ├── 👤 1. Profil (Edit Nama, Username, Email, Ubah Kata Sandi, Dialog Verifikasi Akun & Surat Digital No-Reply)
+│       ├── 🏥 2. Integrasi Data FKTP (Konektivitas & Sinkronisasi Data Pelayanan Tingkat Pertama)
+│       ├── 🏢 3. Integrasi Data FKRTL (Tombol Sinkronisasi Data Spreadsheet Antrol & Kepatuhan FKRTL dengan Perekaman Timestamp Live)
+│       └── 👥 4. User Setting (Tabel Akun, Live Search, Filter Role, Show/Hide Password, Tambah, Edit, dan Hapus Pengguna)
 │
 └── 🚪 5. Log out
     └── Deskripsi: Terminasi sesi pengguna, pembersihan token Auth0 / identitas sesi lokal, dan pengalihan ke gerbang login.
