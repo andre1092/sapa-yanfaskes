@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { NakesComplianceTab } from './NakesComplianceTab';
 import { PengaduanComplianceTab } from './PengaduanComplianceTab';
 import { UmablComplianceTab } from './UmablComplianceTab';
+import { DisplayTtComplianceTab } from './DisplayTtComplianceTab';
 
 export type ComplianceTabId =
   | '01-nakes'
@@ -67,9 +68,11 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     name: '04. Update Display TT',
     shortName: 'Update Display TT',
     icon: '🛏️',
-    targetPercent: 95,
-    description: 'Monitoring kepatuhan pemutakhiran real-time display ketersediaan tempat tidur (Kamar Rawat Inap & ICU) terintegrasi BPJS.',
-    kpiLabel: 'Kepatuhan Update Display TT',
+    targetPercent: 100,
+    targetLabel: '≥ 25 hari',
+    badgeLabel: '10%',
+    description: 'Memperhitungkan jumlah hari Faskes melakukan pembaruan informasi data ketersediaan tempat tidur secara harian dalam 1 (satu) bulan - bobot 10%',
+    kpiLabel: 'Pembaruan Data Ketersediaan Tempat Tidur',
   },
   {
     id: '05-tmo',
@@ -138,9 +141,9 @@ const TAB_HEADER_INFO: Record<ComplianceTabId, HeaderInfo> = {
     subtitle: 'Pengukuran dinilai berdasarkan jumlah responden yang memberikan umpan balik/customer feedback - bobot 10%',
   },
   '04-display-tt': {
-    title: 'Kepatuhan & Pemutakhiran',
-    gradientTitle: 'Update Display Tempat Tidur',
-    subtitle: 'Pemutakhiran ketersediaan tempat tidur rawat inap terintegrasi sistem BPJS Kesehatan - bobot 10%',
+    title: 'Pembaruan (Update)',
+    gradientTitle: 'Data Ketersediaan Tempat Tidur',
+    subtitle: 'Memperhitungkan jumlah hari Faskes melakukan pembaruan informasi data ketersediaan tempat tidur secara harian dalam 1 (satu) bulan - bobot 10%',
   },
   '05-tmo': {
     title: 'Monitoring Layanan',
@@ -395,6 +398,8 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
         <PengaduanComplianceTab />
       ) : activeTabId === '03-umabl' ? (
         <UmablComplianceTab />
+      ) : activeTabId === '04-display-tt' ? (
+        <DisplayTtComplianceTab />
       ) : (
         <>
           {/* 3. Panel Ringkasan Indikator Terpilih & Statistik KPI */}

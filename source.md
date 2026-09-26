@@ -308,5 +308,49 @@ Sesuai dengan pedoman BPJS Kesehatan:
 5. **Default Tampilan Bulan**:
    - Diinisialisasi langsung ke bulan terakhir (**September 2026**).
 
+---
+
+## 10. Integrasi Pembaruan (Update) Data Ketersediaan Tempat Tidur (Tab 04 - Bobot 10%)
+
+### A. Sumber Data Google Spreadsheet
+1. **Data Display TT**:
+   - **URL**: `https://docs.google.com/spreadsheets/d/10JV-1frRvBbUg3bgakoUiDnu-FaUT72-oE8i2THTSOk/edit?usp=sharing`
+   - **ID**: `10JV-1frRvBbUg3bgakoUiDnu-FaUT72-oE8i2THTSOk`
+   - **Format Kolom**: `Kode FKTP`, `Nama FKTP`, `Nmtypeppk`, `Capaian`, `Jumlah Update`, `bulan`.
+   - **Cakupan Waktu**: Januari 2026 s.d. September 2026 (9 bulan, 228 baris data live).
+2. **Master Referensi Faskes**:
+   - **URL**: `https://docs.google.com/spreadsheets/d/17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs/edit?usp=sharing`
+   - **ID**: `17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`
+   - **Relasi Join**: `Kode FKTP` $\leftrightarrow$ `kode_ppk` (26 Fasilitas Kesehatan Rujukan Tingkat Lanjutan / FKRTL di KC Jember & Lumajang).
+
+### B. Definisi & Nomenklatur Resmi
+1. **Judul Banner**: **Pembaruan (Update) Data Ketersediaan Tempat Tidur**
+2. **Sub Judul Banner**: **Memperhitungkan jumlah hari Faskes melakukan pembaruan informasi data ketersediaan tempat tidur secara harian dalam 1 (satu) bulan - bobot 10%**
+3. **Target Nasional**: **Target Nasional Update Display TT $\ge$ 25 hari**
+4. **Bobot Indikator**: **10%**
+
+### C. Algoritma Perhitungan Capaian Poin (0 s.d. 100)
+- $\text{Jumlah Update} \ge 25\text{ hari} \rightarrow \text{Capaian} = 100$
+- $15\text{ hari} \le \text{Jumlah Update} < 25\text{ hari} \rightarrow \text{Capaian} = 50$
+- $10\text{ hari} \le \text{Jumlah Update} < 15\text{ hari} \rightarrow \text{Capaian} = 25$
+- $\text{Jumlah Update} < 10\text{ hari} \rightarrow \text{Capaian} = 0$
+- Status Kepatuhan:
+  - **Tercapai (Patuh)**: jika $\text{Capaian} \ge 100$ (atau $\text{Jumlah Update} \ge 25\text{ hari}$).
+  - **Belum Tercapai (Belum Patuh)**: jika $\text{Capaian} < 100$ (atau $\text{Jumlah Update} < 25\text{ hari}$).
+
+### D. Standar Tampilan Antarmuka (Dashboard & Matriks)
+1. **4 Kartu KPI Metrik**:
+   - Rata-rata Hari Pembaruan (Target $\ge 25\text{ hari}$)
+   - Rata-rata Capaian Poin (Skala 0-100 poin, Bobot 10%)
+   - Total Faskes Terdata (FKRTL Aktif)
+   - Status Kepatuhan RS (Jumlah & persentase RS Patuh $\ge 25\text{ hari}$)
+2. **Dua Grafik Bulanan Terpisah Berdampingan**:
+   - **Kiri (Biru BPJS `#2b4390`)**: Tren Bulanan **"Jumlah Update"** (hari) dengan garis target horizontal putus-putus pada $\ge 25\text{ hari}$.
+   - **Kanan (Hijau BPJS `#44853b`)**: Tren Bulanan **"Capaian"** (Poin 0-100) dengan garis target horizontal pada 100 Poin.
+3. **Tabel Matriks Kepatuhan (Deduplikasi Tanpa Duplikat)**:
+   - Kolom: `No`, `Nama Faskes (FKRTL)`, `Kabupaten`, `Tipe Faskes`, `Jumlah Update (Hari)`, `Capaian (Poin)`, `Status`.
+4. **Sistem Filter 4-Dimensi**:
+   - Kabupaten, Nama Faskes (cascading), Bulan (default: **September 2026**), dan Tipe Faskes.
+
 
 
