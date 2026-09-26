@@ -10,7 +10,6 @@ const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
 export const PemanfaatanAntrolDashboard: React.FC = () => {
   const { getAccessTokenSilently } = useAuth0();
-  const [authReady, setAuthReady] = useState(false);
   const [downloadingType, setDownloadingType] = useState<'faskes'|'poli'|null>(null);
   const [openDropdown, setOpenDropdown] = useState<'faskes'|'poli'|null>(null);
   const [jpegData, setJpegData] = useState<{data: any[], type: 'faskes'|'poli'}|null>(null);
@@ -76,7 +75,6 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       return config;
     });
 
-    setAuthReady(true);
     return () => apiClient.interceptors.request.eject(interceptor);
   }, [getAccessTokenSilently]);
 
@@ -92,10 +90,14 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   const [sortPoliDesc, setSortPoliDesc] = useState(true);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
 
-  const { data, isLoading, isError, error, refetch } = useFkrtlAntrolData(filters, authReady);
+  const { data, isLoading, isError, error, refetch } = useFkrtlAntrolData(filters, true);
 
-  const sortedFaskes = data?.top_faskes ? [...data.top_faskes].sort((a, b) => sortFaskesDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
-  const sortedPoli = data?.top_poli ? [...data.top_poli].sort((a, b) => sortPoliDesc ? b.avg_capaian - a.avg_capaian : a.avg_capaian - b.avg_capaian) : [];
+  const sortedFaskes = Array.isArray(data?.top_faskes)
+    ? [...data.top_faskes].sort((a, b) => (sortFaskesDesc ? (b.avg_capaian ?? 0) - (a.avg_capaian ?? 0) : (a.avg_capaian ?? 0) - (b.avg_capaian ?? 0)))
+    : [];
+  const sortedPoli = Array.isArray(data?.top_poli)
+    ? [...data.top_poli].sort((a, b) => (sortPoliDesc ? (b.avg_capaian ?? 0) - (a.avg_capaian ?? 0) : (a.avg_capaian ?? 0) - (b.avg_capaian ?? 0)))
+    : [];
 
   // Logika Target Dinamis berdasarkan Filter Sumber
   const isMobileJKN = filters.sumber === 'Mobile JKN';
@@ -129,7 +131,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     return num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="p-6 lg:p-8 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
@@ -138,7 +140,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     );
   }
 
-  if (isError) {
+  if (isError && !data) {
     return (
       <div className="p-6 lg:p-8">
         <div className="bg-rose-500/10 border border-rose-500/30 p-6 rounded-2xl text-center max-w-xl mx-auto">
@@ -158,14 +160,17 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     );
   }
 
-  const isNoData = !data || data.status === 'no_data' || (data.trend_per_bulan.length === 0 && data.top_faskes.length === 0);
+  const isNoData =
+    !data ||
+    data.status === 'no_data' ||
+    ((data.trend_per_bulan?.length ?? 0) === 0 && (data.top_faskes?.length ?? 0) === 0);
 
-  const filterOptions = data?.filter_options || {
-    kabupaten: ['(All)', 'Bondowoso', 'Jember', 'Lumajang'],
-    nama_rs: ['(All)'],
-    bulan: ['(All)', 'September 2026', 'Agustus 2026'],
-    tahun: ['(All)', '2026'],
-    sumber: ['All Sumber', 'Mobile JKN'],
+  const filterOptions = {
+    kabupaten: data?.filter_options?.kabupaten || ['(All)', 'Bondowoso', 'Jember', 'Lumajang'],
+    nama_rs: data?.filter_options?.nama_rs || ['(All)'],
+    bulan: data?.filter_options?.bulan || ['(All)', 'September 2026', 'Agustus 2026'],
+    tahun: data?.filter_options?.tahun || ['(All)', '2026'],
+    sumber: data?.filter_options?.sumber || ['All Sumber', 'Mobile JKN'],
   };
 
   const liveSyncAntrol = useSyncStore((s) => s.lastUpdateAntrol);
@@ -446,9 +451,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 </div>
 
                 {/* Interactive Tooltip Banner saat Bulan di-hover */}
-                {hoveredMonthIndex !== null && data.trend_per_bulan[hoveredMonthIndex] && (() => {
+                {hoveredMonthIndex !== null && data?.trend_per_bulan?.[hoveredMonthIndex] && (() => {
                   const activeItem = data.trend_per_bulan[hoveredMonthIndex];
-                  const met = activeItem.avg_capaian >= 85;
+                  const met = (activeItem?.avg_capaian ?? 0) >= 85;
                   return (
                     <div className="mb-4 p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-[#83a67e]/40 dark:border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
                       <div className="flex items-center gap-3">
@@ -482,7 +487,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
                 {/* SVG Line Chart Viewport */}
                 {(() => {
-                  const ptsList = data.trend_per_bulan;
+                  const ptsList = Array.isArray(data?.trend_per_bulan) ? data.trend_per_bulan : [];
                   const padL = 50;
                   const padR = 40;
                   const padT = 35;
@@ -492,14 +497,15 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   const chartW = svgW - padL - padR;
                   const chartH = svgH - padT - padB;
 
-                  const calcY = (val: number) => {
-                    const clamped = Math.min(Math.max(val, 0), 100);
+                  const calcY = (val: number | undefined) => {
+                    const num = typeof val === 'number' && !isNaN(val) ? val : 0;
+                    const clamped = Math.min(Math.max(num, 0), 100);
                     return padT + chartH - (clamped / 100) * chartH;
                   };
 
                   const coords = ptsList.map((item, idx) => {
                     const x = padL + (ptsList.length > 1 ? (idx / (ptsList.length - 1)) * chartW : chartW / 2);
-                    const y = calcY(item.avg_capaian);
+                    const y = calcY(item?.avg_capaian);
                     return { x, y, item, idx };
                   });
 
@@ -524,7 +530,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     }
                   }
 
-                  const areaD = coords.length > 0 
+                  const areaD = coords.length > 0 && lineD
                     ? `${lineD} L ${coords[coords.length - 1].x.toFixed(1)} ${(padT + chartH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padT + chartH).toFixed(1)} Z`
                     : '';
 
@@ -772,9 +778,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   </div>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2">
-                    {data.trend_per_bulan.map((item, idx) => {
+                    {(data?.trend_per_bulan ?? []).map((item, idx) => {
                       const isHovered = hoveredMonthIndex === idx;
-                      const met = item.avg_capaian >= 85;
+                      const met = (item?.avg_capaian ?? 0) >= 85;
                       return (
                         <div
                           key={idx}
@@ -874,9 +880,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                         </div>
                       ) : (
                         sortedFaskes.map((f, idx) => {
-                          const widthPercent = Math.min(Math.max(f.avg_capaian, 0), 100);
-                          const isTarget95 = f.avg_capaian >= 95;
-                          const isTarget80 = f.avg_capaian >= 80;
+                          const val = f.avg_capaian ?? 0;
+                          const widthPercent = Math.min(Math.max(val, 0), 100);
+                          const isTarget95 = val >= 95;
+                          const isTarget80 = val >= 80;
 
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 
@@ -1016,9 +1023,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                         </div>
                       ) : (
                         sortedPoli.map((p, idx) => {
-                          const widthPercent = Math.min(Math.max(p.avg_capaian, 0), 100);
-                          const isTarget95 = p.avg_capaian >= 95;
-                          const isTarget80 = p.avg_capaian >= 80;
+                          const val = p.avg_capaian ?? 0;
+                          const widthPercent = Math.min(Math.max(val, 0), 100);
+                          const isTarget95 = val >= 95;
+                          const isTarget80 = val >= 80;
 
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 

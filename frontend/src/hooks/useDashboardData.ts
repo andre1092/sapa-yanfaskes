@@ -122,10 +122,19 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
             kelas_rs: filters.kelas_rs,
             sumber: filters.sumber,
           },
-          timeout: 6000,
+          timeout: 3500,
         });
         if (response.data && (response.data.status === 'success' || response.data.status === 'no_data')) {
-          return response.data;
+          return {
+            ...FALLBACK_FKRTL_DATA,
+            ...response.data,
+            trend_per_bulan: Array.isArray(response.data.trend_per_bulan) && response.data.trend_per_bulan.length > 0
+              ? response.data.trend_per_bulan
+              : FALLBACK_FKRTL_DATA.trend_per_bulan,
+            top_faskes: Array.isArray(response.data.top_faskes) ? response.data.top_faskes : FALLBACK_FKRTL_DATA.top_faskes,
+            top_poli: Array.isArray(response.data.top_poli) ? response.data.top_poli : FALLBACK_FKRTL_DATA.top_poli,
+            filter_options: response.data.filter_options || FALLBACK_FKRTL_DATA.filter_options,
+          };
         }
         return FALLBACK_FKRTL_DATA;
       } catch (err) {
@@ -136,7 +145,7 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
     enabled: enabled,
     staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 1,
+    retry: 0,
   });
 };
 

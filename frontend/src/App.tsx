@@ -7,6 +7,7 @@ import { BlankContentArea } from './components/BlankContentArea';
 import { PemanfaatanAntrolDashboard } from './components/PemanfaatanAntrolDashboard';
 import { LaporanKepatuhanDashboard } from './components/LaporanKepatuhanDashboard';
 import { AdminSettings } from './components/AdminSettings';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Environment Variables
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || '';
@@ -123,17 +124,19 @@ function MainLayout() {
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
         />
 
-        {/* Dynamic Content View */}
+        {/* Dynamic Content View with Error Boundary */}
         <main className="flex-1 overflow-y-auto">
-          {activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
-            <PemanfaatanAntrolDashboard />
-          ) : activeTab === 'fkrtl-kepatuhan' ? (
-            <LaporanKepatuhanDashboard />
-          ) : activeTab === 'admin' ? (
-            <AdminSettings />
-          ) : (
-            <BlankContentArea activeTab={activeTab} onNavigate={(tab) => setActiveTab(tab)} />
-          )}
+          <ErrorBoundary key={activeTab} fallbackTitle={`Gagal memuat modul ${activeTab.toUpperCase()}`}>
+            {activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
+              <PemanfaatanAntrolDashboard />
+            ) : activeTab === 'fkrtl-kepatuhan' ? (
+              <LaporanKepatuhanDashboard />
+            ) : activeTab === 'admin' ? (
+              <AdminSettings />
+            ) : (
+              <BlankContentArea activeTab={activeTab} onNavigate={(tab) => setActiveTab(tab)} />
+            )}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

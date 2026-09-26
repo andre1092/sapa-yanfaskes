@@ -10,3 +10,7 @@ gw_config.json
 .env.*
 api-sapa-yanfaskes-*.json
 *-credentials.json
+
+# Local recordings & temporary bug reproductions
+bugs/
+*.mp4

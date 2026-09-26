@@ -233,7 +233,7 @@ export const BlankContentArea: React.FC<BlankContentAreaProps> = ({ activeTab, o
           </svg>
         </div>
         <h2 className="text-xl font-bold text-[#00529C] dark:text-white tracking-tight">
-          Modul {activeTab.toUpperCase()}
+          Modul {(activeTab || '').toUpperCase()}
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
           Modul ini telah siap terhubung ke Web Service BPJS Kesehatan dan Google Spreadsheet.
