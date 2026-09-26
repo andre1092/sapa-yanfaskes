@@ -1662,25 +1662,94 @@ async def get_fkrtl_kepatuhan_nakes(
             target_b = bulan.strip().lower()
             filtered = [r for r in filtered if r["bulan"].lower() == target_b or r["bulan_indo"].lower() == target_b]
 
-        # 6. Compute KPI Summary
-        total_kunjungan = sum(r["total_kunjungan"] for r in filtered)
-        total_sesuai = sum(r["sesuai"] for r in filtered)
-        total_tidak_sesuai = sum(r["tidak_sesuai"] for r in filtered)
-        faskes_set = set(r["kode_ppk"] for r in filtered)
-        total_faskes = len(faskes_set)
+        # Helper: Logika Resmi Perhitungan Capaian Kepatuhan Jadwal Praktek Nakes
+        # - Jadwal praktik 100% sesuai = 100
+        # - Jadwal praktik > 60% - < 100% sesuai = 75
+        # - Jadwal praktik > 40% - 60% sesuai = 50
+        # - Jadwal praktik > 20% - 40% sesuai = 25
+        # - Jadwal praktik <= 20% sesuai = 0
+        # - Faskes tidak ada kunjungan = 100
+        def compute_nakes_capaian(persen: float, total_k: int) -> float:
+            if total_k == 0:
+                return 100.0
+            if persen >= 100.0:
+                return 100.0
+            elif persen > 60.0:
+                return 75.0
+            elif persen > 40.0:
+                return 50.0
+            elif persen > 20.0:
+                return 25.0
+            else:
+                return 0.0
 
-        if filtered:
-            avg_persen_sesuai = round(sum(r["persen_sesuai"] for r in filtered) / len(filtered), 2)
-            weighted_persen_sesuai = round((total_sesuai / total_kunjungan * 100), 2) if total_kunjungan > 0 else 0.0
-            avg_capaian = round(sum(r["capaian"] for r in filtered) / len(filtered), 2)
+        # 6. Group by Faskes (kode_ppk) to eliminate duplicate rows & sum metrics
+        faskes_grouped_map = {}
+        for r in filtered:
+            k = r["kode_ppk"]
+            if k not in faskes_grouped_map:
+                faskes_grouped_map[k] = {
+                    "kode_ppk": k,
+                    "nama_ppk": r["nama_ppk"],
+                    "kabupaten": r["kabupaten"],
+                    "tipe_faskes": r["tipe_faskes"],
+                    "kelas_ppk": r["kelas_ppk"],
+                    "total_kunjungan": 0,
+                    "tidak_sesuai": 0,
+                    "sesuai": 0,
+                }
+            faskes_grouped_map[k]["total_kunjungan"] += r["total_kunjungan"]
+            faskes_grouped_map[k]["tidak_sesuai"] += r["tidak_sesuai"]
+            faskes_grouped_map[k]["sesuai"] += r["sesuai"]
+
+        faskes_aggregated = []
+        is_single_month = bool(bulan and bulan.strip() not in ("Semua", "Semua Bulan", "ALL", ""))
+        bulan_label = bulan.strip() if is_single_month else "Januari - September 2026"
+
+        for k, v in faskes_grouped_map.items():
+            tot = v["total_kunjungan"]
+            ss = v["sesuai"]
+            ts = v["tidak_sesuai"]
+            p_sesuai = round((ss / tot * 100.0), 1) if tot > 0 else 100.0
+            c_val = compute_nakes_capaian(p_sesuai, tot)
+            is_tercapai = bool(c_val >= 100.0)
+
+            faskes_aggregated.append({
+                "kode_ppk": k,
+                "nama_ppk": v["nama_ppk"],
+                "kabupaten": v["kabupaten"],
+                "tipe_faskes": v["tipe_faskes"],
+                "kelas_ppk": v["kelas_ppk"],
+                "bulan": bulan_label,
+                "bulan_indo": bulan_label,
+                "total_kunjungan": tot,
+                "tidak_sesuai": ts,
+                "sesuai": ss,
+                "persen_sesuai": p_sesuai,
+                "capaian": c_val,
+                "capaian_nilai": c_val,
+                "is_met": is_tercapai,
+                "status": "Tercapai" if is_tercapai else "Belum Tercapai"
+            })
+
+        # 7. Compute KPI Summary based on unique faskes aggregated metrics
+        total_kunjungan = sum(r["total_kunjungan"] for r in faskes_aggregated)
+        total_sesuai = sum(r["sesuai"] for r in faskes_aggregated)
+        total_tidak_sesuai = sum(r["tidak_sesuai"] for r in faskes_aggregated)
+        total_faskes = len(faskes_aggregated)
+
+        if faskes_aggregated:
+            avg_persen_sesuai = round(sum(r["persen_sesuai"] for r in faskes_aggregated) / len(faskes_aggregated), 2)
+            weighted_persen_sesuai = round((total_sesuai / total_kunjungan * 100), 2) if total_kunjungan > 0 else 100.0
+            avg_capaian = round(sum(r["capaian"] for r in faskes_aggregated) / len(faskes_aggregated), 2)
         else:
             avg_persen_sesuai = 0.0
             weighted_persen_sesuai = 0.0
             avg_capaian = 0.0
 
         target_persen = 100.0
-        total_tercapai = sum(1 for r in filtered if (r["capaian"] >= 100.0 or r["persen_sesuai"] >= 100.0))
-        total_belum_tercapai = len(filtered) - total_tercapai
+        total_tercapai = sum(1 for r in faskes_aggregated if r["capaian"] >= 100.0)
+        total_belum_tercapai = len(faskes_aggregated) - total_tercapai
 
         kpi_data = {
             "avg_persen_sesuai": avg_persen_sesuai,
@@ -1696,10 +1765,10 @@ async def get_fkrtl_kepatuhan_nakes(
             "total_unmet": total_belum_tercapai,
             "total_tercapai": total_tercapai,
             "total_belum_tercapai": total_belum_tercapai,
-            "total_records": len(filtered)
+            "total_records": len(faskes_aggregated)
         }
 
-        # 7. Compute Monthly Trend Data (Januari - September 2026)
+        # 8. Compute Monthly Trend Data (Januari - September 2026)
         by_month = {}
         for r in trend_subset:
             m = r["bulan"]
@@ -1716,8 +1785,9 @@ async def get_fkrtl_kepatuhan_nakes(
             by_month[m]["sesuai"] += r["sesuai"]
             by_month[m]["total"] += r["total_kunjungan"]
             by_month[m]["p_sum"] += r["persen_sesuai"]
-            by_month[m]["c_sum"] += r["capaian"]
-            if (r["capaian"] >= 100.0 or r["persen_sesuai"] >= 100.0):
+            m_cap = compute_nakes_capaian(r["persen_sesuai"], r["total_kunjungan"])
+            by_month[m]["c_sum"] += m_cap
+            if m_cap >= 100.0:
                 by_month[m]["met_count"] += 1
 
         monthly_chart = []
@@ -1742,30 +1812,14 @@ async def get_fkrtl_kepatuhan_nakes(
                     "is_selected": bool(bulan and (bulan.strip().lower() in (m.lower(), MONTH_INDO.get(m, m).lower())))
                 })
 
-        # 8. Format Table Data
+        # 9. Format Table Data (Deduplicated Unique Faskes)
         # Sort by persen_sesuai descending, then nama_ppk
-        sorted_filtered = sorted(filtered, key=lambda x: (x["persen_sesuai"], x["nama_ppk"]), reverse=True)
+        sorted_filtered = sorted(faskes_aggregated, key=lambda x: (x["persen_sesuai"], x["nama_ppk"]), reverse=True)
         table_data = []
         for idx, r in enumerate(sorted_filtered):
-            is_tercapai = bool(r["capaian"] >= 100.0 or r["persen_sesuai"] >= 100.0)
-            table_data.append({
-                "no": idx + 1,
-                "kode_ppk": r["kode_ppk"],
-                "nama_ppk": r["nama_ppk"],
-                "kabupaten": r["kabupaten"],
-                "tipe_faskes": r["tipe_faskes"],
-                "kelas_ppk": r["kelas_ppk"],
-                "bulan": r["bulan"],
-                "bulan_indo": r["bulan_indo"],
-                "total_kunjungan": r["total_kunjungan"],
-                "tidak_sesuai": r["tidak_sesuai"],
-                "sesuai": r["sesuai"],
-                "persen_sesuai": r["persen_sesuai"],
-                "capaian": r["capaian"],
-                "capaian_nilai": r["capaian_nilai"],
-                "is_met": is_tercapai,
-                "status": "Tercapai" if is_tercapai else "Belum Tercapai"
-            })
+            item = dict(r)
+            item["no"] = idx + 1
+            table_data.append(item)
 
         return {
             "status": "success",

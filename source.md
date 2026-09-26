@@ -135,18 +135,27 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
    - **Kecocokan Relasional (*Join Match*)**: 100% (228 dari 228 baris nakes terhubung sempurna via `kode_ppk`).
 
 ### B. Algoritma Perhitungan Indikator & Nilai Capaian
-1. **Persen Sesuai**:
-   $$\text{Persen Sesuai (\%)} = \left(\frac{\text{Jumlah Kunjungan Sesuai Jadwal}}{\text{Total Kunjungan Nakes}}\right) \times 100\%$$
-2. **Skor Capaian Bertingkat**:
-   - Persen Sesuai $\le 20.0\% \rightarrow \text{Capaian} = 0$
-   - $20.0\% < \text{Persen Sesuai} \le 40.0\% \rightarrow \text{Capaian} = 25$
-   - $40.0\% < \text{Persen Sesuai} \le 60.0\% \rightarrow \text{Capaian} = 50$
-   - $\text{Persen Sesuai} > 60.0\% \rightarrow \text{Capaian} = 75 \text{ (atau hingga 100)}$
-3. **Bobot Indikator**:
-   - Bobot resmi indikator Jadwal Praktek Nakes adalah **25%** dari total evaluasi kepatuhan mutu faskes.
-4. **Logika & Standar Status Kepatuhan**:
-   - **Tercapai**: jika nilai mencapai **100** ($\text{Capaian} \ge 100 \lor \text{Persen Sesuai} \ge 100$).
-   - **Belum Tercapai**: jika nilai **di bawah 100** ($< 100$).
+1. **Deduplikasi & Agregasi Faskes Unik**:
+   - Tabel matriks kepatuhan tidak menampilkan duplikasi baris faskes (dikelompokkan berbasis `kode_ppk` unik).
+   - Metrik kunjungan dihitung melalui akumulasi penjumlahan:
+     - $\text{Total Kunjungan} = \sum(\text{Total Kunjungan})$
+     - $\text{Tidak Sesuai} = \sum(\text{Tidak Sesuai})$
+     - $\text{Sesuai} = \sum(\text{Sesuai})$
+2. **Formula Persen Sesuai**:
+   $$\text{Persen Sesuai (\%)} = \left(\frac{\sum\text{Sesuai}}{\sum\text{Total Kunjungan}}\right) \times 100\%$$
+   *(Jika Faskes tidak memiliki kunjungan / $\sum\text{Total Kunjungan} = 0$, maka $\text{Persen Sesuai} = 100\%$)*.
+3. **Logika Resmi Perhitungan Capaian Poin**:
+   - **Faskes tidak ada kunjungan ($\text{Total Kunjungan} = 0$)** $\rightarrow$ $\text{Capaian} = 100$
+   - **Jadwal praktik $100\%$ sesuai ($\text{Persen Sesuai} = 100\%$)** $\rightarrow$ $\text{Capaian} = 100$
+   - **Jadwal praktik $> 60\% - < 100\%$ sesuai** $\rightarrow$ $\text{Capaian} = 75$
+   - **Jadwal praktik $> 40\% - 60\%$ sesuai** $\rightarrow$ $\text{Capaian} = 50$
+   - **Jadwal praktik $> 20\% - 40\%$ sesuai** $\rightarrow$ $\text{Capaian} = 25$
+   - **Jadwal praktik $\le 20\%$ sesuai** $\rightarrow$ $\text{Capaian} = 0$
+4. **Bobot Indikator**:
+   - Bobot resmi indikator Jadwal Praktek Nakes adalah **25%** dari total evaluasi kepatuhan mutu FKRTL.
+5. **Logika & Standar Status Kepatuhan**:
+   - **Tercapai**: jika nilai Capaian mencapai **100** ($\text{Capaian} = 100$).
+   - **Belum Tercapai**: jika nilai Capaian **di bawah 100** ($\text{Capaian} < 100$).
 
 ### C. Standar Tampilan Dashboard & Tabel Matriks
 1. **Dua Line Chart Berdampingan**:
