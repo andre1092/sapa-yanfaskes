@@ -915,7 +915,7 @@ export const UmablComplianceTab: React.FC = () => {
             </div>
 
             <div className="text-[11px] text-[#6573a1] dark:text-slate-400 leading-relaxed bg-[#f7fcfa] dark:bg-slate-900/60 p-3 rounded-xl border border-[#afbade]/20">
-              <span className="font-bold text-[#2b4390] dark:text-sky-300">💡 Pedoman Penilaian:</span> Capaian dihitung berdasarkan persentase responden feedback terhadap target yang ditentukan: $\ge 100\% = 100$, $\ge 75\% = 75$, $\ge 50\% = 50$, $\ge 25\% = 25$, dan $&lt; 25\% = 0$.
+              <span className="font-bold text-[#2b4390] dark:text-sky-300">💡 Pedoman Penilaian:</span> Capaian dihitung berdasarkan persentase responden feedback terhadap target yang ditentukan: 100% dari target = 100, 75% dari target = 75, 50% dari target = 50, 25% dari target = 25, dan &lt; 25% dari target = 0.
             </div>
           </div>
 
