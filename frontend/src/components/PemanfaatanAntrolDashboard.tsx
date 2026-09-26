@@ -89,6 +89,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   const [sortFaskesDesc, setSortFaskesDesc] = useState(true);
   const [sortPoliDesc, setSortPoliDesc] = useState(true);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
+  const liveSyncAntrol = useSyncStore((s) => s.lastUpdateAntrol);
 
   const { data, isLoading, isError, error, refetch } = useFkrtlAntrolData(filters, true);
 
@@ -173,7 +174,6 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     sumber: data?.filter_options?.sumber || ['All Sumber', 'Mobile JKN'],
   };
 
-  const liveSyncAntrol = useSyncStore((s) => s.lastUpdateAntrol);
   const lastUpdate = liveSyncAntrol || data?.last_update || '09/24/2026 03:14:56';
   const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filters.tahun !== '(All)' ? `Tahun ${filters.tahun} (Semua Bulan)` : 'Tahun 2026 (Semua Bulan)'));
   const kpiValue = data?.kpi_capaian ?? 0.0;
