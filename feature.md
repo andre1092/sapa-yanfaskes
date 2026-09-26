@@ -70,7 +70,7 @@
 
 ### D. Modul Laporan Kepatuhan FKRTL (8 Indikator Mutu Rumah Sakit) [STATUS: AKTIF / LIVE]
 - Terletak pada menu **FKRTL > Laporan Kepatuhan FKRTL** (`fkrtl-kepatuhan`).
-- **Tab 01. Jadwal Praktek Nakes - bobot 25% [STATUS: LIVE INTEGRASI SPREADSHEET]**:
+- **Tab 01. Jadwal Praktek Nakes [STATUS: LIVE INTEGRASI SPREADSHEET]**:
   - **Koneksi Live Google Spreadsheet**: Terhubung langsung secara paralel ke Spreadsheet Jadwal Nakes (`1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU`) dan Master Referensi Faskes (`17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`) dengan *join match rate* 100% (228 baris).
   - **Filter 4 Dimensi dengan Cascading / Dependent Filtering Dinamis**:
     - **Kabupaten**: Bondowoso, Jember, Lumajang (Master wilayah KC Jember).
@@ -90,7 +90,7 @@
     - Kolom terstruktur: `No`, `Nama Faskes`, `Tipe Faskes`, `Total Kunjungan`, `Tidak Sesuai`, `Sesuai`, `Persen Sesuai`, `Capaian`, dan `Status` (Tercapai / Belum Tercapai).
     - Dilengkapi pencarian *live search*, filter status, pengurutan kolom (*sorting*), dan paginasi adaptif.
 - Dilengkapi **8 Segmented Glassmorphism Tabs**:
-  1. 👨‍⚕️ **01. Jadwal Praktek Nakes - bobot 25%**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes terintegrasi live Google Sheets.
+  1. 👨‍⚕️ **01. Jadwal Praktek Nakes**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes terintegrasi live Google Sheets (Target: 100%, Bobot: 25%).
   2. 📢 **02. Penyelesaian Pengaduan**: Kecepatan respon dan tingkat penuntasan keluhan peserta JKN di rumah sakit (Target: ≥95%).
   3. 💬 **03. Umabl Peserta**: Evaluasi Indeks Kepuasan Peserta (IKP) melalui instrumen KESSAN (Target: ≥88%).
   4. 🛏️ **04. Update Display TT**: Pemutakhiran real-time integrasi ketersediaan tempat tidur rawat inap (Target: ≥95%).

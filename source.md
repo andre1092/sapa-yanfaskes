@@ -113,7 +113,11 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
 
 ---
 
-## 7. Parameter Resmi & Metadata Tab 01. Jadwal Praktek Nakes (Bobot 25%)
+## 7. Parameter Resmi & Metadata Tab 01. Jadwal Praktek Nakes
+
+- **Nama Indikator**: Kesesuaian Jadwal Praktik Dokter atau Tenaga Kesehatan
+- **Definisi Resmi**: Kesesuaian antara jadwal praktik dokter/nakes pada Aplikasi HFIS dengan data pelayanan pasien pada aplikasi atau sistem informasi yang menyimpan data pelayanan pasien di FKRTL - Bobot 25%
+- **Target Nasional**: 100%
 
 ### A. Metadata Sumber Data Google Spreadsheet
 1. **Dataset Realisasi Jadwal Nakes FKRTL**:

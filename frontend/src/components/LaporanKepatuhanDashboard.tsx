@@ -26,11 +26,11 @@ const COMPLIANCE_TABS: TabDefinition[] = [
   {
     id: '01-nakes',
     code: '01',
-    name: '01. Jadwal Praktek Nakes - bobot 25%',
+    name: '01. Jadwal Praktek Nakes',
     shortName: 'Jadwal Praktek Nakes',
     icon: '👨‍⚕️',
-    targetPercent: 80,
-    description: 'Monitoring kesesuaian dan kepatuhan jadwal praktek tenaga medis / dokter spesialis pada sistem antrean rumah sakit.',
+    targetPercent: 100,
+    description: 'Definisi: kesesuaian antara jadwal praktik dokter/nakes pada Aplikasi HFIS dengan data pelayanan pasien pada aplikasi atau sistem informasi yang menyimpan data pelayanan pasien di FKRTL - Bobot 25%',
     kpiLabel: 'Kesesuaian Jadwal Nakes',
   },
   {
@@ -274,10 +274,10 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#2b4390] dark:text-[#f7fcfa] tracking-tight">
-              Monitoring & Analisis <span className="bpjs-gradient-text">Kepatuhan FKRTL</span>
+              Kesesuaian Jadwal Praktik <span className="bpjs-gradient-text">Dokter atau Tenaga Kesehatan</span>
             </h1>
-            <p className="text-xs sm:text-sm text-[#6573a1] dark:text-[#afbade] mt-1 max-w-2xl leading-relaxed">
-              Instrumen evaluasi kepatuhan fasilitas kesehatan rujukan tingkat lanjutan (Rumah Sakit) terhadap 8 pilar standar mutu dan perjanjian kerja sama operasional BPJS Kesehatan.
+            <p className="text-xs sm:text-sm text-[#6573a1] dark:text-[#afbade] mt-1 max-w-3xl leading-relaxed">
+              Definisi: kesesuaian antara jadwal praktik dokter/nakes pada Aplikasi HFIS dengan data pelayanan pasien pada aplikasi atau sistem informasi yang menyimpan data pelayanan pasien di FKRTL - Bobot 25%
             </p>
           </div>
 
