@@ -11,9 +11,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 import requests
 
-from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie
+from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 try:
     import polars as pl
     HAS_POLARS = True
@@ -171,6 +174,108 @@ async def scim_provision_user(tenant_id: str, req: Request, db: AsyncSession = D
     # Simple Provisioning Logic (Upsert)
     # Excluded full error handling for brevity
     return {"id": email, "active": True, "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"]}
+
+
+# --- EMAIL VERIFICATION DISPATCH ENDPOINT ---
+class VerificationEmailRequest(BaseModel):
+    to_email: str
+    name: Optional[str] = "Administrator SAPA YANFASKES"
+    verification_url: Optional[str] = "https://sapa-yanfaskes.vercel.app"
+
+@app.post("/api/v1/auth/send-verification-email")
+async def send_verification_email(req: VerificationEmailRequest):
+    """
+    Endpoint pengiriman email verifikasi resmi SAPA YANFASKES.
+    Mendukung konfigurasi SMTP Vercel (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD).
+    Jika SMTP belum disetel, mencatat pengiriman dan mengembalikan status simulasi sukses.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_pass = os.getenv("SMTP_PASSWORD", "")
+    sender_email = os.getenv("SMTP_FROM", "no-reply@sapa-yanfaskes.bpjs-kesehatan.go.id")
+
+    verification_link = req.verification_url or "https://sapa-yanfaskes.vercel.app"
+    recipient = req.to_email
+    recipient_name = req.name or "Administrator"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }}
+        .container {{ max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }}
+        .header {{ background: linear-gradient(135deg, #2b4390 0%, #44853b 100%); padding: 28px 24px; text-align: center; color: #ffffff; }}
+        .header h1 {{ margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }}
+        .header p {{ margin: 6px 0 0; font-size: 13px; opacity: 0.9; }}
+        .body-content {{ padding: 30px 24px; color: #1e293b; font-size: 14px; line-height: 1.6; }}
+        .greeting {{ font-weight: 700; font-size: 15px; color: #2b4390; margin-bottom: 12px; }}
+        .link-box {{ background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 18px 0; color: #0284c7; }}
+        .btn-container {{ text-align: center; margin: 26px 0; }}
+        .btn {{ display: inline-block; background: linear-gradient(135deg, #44853b 0%, #2b4390 100%); color: #ffffff !important; text-decoration: none; padding: 12px 32px; border-radius: 10px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(68,133,59,0.35); }}
+        .footer {{ background: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>SAPA YANFASKES</h1>
+          <p>BPJS Kesehatan KC Jember • Saluran Analisis Performa & Akselerasi</p>
+        </div>
+        <div class="body-content">
+          <div class="greeting">Halo {recipient_name},</div>
+          <p>Anda menerima email ini karena ada permintaan pembaruan alamat email akun Administrator pada aplikasi <strong>SAPA YANFASKES</strong>.</p>
+          <p>Harap verifikasi email Anda untuk menikmati semua fitur yang ada di aplikasi SAPA YANFASKES melalui link berikut:</p>
+          <div class="link-box">{verification_link}</div>
+          <div class="btn-container">
+            <a href="{verification_link}" class="btn">VERIFIKASI SEKARANG</a>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">Jika Anda tidak merasa melakukan perubahan ini, harap abaikan pesan ini atau hubungi Tim TI / Super Administrator SAPA YANFASKES.</p>
+        </div>
+        <div class="footer">
+          &copy; 2026 SAPA YANFASKES • BPJS Kesehatan KC Jember. All rights reserved.<br>
+          Pesan otomatis dari sistem (No-Reply). Harap tidak membalas email ini secara langsung.
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    dispatched = False
+    error_msg = None
+
+    if smtp_host and smtp_user and smtp_pass:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = "[SAPA YANFASKES] Verifikasi Alamat Email Akun Administrator"
+            msg["From"] = f"SAPA YANFASKES <{sender_email}>"
+            msg["To"] = recipient
+
+            part = MIMEText(html_content, "html")
+            msg.attach(part)
+
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(sender_email, [recipient], msg.as_string())
+            server.quit()
+            dispatched = True
+            logger.info(f"Verification email successfully sent to {recipient} via SMTP {smtp_host}")
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Failed to send email via SMTP: {e}")
+
+    return {
+        "status": "success",
+        "dispatched": dispatched,
+        "recipient": recipient,
+        "smtp_configured": bool(smtp_host and smtp_user),
+        "error": error_msg,
+        "verification_url": verification_link,
+        "message": f"Tautan verifikasi resmi untuk {recipient} telah diproses sistem."
+    }
 
 
 # --- GOOGLE SHEETS INTEGRATION & RELATIONAL DATA ENGINE ---

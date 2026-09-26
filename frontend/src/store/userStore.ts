@@ -46,10 +46,10 @@ const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'usr-2',
     username: 'admin_jember',
-    name: 'Administrator Yanfaskes KC Jember',
-    email: 'admin.jember@bpjs-kesehatan.go.id',
+    name: 'Andreas Dwi Rizko Nugroho',
+    email: 'andreas.dwi@bpjs-kesehatan.go.id',
     password: 'JemberYanfaskes2026!',
-    role: 'Admin KC Jember',
+    role: 'Super Admin',
     status: 'Aktif',
     createdAt: '2026-01-20 09:30:00',
   },
@@ -79,9 +79,9 @@ export const useUserStore = create<UserStoreState>()(
   persist(
     (set, get) => ({
       profile: {
-        name: 'Administrator Yanfaskes KC Jember',
+        name: 'Andreas Dwi Rizko Nugroho',
         username: 'admin_jember',
-        email: 'admin.jember@bpjs-kesehatan.go.id',
+        email: 'andreas.dwi@bpjs-kesehatan.go.id',
         password: 'JemberYanfaskes2026!',
         role: 'Super Admin',
         isVerified: true,
@@ -90,17 +90,63 @@ export const useUserStore = create<UserStoreState>()(
       users: DEFAULT_USERS,
 
       updateProfile: (updated) => {
-        set((state) => ({
-          profile: {
+        set((state) => {
+          const newProfile = {
             ...state.profile,
             ...updated,
-          },
-        }));
+          };
+          const currentUsername = state.profile.username;
+
+          // Sinkronisasi otomatis ke daftar tabel pengguna (users)
+          const updatedUsers = state.users.map((u) => {
+            if (u.username === currentUsername || (updated.username && u.username === updated.username)) {
+              return {
+                ...u,
+                name: updated.name ?? u.name,
+                username: updated.username ?? u.username,
+                email: (updated.unverifiedEmail || updated.email) ?? u.email,
+                role: (updated.role as any) ?? u.role,
+                ...(updated.password ? { password: updated.password } : {}),
+              };
+            }
+            return u;
+          });
+
+          // Jika akun profil belum ada di users, tambahkan langsung
+          const exists = updatedUsers.some((u) => u.username === newProfile.username);
+          if (!exists) {
+            updatedUsers.unshift({
+              id: `usr-${Date.now()}`,
+              username: newProfile.username,
+              name: newProfile.name,
+              email: newProfile.email,
+              password: newProfile.password || 'JemberYanfaskes2026!',
+              role: (newProfile.role as any) || 'Super Admin',
+              status: 'Aktif',
+              createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            });
+          }
+
+          return {
+            profile: newProfile,
+            users: updatedUsers,
+          };
+        });
       },
 
       confirmEmailVerification: () => {
         set((state) => {
           const newEmail = state.profile.unverifiedEmail || state.profile.email;
+          const currentUsername = state.profile.username;
+          const updatedUsers = state.users.map((u) => {
+            if (u.username === currentUsername) {
+              return {
+                ...u,
+                email: newEmail,
+              };
+            }
+            return u;
+          });
           return {
             profile: {
               ...state.profile,
@@ -108,6 +154,7 @@ export const useUserStore = create<UserStoreState>()(
               isVerified: true,
               unverifiedEmail: null,
             },
+            users: updatedUsers,
           };
         });
       },
@@ -125,15 +172,31 @@ export const useUserStore = create<UserStoreState>()(
       },
 
       editUser: (id, userData) => {
-        set((state) => ({
-          users: state.users.map((u) => (u.id === id ? { ...u, ...userData } : u)),
-        }));
+        set((state) => {
+          const updatedUsers = state.users.map((u) => (u.id === id ? { ...u, ...userData } : u));
+          // Jika user yang diedit adalah user yang sedang login di profil, sinkronkan ke profil
+          const editedUser = updatedUsers.find((u) => u.id === id);
+          let newProfile = state.profile;
+          if (editedUser && editedUser.username === state.profile.username) {
+            newProfile = {
+              ...state.profile,
+              name: editedUser.name,
+              email: editedUser.email,
+              role: editedUser.role,
+              ...(editedUser.password ? { password: editedUser.password } : {}),
+            };
+          }
+          return {
+            users: updatedUsers,
+            profile: newProfile,
+          };
+        });
       },
 
       deleteUser: (id) => {
         const user = get().users.find((u) => u.id === id);
-        // Proteksi akun superadmin agar tidak terhapus
-        if (user && user.username === 'superadmin') {
+        // Proteksi akun superadmin & akun yang sedang login agar tidak terhapus
+        if (user && (user.username === 'superadmin' || user.username === get().profile.username)) {
           return false;
         }
         set((state) => ({
@@ -144,6 +207,32 @@ export const useUserStore = create<UserStoreState>()(
     }),
     {
       name: 'sapa-user-settings-storage',
+      version: 2,
+      migrate: (persistedState: any, version: number) => {
+        if (version < 2 && persistedState) {
+          persistedState.profile = {
+            ...persistedState.profile,
+            name: 'Andreas Dwi Rizko Nugroho',
+            username: 'admin_jember',
+            email: 'andreas.dwi@bpjs-kesehatan.go.id',
+            role: 'Super Admin',
+          };
+          if (Array.isArray(persistedState.users)) {
+            persistedState.users = persistedState.users.map((u: any) => {
+              if (u.username === 'admin_jember') {
+                return {
+                  ...u,
+                  name: 'Andreas Dwi Rizko Nugroho',
+                  email: 'andreas.dwi@bpjs-kesehatan.go.id',
+                  role: 'Super Admin',
+                };
+              }
+              return u;
+            });
+          }
+        }
+        return persistedState;
+      },
     }
   )
 );

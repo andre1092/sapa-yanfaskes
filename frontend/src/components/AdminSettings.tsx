@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../lib/apiClient';
 import { useSyncStore, formatCurrentTimestamp } from '../store/syncStore';
 import { useUserStore, type UserAccount } from '../store/userStore';
 
@@ -38,9 +39,23 @@ export const AdminSettings: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Email Verification Modal State
+  // Keep form in sync when profile store is updated/migrated
+  useEffect(() => {
+    setProfileName(profile.name);
+    setProfileUsername(profile.username);
+    setProfileEmail(profile.email);
+  }, [profile.name, profile.username, profile.email]);
+
+  // Email Verification Modal State & Dispatch
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [pendingEmailToVerify, setPendingEmailToVerify] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailDispatchStatus, setEmailDispatchStatus] = useState<{
+    success: boolean;
+    message: string;
+    method?: string;
+  } | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Integration Loading States
   const [syncingModule, setSyncingModule] = useState<string | null>(null);
@@ -72,8 +87,36 @@ export const AdminSettings: React.FC = () => {
     }, 4000);
   };
 
+  const getWebmailUrl = (email: string) => {
+    const domain = (email.split('@')[1] || '').toLowerCase();
+    if (domain === 'bpjs-kesehatan.go.id') {
+      return 'https://mail.bpjs-kesehatan.go.id';
+    }
+    if (domain.includes('gmail.com')) {
+      return 'https://mail.google.com';
+    }
+    if (domain.includes('yahoo.')) {
+      return 'https://mail.yahoo.com';
+    }
+    if (domain.includes('outlook.') || domain.includes('hotmail.')) {
+      return 'https://outlook.live.com';
+    }
+    return `mailto:${email}`;
+  };
+
+  const currentVerificationUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://sapa-yanfaskes.vercel.app'}/verify?token=sapa_auth_${Date.now()}&email=${encodeURIComponent(pendingEmailToVerify || profileEmail)}`;
+
+  const handleCopyVerificationLink = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(currentVerificationUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+      showToast('Tautan verifikasi resmi berhasil disalin ke clipboard!');
+    }
+  };
+
   // --- TAB 1: PROFIL LOGIC ---
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
 
@@ -85,35 +128,69 @@ export const AdminSettings: React.FC = () => {
 
     const emailChanged = profileEmail.trim().toLowerCase() !== profile.email.trim().toLowerCase();
 
-    setTimeout(() => {
-      if (emailChanged) {
-        setPendingEmailToVerify(profileEmail.trim());
-        updateProfile({
-          name: profileName.trim(),
-          username: profileUsername.trim(),
-          unverifiedEmail: profileEmail.trim(),
-          isVerified: false,
-          ...(newPassword ? { password: newPassword } : {}),
+    if (emailChanged) {
+      const targetEmail = profileEmail.trim();
+      const targetName = profileName.trim();
+      setPendingEmailToVerify(targetEmail);
+      updateProfile({
+        name: targetName,
+        username: profileUsername.trim(),
+        unverifiedEmail: targetEmail,
+        isVerified: false,
+        ...(newPassword ? { password: newPassword } : {}),
+      });
+      setIsSavingProfile(false);
+      setShowVerifyModal(true);
+      setIsSendingEmail(true);
+      setEmailDispatchStatus(null);
+
+      // Kirim email verifikasi resmi via backend FastAPI
+      try {
+        const verifyUrl = `${window.location.origin}/verify?token=sapa_auth_${Date.now()}&email=${encodeURIComponent(targetEmail)}`;
+        const res = await apiClient.post('/api/v1/auth/send-verification-email', {
+          to_email: targetEmail,
+          name: targetName,
+          verification_url: verifyUrl,
         });
-        setIsSavingProfile(false);
-        setShowVerifyModal(true);
-      } else {
-        updateProfile({
-          name: profileName.trim(),
-          username: profileUsername.trim(),
-          ...(newPassword ? { password: newPassword } : {}),
+
+        if (res.data?.success) {
+          setEmailDispatchStatus({
+            success: true,
+            message: res.data.message || `Email verifikasi berhasil dikirim ke ${targetEmail}`,
+            method: res.data.method,
+          });
+          showToast(`Email verifikasi resmi telah dikirim ke ${targetEmail}`);
+        } else {
+          setEmailDispatchStatus({
+            success: false,
+            message: res.data?.message || 'Pengiriman email server tertunda. Anda dapat menggunakan verifikasi langsung.',
+          });
+        }
+      } catch (err: any) {
+        setEmailDispatchStatus({
+          success: false,
+          message: 'Server email fallback aktif. Anda dapat memverifikasi akun secara instan atau menyalin tautan verifikasi.',
         });
-        setOldPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setIsSavingProfile(false);
-        showToast('Profil dan kredensial akun berhasil disimpan 100%!');
+      } finally {
+        setIsSendingEmail(false);
       }
-    }, 400);
+    } else {
+      updateProfile({
+        name: profileName.trim(),
+        username: profileUsername.trim(),
+        ...(newPassword ? { password: newPassword } : {}),
+      });
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsSavingProfile(false);
+      showToast('Profil dan kredensial akun berhasil disimpan 100%!');
+    }
   };
 
   const handleExecuteVerification = () => {
     confirmEmailVerification();
+    setProfileEmail(pendingEmailToVerify);
     setShowVerifyModal(false);
     showToast(`Email ${pendingEmailToVerify} berhasil diverifikasi! Seluruh fitur SAPA YANFASKES kini aktif.`);
   };
@@ -201,6 +278,19 @@ export const AdminSettings: React.FC = () => {
         role: userFormRole,
         status: userFormStatus,
       });
+
+      // Sinkronisasi otomatis ke profil aktif jika user yang diedit adalah akun yang sedang login
+      const targetUser = users.find((u) => u.id === editingUserId);
+      if (targetUser && targetUser.username.toLowerCase() === profile.username.toLowerCase()) {
+        updateProfile({
+          username: userFormUsername.trim(),
+          name: userFormName.trim(),
+          email: userFormEmail.trim(),
+          password: userFormPassword.trim(),
+          role: userFormRole,
+        });
+      }
+
       showToast(`Data pengguna ${userFormUsername} berhasil diperbarui!`);
     } else {
       addUser({
@@ -820,17 +910,35 @@ export const AdminSettings: React.FC = () => {
                 ) : (
                   filteredUsers.map((u, idx) => {
                     const isPassVisible = Boolean(visiblePasswords[u.id]);
+                    const isCurrentActiveUser = u.username.toLowerCase() === profile.username.toLowerCase();
                     return (
                       <tr
                         key={u.id}
-                        className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
+                        className={`transition-colors group ${
+                          isCurrentActiveUser
+                            ? 'bg-[#d4ecd1]/40 dark:bg-emerald-950/30 border-l-4 border-l-[#44853b] hover:bg-[#d4ecd1]/50'
+                            : 'hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40'
+                        }`}
                       >
                         <td className="py-3 px-4 text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">{idx + 1}</td>
                         <td className="py-3 px-4 font-mono font-bold text-[#2b4390] dark:text-white">
-                          @{u.username}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>@{u.username}</span>
+                            {isCurrentActiveUser && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-[#44853b] text-white shadow-sm inline-flex items-center gap-1">
+                                <span>⭐</span>
+                                <span>Akun Anda (Login Saat Ini)</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 font-bold text-[#2b4390] dark:text-slate-200">
-                          {u.name}
+                          <div className="flex items-center gap-1.5">
+                            <span>{u.name}</span>
+                            {isCurrentActiveUser && (
+                              <span className="text-[10px] text-[#44853b] font-bold" title="Sesi login aktif saat ini">(Aktif)</span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-[#6573a1] dark:text-slate-400 font-mono text-[11px]">
                           {u.email}
@@ -902,6 +1010,106 @@ export const AdminSettings: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Matriks Transparansi Hak Akses & Peran Pengguna Resmi (Role & Privilege Matrix) */}
+          <div className="mt-8 rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/40 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#afbade]/20 pb-3">
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-[#2b4390] dark:text-white flex items-center gap-2">
+                  <span>🛡️</span>
+                  <span>Matriks Hak Akses &amp; Peran Pengguna Resmi (Role &amp; Privilege Matrix)</span>
+                </h3>
+                <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
+                  Daftar akun dan hak akses resmi yang beroperasi di aplikasi SAPA YANFASKES Kantor Cabang Jember.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-[#d4ecd1] text-[#44853b] text-[10px] font-bold self-start sm:self-auto">
+                4 Peran Terdaftar
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Role 1: Super Admin */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-[#2b4390]/30 dark:border-sky-500/20 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#2b4390] text-white">
+                    Super Admin
+                  </span>
+                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 1 (Full)</span>
+                </div>
+                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                  Andreas Dwi Rizko Nugroho (@admin_jember)
+                </div>
+                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
+                  Kontrol penuh seluruh aplikasi: Dashboard FKTP/FKRTL, trigger sinkronisasi spreadsheet manual, kelola semua akun &amp; hak akses, serta pengaturan profil.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-[#44853b] flex items-center gap-1">
+                  <span>✅</span>
+                  <span>Akses Semua Menu &amp; Fitur</span>
+                </div>
+              </div>
+
+              {/* Role 2: Admin KC Jember */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40">
+                    Admin KC Jember
+                  </span>
+                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 2 (Operasional)</span>
+                </div>
+                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                  dr. Siti Nurhaliza (@admin_yanfaskes)
+                </div>
+                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
+                  Operasional monitoring KC Jember: Akses analisis performa faskes, sinkronisasi data FKRTL berkala, ekspor laporan kepatuhan, dan verifikasi antrean.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-[#2b4390] dark:text-sky-300 flex items-center gap-1">
+                  <span>✅</span>
+                  <span>Dashboard, Tab 01-05 &amp; Integrasi</span>
+                </div>
+              </div>
+
+              {/* Role 3: Verifikator Yanfaskes */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-sky-200 dark:border-sky-500/20 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                    Verifikator Yanfaskes
+                  </span>
+                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 3 (Verifikasi)</span>
+                </div>
+                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                  Budi Prasetyo &amp; dr. Maya Safitri
+                </div>
+                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
+                  Pemeriksaan dan validasi teknis: Verifikasi pemanfaatan antrol faskes, kepatuhan display tempat tidur, SIP nakes, dan penanganan pengaduan faskes.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-[#6573a1] dark:text-slate-400 flex items-center gap-1">
+                  <span>👁️</span>
+                  <span>Validasi &amp; Monitoring Data</span>
+                </div>
+              </div>
+
+              {/* Role 4: Viewer Eksekutif */}
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    Viewer Eksekutif
+                  </span>
+                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 4 (Read-Only)</span>
+                </div>
+                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                  Kepala Cabang BPJS Jember (@kacab_jember)
+                </div>
+                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
+                  Akses tinjauan tingkat pimpinan: Melihat ringkasan grafik agregat kepatuhan faskes wilayah Jember dan Lumajang tanpa wewenang mutasi konfigurasi.
+                </p>
+                <div className="pt-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <span>🔒</span>
+                  <span>Hanya Baca (Executive Summary)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -932,6 +1140,32 @@ export const AdminSettings: React.FC = () => {
               Info Sapa Yanfaskes: Harap verifikasi akun Anda untuk mengaktifkan fitur-fitur pada SAPA YANFASKES.
             </div>
 
+            {/* Status Notifikasi Pengiriman Server */}
+            {isSendingEmail ? (
+              <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/30 text-sky-800 dark:text-sky-300 text-xs flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-sky-500 animate-ping shrink-0" />
+                <span>Sedang mengirimkan email verifikasi resmi via server SAPA YANFASKES...</span>
+              </div>
+            ) : emailDispatchStatus ? (
+              <div
+                className={`p-3 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                  emailDispatchStatus.success
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span>{emailDispatchStatus.success ? '✅' : 'ℹ️'}</span>
+                  <span>{emailDispatchStatus.message}</span>
+                </div>
+                {emailDispatchStatus.method && (
+                  <span className="px-2 py-0.5 rounded bg-emerald-200/80 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 text-[10px] font-mono font-bold uppercase self-start sm:self-auto">
+                    METODE: {emailDispatchStatus.method}
+                  </span>
+                )}
+              </div>
+            ) : null}
+
             <p className="text-xs text-[#6573a1] dark:text-slate-300 leading-relaxed">
               Tautan verifikasi resmi telah dikirimkan ke alamat email tujuan:{' '}
               <span className="font-bold text-[#2b4390] dark:text-white font-mono">{pendingEmailToVerify}</span>.
@@ -955,8 +1189,17 @@ export const AdminSettings: React.FC = () => {
                 <p>
                   Harap verifikasi email Anda untuk menikmati semua fitur yang ada di aplikasi SAPA YANFASKES melalui link berikut:
                 </p>
-                <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10.5px] font-mono text-sky-700 dark:text-sky-300 break-all select-all">
-                  https://sapa-yanfaskes.vercel.app/verify?token=sapa_auth_{Date.now()}&amp;email={encodeURIComponent(pendingEmailToVerify)}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-[#afbade]/30 dark:border-slate-700">
+                  <div className="text-[10.5px] font-mono text-sky-700 dark:text-sky-300 break-all select-all flex-1">
+                    {currentVerificationUrl}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyVerificationLink}
+                    className="px-3 py-1.5 rounded-lg bg-[#2b4390] text-white hover:bg-[#2b4390]/90 text-[10px] font-bold shrink-0 transition-all cursor-pointer shadow-sm text-center"
+                  >
+                    {copiedLink ? '✓ Tersalin!' : '📋 Salin Tautan'}
+                  </button>
                 </div>
                 <p>atau tekan tombol di bawah ini:</p>
                 <div className="text-center pt-1">
@@ -973,14 +1216,20 @@ export const AdminSettings: React.FC = () => {
             </div>
 
             {/* Tombol Aksi Menuju Email */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
               <a
-                href={`mailto:${pendingEmailToVerify}`}
+                href={getWebmailUrl(pendingEmailToVerify)}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#2b4390] text-[#2b4390] dark:border-sky-400 dark:text-sky-300 hover:bg-[#2b4390] hover:text-white text-xs font-bold transition-all text-center"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#2b4390] text-[#2b4390] dark:border-sky-400 dark:text-sky-300 hover:bg-[#2b4390] hover:text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
               >
-                📬 Buka Email ({pendingEmailToVerify.split('@')[1] || 'Webmail'})
+                <span>📬</span>
+                <span>
+                  {pendingEmailToVerify.toLowerCase().endsWith('@bpjs-kesehatan.go.id')
+                    ? 'Buka Webmail BPJS Kesehatan'
+                    : `Buka Email (${pendingEmailToVerify.split('@')[1] || 'Webmail'})`}
+                </span>
+                <span className="text-[10px] opacity-70">↗</span>
               </a>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
