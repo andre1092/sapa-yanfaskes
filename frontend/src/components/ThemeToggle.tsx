@@ -47,7 +47,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
 
   if (variant === 'expanded') {
     return (
-      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3 ${className}`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-3 gap-3.5 ${className}`}>
         {options.map((opt) => {
           const isActive = theme === opt.mode;
           return (
@@ -55,31 +55,39 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
               key={opt.mode}
               type="button"
               onClick={() => setTheme(opt.mode)}
-              className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left cursor-pointer ${
+              className={`flex items-start justify-between gap-3 p-4 rounded-2xl border transition-all text-left cursor-pointer ${
                 isActive
-                  ? 'border-emerald-500/60 bg-emerald-500/10 shadow-md shadow-emerald-950/20'
-                  : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/60'
+                  ? 'border-[#44853b] bg-[#d4ecd1]/35 dark:bg-emerald-500/15 shadow-md shadow-[#44853b]/15 ring-1 ring-[#44853b]/30'
+                  : 'border-[#afbade]/30 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 hover:border-[#83a67e]/50 hover:bg-[#d4ecd1]/15 dark:hover:bg-slate-800/60'
               }`}
             >
-              <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                  isActive
-                    ? 'bpjs-gradient text-white shadow-sm'
-                    : 'bg-slate-800 text-slate-400'
-                }`}
-              >
-                {opt.icon}
+              <div className="flex items-start gap-3">
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    isActive
+                      ? 'bpjs-gradient text-white shadow-sm shadow-[#2b4390]/30'
+                      : 'bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-400'
+                  }`}
+                >
+                  {opt.icon}
+                </div>
+                <div>
+                  <p className={`text-sm font-bold ${isActive ? 'text-[#2b4390] dark:text-emerald-300' : 'text-[#2b4390] dark:text-[#f7fcfa]'}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-[11px] text-[#6573a1] dark:text-[#afbade] mt-0.5 leading-relaxed">
+                    {opt.mode === 'system'
+                      ? `Otomatis (${effectiveTheme === 'dark' ? 'Mode Gelap' : 'Mode Terang'})`
+                      : `Tema ${opt.label.toLowerCase()} konsisten`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className={`text-sm font-bold ${isActive ? 'text-emerald-400' : 'text-slate-300'}`}>
-                  {opt.label}
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  {opt.mode === 'system'
-                    ? `Otomatis (${effectiveTheme === 'dark' ? 'Mode Gelap' : 'Mode Terang'})`
-                    : `Tema ${opt.label.toLowerCase()} konsisten`}
-                </p>
-              </div>
+
+              {isActive && (
+                <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  ✓ Aktif
+                </span>
+              )}
             </button>
           );
         })}

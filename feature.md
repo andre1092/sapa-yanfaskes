@@ -124,3 +124,18 @@
 - **Otentikasi Aman**: Integrasi OAuth 2.0 / OIDC melalui Auth0 React SDK.
 - **Isolasi Data Multi-Tenant**: Context injection pada query PostgreSQL dan filter token faskes sehingga pengguna RS hanya dapat melihat data fasilitas kesehatannya sendiri.
 - **Perlindungan Token**: Tanpa penyimpanan kunci privat Google Service Account di sisi publik frontend.
+
+---
+
+## 5. Fitur Pengaturan & Manajemen Admin (Admin Settings) [STATUS: AKTIF / LIVE]
+- **Palet Warna Harmonis (7 Warna Resmi BPJS)**: Implementasi penuh token `#2b4390`, `#44853b`, `#f7fcfa`, `#afbade`, `#83a67e`, `#d4ecd1`, `#6573a1` dengan kontras adaptif bebas teks putih pudar (*zero invisible text*).
+- **Executive Banner Header**: Dilengkapi penanda status aktif `SISTEM & PENGATURAN ADMINISTRATOR` dan kartu pemantauan status operasional live (Latensi respons sub-2s).
+- **Manajemen Cache & Sinkronisasi Data FKRTL**:
+  - Tombol sinkronisasi langsung (*live cache invalidation*) untuk modul Pemanfaatan Antrol FKRTL (2.052 baris data).
+  - Tombol sinkronisasi langsung untuk modul Laporan Kepatuhan Mutu FKRTL (Tab 01 Jadwal Nakes & Tab 02 Pengaduan).
+  - Indikator riwayat stempel waktu (*last synced timestamp*) yang informatif dan responsif.
+- **Preferensi Tampilan Glassmorphism (Expanded Theme Toggle)**:
+  - Kartu pemilih tema Terang, Gelap, dan Sistem dengan penanda status aktif (*pill badge*) dan kontras tajam.
+- **Spesifikasi DevSecOps & Infrastruktur**:
+  - Matriks informasi runtime engine (FastAPI + Polars Serverless), design system BPJS, isolasi Zero-Trust IAM, dan efisiensi biaya 100% Free Resources.
+
