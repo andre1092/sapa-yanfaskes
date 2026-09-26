@@ -89,9 +89,16 @@
   - **Tabel Matriks Nakes Berstruktur Rapi**:
     - Kolom terstruktur: `No`, `Nama Faskes`, `Tipe Faskes`, `Total Kunjungan`, `Tidak Sesuai`, `Sesuai`, `Persen Sesuai`, `Capaian`, dan `Status` (Tercapai / Belum Tercapai).
     - Dilengkapi pencarian *live search*, filter status, pengurutan kolom (*sorting*), dan paginasi adaptif.
+- **Tab 02. Penyelesaian Pengaduan [STATUS: LIVE INTEGRASI SPREADSHEET]**:
+  - **Koneksi Live Google Spreadsheet**: Terhubung ke Spreadsheet Pengaduan (`1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk`) dan Master Referensi Faskes (`17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`) via parallel stream CSV & cache Polars (sub-2s latency).
+  - **Filter 4 Dimensi dengan Cascading Dinamis**: Kabupaten, Nama Faskes, Bulan, Tipe Faskes dengan auto-reset dan auto-sanitize.
+  - **Dinamisasi Judul Banner Otomatis**: Judul berganti menjadi "Tindak Lanjut dan Penyelesaian Pengaduan" dan Sub Judul menjadi "Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%".
+  - **4 Kartu Ringkasan KPI**: Rata-rata Capaian (skala 100), Kontribusi Nilai Riil (bobot 20%), Pengaduan Bulan Penilaian (Sesuai SLA vs Tidak Ditindaklanjuti), dan Status Kepatuhan RS (Tercapai nilai 100 vs Belum Tercapai).
+  - **Grafik Tren Bulanan (Line Chart)**: Kurva SVG interaktif dengan garis target 100 poin dan tooltip detail bulanan.
+  - **Tabel Matriks Kepatuhan Pengaduan**: Kolom No, Nama Faskes, Tipe Faskes, Pengaduan 3 Bln Terakhir, Jml Pengaduan Bln Penilaian, Jml Pengaduan Ditindaklanjuti Sesuai SLA, Jml Pengaduan Top 10 Thn Lalu, Jml Pengaduan Tidak Ditindaklanjuti, Capaian, dan Status (Tercapai / Belum Tercapai).
 - Dilengkapi **8 Segmented Glassmorphism Tabs**:
   1. 👨‍⚕️ **01. Jadwal Praktek Nakes**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes terintegrasi live Google Sheets (Target: 100%, Bobot: 25%).
-  2. 📢 **02. Penyelesaian Pengaduan**: Kecepatan respon dan tingkat penuntasan keluhan peserta JKN di rumah sakit (Target: ≥95%).
+  2. 📢 **02. Penyelesaian Pengaduan**: Tindak lanjut dan penyelesaian pengaduan sesuai SLA 1-3 hari kerja di Aplikasi SIPP terintegrasi live Google Sheets (Target: 100%, Bobot: 20%).
   3. 💬 **03. Umabl Peserta**: Evaluasi Indeks Kepuasan Peserta (IKP) melalui instrumen KESSAN (Target: ≥88%).
   4. 🛏️ **04. Update Display TT**: Pemutakhiran real-time integrasi ketersediaan tempat tidur rawat inap (Target: ≥95%).
   5. 💊 **05. Update TMO**: Pemutakhiran Tempat Pelayanan Obat kronis/PRB dan Telemedicine (Target: ≥85%).

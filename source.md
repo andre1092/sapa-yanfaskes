@@ -162,4 +162,61 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
    - Pilihan `Tipe Faskes` menyaring lebih lanjut faskes yang bertipe tersebut.
    - Perubahan kabupaten wajib memicu auto-reset pilihan faskes dan tipe faskes ke "Semua" guna mengeliminasi error filter faskes luar daerah ataupun data kosong.
 
+---
+
+## 8. Parameter Resmi & Metadata Tab 02. Penyelesaian Pengaduan
+
+- **Nama Indikator**: Tindak Lanjut dan Penyelesaian Pengaduan
+- **Definisi Resmi**: Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%
+- **Target Kepatuhan**: 100% (Poin Capaian = 100)
+
+### A. Metadata Sumber Data Google Spreadsheet
+1. **Dataset Realisasi Penyelesaian Pengaduan**:
+   - **URL Spreadsheet**: `https://docs.google.com/spreadsheets/d/1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk/edit?usp=sharing`
+   - **Spreadsheet ID**: `1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk`
+   - **Jumlah Baris Data**: 228 baris data live.
+   - **Struktur Kolom Asli**: `Kode FKRTL`, `Nama FKRTL`, `pengaduan 3 bulan terakhir (termasuk bulan N)`, `Jml Pengaduan Bln penilaian`, `Jml Pengaduan Ditindaklanjuti sesuai SLA`, `Jml Pengaduan Top 10 Tahun lalu`, `Jml Pengaduan Tidak Ditindaklanjuti`, `Capaian`, `bulan`.
+   - **Rentang Periode**: Januari 2026 s.d. September 2026 (9 bulan).
+2. **Dataset Referensi Fasilitas Kesehatan (Master FKRTL)**:
+   - **URL Spreadsheet**: `https://docs.google.com/spreadsheets/d/17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs/edit?usp=sharing`
+   - **Spreadsheet ID**: `17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs`
+   - **Kecocokan Relasional**: 100% terhubung via `Kode FKRTL` $\leftrightarrow$ `kode_ppk` master faskes.
+
+### B. Algoritma Perhitungan Indikator & Nilai Capaian
+1. **Standar SLA Penyelesaian**:
+   - Batas toleransi penanganan pengaduan adalah **1 sampai 3 hari kerja** terhitung sejak pengaduan terdaftar pada Aplikasi Saluran Informasi dan Penanganan Pengaduan (SIPP).
+2. **Skor Capaian Poin**:
+   - Nilai Capaian berada pada rentang diskrit [25.0, 50.0, 75.0, 100.0] poin.
+   - Faskes tanpa pengaduan atau faskes dengan 100% tindak lanjut sesuai SLA memperoleh capaian 100 poin.
+3. **Bobot Indikator**:
+   - Bobot resmi indikator Penyelesaian Pengaduan adalah **20%** dari total evaluasi kepatuhan mutu FKRTL.
+   - Kontribusi riil dihitung dengan formula: $\text{Kontribusi Capaian} = \text{Rata-rata Capaian} \times 20\%$.
+4. **Logika & Standar Status Kepatuhan**:
+   - **Tercapai**: jika nilai Capaian mencapai **100** ($\text{Capaian} \ge 100$).
+   - **Belum Tercapai**: jika nilai Capaian **di bawah 100** ($\text{Capaian} < 100$).
+
+### C. Standar Tampilan Dashboard & Tabel Matriks
+1. **Dinamisasi Header Banner**:
+   - Saat tab aktif adalah `02-pengaduan`:
+     - Judul Utama: **Tindak Lanjut dan Penyelesaian Pengaduan**
+     - Sub Judul: **Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%**
+2. **Grafik Bulanan (Line Chart Capaian)**:
+   - Menampilkan rata-rata capaian poin bulanan (Januari - September 2026).
+   - Dilengkapi garis target putus-putus pada level 100 Poin (Warna Hijau BPJS `#44853b`).
+   - Tooltip interaktif memuat rata-rata capaian, total pengaduan bulan berjalan, dan jumlah pengaduan sesuai SLA.
+3. **Struktur Kolom Tabel Standar**:
+   - `No`
+   - `Nama Faskes`
+   - `Tipe Faskes`
+   - `pengaduan 3 bulan terakhir (termasuk bulan N)`
+   - `Jml Pengaduan Bln penilaian`
+   - `Jml Pengaduan Ditindaklanjuti sesuai SLA`
+   - `Jml Pengaduan Top 10 Tahun lalu`
+   - `Jml Pengaduan Tidak Ditindaklanjuti`
+   - `Capaian`
+   - `Status` ("Tercapai" jika nilai 100, "Belum Tercapai" jika nilai di bawah 100).
+4. **Cascading Dependent Filters**:
+   - Dropdown `Kabupaten`, `Nama Faskes`, `Bulan`, dan `Tipe Faskes` saling sinkron secara hierarkis seperti pada Tab 01.
+
+
 

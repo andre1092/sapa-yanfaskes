@@ -1457,8 +1457,9 @@ def fetch_csv_records(spreadsheet_id: str, sheet_name: str, gid: Optional[str] =
     return []
 
 
-# --- FKRTL LAPORAN KEPATUHAN: TAB 01 - JADWAL PRAKTEK NAKES (BOBOT 25%) ---
+# --- FKRTL LAPORAN KEPATUHAN: TAB 01 - JADWAL PRAKTEK NAKES & TAB 02 - PENYELESAIAN PENGADUAN ---
 NAKES_SPREADSHEET_ID = "1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU"
+PENGADUAN_SPREADSHEET_ID = "1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk"
 REF_FASKES_SPREADSHEET_ID = "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs"
 
 MONTH_ORDER = [
@@ -1790,6 +1791,297 @@ async def get_fkrtl_kepatuhan_nakes(
         raise HTTPException(
             status_code=500,
             detail=f"Gagal memproses data Laporan Kepatuhan Jadwal Praktek Nakes: {str(e)}"
+        )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/pengaduan")
+async def get_fkrtl_kepatuhan_pengaduan(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        # 1. Fetch live records from Google Sheets (Parallel / Cached)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            fut_pengaduan = executor.submit(fetch_csv_records, PENGADUAN_SPREADSHEET_ID, "PENGADUAN_DATA")
+            fut_ref = executor.submit(fetch_csv_records, REF_FASKES_SPREADSHEET_ID, "REF_FASKES")
+            pengaduan_raw = fut_pengaduan.result()
+            ref_raw = fut_ref.result()
+
+        if not pengaduan_raw:
+            return {
+                "status": "no_data",
+                "message": "Data Penyelesaian Pengaduan tidak tersedia.",
+                "kpi": {
+                    "avg_capaian": 0.0,
+                    "bobot_persen": 20,
+                    "kontribusi_capaian": 0.0,
+                    "target_persen": 100.0,
+                    "total_faskes": 0,
+                    "total_pengaduan_3bln": 0,
+                    "total_pengaduan_bln": 0,
+                    "total_ditindaklanjuti_sla": 0,
+                    "total_top10_thnlalu": 0,
+                    "total_tidak_ditindaklanjuti": 0,
+                    "total_tercapai": 0,
+                    "total_belum_tercapai": 0,
+                    "total_records": 0
+                },
+                "monthly_chart": [],
+                "table_data": [],
+                "filter_options": {
+                    "kabupaten": ["Semua Kabupaten"],
+                    "nama_ppk": ["Semua Faskes"],
+                    "bulan": ["Semua Bulan"],
+                    "tipe_faskes": ["Semua Tipe Faskes"]
+                }
+            }
+
+        # 2. Build Reference Lookup
+        ref_lookup = {}
+        for r in ref_raw:
+            k = r.get("kode_ppk", "").strip()
+            if k:
+                ref_lookup[k] = r
+
+        # 3. Join Pengaduan Data with Ref Faskes
+        all_joined = []
+        for r in pengaduan_raw:
+            k = r.get("Kode FKRTL", "").strip()
+            if not k:
+                continue
+
+            ref = ref_lookup.get(k, {})
+
+            try:
+                c_val = float(r.get("Capaian", "0").strip())
+            except Exception:
+                c_val = 0.0
+
+            try:
+                p_3bln = int(float(r.get("pengaduan 3 bulan terakhir (termasuk bulan N)", "0").strip() or 0))
+            except Exception:
+                p_3bln = 0
+
+            try:
+                p_bln = int(float(r.get("Jml Pengaduan Bln penilaian", "0").strip() or 0))
+            except Exception:
+                p_bln = 0
+
+            try:
+                p_sla = int(float(r.get("Jml Pengaduan Ditindaklanjuti sesuai SLA", "0").strip() or 0))
+            except Exception:
+                p_sla = 0
+
+            try:
+                p_top10 = int(float(r.get("Jml Pengaduan Top 10 Tahun lalu", "0").strip() or 0))
+            except Exception:
+                p_top10 = 0
+
+            try:
+                p_tdk = int(float(r.get("Jml Pengaduan Tidak Ditindaklanjuti", "0").strip() or 0))
+            except Exception:
+                p_tdk = 0
+
+            b = r.get("bulan", "").strip().replace("\xa0", " ")
+            nama = r.get("Nama FKRTL", "").strip()
+            tipe = r.get("Tipe Faskes", "").strip() or ref.get("kelas_ppk", "-").strip()
+            kab = ref.get("kabupaten", "").strip() or "Lainnya"
+
+            all_joined.append({
+                "kode_ppk": k,
+                "nama_ppk": nama,
+                "tipe_faskes": tipe,
+                "kabupaten": kab,
+                "kelas_ppk": ref.get("kelas_ppk", "-").strip(),
+                "kepemilikan": ref.get("kepemilikan", "-").strip(),
+                "vendor": ref.get("vendor", "-").strip(),
+                "bulan": b,
+                "bulan_indo": MONTH_INDO.get(b, b),
+                "pengaduan_3bln": p_3bln,
+                "pengaduan_bln": p_bln,
+                "ditindaklanjuti_sla": p_sla,
+                "top10_thnlalu": p_top10,
+                "tidak_ditindaklanjuti": p_tdk,
+                "capaian": c_val,
+            })
+
+        # 4. Generate Comprehensive Filter Options (Cascading / Dependent Filters)
+        raw_kabupatens = sorted(list(set(r["kabupaten"] for r in all_joined if r["kabupaten"] and r["kabupaten"] != "-")))
+        kabupaten_options = ["Semua Kabupaten"] + raw_kabupatens
+
+        kab_active = bool(kabupaten and kabupaten.strip() not in ("Semua", "Semua Kabupaten", "ALL", ""))
+        tipe_active = bool(tipe_faskes and tipe_faskes.strip() not in ("Semua", "Semua Tipe Faskes", "ALL", ""))
+
+        tipe_pool = all_joined
+        if kab_active:
+            tipe_pool = [r for r in tipe_pool if r["kabupaten"].lower() == kabupaten.strip().lower()]
+        raw_tipes = sorted(list(set(r["tipe_faskes"] for r in tipe_pool if r["tipe_faskes"])))
+        tipe_faskes_options = ["Semua Tipe Faskes"] + raw_tipes
+
+        faskes_pool = tipe_pool
+        if tipe_active and tipe_faskes.strip().lower() in [t.lower() for t in raw_tipes]:
+            faskes_pool = [r for r in faskes_pool if r["tipe_faskes"].lower() == tipe_faskes.strip().lower()]
+        raw_faskes = sorted(list(set(r["nama_ppk"] for r in faskes_pool if r["nama_ppk"])))
+        nama_ppk_options = ["Semua Faskes"] + raw_faskes
+
+        present_months = set(r["bulan"] for r in all_joined if r["bulan"])
+        ordered_months = [m for m in MONTH_ORDER if m in present_months]
+        for m in sorted(list(present_months)):
+            if m not in ordered_months:
+                ordered_months.append(m)
+        bulan_options = ["Semua Bulan"] + ordered_months
+
+        # Sanitize active filters
+        if kab_active and nama_ppk and nama_ppk.strip() not in ("Semua", "Semua Faskes", "ALL", ""):
+            if nama_ppk.strip().lower() not in [f.lower() for f in raw_faskes]:
+                nama_ppk = "Semua Faskes"
+
+        if kab_active and tipe_faskes and tipe_faskes.strip() not in ("Semua", "Semua Tipe Faskes", "ALL", ""):
+            if tipe_faskes.strip().lower() not in [t.lower() for t in raw_tipes]:
+                tipe_faskes = "Semua Tipe Faskes"
+
+        # 5. Apply Active Filters
+        filtered = all_joined
+
+        if kab_active:
+            filtered = [r for r in filtered if r["kabupaten"].lower() == kabupaten.strip().lower()]
+
+        if nama_ppk and nama_ppk.strip() not in ("Semua", "Semua Faskes", "ALL", ""):
+            filtered = [r for r in filtered if r["nama_ppk"].lower() == nama_ppk.strip().lower() or r["kode_ppk"].lower() == nama_ppk.strip().lower()]
+
+        if tipe_faskes and tipe_faskes.strip() not in ("Semua", "Semua Tipe Faskes", "ALL", ""):
+            filtered = [r for r in filtered if r["tipe_faskes"].lower() == tipe_faskes.strip().lower()]
+
+        trend_subset = filtered
+
+        if bulan and bulan.strip() not in ("Semua", "Semua Bulan", "ALL", ""):
+            target_b = bulan.strip().lower()
+            filtered = [r for r in filtered if r["bulan"].lower() == target_b or r["bulan_indo"].lower() == target_b]
+
+        # 6. Compute KPI Summary (Bobot 20%)
+        total_3bln = sum(r["pengaduan_3bln"] for r in filtered)
+        total_bln = sum(r["pengaduan_bln"] for r in filtered)
+        total_sla = sum(r["ditindaklanjuti_sla"] for r in filtered)
+        total_top10 = sum(r["top10_thnlalu"] for r in filtered)
+        total_tdk = sum(r["tidak_ditindaklanjuti"] for r in filtered)
+        faskes_set = set(r["kode_ppk"] for r in filtered)
+        total_faskes = len(faskes_set)
+
+        if filtered:
+            avg_capaian = round(sum(r["capaian"] for r in filtered) / len(filtered), 2)
+            kontribusi_capaian = round(avg_capaian * 0.20, 2)
+        else:
+            avg_capaian = 0.0
+            kontribusi_capaian = 0.0
+
+        target_persen = 100.0
+        total_tercapai = sum(1 for r in filtered if r["capaian"] >= 100.0)
+        total_belum_tercapai = len(filtered) - total_tercapai
+
+        kpi_data = {
+            "avg_capaian": avg_capaian,
+            "bobot_persen": 20,
+            "kontribusi_capaian": kontribusi_capaian,
+            "target_persen": target_persen,
+            "total_faskes": total_faskes,
+            "total_pengaduan_3bln": total_3bln,
+            "total_pengaduan_bln": total_bln,
+            "total_ditindaklanjuti_sla": total_sla,
+            "total_top10_thnlalu": total_top10,
+            "total_tidak_ditindaklanjuti": total_tdk,
+            "total_tercapai": total_tercapai,
+            "total_belum_tercapai": total_belum_tercapai,
+            "total_records": len(filtered)
+        }
+
+        # 7. Compute Monthly Trend Data (Januari - September 2026)
+        by_month = {}
+        for r in trend_subset:
+            m = r["bulan"]
+            if m not in by_month:
+                by_month[m] = {
+                    "count": 0,
+                    "c_sum": 0.0,
+                    "p_bln_sum": 0,
+                    "p_sla_sum": 0,
+                    "met_count": 0
+                }
+            by_month[m]["count"] += 1
+            by_month[m]["c_sum"] += r["capaian"]
+            by_month[m]["p_bln_sum"] += r["pengaduan_bln"]
+            by_month[m]["p_sla_sum"] += r["ditindaklanjuti_sla"]
+            if r["capaian"] >= 100.0:
+                by_month[m]["met_count"] += 1
+
+        monthly_chart = []
+        for m in ordered_months:
+            if m in by_month:
+                d = by_month[m]
+                cnt = d["count"]
+                m_avg_c = round(d["c_sum"] / cnt, 2) if cnt else 0.0
+                monthly_chart.append({
+                    "bulan": m,
+                    "bulan_indo": MONTH_INDO.get(m, m),
+                    "short_name": MONTH_INDO.get(m, m).split()[0][:3],
+                    "avg_capaian": m_avg_c,
+                    "total_pengaduan_bln": d["p_bln_sum"],
+                    "total_ditindaklanjuti_sla": d["p_sla_sum"],
+                    "faskes_count": cnt,
+                    "met_count": d["met_count"],
+                    "is_selected": bool(bulan and (bulan.strip().lower() in (m.lower(), MONTH_INDO.get(m, m).lower())))
+                })
+
+        # 8. Format Table Data
+        sorted_filtered = sorted(filtered, key=lambda x: (x["capaian"], x["nama_ppk"]), reverse=True)
+        table_data = []
+        for idx, r in enumerate(sorted_filtered):
+            is_tercapai = bool(r["capaian"] >= 100.0)
+            table_data.append({
+                "no": idx + 1,
+                "kode_ppk": r["kode_ppk"],
+                "nama_ppk": r["nama_ppk"],
+                "tipe_faskes": r["tipe_faskes"],
+                "kabupaten": r["kabupaten"],
+                "kelas_ppk": r["kelas_ppk"],
+                "bulan": r["bulan"],
+                "bulan_indo": r["bulan_indo"],
+                "pengaduan_3bln": r["pengaduan_3bln"],
+                "pengaduan_bln": r["pengaduan_bln"],
+                "ditindaklanjuti_sla": r["ditindaklanjuti_sla"],
+                "top10_thnlalu": r["top10_thnlalu"],
+                "tidak_ditindaklanjuti": r["tidak_ditindaklanjuti"],
+                "capaian": r["capaian"],
+                "is_met": is_tercapai,
+                "status": "Tercapai" if is_tercapai else "Belum Tercapai"
+            })
+
+        return {
+            "status": "success",
+            "kpi": kpi_data,
+            "monthly_chart": monthly_chart,
+            "table_data": table_data,
+            "filter_options": {
+                "kabupaten": kabupaten_options,
+                "nama_ppk": nama_ppk_options,
+                "bulan": bulan_options,
+                "tipe_faskes": tipe_faskes_options
+            },
+            "active_filters": {
+                "kabupaten": kabupaten or "Semua Kabupaten",
+                "nama_ppk": nama_ppk or "Semua Faskes",
+                "bulan": bulan or "Semua Bulan",
+                "tipe_faskes": tipe_faskes or "Semua Tipe Faskes"
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_pengaduan: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Laporan Kepatuhan Penyelesaian Pengaduan: {str(e)}"
         )
 
 

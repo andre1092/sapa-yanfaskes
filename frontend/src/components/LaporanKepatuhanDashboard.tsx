@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { NakesComplianceTab } from './NakesComplianceTab';
+import { PengaduanComplianceTab } from './PengaduanComplianceTab';
 
 export type ComplianceTabId =
   | '01-nakes'
@@ -39,8 +40,8 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     name: '02. Penyelesaian Pengaduan',
     shortName: 'Penyelesaian Pengaduan',
     icon: '📢',
-    targetPercent: 95,
-    description: 'Monitoring kecepatan penanganan dan persentase penyelesaian keluhan/pengaduan peserta JKN di FKRTL.',
+    targetPercent: 100,
+    description: 'Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%',
     kpiLabel: 'Tingkat Penyelesaian Keluhan',
   },
   {
@@ -104,6 +105,57 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     kpiLabel: 'Tingkat Integrasi RME',
   },
 ];
+
+interface HeaderInfo {
+  title: string;
+  gradientTitle: string;
+  subtitle: string;
+}
+
+const TAB_HEADER_INFO: Record<ComplianceTabId, HeaderInfo> = {
+  '01-nakes': {
+    title: 'Kesesuaian Jadwal Praktik',
+    gradientTitle: 'Dokter atau Tenaga Kesehatan',
+    subtitle:
+      'Definisi: kesesuaian antara jadwal praktik dokter/nakes pada Aplikasi HFIS dengan data pelayanan pasien pada aplikasi atau sistem informasi yang menyimpan data pelayanan pasien di FKRTL - Bobot 25%',
+  },
+  '02-pengaduan': {
+    title: 'Tindak Lanjut dan',
+    gradientTitle: 'Penyelesaian Pengaduan',
+    subtitle:
+      'Waktu penyelesaian pengaduan atau SLA 1 sampai 3 hari kerja sejak diterimanya pengaduan pada Aplikasi SIPP - bobot 20%',
+  },
+  '03-umabl': {
+    title: 'Monitoring & Evaluasi',
+    gradientTitle: 'Umabl Peserta (KESSAN)',
+    subtitle: 'Evaluasi kepuasan peserta JKN melalui KESSAN terhadap mutu layanan rawat jalan dan inap - bobot 10%',
+  },
+  '04-display-tt': {
+    title: 'Kepatuhan & Pemutakhiran',
+    gradientTitle: 'Update Display Tempat Tidur',
+    subtitle: 'Pemutakhiran ketersediaan tempat tidur rawat inap terintegrasi sistem BPJS Kesehatan - bobot 10%',
+  },
+  '05-tmo': {
+    title: 'Monitoring Layanan',
+    gradientTitle: 'Update Display TMO & Farmasi',
+    subtitle: 'Pemutakhiran ketersediaan obat kronis dan pelayanan farmasi rumah sakit - bobot 10%',
+  },
+  '06-antrean-wtl': {
+    title: 'Pemantauan Integrasi Sistem',
+    gradientTitle: 'Antrean Online & Waktu Tunggu Layanan',
+    subtitle: 'Monitoring sistem antrean terintegrasi dan waktu tunggu layanan poliklinik dan farmasi - bobot 10%',
+  },
+  '07-surkon': {
+    title: 'Kepatuhan Penerbitan',
+    gradientTitle: 'Surat Kontrol (Surkon)',
+    subtitle: 'Penerbitan surat kontrol rencana rawat lanjutan melalui sistem bridging - bobot 10%',
+  },
+  '08-rme': {
+    title: 'Tingkat Kepatuhan & Integrasi',
+    gradientTitle: 'Rekam Medis Elektronik (RME)',
+    subtitle: 'Integrasi dan kelengkapan rekam medis elektronik FKRTL dengan BPJS Kesehatan - bobot 5%',
+  },
+};
 
 interface FaskesComplianceRow {
   kdppk: string;
@@ -257,6 +309,8 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
     return val.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
   };
 
+  const headerInfo = TAB_HEADER_INFO[activeTabId] || TAB_HEADER_INFO['01-nakes'];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto animate-fadeIn">
       {/* 1. Header Banner & Info */}
@@ -274,10 +328,10 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#2b4390] dark:text-[#f7fcfa] tracking-tight">
-              Kesesuaian Jadwal Praktik <span className="bpjs-gradient-text">Dokter atau Tenaga Kesehatan</span>
+              {headerInfo.title} <span className="bpjs-gradient-text">{headerInfo.gradientTitle}</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#6573a1] dark:text-[#afbade] mt-1 max-w-3xl leading-relaxed">
-              Definisi: kesesuaian antara jadwal praktik dokter/nakes pada Aplikasi HFIS dengan data pelayanan pasien pada aplikasi atau sistem informasi yang menyimpan data pelayanan pasien di FKRTL - Bobot 25%
+              {headerInfo.subtitle}
             </p>
           </div>
 
@@ -327,9 +381,11 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* RENDER TAB KEPATUHAN: TAB 01 (JADWAL PRAKTEK NAKES - BOBOT 25%) ATAU TAB LAINNYA */}
+      {/* RENDER TAB KEPATUHAN: TAB 01 (NAKES), TAB 02 (PENGADUAN), ATAU TAB LAINNYA */}
       {activeTabId === '01-nakes' ? (
         <NakesComplianceTab />
+      ) : activeTabId === '02-pengaduan' ? (
+        <PengaduanComplianceTab />
       ) : (
         <>
           {/* 3. Panel Ringkasan Indikator Terpilih & Statistik KPI */}
