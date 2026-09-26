@@ -194,13 +194,23 @@ Berdasarkan publikasi resmi dan portal integrasi BPJS Kesehatan:
 ### B. Algoritma Perhitungan Indikator & Nilai Capaian
 1. **Standar SLA Penyelesaian**:
    - Batas toleransi penanganan pengaduan adalah **1 sampai 3 hari kerja** terhitung sejak pengaduan terdaftar pada Aplikasi Saluran Informasi dan Penanganan Pengaduan (SIPP).
-2. **Skor Capaian Poin**:
-   - Nilai Capaian berada pada rentang diskrit [25.0, 50.0, 75.0, 100.0] poin.
-   - Faskes tanpa pengaduan atau faskes dengan 100% tindak lanjut sesuai SLA memperoleh capaian 100 poin.
-3. **Bobot Indikator**:
+2. **Logika Resmi Perhitungan Capaian (0 s.d. 100)**:
+   - **Skor 100**: Tidak ada pengaduan secara konsisten pada 3 (tiga) bulan terakhir secara berturut-turut (`pengaduan_3bln == 0` dan `pengaduan_bln == 0`).
+   - **Skor 75**: Tidak ada pengaduan pada bulan penilaian (`pengaduan_bln == 0`, meskipun `pengaduan_3bln > 0`).
+   - **Skor 50**: Pengaduan ditindaklanjuti sesuai SLA dan bukan merupakan Top 10 Pengaduan Nasional tahun sebelumnya (`pengaduan_bln > 0`, `tidak_ditindaklanjuti == 0`, `ditindaklanjuti_sla > 0`, dan `top10_thnlalu == 0`).
+   - **Skor 25**: Pengaduan ditindaklanjuti sesuai SLA dan pengaduan merupakan Top 10 Pengaduan Nasional tahun sebelumnya (`pengaduan_bln > 0`, `tidak_ditindaklanjuti == 0`, `ditindaklanjuti_sla > 0`, dan `top10_thnlalu > 0`).
+   - **Skor 0**: Pengaduan tidak ditindaklanjuti atau tindak lanjut melebihi SLA (`tidak_ditindaklanjuti > 0` atau terdapat pengaduan bulan penilaian namun `ditindaklanjuti_sla == 0`).
+3. **Deduplikasi Baris Faskes & Penjumlahan Metrik (Sum)**:
+   - Setiap faskes unik (`kode_ppk`) hanya dimunculkan 1 baris pada tabel matriks kepatuhan.
+   - Kolom `pengaduan 3 bulan terakhir (termasuk bulan N)` = `sum(pengaduan_3bln)`.
+   - Kolom `Jml Pengaduan Bln penilaian` = `sum(pengaduan_bln)`.
+   - Kolom `Jml Pengaduan Ditindaklanjuti sesuai SLA` = `sum(ditindaklanjuti_sla)`.
+   - Kolom `Jml Pengaduan Top 10 Tahun lalu` = `sum(top10_thnlalu)`.
+   - Kolom `Jml Pengaduan Tidak Ditindaklanjuti` = `sum(tidak_ditindaklanjuti)`.
+4. **Bobot Indikator**:
    - Bobot resmi indikator Penyelesaian Pengaduan adalah **20%** dari total evaluasi kepatuhan mutu FKRTL.
    - Kontribusi riil dihitung dengan formula: $\text{Kontribusi Capaian} = \text{Rata-rata Capaian} \times 20\%$.
-4. **Logika & Standar Status Kepatuhan**:
+5. **Logika & Standar Status Kepatuhan**:
    - **Tercapai**: jika nilai Capaian mencapai **100** ($\text{Capaian} \ge 100$).
    - **Belum Tercapai**: jika nilai Capaian **di bawah 100** ($\text{Capaian} < 100$).
 

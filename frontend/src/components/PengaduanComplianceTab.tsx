@@ -73,7 +73,7 @@ export const PengaduanComplianceTab: React.FC = () => {
   // Filter states
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('Semua Bulan');
+  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -806,7 +806,9 @@ export const PengaduanComplianceTab: React.FC = () => {
                   className="py-3 px-3 text-right cursor-pointer hover:text-[#44853b] transition-colors"
                 >
                   <div className="flex items-center justify-end gap-1">
-                    <span>3 Bln Terakhir</span>
+                    <span className="whitespace-normal break-words max-w-[130px] leading-tight">
+                      pengaduan 3 bulan terakhir (termasuk bulan N)
+                    </span>
                     {sortField === 'pengaduan_3bln' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
                   </div>
                 </th>
@@ -815,7 +817,9 @@ export const PengaduanComplianceTab: React.FC = () => {
                   className="py-3 px-3 text-right cursor-pointer hover:text-[#44853b] transition-colors"
                 >
                   <div className="flex items-center justify-end gap-1">
-                    <span>Bln Penilaian</span>
+                    <span className="whitespace-normal break-words max-w-[110px] leading-tight">
+                      Jml Pengaduan Bln penilaian
+                    </span>
                     {sortField === 'pengaduan_bln' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
                   </div>
                 </th>
@@ -824,7 +828,9 @@ export const PengaduanComplianceTab: React.FC = () => {
                   className="py-3 px-3 text-right cursor-pointer hover:text-[#44853b] transition-colors"
                 >
                   <div className="flex items-center justify-end gap-1">
-                    <span>Sesuai SLA</span>
+                    <span className="whitespace-normal break-words max-w-[130px] leading-tight">
+                      Jml Pengaduan Ditindaklanjuti sesuai SLA
+                    </span>
                     {sortField === 'ditindaklanjuti_sla' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
                   </div>
                 </th>
@@ -833,7 +839,9 @@ export const PengaduanComplianceTab: React.FC = () => {
                   className="py-3 px-3 text-right cursor-pointer hover:text-[#44853b] transition-colors"
                 >
                   <div className="flex items-center justify-end gap-1">
-                    <span>Top 10 Thn Lalu</span>
+                    <span className="whitespace-normal break-words max-w-[110px] leading-tight">
+                      Jml Pengaduan Top 10 Tahun lalu
+                    </span>
                     {sortField === 'top10_thnlalu' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
                   </div>
                 </th>
@@ -842,7 +850,9 @@ export const PengaduanComplianceTab: React.FC = () => {
                   className="py-3 px-3 text-right cursor-pointer hover:text-[#44853b] transition-colors"
                 >
                   <div className="flex items-center justify-end gap-1">
-                    <span>Tdk Ditindak</span>
+                    <span className="whitespace-normal break-words max-w-[120px] leading-tight">
+                      Jml Pengaduan Tidak Ditindaklanjuti
+                    </span>
                     {sortField === 'tidak_ditindaklanjuti' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
                   </div>
                 </th>

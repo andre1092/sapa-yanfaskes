@@ -1480,6 +1480,46 @@ MONTH_INDO = {
     "September 2026": "September 2026"
 }
 
+# Helper: Logika Resmi Perhitungan Capaian Kepatuhan Jadwal Praktek Nakes
+# - Jadwal praktik 100% sesuai = 100
+# - Jadwal praktik > 60% - < 100% sesuai = 75
+# - Jadwal praktik > 40% - 60% sesuai = 50
+# - Jadwal praktik > 20% - 40% sesuai = 25
+# - Jadwal praktik <= 20% sesuai = 0
+# - Faskes tidak ada kunjungan = 100
+def compute_nakes_capaian(persen: float, total_k: int) -> float:
+    if total_k == 0:
+        return 100.0
+    if persen >= 100.0:
+        return 100.0
+    elif persen > 60.0:
+        return 75.0
+    elif persen > 40.0:
+        return 50.0
+    elif persen > 20.0:
+        return 25.0
+    else:
+        return 0.0
+
+# Helper: Logika Resmi Perhitungan Capaian Penyelesaian Pengaduan SLA
+# a) Tidak ada pengaduan secara konsisten pada 3 (tiga) bulan terakhir secara berturut-turut = 100
+# b) Tidak ada pengaduan pada bulan penilaian = 75
+# c) Pengaduan ditindaklanjuti sesuai SLA & bukan merupakan Top 10 Pengaduan Nasional tahun sebelumnya = 50
+# d) Pengaduan ditindaklanjuti sesuai SLA & pengaduan merupakan Top 10 Pengaduan Nasional tahun sebelumnya = 25
+# e) Pengaduan tidak ditindaklanjuti atau tindak lanjut melebihi SLA = 0
+def compute_pengaduan_capaian(p_3bln: int, p_bln: int, p_sla: int, p_top10: int, p_tdk: int) -> float:
+    if p_tdk > 0:
+        return 0.0
+    if p_bln > 0 and p_sla == 0:
+        return 0.0
+    if p_3bln == 0 and p_bln == 0:
+        return 100.0
+    if p_bln == 0:
+        return 75.0
+    if p_top10 > 0:
+        return 25.0
+    return 50.0
+
 @app.get("/api/v1/fkrtl-kepatuhan/nakes")
 async def get_fkrtl_kepatuhan_nakes(
     kabupaten: Optional[str] = None,
@@ -1662,26 +1702,7 @@ async def get_fkrtl_kepatuhan_nakes(
             target_b = bulan.strip().lower()
             filtered = [r for r in filtered if r["bulan"].lower() == target_b or r["bulan_indo"].lower() == target_b]
 
-        # Helper: Logika Resmi Perhitungan Capaian Kepatuhan Jadwal Praktek Nakes
-        # - Jadwal praktik 100% sesuai = 100
-        # - Jadwal praktik > 60% - < 100% sesuai = 75
-        # - Jadwal praktik > 40% - 60% sesuai = 50
-        # - Jadwal praktik > 20% - 40% sesuai = 25
-        # - Jadwal praktik <= 20% sesuai = 0
-        # - Faskes tidak ada kunjungan = 100
-        def compute_nakes_capaian(persen: float, total_k: int) -> float:
-            if total_k == 0:
-                return 100.0
-            if persen >= 100.0:
-                return 100.0
-            elif persen > 60.0:
-                return 75.0
-            elif persen > 40.0:
-                return 50.0
-            elif persen > 20.0:
-                return 25.0
-            else:
-                return 0.0
+
 
         # 6. Group by Faskes (kode_ppk) to eliminate duplicate rows & sum metrics
         faskes_grouped_map = {}
@@ -2015,25 +2036,81 @@ async def get_fkrtl_kepatuhan_pengaduan(
             target_b = bulan.strip().lower()
             filtered = [r for r in filtered if r["bulan"].lower() == target_b or r["bulan_indo"].lower() == target_b]
 
-        # 6. Compute KPI Summary (Bobot 20%)
-        total_3bln = sum(r["pengaduan_3bln"] for r in filtered)
-        total_bln = sum(r["pengaduan_bln"] for r in filtered)
-        total_sla = sum(r["ditindaklanjuti_sla"] for r in filtered)
-        total_top10 = sum(r["top10_thnlalu"] for r in filtered)
-        total_tdk = sum(r["tidak_ditindaklanjuti"] for r in filtered)
-        faskes_set = set(r["kode_ppk"] for r in filtered)
-        total_faskes = len(faskes_set)
 
-        if filtered:
-            avg_capaian = round(sum(r["capaian"] for r in filtered) / len(filtered), 2)
+
+        # 6. Group by Faskes (kode_ppk) to eliminate duplicate rows & sum metrics
+        faskes_grouped_map = {}
+        for r in filtered:
+            k = r["kode_ppk"]
+            if k not in faskes_grouped_map:
+                faskes_grouped_map[k] = {
+                    "kode_ppk": k,
+                    "nama_ppk": r["nama_ppk"],
+                    "kabupaten": r["kabupaten"],
+                    "tipe_faskes": r["tipe_faskes"],
+                    "kelas_ppk": r["kelas_ppk"],
+                    "pengaduan_3bln": 0,
+                    "pengaduan_bln": 0,
+                    "ditindaklanjuti_sla": 0,
+                    "top10_thnlalu": 0,
+                    "tidak_ditindaklanjuti": 0,
+                }
+            faskes_grouped_map[k]["pengaduan_3bln"] += r["pengaduan_3bln"]
+            faskes_grouped_map[k]["pengaduan_bln"] += r["pengaduan_bln"]
+            faskes_grouped_map[k]["ditindaklanjuti_sla"] += r["ditindaklanjuti_sla"]
+            faskes_grouped_map[k]["top10_thnlalu"] += r["top10_thnlalu"]
+            faskes_grouped_map[k]["tidak_ditindaklanjuti"] += r["tidak_ditindaklanjuti"]
+
+        faskes_aggregated = []
+        is_single_month = bool(bulan and bulan.strip() not in ("Semua", "Semua Bulan", "ALL", ""))
+        bulan_label = bulan.strip() if is_single_month else "Januari - September 2026"
+
+        for k, v in faskes_grouped_map.items():
+            p_3bln = v["pengaduan_3bln"]
+            p_bln = v["pengaduan_bln"]
+            p_sla = v["ditindaklanjuti_sla"]
+            p_top10 = v["top10_thnlalu"]
+            p_tdk = v["tidak_ditindaklanjuti"]
+            c_val = compute_pengaduan_capaian(p_3bln, p_bln, p_sla, p_top10, p_tdk)
+            is_tercapai = bool(c_val >= 100.0)
+
+            faskes_aggregated.append({
+                "kode_ppk": k,
+                "nama_ppk": v["nama_ppk"],
+                "kabupaten": v["kabupaten"],
+                "tipe_faskes": v["tipe_faskes"],
+                "kelas_ppk": v["kelas_ppk"],
+                "bulan": bulan_label,
+                "bulan_indo": bulan_label,
+                "pengaduan_3bln": p_3bln,
+                "pengaduan_bln": p_bln,
+                "ditindaklanjuti_sla": p_sla,
+                "top10_thnlalu": p_top10,
+                "tidak_ditindaklanjuti": p_tdk,
+                "capaian": c_val,
+                "capaian_nilai": c_val,
+                "is_met": is_tercapai,
+                "status": "Tercapai" if is_tercapai else "Belum Tercapai"
+            })
+
+        # 7. Compute KPI Summary (Bobot 20%) based on unique faskes aggregated metrics
+        total_3bln = sum(r["pengaduan_3bln"] for r in faskes_aggregated)
+        total_bln = sum(r["pengaduan_bln"] for r in faskes_aggregated)
+        total_sla = sum(r["ditindaklanjuti_sla"] for r in faskes_aggregated)
+        total_top10 = sum(r["top10_thnlalu"] for r in faskes_aggregated)
+        total_tdk = sum(r["tidak_ditindaklanjuti"] for r in faskes_aggregated)
+        total_faskes = len(faskes_aggregated)
+
+        if faskes_aggregated:
+            avg_capaian = round(sum(r["capaian"] for r in faskes_aggregated) / len(faskes_aggregated), 2)
             kontribusi_capaian = round(avg_capaian * 0.20, 2)
         else:
             avg_capaian = 0.0
             kontribusi_capaian = 0.0
 
         target_persen = 100.0
-        total_tercapai = sum(1 for r in filtered if r["capaian"] >= 100.0)
-        total_belum_tercapai = len(filtered) - total_tercapai
+        total_tercapai = sum(1 for r in faskes_aggregated if r["capaian"] >= 100.0)
+        total_belum_tercapai = len(faskes_aggregated) - total_tercapai
 
         kpi_data = {
             "avg_capaian": avg_capaian,
@@ -2048,10 +2125,10 @@ async def get_fkrtl_kepatuhan_pengaduan(
             "total_tidak_ditindaklanjuti": total_tdk,
             "total_tercapai": total_tercapai,
             "total_belum_tercapai": total_belum_tercapai,
-            "total_records": len(filtered)
+            "total_records": len(faskes_aggregated)
         }
 
-        # 7. Compute Monthly Trend Data (Januari - September 2026)
+        # 8. Compute Monthly Trend Data (Januari - September 2026)
         by_month = {}
         for r in trend_subset:
             m = r["bulan"]
@@ -2064,10 +2141,17 @@ async def get_fkrtl_kepatuhan_pengaduan(
                     "met_count": 0
                 }
             by_month[m]["count"] += 1
-            by_month[m]["c_sum"] += r["capaian"]
+            m_cap = compute_pengaduan_capaian(
+                r["pengaduan_3bln"],
+                r["pengaduan_bln"],
+                r["ditindaklanjuti_sla"],
+                r["top10_thnlalu"],
+                r["tidak_ditindaklanjuti"]
+            )
+            by_month[m]["c_sum"] += m_cap
             by_month[m]["p_bln_sum"] += r["pengaduan_bln"]
             by_month[m]["p_sla_sum"] += r["ditindaklanjuti_sla"]
-            if r["capaian"] >= 100.0:
+            if m_cap >= 100.0:
                 by_month[m]["met_count"] += 1
 
         monthly_chart = []
@@ -2088,29 +2172,13 @@ async def get_fkrtl_kepatuhan_pengaduan(
                     "is_selected": bool(bulan and (bulan.strip().lower() in (m.lower(), MONTH_INDO.get(m, m).lower())))
                 })
 
-        # 8. Format Table Data
-        sorted_filtered = sorted(filtered, key=lambda x: (x["capaian"], x["nama_ppk"]), reverse=True)
+        # 9. Format Table Data (Deduplicated Unique Faskes)
+        sorted_filtered = sorted(faskes_aggregated, key=lambda x: (x["capaian"], x["nama_ppk"]), reverse=True)
         table_data = []
         for idx, r in enumerate(sorted_filtered):
-            is_tercapai = bool(r["capaian"] >= 100.0)
-            table_data.append({
-                "no": idx + 1,
-                "kode_ppk": r["kode_ppk"],
-                "nama_ppk": r["nama_ppk"],
-                "tipe_faskes": r["tipe_faskes"],
-                "kabupaten": r["kabupaten"],
-                "kelas_ppk": r["kelas_ppk"],
-                "bulan": r["bulan"],
-                "bulan_indo": r["bulan_indo"],
-                "pengaduan_3bln": r["pengaduan_3bln"],
-                "pengaduan_bln": r["pengaduan_bln"],
-                "ditindaklanjuti_sla": r["ditindaklanjuti_sla"],
-                "top10_thnlalu": r["top10_thnlalu"],
-                "tidak_ditindaklanjuti": r["tidak_ditindaklanjuti"],
-                "capaian": r["capaian"],
-                "is_met": is_tercapai,
-                "status": "Tercapai" if is_tercapai else "Belum Tercapai"
-            })
+            item = dict(r)
+            item["no"] = idx + 1
+            table_data.append(item)
 
         return {
             "status": "success",
