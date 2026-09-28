@@ -452,40 +452,60 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Interactive Tooltip Banner saat Bulan di-hover */}
-                {hoveredMonthIndex !== null && data?.trend_per_bulan?.[hoveredMonthIndex] && (() => {
-                  const activeItem = data.trend_per_bulan[hoveredMonthIndex];
-                  const met = (activeItem?.avg_capaian ?? 0) >= 85;
-                  return (
-                    <div className="mb-4 p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-[#83a67e]/40 dark:border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40' : 'bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/50 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40'}`}>
-                          {activeItem.month}
+                {/* Interactive Tooltip Banner saat Bulan di-hover (Zero Layout Shift Container) */}
+                <div className="mb-4 sm:h-[62px] min-h-[62px] flex items-center">
+                  {hoveredMonthIndex !== null && data?.trend_per_bulan?.[hoveredMonthIndex] ? (() => {
+                    const activeItem = data.trend_per_bulan[hoveredMonthIndex];
+                    const met = (activeItem?.avg_capaian ?? 0) >= 85;
+                    return (
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-[#83a67e]/40 dark:border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40' : 'bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/50 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40'}`}>
+                            {activeItem.month}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-[#2b4390] dark:text-white flex items-center gap-2">
+                              <span>{activeItem.month_full || activeItem.month}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'}`}>
+                                {met ? '★ Memenuhi Target (≥85%)' : '⚠️ Di Bawah Target (<85%)'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-[#6573a1] dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
+                              <svg className="w-3.5 h-3.5 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>Snapshot Timestamp: <strong className="text-[#44853b] dark:text-emerald-300">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right sm:border-l sm:border-[#afbade]/30 dark:sm:border-slate-800 sm:pl-4 shrink-0">
+                          <div className="text-[10px] uppercase tracking-wider text-[#6573a1] dark:text-slate-400 font-bold">Capaian Antrol</div>
+                          <div className={`text-base font-extrabold font-mono ${met ? 'text-[#44853b] dark:text-emerald-400' : 'text-[#2b4390] dark:text-cyan-400'}`}>
+                            {formatPercentID(activeItem.avg_capaian)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })() : (
+                    <div className="w-full p-2.5 sm:p-3 rounded-xl bg-[#afbade]/10 dark:bg-slate-800/30 border border-dashed border-[#afbade]/40 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs text-[#6573a1] dark:text-slate-400">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/70 dark:bg-slate-800/60 text-[#2b4390] dark:text-blue-300 border border-[#afbade]/30 dark:border-slate-700 shrink-0">
+                          <svg className="w-4 h-4 text-[#44853b] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-[#2b4390] dark:text-white flex items-center gap-2">
-                            <span>{activeItem.month_full || activeItem.month}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'}`}>
-                              {met ? '★ Memenuhi Target (≥85%)' : '⚠️ Di Bawah Target (<85%)'}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-[#6573a1] dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
-                            <svg className="w-3.5 h-3.5 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>Snapshot Timestamp: <strong className="text-[#44853b] dark:text-emerald-300">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
-                          </div>
+                          <span className="font-semibold text-[#2b4390] dark:text-slate-200">Eksplorasi Snapshot Bulanan</span>
+                          <span className="hidden sm:inline text-[11px] text-[#6573a1] dark:text-slate-400 ml-1.5">— Arahkan kursor pada kurva grafik atau kartu bulan di bawah untuk rincian data.</span>
                         </div>
                       </div>
-                      <div className="text-right sm:border-l sm:border-[#afbade]/30 dark:sm:border-slate-800 sm:pl-4">
-                        <div className="text-[10px] uppercase tracking-wider text-[#6573a1] dark:text-slate-400 font-bold">Capaian Antrol</div>
-                        <div className={`text-base font-extrabold font-mono ${met ? 'text-[#44853b] dark:text-emerald-400' : 'text-[#2b4390] dark:text-cyan-400'}`}>
-                          {formatPercentID(activeItem.avg_capaian)}
-                        </div>
+                      <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/60 dark:bg-slate-800/40 border border-[#afbade]/30 dark:border-slate-700 text-[#44853b] dark:text-emerald-400 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#44853b] animate-ping" />
+                        <span>Interactive Chart</span>
                       </div>
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
 
                 {/* SVG Line Chart Viewport */}
                 {(() => {
