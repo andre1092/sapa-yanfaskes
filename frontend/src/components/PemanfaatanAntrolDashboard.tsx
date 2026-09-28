@@ -174,7 +174,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     sumber: data?.filter_options?.sumber || ['All Sumber', 'Mobile JKN'],
   };
 
-  const lastUpdate = liveSyncAntrol || data?.last_update || '09/24/2026 03:14:56';
+  const lastUpdate = data?.last_update || liveSyncAntrol || '09/28/2026 02:18:15';
   const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filters.tahun !== '(All)' ? `Tahun ${filters.tahun} (Semua Bulan)` : 'Tahun 2026 (Semua Bulan)'));
   const kpiValue = data?.kpi_capaian ?? 0.0;
 

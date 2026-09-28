@@ -531,10 +531,21 @@ SHEET_GIDS = {
 _SHEETS_CACHE: Dict[str, Tuple[float, Any]] = {}
 _CACHE_TTL = 300  # 5 minutes cache TTL for sub-2-second response time
 
-def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str) -> Tuple[str, Any]:
+def invalidate_sheets_cache(spreadsheet_id: Optional[str] = None):
+    global _SHEETS_CACHE
+    if spreadsheet_id:
+        keys_to_del = [k for k in _SHEETS_CACHE.keys() if k.startswith(spreadsheet_id)]
+        for k in keys_to_del:
+            _SHEETS_CACHE.pop(k, None)
+        logger.info(f"Invalidated sheets cache for spreadsheet: {spreadsheet_id}")
+    else:
+        _SHEETS_CACHE.clear()
+        logger.info("Invalidated entire sheets cache.")
+
+def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str, force_refresh: bool = False) -> Tuple[str, Any]:
     cache_key = f"{spreadsheet_id}_{sheet_name}"
     now = time.time()
-    if cache_key in _SHEETS_CACHE:
+    if not force_refresh and cache_key in _SHEETS_CACHE:
         cached_time, df = _SHEETS_CACHE[cache_key]
         if (now - cached_time) < _CACHE_TTL:
             return sheet_name, df
@@ -577,11 +588,11 @@ def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str) -> Tu
     return sheet_name, pl.DataFrame() if pl is not None else None
 
 
-def fetch_live_google_sheets(spreadsheet_id: str) -> Dict[str, pl.DataFrame]:
+def fetch_live_google_sheets(spreadsheet_id: str, force_refresh: bool = False) -> Dict[str, pl.DataFrame]:
     try:
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [
-                executor.submit(fetch_single_sheet_csv, spreadsheet_id, name, gid)
+                executor.submit(fetch_single_sheet_csv, spreadsheet_id, name, gid, force_refresh)
                 for name, gid in SHEET_GIDS.items()
             ]
             results = dict([f.result() for f in futures])
@@ -593,9 +604,12 @@ def fetch_live_google_sheets(spreadsheet_id: str) -> Dict[str, pl.DataFrame]:
         
     return {}
 
-def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str]) -> Dict[str, pl.DataFrame]:
+def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_refresh: bool = False) -> Dict[str, pl.DataFrame]:
+    if force_refresh:
+        invalidate_sheets_cache(spreadsheet_id)
+
     # 1. First priority: Live public Google Sheets CSV export (100% free, real live data, sub-second)
-    live_dfs = fetch_live_google_sheets(spreadsheet_id)
+    live_dfs = fetch_live_google_sheets(spreadsheet_id, force_refresh=force_refresh)
     if live_dfs.get("DB_LAP_ANTROL_FKRTL") is not None and not live_dfs["DB_LAP_ANTROL_FKRTL"].is_empty():
         return live_dfs
 
@@ -661,13 +675,13 @@ async def get_fkrtl_antrol_stats(
     nama_rs: Optional[str] = None,
     kelas_rs: Optional[str] = None,
     sumber: Optional[str] = None,
+    refresh: Optional[bool] = False,
     user=Depends(require_auth)
 ):
     try:
         # 1. Audit logger hook
         role = user.get("role", "viewer") if isinstance(user, dict) else "viewer"
-        logger.info(f"Accessing fkrtl-antrol-stats - role: {role}")
-
+        logger.info(f"Accessing fkrtl-antrol-stats - role: {role}, refresh: {refresh}")
 
         # 2. Batch retrieve the 4 relational sheets
         ranges = [
@@ -676,7 +690,7 @@ async def get_fkrtl_antrol_stats(
             "antrol_by_poli!A:Z",
             "ref_poli!A:Z"
         ]
-        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges)
+        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges, force_refresh=bool(refresh))
         
         df_faskes = sheets_data.get("DB_FASKES", pl.DataFrame())
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
@@ -1252,7 +1266,39 @@ async def get_dashboard_stats(
     stats = await get_fkrtl_antrol_stats(spreadsheet_id=spreadsheet_id, user=user)
     return stats
 
-
+# Dedicated cache invalidation and force-sync endpoint for Antrol FKRTL
+@app.post("/api/v1/fkrtl-antrol-sync")
+@app.get("/api/v1/fkrtl-antrol-sync")
+async def sync_fkrtl_antrol(
+    spreadsheet_id: str = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY",
+    user=Depends(require_auth)
+):
+    try:
+        invalidate_sheets_cache(spreadsheet_id)
+        ranges = [
+            "DB_FASKES!A:Z",
+            "DB_LAP_ANTROL_FKRTL!A:Z",
+            "antrol_by_poli!A:Z",
+            "ref_poli!A:Z"
+        ]
+        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges, force_refresh=True)
+        df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
+        last_update_str = "No data available."
+        if not df_antrol.is_empty():
+            ts_col = find_column_name(df_antrol, ["timestamp", "waktu", "tanggal", "time"])
+            if ts_col:
+                raw_ts = [str(t).strip() for t in df_antrol[ts_col].to_list() if t]
+                if raw_ts:
+                    last_update_str = format_timestamp_standard(raw_ts[-1])
+        return {
+            "status": "success",
+            "message": "Sinkronisasi live data Google Sheets berhasil.",
+            "last_update": last_update_str,
+            "total_records": df_antrol.height if not df_antrol.is_empty() else 0
+        }
+    except Exception as e:
+        logger.error(f"Error in sync_fkrtl_antrol: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Gagal melakukan sinkronisasi live Google Sheets: {str(e)}")
 
 @app.get("/api/v1/fkrtl-export")
 async def export_fkrtl_data(

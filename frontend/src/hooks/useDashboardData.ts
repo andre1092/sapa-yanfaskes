@@ -8,6 +8,7 @@ export interface FkrtlFilterParams {
   nama_rs?: string;
   kelas_rs?: string;
   sumber?: string;
+  refresh?: boolean;
 }
 
 export interface FkrtlAntrolStats {
@@ -46,10 +47,10 @@ export interface DashboardStats {
 
 const FALLBACK_FKRTL_DATA: FkrtlAntrolStats = {
   status: 'success',
-  last_update: '09/24/2026 03:14:56',
+  last_update: '09/28/2026 02:18:15',
   selected_period: 'September 2026',
-  kpi_capaian: 72.92,
-  total_records: 456,
+  kpi_capaian: 73.04,
+  total_records: 2103,
   trend_per_bulan: [
     { month: 'Jan 26', month_full: 'Januari 2026', avg_capaian: 78.66, latest_timestamp: '01/31/2026 23:59:59' },
     { month: 'Feb 26', month_full: 'Februari 2026', avg_capaian: 73.64, latest_timestamp: '02/28/2026 23:59:59' },
@@ -59,7 +60,7 @@ const FALLBACK_FKRTL_DATA: FkrtlAntrolStats = {
     { month: 'Jun 26', month_full: 'Juni 2026', avg_capaian: 69.88, latest_timestamp: '06/30/2026 23:59:59' },
     { month: 'Jul 26', month_full: 'Juli 2026', avg_capaian: 77.41, latest_timestamp: '07/31/2026 23:59:59' },
     { month: 'Agu 26', month_full: 'Agustus 2026', avg_capaian: 76.12, latest_timestamp: '08/31/2026 23:59:59' },
-    { month: 'Sep 26', month_full: 'September 2026', avg_capaian: 72.92, latest_timestamp: '09/24/2026 03:14:56' },
+    { month: 'Sep 26', month_full: 'September 2026', avg_capaian: 80.18, latest_timestamp: '09/28/2026 02:18:15' },
   ],
   top_faskes: [
     { faskes: 'RS Siloam Jember', avg_capaian: 89.4 },
@@ -121,8 +122,9 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
             nama_rs: filters.nama_rs,
             kelas_rs: filters.kelas_rs,
             sumber: filters.sumber,
+            refresh: filters.refresh,
           },
-          timeout: 3500,
+          timeout: 15000,
         });
         if (response.data && (response.data.status === 'success' || response.data.status === 'no_data')) {
           return {
@@ -145,7 +147,7 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
     enabled: enabled,
     staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 0,
+    retry: 1,
   });
 };
 

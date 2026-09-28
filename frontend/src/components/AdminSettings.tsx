@@ -202,9 +202,29 @@ export const AdminSettings: React.FC = () => {
 
     try {
       if (moduleId === 'antrol') {
+        try {
+          const res = await apiClient.post('/api/v1/fkrtl-antrol-sync', {}, { timeout: 20000 });
+          if (res.data?.last_update) {
+            setSyncAntrol(res.data.last_update);
+          } else {
+            setSyncAntrol(nowTimestamp);
+          }
+        } catch (e) {
+          console.warn('Sync endpoint fallback to get with refresh=true', e);
+          try {
+            const res = await apiClient.get('/api/v1/fkrtl-antrol-stats?refresh=true', { timeout: 20000 });
+            if (res.data?.last_update) {
+              setSyncAntrol(res.data.last_update);
+            } else {
+              setSyncAntrol(nowTimestamp);
+            }
+          } catch (errFallback) {
+            console.error('Failed to sync antrol data from backend:', errFallback);
+            setSyncAntrol(nowTimestamp);
+          }
+        }
         await queryClient.invalidateQueries({ queryKey: ['fkrtl-antrol-stats'] });
         await queryClient.invalidateQueries({ queryKey: ['fkrtl-stats'] });
-        setSyncAntrol(nowTimestamp);
       } else if (moduleId === 'nakes') {
         await queryClient.invalidateQueries({ queryKey: ['fkrtl-kepatuhan-nakes'] });
         setSyncNakes(nowTimestamp);
