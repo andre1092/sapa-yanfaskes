@@ -151,6 +151,87 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
   });
 };
 
+export interface FktpFilterParams {
+  bulan?: string;
+  kabupaten?: string;
+  jenis_fktp?: string;
+  sumber_antrean?: string;
+  refresh?: boolean;
+}
+
+export interface FktpTableRow {
+  kode_fktp: string;
+  nama_fktp: string;
+  kabupaten: string;
+  jenis_fktp: string;
+  sumber_antrean_cf: number;
+  sumber_antrean_total_transaksi: number;
+  total_transaksi: number;
+  persentase_capaian: number;
+  persentase_capaian_str: string;
+  sumber_antrean: string;
+}
+
+export interface FktpMonthlyTrend {
+  month: string;
+  month_full: string;
+  avg_capaian: number;
+  total_cf: number;
+  total_transaksi_sumber: number;
+  total_transaksi: number;
+  latest_timestamp: string;
+}
+
+export interface FktpAntrolStats {
+  status: string;
+  last_update: string;
+  selected_period: string;
+  kpi: {
+    avg_capaian: number;
+    total_cf: number;
+    total_transaksi_sumber: number;
+    total_transaksi_all: number;
+    total_fktp: number;
+  };
+  trend_per_bulan: FktpMonthlyTrend[];
+  table_data: FktpTableRow[];
+  filter_options: {
+    bulan: string[];
+    kabupaten: string[];
+    jenis_fktp: string[];
+    sumber_antrean: string[];
+  };
+  active_filters?: {
+    bulan: string;
+    kabupaten: string;
+    jenis_fktp: string;
+    sumber_antrean: string;
+  };
+}
+
+export const useFktpAntrolData = (filters: FktpFilterParams = {}, enabled: boolean = true) => {
+  return useQuery<FktpAntrolStats, Error>({
+    queryKey: ['fktp-antrol-stats', filters],
+    queryFn: async () => {
+      const response = await apiClient.get<FktpAntrolStats>('/api/v1/fktp-antrol-stats', {
+        params: {
+          bulan: filters.bulan,
+          kabupaten: filters.kabupaten,
+          jenis_fktp: filters.jenis_fktp,
+          sumber_antrean: filters.sumber_antrean,
+          refresh: filters.refresh,
+        },
+        timeout: 15000,
+      });
+      return response.data;
+    },
+    enabled: enabled,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+};
+
 export const useDashboardData = (enabled: boolean = true) => {
   return useQuery<DashboardStats, Error>({
     queryKey: ['dashboard-stats'],
@@ -163,4 +244,5 @@ export const useDashboardData = (enabled: boolean = true) => {
     gcTime: 15 * 60 * 1000,
   });
 };
+
 

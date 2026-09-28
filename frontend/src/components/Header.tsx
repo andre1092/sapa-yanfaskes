@@ -26,6 +26,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
           subtitle: t('sub_fktp'),
           breadcrumb: t('bc_fktp'),
         };
+      case 'fktp-antrol':
+        return {
+          title: 'Pemanfaatan Antrol FKTP',
+          subtitle: 'Pemantauan Rasio Realisasi Pendaftaran Antrean Online FKTP',
+          breadcrumb: 'FKTP / Pemanfaatan Antrol',
+        };
       case 'fkrtl':
         return {
           title: t('title_fkrtl'),

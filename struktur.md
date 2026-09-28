@@ -21,6 +21,12 @@ SAPA YANFASKES
 ├── 🏥 2. FKTP (Fasilitas Kesehatan Tingkat Pertama)
 │   └── Deskripsi: Analisis performa pelayanan primer (Puskesmas, Klinik Pratama, Dokter Mandiri).
 │   └── Tab ID: 'fktp'
+│   └── Sub-Menu:
+│       └── 📊 Pemanfaatan Antrol FKTP (Tab ID: 'fktp-antrol') [BARU]
+│           ├── Indikator KPI Utama (Capaian Antrol %, Total Antrean CF, Total Transaksi, Jumlah FKTP)
+│           ├── Tren Bulanan Pemanfaatan Antrean Online FKTP (SVG Line Chart Glassmorphism)
+│           ├── Tabel Matriks Capaian FKTP (Nama FKTP & Persentase Capaian)
+│           └── Floating Tooltip Detail Antrean pada Kolom Persentase Capaian (sumber_antrean_cf, sumber_antrean_total_transaksi, total_transaksi, persentase_capaian, sumber_antrean)
 │   └── Rute Frontend: '/fktp'
 │
 ├── 🏢 3. FKRTL (Fasilitas Kesehatan Rujukan Tingkat Lanjutan)

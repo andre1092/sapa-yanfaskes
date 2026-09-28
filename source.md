@@ -352,5 +352,46 @@ Sesuai dengan pedoman BPJS Kesehatan:
 4. **Sistem Filter 4-Dimensi**:
    - Kabupaten, Nama Faskes (cascading), Bulan (default: **September 2026**), dan Tipe Faskes.
 
+---
 
+## 9. Parameter Integrasi Google Spreadsheet & Analitik Pemanfaatan Antrol FKTP
 
+### A. Metadata Google Spreadsheet Resmi FKTP
+1. **Capaian Pemanfaatan Antrol FKTP**:
+   - **URL**: `https://docs.google.com/spreadsheets/d/1vjrWC6LxtgQojQmqP0MtXn4hsIWZCNuMJa2P0kW--Wo/edit?usp=sharing`
+   - **Spreadsheet ID**: `1vjrWC6LxtgQojQmqP0MtXn4hsIWZCNuMJa2P0kW--Wo`
+   - **Kolom Data**: `Timestamp`, `kode_fktp`, `nama_fktp`, `persentase_capaian`, `sumber_antrean_cf`, `sumber_antrean_total_transaksi`, `total_transaksi`, `sumber_antrean`.
+   - **Format Timestamp**: `M/D/YYYY H:M:S` (misal: `1/14/2026 1:50:14` s.d. `9/28/2026 3:13:14`).
+   - **Volume Data**: ~16.502 baris data live mencakup 9 bulan (Januari - September 2026).
+2. **Master Referensi Fasilitas Kesehatan FKTP (Ref Faskes FKTP)**:
+   - **URL**: `https://docs.google.com/spreadsheets/d/1vxR2JmrvFZVvO4m8VsT8Vryl5NCkonNaNya5H99gqj4/edit?usp=sharing`
+   - **Spreadsheet ID**: `1vxR2JmrvFZVvO4m8VsT8Vryl5NCkonNaNya5H99gqj4`
+   - **Kolom Data**: `kode_fktp`, `kabupaten`, `jenis_fktp`, `nama_fktp`.
+   - **Relasi Join**: `kode_fktp` $\leftrightarrow$ `kode_fktp` (Relasi relasional primer antara data capaian dan profil faskes).
+   - **Distribusi Wilayah**: KAB. JEMBER (149 faskes), KAB. LUMAJANG (73 faskes), KAB. BONDOWOSO (52 faskes).
+   - **Klasifikasi Jenis FKTP**: PUSKESMAS (100), KLINIK PRATAMA (80), DOKTER KELUARGA (60), DOKTER GIGI (23), KLINIK TNI (8), KLINIK POLRI (3).
+
+### B. Indikator & Variabel Data Antrol FKTP
+1. `sumber_antrean_cf`: Jumlah transaksi antrean online kanal tertentu (Numerator).
+2. `sumber_antrean_total_transaksi`: Total transaksi kanal sumber antrean (Denominator).
+3. `total_transaksi`: Total seluruh transaksi pendaftaran/antrean di faskes.
+4. `persentase_capaian`: Rasio pemanfaatan antrol $(\frac{\text{sumber\_antrean\_cf}}{\text{sumber\_antrean\_total\_transaksi}} \times 100\%)$.
+5. `sumber_antrean`: Kanal antrean (`Mobile JKN` dan `All Sumber`).
+
+### C. Kebutuhan Fitur Tampilan & Interaktivitas
+1. **Grafik Bulanan**:
+   - Visualisasi tren kurva bulanan (Januari s.d. September 2026) dengan garis target benchmark (80% Mobile JKN / 95% All Sumber).
+   - Menghitung agregasi rata-rata capaian per bulan dari stempel waktu penutupan bulan (`max(Timestamp)`).
+2. **Tabel Data FKTP**:
+   - Kolom: `nama_fktp`, `persentase_capaian`.
+   - **Interaktivitas Floating Tooltip**: Saat kursor diletakkan di atas angka `persentase_capaian`, muncul informasi mengambang (*floating tooltip*) berisikan:
+     - `sumber_antrean_cf`
+     - `sumber_antrean_total_transaksi`
+     - `total_transaksi`
+     - `persentase_capaian`
+     - `sumber_antrean`
+3. **Sistem Filter 4-Dimensi**:
+   - `bulan` (diekstraksi dari `Timestamp`, default: bulan terkini / September 2026).
+   - `kabupaten` (Semua, Jember, Lumajang, Bondowoso).
+   - `jenis_fktp` (Semua, Puskesmas, Klinik Pratama, Dokter Keluarga, Dokter Gigi, Klinik TNI, Klinik Polri).
+   - `sumber_antrean` (Semua, Mobile JKN, All Sumber).

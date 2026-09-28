@@ -3031,6 +3031,352 @@ async def get_fkrtl_kepatuhan_display_tt(
             detail=f"Gagal memproses data Laporan Kepatuhan Pembaruan (Update) Data Ketersediaan Tempat Tidur: {str(e)}"
         )
 
+# ==============================================================================
+# --- FKTP PEMANFAATAN ANTROL (FASILITAS KESEHATAN TINGKAT PERTAMA) ---
+# ==============================================================================
+FKTP_ANTROL_SPREADSHEET_ID = "1vjrWC6LxtgQojQmqP0MtXn4hsIWZCNuMJa2P0kW--Wo"
+FKTP_REF_SPREADSHEET_ID = "1vxR2JmrvFZVvO4m8VsT8Vryl5NCkonNaNya5H99gqj4"
+
+MONTH_NAMES_ID = {
+    1: "Januari 2026", 2: "Februari 2026", 3: "Maret 2026", 4: "April 2026",
+    5: "Mei 2026", 6: "Juni 2026", 7: "Juli 2026", 8: "Agustus 2026", 9: "September 2026",
+    10: "Oktober 2026", 11: "November 2026", 12: "Desember 2026"
+}
+MONTH_SHORT_ID = {
+    1: "Jan 26", 2: "Feb 26", 3: "Mar 26", 4: "Apr 26",
+    5: "Mei 26", 6: "Jun 26", 7: "Jul 26", 8: "Ags 26", 9: "Sep 26",
+    10: "Okt 26", 11: "Nov 26", 12: "Des 26"
+}
+
+def parse_fktp_datetime(ts_str: Optional[str]) -> Optional[datetime]:
+    if not ts_str:
+        return None
+    cleaned = ts_str.strip()
+    for fmt in ('%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M', '%Y-%m-%d %H:%M:%S', '%d/%m/%Y %H:%M:%S'):
+        try:
+            return datetime.strptime(cleaned, fmt)
+        except Exception:
+            pass
+    return None
+
+def fetch_fktp_antrol_dfs(force_refresh: bool = False) -> pl.DataFrame:
+    cache_key = "fktp_antrol_merged_df"
+    now = time.time()
+    if not force_refresh and cache_key in _SHEETS_CACHE:
+        cached_time, df_cached = _SHEETS_CACHE[cache_key]
+        if (now - cached_time) < _CACHE_TTL and df_cached is not None and not df_cached.is_empty():
+            return df_cached
+
+    url1 = f"https://docs.google.com/spreadsheets/d/{FKTP_ANTROL_SPREADSHEET_ID}/export?format=csv"
+    url2 = f"https://docs.google.com/spreadsheets/d/{FKTP_REF_SPREADSHEET_ID}/export?format=csv"
+
+    content1 = None
+    content2 = None
+
+    import ssl
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
+
+    try:
+        req1 = urllib.request.Request(url1, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req1, context=ssl_ctx, timeout=10) as resp1:
+            content1 = resp1.read()
+    except Exception as e1:
+        logger.warning(f"urllib fetch failed for FKTP Capaian: {e1}")
+        try:
+            r1 = requests.get(url1, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
+            if r1.status_code == 200:
+                content1 = r1.content
+        except Exception as e1_req:
+            logger.error(f"requests fetch failed for FKTP Capaian: {e1_req}")
+
+    try:
+        req2 = urllib.request.Request(url2, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req2, context=ssl_ctx, timeout=10) as resp2:
+            content2 = resp2.read()
+    except Exception as e2:
+        logger.warning(f"urllib fetch failed for FKTP Ref: {e2}")
+        try:
+            r2 = requests.get(url2, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
+            if r2.status_code == 200:
+                content2 = r2.content
+        except Exception as e2_req:
+            logger.error(f"requests fetch failed for FKTP Ref: {e2_req}")
+
+    if not content1:
+        if cache_key in _SHEETS_CACHE:
+            return _SHEETS_CACHE[cache_key][1]
+        return pl.DataFrame()
+
+    try:
+        df1 = pl.read_csv(io.BytesIO(content1), infer_schema_length=0)
+    except Exception as e_parse1:
+        logger.error(f"Failed parsing CSV df1: {e_parse1}")
+        return pl.DataFrame()
+
+    df2 = pl.DataFrame()
+    if content2:
+        try:
+            df2 = pl.read_csv(io.BytesIO(content2), infer_schema_length=0)
+        except Exception as e_parse2:
+            logger.error(f"Failed parsing CSV df2: {e_parse2}")
+
+    # Standardize df2
+    if not df2.is_empty() and "kode_fktp" in df2.columns:
+        sel_cols = [pl.col("kode_fktp").str.strip_chars()]
+        if "kabupaten" in df2.columns:
+            sel_cols.append(pl.col("kabupaten").str.strip_chars().alias("kabupaten"))
+        if "jenis_fktp" in df2.columns:
+            sel_cols.append(pl.col("jenis_fktp").str.strip_chars().alias("jenis_fktp"))
+        df2 = df2.select(sel_cols)
+    else:
+        df2 = pl.DataFrame(schema={"kode_fktp": pl.Utf8, "kabupaten": pl.Utf8, "jenis_fktp": pl.Utf8})
+
+    df1 = df1.with_columns(pl.col("kode_fktp").str.strip_chars())
+    df_merged = df1.join(df2, on="kode_fktp", how="left")
+
+    df_merged = df_merged.with_columns([
+        pl.col("kabupaten").fill_null("KAB. JEMBER"),
+        pl.col("jenis_fktp").fill_null("LAINNYA"),
+        pl.col("sumber_antrean_cf").cast(pl.Float64, strict=False).fill_null(0.0),
+        pl.col("sumber_antrean_total_transaksi").cast(pl.Float64, strict=False).fill_null(0.0),
+        pl.col("total_transaksi").cast(pl.Float64, strict=False).fill_null(0.0)
+    ])
+
+    _SHEETS_CACHE[cache_key] = (now, df_merged)
+    return df_merged
+
+
+@app.get("/api/v1/fktp-antrol-stats")
+async def get_fktp_antrol_stats(
+    bulan: Optional[str] = None,
+    kabupaten: Optional[str] = None,
+    jenis_fktp: Optional[str] = None,
+    sumber_antrean: Optional[str] = None,
+    refresh: Optional[bool] = False,
+    user=Depends(require_auth)
+):
+    try:
+        role = user.get("role", "viewer") if isinstance(user, dict) else "viewer"
+        logger.info(f"Accessing fktp-antrol-stats - role: {role}, refresh: {refresh}")
+
+        df = fetch_fktp_antrol_dfs(force_refresh=bool(refresh))
+        if df.is_empty():
+            return {
+                "status": "no_data",
+                "message": "Data Pemanfaatan Antrol FKTP tidak tersedia.",
+                "last_update": "No data available.",
+                "selected_period": "No data available.",
+                "kpi": {"avg_capaian": 0.0, "total_cf": 0, "total_transaksi_sumber": 0, "total_transaksi_all": 0, "total_fktp": 0},
+                "trend_per_bulan": [],
+                "table_data": [],
+                "filter_options": {"bulan": [], "kabupaten": [], "jenis_fktp": [], "sumber_antrean": []}
+            }
+
+        # 1. Map timestamps to (year, month) and detect the latest timestamp per month
+        ts_list = df["Timestamp"].unique().to_list()
+        month_latest_ts: Dict[Tuple[int, int], Tuple[str, datetime]] = {}
+        for ts in ts_list:
+            dt = parse_fktp_datetime(ts)
+            if dt:
+                ym = (dt.year, dt.month)
+                if ym not in month_latest_ts or dt > month_latest_ts[ym][1]:
+                    month_latest_ts[ym] = (ts, dt)
+
+        sorted_ym = sorted(month_latest_ts.keys())
+        latest_overall_ts = max(month_latest_ts.values(), key=lambda x: x[1])[0] if month_latest_ts else ""
+        formatted_last_update = format_timestamp_standard(latest_overall_ts) if latest_overall_ts else "No data available."
+
+        # Filter option lists
+        month_option_map: Dict[str, Tuple[int, int]] = {}
+        month_options: List[str] = ["(All)"]
+        for ym in sorted_ym:
+            label = MONTH_NAMES_ID.get(ym[1], f"Bulan {ym[1]} {ym[0]}")
+            month_option_map[label] = ym
+            month_options.append(label)
+
+        unique_kabupaten = sorted([k for k in df["kabupaten"].unique().to_list() if k])
+        kabupaten_options = ["(All)"] + unique_kabupaten
+
+        unique_jenis = sorted([j for j in df["jenis_fktp"].unique().to_list() if j])
+        jenis_fktp_options = ["(All)"] + unique_jenis
+
+        sumber_antrean_options = ["Mobile JKN", "All Sumber", "(All)"]
+
+        # Default filter selections
+        latest_month_label = month_options[-1] if len(month_options) > 1 else "(All)"
+        selected_bulan = bulan.strip() if bulan and bulan.strip() not in ["", "null", "undefined"] else latest_month_label
+        selected_kabupaten = kabupaten.strip() if kabupaten and kabupaten.strip() not in ["", "null", "undefined", "(All)", "Semua"] else None
+        selected_jenis = jenis_fktp.strip() if jenis_fktp and jenis_fktp.strip() not in ["", "null", "undefined", "(All)", "Semua"] else None
+        selected_sumber = sumber_antrean.strip() if sumber_antrean and sumber_antrean.strip() not in ["", "null", "undefined"] else "Mobile JKN"
+
+        # 2. Build Monthly Trend Curve (trend_per_bulan)
+        trend_per_bulan = []
+        for ym in sorted_ym:
+            month_ts = month_latest_ts[ym][0]
+            sub_m = df.filter(pl.col("Timestamp") == month_ts)
+            if selected_kabupaten:
+                sub_m = sub_m.filter(pl.col("kabupaten") == selected_kabupaten)
+            if selected_jenis:
+                sub_m = sub_m.filter(pl.col("jenis_fktp") == selected_jenis)
+            if selected_sumber and selected_sumber != "(All)":
+                sub_m = sub_m.filter(pl.col("sumber_antrean") == selected_sumber)
+
+            sum_cf = float(sub_m["sumber_antrean_cf"].sum()) if not sub_m.is_empty() else 0.0
+            sum_tot_sumber = float(sub_m["sumber_antrean_total_transaksi"].sum()) if not sub_m.is_empty() else 0.0
+            sum_tot_all = float(sub_m["total_transaksi"].sum()) if not sub_m.is_empty() else 0.0
+            ratio = round((sum_cf / sum_tot_sumber * 100), 2) if sum_tot_sumber > 0 else 0.0
+
+            trend_per_bulan.append({
+                "month": MONTH_SHORT_ID.get(ym[1], f"M{ym[1]}"),
+                "month_full": MONTH_NAMES_ID.get(ym[1], f"Bulan {ym[1]} {ym[0]}"),
+                "avg_capaian": ratio,
+                "total_cf": int(sum_cf),
+                "total_transaksi_sumber": int(sum_tot_sumber),
+                "total_transaksi": int(sum_tot_all),
+                "latest_timestamp": format_timestamp_standard(month_ts)
+            })
+
+        # 3. Build Table Data based on selected filters
+        table_rows = []
+        is_all_months = selected_bulan in ["(All)", "Semua", "Semua Bulan"]
+
+        if is_all_months:
+            all_latest_ts = [v[0] for v in month_latest_ts.values()]
+            df_filtered = df.filter(pl.col("Timestamp").is_in(all_latest_ts))
+            if selected_kabupaten:
+                df_filtered = df_filtered.filter(pl.col("kabupaten") == selected_kabupaten)
+            if selected_jenis:
+                df_filtered = df_filtered.filter(pl.col("jenis_fktp") == selected_jenis)
+            if selected_sumber and selected_sumber != "(All)":
+                df_filtered = df_filtered.filter(pl.col("sumber_antrean") == selected_sumber)
+
+            if not df_filtered.is_empty():
+                agg_df = df_filtered.group_by(["kode_fktp", "nama_fktp", "kabupaten", "jenis_fktp", "sumber_antrean"]).agg([
+                    pl.col("sumber_antrean_cf").sum().alias("sum_cf"),
+                    pl.col("sumber_antrean_total_transaksi").sum().alias("sum_tot_sumber"),
+                    pl.col("total_transaksi").sum().alias("sum_tot")
+                ])
+                for r in agg_df.iter_rows(named=True):
+                    cf = r["sum_cf"]
+                    tot_sumber = r["sum_tot_sumber"]
+                    pct = round((cf / tot_sumber * 100), 2) if tot_sumber > 0 else 0.0
+                    table_rows.append({
+                        "kode_fktp": r["kode_fktp"],
+                        "nama_fktp": r["nama_fktp"],
+                        "kabupaten": r["kabupaten"],
+                        "jenis_fktp": r["jenis_fktp"],
+                        "sumber_antrean_cf": int(cf),
+                        "sumber_antrean_total_transaksi": int(tot_sumber),
+                        "total_transaksi": int(r["sum_tot"]),
+                        "persentase_capaian": pct,
+                        "persentase_capaian_str": f"{pct:.2f}%",
+                        "sumber_antrean": r["sumber_antrean"]
+                    })
+        else:
+            target_ym = month_option_map.get(selected_bulan)
+            if target_ym and target_ym in month_latest_ts:
+                target_ts = month_latest_ts[target_ym][0]
+            else:
+                target_ts = latest_overall_ts
+
+            df_filtered = df.filter(pl.col("Timestamp") == target_ts)
+            if selected_kabupaten:
+                df_filtered = df_filtered.filter(pl.col("kabupaten") == selected_kabupaten)
+            if selected_jenis:
+                df_filtered = df_filtered.filter(pl.col("jenis_fktp") == selected_jenis)
+            if selected_sumber and selected_sumber != "(All)":
+                df_filtered = df_filtered.filter(pl.col("sumber_antrean") == selected_sumber)
+
+            for r in df_filtered.iter_rows(named=True):
+                cf = r["sumber_antrean_cf"]
+                tot_sumber = r["sumber_antrean_total_transaksi"]
+                pct = round((cf / tot_sumber * 100), 2) if tot_sumber > 0 else 0.0
+                table_rows.append({
+                    "kode_fktp": r["kode_fktp"],
+                    "nama_fktp": r["nama_fktp"],
+                    "kabupaten": r["kabupaten"],
+                    "jenis_fktp": r["jenis_fktp"],
+                    "sumber_antrean_cf": int(cf),
+                    "sumber_antrean_total_transaksi": int(tot_sumber),
+                    "total_transaksi": int(r["total_transaksi"]),
+                    "persentase_capaian": pct,
+                    "persentase_capaian_str": f"{pct:.2f}%",
+                    "sumber_antrean": r["sumber_antrean"]
+                })
+
+        # Sort table descending by persentase_capaian then ascending by nama_fktp
+        table_rows.sort(key=lambda x: (-x["persentase_capaian"], x["nama_fktp"]))
+
+        # 4. KPI Calculations
+        total_cf_kpi = sum(r["sumber_antrean_cf"] for r in table_rows)
+        total_sumber_kpi = sum(r["sumber_antrean_total_transaksi"] for r in table_rows)
+        total_all_kpi = sum(r["total_transaksi"] for r in table_rows)
+        kpi_ratio = round((total_cf_kpi / total_sumber_kpi * 100), 2) if total_sumber_kpi > 0 else 0.0
+        unique_fktp_count = len(set(r["kode_fktp"] for r in table_rows))
+
+        return {
+            "status": "success",
+            "last_update": formatted_last_update,
+            "selected_period": selected_bulan if not is_all_months else "Akumulasi Tahun 2026 (Semua Bulan)",
+            "kpi": {
+                "avg_capaian": kpi_ratio,
+                "total_cf": total_cf_kpi,
+                "total_transaksi_sumber": total_sumber_kpi,
+                "total_transaksi_all": total_all_kpi,
+                "total_fktp": unique_fktp_count
+            },
+            "trend_per_bulan": trend_per_bulan,
+            "table_data": table_rows,
+            "filter_options": {
+                "bulan": month_options,
+                "kabupaten": kabupaten_options,
+                "jenis_fktp": jenis_fktp_options,
+                "sumber_antrean": sumber_antrean_options
+            },
+            "active_filters": {
+                "bulan": selected_bulan,
+                "kabupaten": selected_kabupaten or "(All)",
+                "jenis_fktp": selected_jenis or "(All)",
+                "sumber_antrean": selected_sumber
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error in get_fktp_antrol_stats: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Pemanfaatan Antrol FKTP: {str(e)}"
+        )
+
+
+@app.post("/api/v1/fktp-antrol-sync")
+@app.get("/api/v1/fktp-antrol-sync")
+async def sync_fktp_antrol(user=Depends(require_auth)):
+    try:
+        cache_key = "fktp_antrol_merged_df"
+        if cache_key in _SHEETS_CACHE:
+            del _SHEETS_CACHE[cache_key]
+        df = fetch_fktp_antrol_dfs(force_refresh=True)
+        ts_list = df["Timestamp"].unique().to_list() if not df.is_empty() else []
+        last_dt = None
+        last_ts_str = "No data available."
+        for ts in ts_list:
+            dt = parse_fktp_datetime(ts)
+            if dt and (last_dt is None or dt > last_dt):
+                last_dt = dt
+                last_ts_str = format_timestamp_standard(ts)
+        return {
+            "status": "success",
+            "message": "Sinkronisasi live data Pemanfaatan Antrol FKTP berhasil.",
+            "last_update": last_ts_str,
+            "total_records": df.height if not df.is_empty() else 0
+        }
+    except Exception as e:
+        logger.error(f"Error in sync_fktp_antrol: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Gagal melakukan sinkronisasi live Google Sheets FKTP: {str(e)}")
+
 
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)
 try:
@@ -3038,3 +3384,4 @@ try:
     handler = Mangum(app, lifespan="off")
 except Exception:
     handler = app
+

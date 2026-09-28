@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useLanguageStore } from '../store/languageStore';
 
-export type NavTab = 'home' | 'fktp' | 'fkrtl' | 'fkrtl-antrol' | 'fkrtl-kepatuhan' | 'admin';
+export type NavTab = 'home' | 'fktp' | 'fktp-antrol' | 'fkrtl' | 'fkrtl-antrol' | 'fkrtl-kepatuhan' | 'admin';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -37,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useLanguageStore();
   const [isHovered, setIsHovered] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    fktp: true,
     fkrtl: true,
   });
 
@@ -81,6 +82,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
         </svg>
       ),
+      children: [
+        {
+          id: 'fktp-antrol',
+          label: 'Pemanfaatan Antrol',
+          badge: 'Live',
+          description: 'Pemanfaatan Sistem Antrean Online FKTP',
+        },
+      ],
     },
     {
       id: 'fkrtl',

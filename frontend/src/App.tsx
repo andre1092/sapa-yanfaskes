@@ -5,6 +5,7 @@ import type { NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BlankContentArea } from './components/BlankContentArea';
 import { PemanfaatanAntrolDashboard } from './components/PemanfaatanAntrolDashboard';
+import { FktpAntrolDashboard } from './components/FktpAntrolDashboard';
 import { LaporanKepatuhanDashboard } from './components/LaporanKepatuhanDashboard';
 import { AdminSettings } from './components/AdminSettings';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -131,6 +132,8 @@ function MainLayout() {
               <PemanfaatanAntrolDashboard />
             ) : activeTab === 'fkrtl-kepatuhan' ? (
               <LaporanKepatuhanDashboard />
+            ) : activeTab === 'fktp' || activeTab === 'fktp-antrol' ? (
+              <FktpAntrolDashboard />
             ) : activeTab === 'admin' ? (
               <AdminSettings />
             ) : (

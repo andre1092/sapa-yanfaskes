@@ -106,6 +106,25 @@
   7. 📝 **07. Surkon**: Penerbitan Surat Kontrol terjadwal melalui bridging sistem elektronik (Target: ≥90%).
   8. 📑 **08. RME**: Tingkat integrasi Rekam Medis Elektronik dengan platform SatuSehat & BPJS Kesehatan (Target: ≥95%).
 
+### E. Modul Pemanfaatan Antrol FKTP (Fasilitas Kesehatan Tingkat Pertama) [STATUS: DALAM PENGEMBANGAN]
+- Terletak pada menu **FKTP > Pemanfaatan Antrol** (`fktp-antrol`).
+- **Integrasi Live Google Spreadsheet**:
+  - Spreadsheet Capaian Antrol FKTP (`1vjrWC6LxtgQojQmqP0MtXn4hsIWZCNuMJa2P0kW--Wo`) dan Ref Faskes FKTP (`1vxR2JmrvFZVvO4m8VsT8Vryl5NCkonNaNya5H99gqj4`) melalui relasi kunci `kode_fktp`.
+- **Sistem Filter 4-Dimensi**:
+  - `bulan`: Diekstraksi dari kolom `Timestamp` (Januari - September 2026).
+  - `kabupaten`: Bondowoso, Jember, Lumajang (dari sheet referensi).
+  - `jenis_fktp`: Puskesmas, Klinik Pratama, Dokter Keluarga, Dokter Gigi, Klinik TNI, Klinik Polri.
+  - `sumber_antrean`: Mobile JKN dan All Sumber.
+- **Visualisasi & Analisis Data**:
+  - **Grafik Tren Bulanan**: SVG Interactive Line Chart kurva tren capaian per bulan Januari s.d. September 2026 dengan target benchmark 80% (Mobile JKN) dan 95% (All Sumber), dilengkapi Zero Layout Shift container.
+  - **Tabel Pemanfaatan Antrol FKTP**: Menampilkan kolom `nama_fktp` dan `persentase_capaian`.
+  - **Interaksi Hover Floating Tooltip**: Saat kursor diletakkan di atas angka `persentase_capaian`, muncul informasi mengambang (*floating tooltip*) memuat:
+    1. `sumber_antrean_cf`
+    2. `sumber_antrean_total_transaksi`
+    3. `total_transaksi`
+    4. `persentase_capaian`
+    5. `sumber_antrean`
+
 ---
 
 ## 3. Fitur Ekspor & Pelaporan (Export & Reporting Engine)
