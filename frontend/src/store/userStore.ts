@@ -1,13 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type UserRole =
+  | 'Super Admin'
+  | 'Admin'
+  | 'User'
+  | 'Admin KC Jember'
+  | 'Verifikator Yanfaskes'
+  | 'Viewer Eksekutif';
+
 export interface UserAccount {
   id: string;
   username: string;
   name: string;
   email: string;
   password: string;
-  role: 'Super Admin' | 'Admin KC Jember' | 'Verifikator Yanfaskes' | 'Viewer Eksekutif';
+  role: UserRole;
   status: 'Aktif' | 'Nonaktif';
   createdAt: string;
 }
@@ -55,21 +63,21 @@ const DEFAULT_USERS: UserAccount[] = [
   },
   {
     id: 'usr-3',
-    username: 'verifikator_bpjs',
-    name: 'Tim Verifikator Mutu FKRTL',
-    email: 'verifikator@bpjs-kesehatan.go.id',
-    password: 'VerifMutu2026*',
-    role: 'Verifikator Yanfaskes',
+    username: 'admin_faskes',
+    name: 'Admin Operasional Data',
+    email: 'admin.faskes@bpjs-kesehatan.go.id',
+    password: 'AdminFaskes2026!',
+    role: 'Admin',
     status: 'Aktif',
     createdAt: '2026-02-01 10:15:00',
   },
   {
     id: 'usr-4',
-    username: 'direksi_view',
-    name: 'Eksekutif Monitoring KC Jember',
-    email: 'direksi@bpjs-kesehatan.go.id',
-    password: 'Eksekutif2026$',
-    role: 'Viewer Eksekutif',
+    username: 'user_yanfaskes',
+    name: 'User Petugas Yanfaskes',
+    email: 'user.yanfaskes@bpjs-kesehatan.go.id',
+    password: 'UserYanfaskes2026#',
+    role: 'User',
     status: 'Aktif',
     createdAt: '2026-02-10 14:00:00',
   },

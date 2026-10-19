@@ -66,7 +66,8 @@ SAPA YANFASKES
 │   └── Tab ID: 'insight-tracer'
 │   └── Rute Frontend: '/?preview=insight-tracer' atau Nav Tab 'insight-tracer'
 │   └── Komponen Utama:
-│       ├── 🧭 Dark Navigation Sidebar (#1E1F31, 4 Section: ACTION CENTRE, DASHBOARD [Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP], ENGAGEMENTS, MANAGE)
+│       ├── 🧭 Dark Navigation Sidebar (#1E1F31, 4 Section: ACTION CENTRE, DASHBOARD [Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP], ENGAGEMENTS, MANAGE [User Management, Smart Banners, Events, Validation Rules, Integration])
+│       ├── 👤 User Management View (CRUD Pengguna: Username, Email, Password, Status, & Role: Super Admin, Admin, User)
 │       ├── 📈 2 Comparative KPI Metric Cards (Touchpoints: Clicks, Impressions, Organic, Non-Organic; Installs: Organic, Non-Organic, 0% Organic, Fraudulent)
 │       ├── 🗺️ Geographical Distribution World Map (Hotspot 5 Negara: India 50.61%, US 26.21%, UK 12.44%, Greenland 6.61%, Australia 4.61% & 3 Metrik Agregat: Viewed 25,344, Dropouts 21,887, Responses 12,834)
 │       └── 📋 Breakdown By Media Source Data Table (Demo Partner, Google Ads, Meta Audience, Apple Search Ads)
@@ -78,16 +79,22 @@ SAPA YANFASKES
 
 ---
 
-## 2. Pemetaan Hak Akses Menu (Role-Based Access Control)
+## 2. Pemetaan Hak Akses Menu (Role-Based Access Control / RBAC)
 
-| Menu / Sub-Menu | Public / Tamu | Faskes User | Verifikator BPJS | Super Administrator |
-| :--- | :---: | :---: | :---: | :---: |
-| **Home** | ✅ (Terbatas) | ✅ | ✅ | ✅ |
-| **FKTP** | ❌ | ✅ (Data Mandiri) | ✅ (Wilayah Kerja) | ✅ (Seluruh Data) |
-| **FKRTL - Antrol** | ❌ | ✅ (Data RS Bersangkutan) | ✅ (Wilayah Kerja) | ✅ (Nasional/Seluruh Data) |
-| **FKRTL - Kepatuhan** | ❌ | ✅ (Data RS Bersangkutan) | ✅ (Wilayah Kerja) | ✅ (Nasional/Seluruh Data) |
-| **Settings** | ❌ | ❌ | ✅ (Profil) | ✅ (Konfigurasi Penuh) |
-| **Log out** | ❌ | ✅ | ✅ | ✅ |
+Sesuai spesifikasi resmi 3 tingkatan peran:
+- **Super Admin**: Melihat data, mendownload laporan/data, menambah user, mengedit user, dan menghapus user (Hak Akses Penuh).
+- **Admin**: Melihat data dan mendownload laporan/data (Hak Akses Operasional).
+- **User**: Hanya melihat menu tertentu saja (Hak Akses Terbatas).
+
+| Menu / Fitur Sistem | User (Terbatas) | Admin (Operasional) | Super Admin (Penuh) |
+| :--- | :---: | :---: | :---: |
+| **Home (Dashboard Ringkasan)** | ✅ Melihat | ✅ Melihat | ✅ Melihat |
+| **FKTP - Pemanfaatan Antrol** | ❌ (Menu Tertentu) | ✅ Melihat & Unduh | ✅ Melihat & Unduh |
+| **FKRTL - Pemanfaatan Antrol** | ❌ (Menu Tertentu) | ✅ Melihat & Unduh | ✅ Melihat & Unduh |
+| **FKRTL - Laporan Kepatuhan Mutu (9 Tab)** | ❌ (Menu Tertentu) | ✅ Melihat & Unduh | ✅ Melihat & Unduh |
+| **Manajemen Pengguna (User Management)** | ❌ | ❌ | ✅ CRUD User Lengkap & Unduh |
+| **Settings & Konfigurasi Sistem** | ❌ | ❌ | ✅ Konfigurasi Penuh |
+| **Log out** | ✅ | ✅ | ✅ |
 
 ---
 

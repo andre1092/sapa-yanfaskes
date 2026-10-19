@@ -1357,6 +1357,8 @@ export const AdminSettings: React.FC = () => {
                     className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
                   >
                     <option value="Super Admin">Super Admin</option>
+                    <option value="Admin">Admin</option>
+                    <option value="User">User</option>
                     <option value="Admin KC Jember">Admin KC Jember</option>
                     <option value="Verifikator Yanfaskes">Verifikator Yanfaskes</option>
                     <option value="Viewer Eksekutif">Viewer Eksekutif</option>

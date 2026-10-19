@@ -188,7 +188,7 @@
   - Main Canvas: `#F1F1F4`, kartu putih `#FFFFFF` dengan garis batas halus `#E8E8EE`.
   - Warna Aksen Merek: Royal Indigo `#6C5DD3`, Vivid Blue `#3F8CFF`, dan Soft Green Badge `#E4F8DD` (teks `#27AE60`).
 - **Elemen-Elemen Terverifikasi**:
-  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand SAPA Yanfaskes dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), DASHBOARD (Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs), dan MANAGE (Deep Links, Smart Banners, Events, Validation Rules, Integration).
+  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand SAPA Yanfaskes dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), DASHBOARD (Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs), dan MANAGE (User [Manajemen Pengguna 3 Role RBAC: Super Admin, Admin, User], Smart Banners, Events, Validation Rules, Integration). Dilengkapi fitur auto-hide/collapse (icon-only rail) saat kursor menjauh dan expand saat kursor mendekat.
   2. 📅 **Header Terpadu (h: 88px)**: Judul reaktif ("Capaian Kepatuhan FKRTL") tebal dan tombol pemilih rentang waktu interaktif berikon kalender ("Jan 2023 - Feb 2023").
   3. 📈 **Kartu Metrik KPI Perbandingan (Grid 2 Kolom)**:
      - **Touchpoints**: Clicks (23.4k, +14%), Impressions (6.4k, +16%), Organic (43.2k, +11%), Non-Organic (83k, +18%), dengan footer "Compared To Last 30 Days".
