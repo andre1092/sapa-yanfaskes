@@ -63,6 +63,12 @@ export interface TmoApiResponse {
   };
 }
 
+const fmtNum = (val: unknown, decimals: number = 1): string => {
+  if (val === null || val === undefined || val === '') return (0).toFixed(decimals);
+  const n = typeof val === 'number' ? val : parseFloat(String(val));
+  return isNaN(n) ? (0).toFixed(decimals) : n.toFixed(decimals);
+};
+
 export const TmoComplianceTab: React.FC = () => {
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
@@ -337,10 +343,10 @@ export const TmoComplianceTab: React.FC = () => {
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-black text-[#2b4390] dark:text-white font-mono">
-              {kpi.avg_capaian.toFixed(1)}%
+              {fmtNum(kpi.avg_capaian, 1)}%
             </span>
             <span className="text-xs font-bold text-[#44853b] dark:text-emerald-400">
-              (Kontribusi: {kpi.kontribusi_capaian.toFixed(2)} pt)
+              (Kontribusi: {fmtNum(kpi.kontribusi_capaian, 2)} pt)
             </span>
           </div>
           <span className="text-[10.5px] text-[#44853b] dark:text-emerald-400/80 mt-1 block font-semibold">
@@ -357,7 +363,7 @@ export const TmoComplianceTab: React.FC = () => {
               {kpi.total_tercapai}
             </span>
             <span className="text-xs text-[#6573a1] dark:text-slate-400">
-              dari {kpi.total_faskes} RS ({kpi.persen_kepatuhan.toFixed(1)}%)
+              dari {kpi.total_faskes} RS ({fmtNum(kpi.persen_kepatuhan, 1)}%)
             </span>
           </div>
           <span className="text-[10.5px] text-[#44853b] dark:text-emerald-400/80 mt-1 block font-semibold">
@@ -429,7 +435,7 @@ export const TmoComplianceTab: React.FC = () => {
                   />
                 </div>
                 <span className="font-mono font-bold text-[10.5px] text-[#44853b] dark:text-emerald-400">
-                  {m.avg_capaian.toFixed(0)}%
+                  {fmtNum(m.avg_capaian, 0)}%
                 </span>
                 <span className="text-[9.5px] text-[#6573a1] dark:text-slate-500">
                   {m.total_operasi} op
@@ -509,19 +515,19 @@ export const TmoComplianceTab: React.FC = () => {
                       </td>
                       <td className="py-3 px-3 text-[#2b4390] dark:text-slate-300">{row.kabupaten}</td>
                       <td className="py-3 px-3 text-center font-mono font-bold">{row.jadwal_operasi}</td>
-                      <td className="py-3 px-3 text-center font-mono">{row.persentase_operasi.toFixed(1)}%</td>
-                      <td className="py-3 px-3 text-center font-mono">{row.persentase_antrol.toFixed(1)}%</td>
+                      <td className="py-3 px-3 text-center font-mono">{fmtNum(row.persentase_operasi, 1)}%</td>
+                      <td className="py-3 px-3 text-center font-mono">{fmtNum(row.persentase_antrol, 1)}%</td>
                       <td className="py-3 px-3 text-center">
                         <span className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
                           row.is_met
                             ? 'bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300'
                             : 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
                         }`}>
-                          {row.capaian.toFixed(1)}%
+                          {fmtNum(row.capaian, 1)}%
                         </span>
                       </td>
                       <td className="py-3 px-3 text-center font-mono font-bold text-[#44853b] dark:text-emerald-400">
-                        {row.capaian_nilai.toFixed(2)} pt
+                        {fmtNum(row.capaian_nilai, 2)} pt
                       </td>
                       <td className="py-3 px-3 text-center">
                         {row.is_met ? (

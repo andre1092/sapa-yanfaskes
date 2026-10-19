@@ -58,6 +58,12 @@ export interface RingkasanApiResponse {
   };
 }
 
+const fmtNum = (val: unknown, decimals: number = 1): string => {
+  if (val === null || val === undefined || val === '') return (0).toFixed(decimals);
+  const n = typeof val === 'number' ? val : parseFloat(String(val));
+  return isNaN(n) ? (0).toFixed(decimals) : n.toFixed(decimals);
+};
+
 export const RingkasanComplianceTab: React.FC = () => {
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
@@ -330,7 +336,7 @@ export const RingkasanComplianceTab: React.FC = () => {
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-black text-[#2b4390] dark:text-white font-mono">
-              {kpi.avg_nilai_akhir.toFixed(2)}
+              {fmtNum(kpi.avg_nilai_akhir, 2)}
             </span>
             <span className="text-xs font-bold text-[#6573a1] dark:text-slate-400">/ 100</span>
           </div>
@@ -348,7 +354,7 @@ export const RingkasanComplianceTab: React.FC = () => {
               {kpi.total_patuh}
             </span>
             <span className="text-xs text-[#6573a1] dark:text-slate-400">
-              dari {kpi.total_faskes} RS ({kpi.persen_kepatuhan.toFixed(1)}%)
+              dari {kpi.total_faskes} RS ({fmtNum(kpi.persen_kepatuhan, 1)}%)
             </span>
           </div>
           <span className="text-[10.5px] text-[#44853b] dark:text-emerald-400/80 mt-1 block font-semibold">
@@ -412,7 +418,7 @@ export const RingkasanComplianceTab: React.FC = () => {
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-[#2b4390] dark:text-slate-200">{pilar.label}</span>
                 <span className="font-mono font-bold text-[#44853b] dark:text-emerald-400">
-                  {pilar.avg_nilai.toFixed(1)} pt
+                  {fmtNum(pilar.avg_nilai, 1)} pt
                 </span>
               </div>
               <div className="w-full bg-[#afbade]/20 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -498,21 +504,21 @@ export const RingkasanComplianceTab: React.FC = () => {
                         {row.nama_ppk}
                       </td>
                       <td className="py-3 px-3 text-[#2b4390] dark:text-slate-300">{row.kabupaten}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.jadwal_dokter_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.pengaduan_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.waktu_layan_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.kessan_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.display_tt_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.tmo_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.surkon_pct.toFixed(1)}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.rme_pct.toFixed(1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.jadwal_dokter_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.pengaduan_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.waktu_layan_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.kessan_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.display_tt_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.tmo_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.surkon_pct, 1)}</td>
+                      <td className="py-3 px-2 text-center font-mono">{fmtNum(row.rme_pct, 1)}</td>
                       <td className="py-3 px-3 text-center">
                         <span className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
                           row.is_met
                             ? 'bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300'
                             : 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
                         }`}>
-                          {row.nilai_akhir.toFixed(1)}
+                          {fmtNum(row.nilai_akhir, 1)}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-center">

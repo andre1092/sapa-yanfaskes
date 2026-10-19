@@ -130,21 +130,42 @@ def process_ringkasan_kepatuhan(
             except Exception:
                 return 0.0
 
+        jadwal_pct = parse_val("Nilai Akhir Jadwaldokter")
+        pengaduan_pct = parse_val("Nilai Akhir Pengaduan")
+        kessan_pct = parse_val("Nilai Akhir Kessan")
+        tt_pct = parse_val("Nilai Akhir Tt")
+        tmo_pct = parse_val("Nilai Akhir Tmo")
+        surkon_pct = parse_val("Nilai Akhir Surkon")
+        waktulayan_pct = parse_val("Nilai Akhir Waktulayan")
+        rme_pct = parse_val("Nilai Akhir Rme")
+
         joined.append({
+            "no": len(joined) + 1,
             "kode_ppk": k,
             "nama_ppk": nama_rs,
             "kabupaten": kab,
             "tipe_faskes": tipe,
+            "kelas_ppk": ref_item.get("kelas_ppk", "RS"),
             "bulan": m,
+            "nilai_akhir": nilai_all,
             "nilai_akhir_all": nilai_all,
-            "nilai_jadwal_dokter": parse_val("Nilai Akhir Jadwaldokter"),
-            "nilai_pengaduan": parse_val("Nilai Akhir Pengaduan"),
-            "nilai_kessan": parse_val("Nilai Akhir Kessan"),
-            "nilai_tt": parse_val("Nilai Akhir Tt"),
-            "nilai_tmo": parse_val("Nilai Akhir Tmo"),
-            "nilai_surkon": parse_val("Nilai Akhir Surkon"),
-            "nilai_waktulayan": parse_val("Nilai Akhir Waktulayan"),
-            "nilai_rme": parse_val("Nilai Akhir Rme"),
+            "jadwal_dokter_pct": jadwal_pct,
+            "nilai_jadwal_dokter": jadwal_pct,
+            "pengaduan_pct": pengaduan_pct,
+            "nilai_pengaduan": pengaduan_pct,
+            "waktu_layan_pct": waktulayan_pct,
+            "nilai_waktulayan": waktulayan_pct,
+            "kessan_pct": kessan_pct,
+            "nilai_kessan": kessan_pct,
+            "display_tt_pct": tt_pct,
+            "nilai_tt": tt_pct,
+            "tmo_pct": tmo_pct,
+            "nilai_tmo": tmo_pct,
+            "surkon_pct": surkon_pct,
+            "nilai_surkon": surkon_pct,
+            "rme_pct": rme_pct,
+            "nilai_rme": rme_pct,
+            "is_met": nilai_all >= 85.0,
             "status": "Patuh" if nilai_all >= 85.0 else "Belum Patuh"
         })
 
@@ -255,16 +276,25 @@ def process_tmo_kepatuhan(
         except Exception:
             ops = 0
 
+        is_met = capaian >= 100.0
         joined.append({
+            "no": len(joined) + 1,
             "kode_ppk": k,
             "nama_ppk": nama_rs,
             "kabupaten": kab,
             "tipe_faskes": tipe,
+            "kelas_ppk": ref_item.get("kelas_ppk", "RS"),
             "bulan": m,
+            "bulan_indo": MONTH_INDO.get(m, m),
             "flag_target": r.get("Flagtarget", "TMO").strip(),
+            "jadwal_operasi": ops,
             "jumlah_jadwal_operasi": ops,
+            "persentase_operasi": 100.0 if ops > 0 else 0.0,
+            "persentase_antrol": capaian,
             "capaian": capaian,
-            "status": "Tercapai" if capaian >= 100.0 else "Belum Tercapai"
+            "capaian_nilai": round(capaian * 0.05, 2),
+            "is_met": is_met,
+            "status": "Tercapai" if is_met else "Belum Tercapai"
         })
 
     all_kab = sorted(list(set(r["kabupaten"] for r in joined if r["kabupaten"])))
@@ -390,18 +420,31 @@ def process_antrean_wtl_kepatuhan(
         target_nas = r.get("% Target Nasional", "30.00 %").strip()
         waktu_task = r.get("Rata-rata Waktu task 2-4", "00:00:00").strip()
 
+        is_met = capaian >= 100.0
+        persen_mjkn = round((mjkn / antrol * 100), 1) if antrol > 0 else 0.0
         joined.append({
+            "no": len(joined) + 1,
             "kode_ppk": k,
             "nama_ppk": nama_rs,
             "kabupaten": kab,
             "tipe_faskes": tipe,
+            "kelas_ppk": ref_item.get("kelas_ppk", "RS"),
             "bulan": m,
+            "bulan_indo": MONTH_INDO.get(m, m),
             "waktu_task_2_4": waktu_task,
-            "kunjungan_mjkn": mjkn,
+            "total_antrol": antrol,
             "kunjungan_antrol": antrol,
+            "total_mjkn": mjkn,
+            "kunjungan_mjkn": mjkn,
+            "persen_mjkn": persen_mjkn,
+            "persen_t2": 100.0 if waktu_task != "-" else 0.0,
+            "persen_t3": 100.0 if waktu_task != "-" else 0.0,
+            "persen_t4": 100.0 if waktu_task != "-" else 0.0,
             "persen_target_nasional": target_nas,
             "capaian": capaian,
-            "status": "Tercapai" if capaian >= 100.0 else "Belum Tercapai"
+            "capaian_nilai": round(capaian * 0.20, 2),
+            "is_met": is_met,
+            "status": "Tercapai" if is_met else "Belum Tercapai"
         })
 
     all_kab = sorted(list(set(r["kabupaten"] for r in joined if r["kabupaten"])))
@@ -529,19 +572,31 @@ def process_surkon_kepatuhan(
         except Exception:
             sesuai = 0
 
-        pct = r.get("Persentase", "0%").strip()
+        pct_str = r.get("Persentase", "0%").replace("%", "").strip()
+        try:
+            pct_val = float(pct_str or 0.0)
+        except Exception:
+            pct_val = 0.0
 
+        is_met = capaian >= 100.0
         joined.append({
+            "no": len(joined) + 1,
             "kode_ppk": k,
             "nama_ppk": nama_rs,
             "kabupaten": kab,
             "tipe_faskes": tipe,
+            "kelas_ppk": ref_item.get("kelas_ppk", "RS"),
             "bulan": m,
+            "bulan_indo": MONTH_INDO.get(m, m),
             "totalsep": totalsep,
+            "total_sep": totalsep,
             "sesuai": sesuai,
-            "persentase": pct,
+            "total_sesuai": sesuai,
+            "persentase": pct_val,
             "capaian": capaian,
-            "status": "Tercapai" if capaian >= 100.0 else "Belum Tercapai"
+            "capaian_nilai": round(capaian * 0.05, 2),
+            "is_met": is_met,
+            "status": "Tercapai" if is_met else "Belum Tercapai"
         })
 
     all_kab = sorted(list(set(r["kabupaten"] for r in joined if r["kabupaten"])))
@@ -670,18 +725,28 @@ def process_rme_kepatuhan(
         rjtl_gt7 = parse_i("Jlh Sep Rjtl > 7 hari")
         rjtl_lt7 = parse_i("Jlh Sep Rjtl < 7 hari")
 
+        is_met = capaian >= 100.0
+        tot_all = ritl_lt7 + ritl_gt7 + rjtl_lt7 + rjtl_gt7
+        tot_lt7 = ritl_lt7 + rjtl_lt7
+        persen_rme = round((tot_lt7 / tot_all * 100), 1) if tot_all > 0 else (100.0 if capaian >= 100 else capaian)
         joined.append({
+            "no": len(joined) + 1,
             "kode_ppk": k,
             "nama_ppk": nama_rs,
             "kabupaten": kab,
             "tipe_faskes": tipe,
+            "kelas_ppk": ref_item.get("kelas_ppk", "RS"),
             "bulan": m,
+            "bulan_indo": MONTH_INDO.get(m, m),
             "ritl_lt7": ritl_lt7,
             "ritl_gt7": ritl_gt7,
             "rjtl_lt7": rjtl_lt7,
             "rjtl_gt7": rjtl_gt7,
+            "persentase_rme": persen_rme,
             "capaian": capaian,
-            "status": "Tercapai" if capaian >= 100.0 else "Belum Tercapai"
+            "capaian_nilai": round(capaian * 0.05, 2),
+            "is_met": is_met,
+            "status": "Tercapai" if is_met else "Belum Tercapai"
         })
 
     all_kab = sorted(list(set(r["kabupaten"] for r in joined if r["kabupaten"])))
