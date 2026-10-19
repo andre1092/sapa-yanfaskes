@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-10-19T11:27:13Z",
+  "system_info": {
+    "platform": "macOS Apple Silicon",
+    "model": "Apple M2",
+    "ram_total_gb": 24.0,
+    "disk_free_gb": 214.22,
+    "disk_total_gb": 460.43
+  },
+  "baseline_target_file": "api/index.py",
+  "baseline_bytes": 151078,
+  "baseline_exploration_tokens": 39757
+}

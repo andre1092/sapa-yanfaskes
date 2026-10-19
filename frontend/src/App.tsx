@@ -8,6 +8,7 @@ import { PemanfaatanAntrolDashboard } from './components/PemanfaatanAntrolDashbo
 import { FktpAntrolDashboard } from './components/FktpAntrolDashboard';
 import { LaporanKepatuhanDashboard } from './components/LaporanKepatuhanDashboard';
 import { AdminSettings } from './components/AdminSettings';
+import { InsightTracerDashboard } from './components/InsightTracerDashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Environment Variables
@@ -128,7 +129,9 @@ function MainLayout() {
         {/* Dynamic Content View with Error Boundary */}
         <main className="flex-1 overflow-y-auto">
           <ErrorBoundary key={activeTab} fallbackTitle={`Gagal memuat modul ${activeTab.toUpperCase()}`}>
-            {activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
+            {activeTab === 'insight-tracer' ? (
+              <InsightTracerDashboard />
+            ) : activeTab === 'fkrtl' || activeTab === 'fkrtl-antrol' ? (
               <PemanfaatanAntrolDashboard />
             ) : activeTab === 'fkrtl-kepatuhan' ? (
               <LaporanKepatuhanDashboard />
@@ -147,6 +150,11 @@ function MainLayout() {
 }
 
 export default function App() {
+  // Preview mode untuk visual fidelity testing & headless automated snapshots
+  if (typeof window !== 'undefined' && window.location.search.includes('preview=insight-tracer')) {
+    return <InsightTracerDashboard />;
+  }
+
   if (!AUTH0_DOMAIN || !AUTH0_CLIENT_ID) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-950 p-6 text-center">

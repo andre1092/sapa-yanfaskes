@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-10-19T11:57:06.774Z",
+  "reference": "design-reference/clean_ui_reference_1600.png",
+  "actual": "design-reference/snapshots/actual_insight_tracer_1600.png",
+  "diff_image": "design-reference/snapshots/diff_clean_1600.png",
+  "dimensions": {
+    "width": 1600,
+    "height": 1188
+  },
+  "total_pixels": 1900800,
+  "mismatched_pixels": 114911,
+  "mismatch_ratio_percent": 6.045,
+  "tolerance_threshold_percent": 1,
+  "status": "FAILED"
+}

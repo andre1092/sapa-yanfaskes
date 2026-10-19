@@ -59,7 +59,17 @@ SAPA YANFASKES
 │       ├── 🏢 3. Integrasi Data FKRTL (Tombol Sinkronisasi Data Spreadsheet Antrol & Kepatuhan FKRTL dengan Perekaman Timestamp Live)
 │       └── 👥 4. User Setting (Tabel Akun, Live Search, Filter Role, Show/Hide Password, Tambah, Edit, dan Hapus Pengguna)
 │
-└── 🚪 5. Log out
+├── 📊 5. Insight Tracer (Performance Tracker & Geographical Statistics) [BARU]
+│   └── Deskripsi: Dashboard pelacak analitik kinerja multi-kanal & statistik distribusi geografis global (PROFI UI Fidelity Engine).
+│   └── Tab ID: 'insight-tracer'
+│   └── Rute Frontend: '/?preview=insight-tracer' atau Nav Tab 'insight-tracer'
+│   └── Komponen Utama:
+│       ├── 🧭 Dark Navigation Sidebar (#1E1F31, 4 Section: Action Centre, Insights, Engagements, Manage)
+│       ├── 📈 2 Comparative KPI Metric Cards (Touchpoints: Clicks, Impressions, Organic, Non-Organic; Installs: Organic, Non-Organic, 0% Organic, Fraudulent)
+│       ├── 🗺️ Geographical Distribution World Map (Hotspot 5 Negara: India 50.61%, US 26.21%, UK 12.44%, Greenland 6.61%, Australia 4.61% & 3 Metrik Agregat: Viewed 25,344, Dropouts 21,887, Responses 12,834)
+│       └── 📋 Breakdown By Media Source Data Table (Demo Partner, Google Ads, Meta Audience, Apple Search Ads)
+│
+└── 🚪 6. Log out
     └── Deskripsi: Terminasi sesi pengguna, pembersihan token Auth0 / identitas sesi lokal, dan pengalihan ke gerbang login.
     └── Aksi: `logout()` via Auth0 React SDK
 ```

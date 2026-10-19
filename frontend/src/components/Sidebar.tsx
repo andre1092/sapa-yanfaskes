@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useLanguageStore } from '../store/languageStore';
 
-export type NavTab = 'home' | 'fktp' | 'fktp-antrol' | 'fkrtl' | 'fkrtl-antrol' | 'fkrtl-kepatuhan' | 'admin';
+export type NavTab = 'home' | 'fktp' | 'fktp-antrol' | 'fkrtl' | 'fkrtl-antrol' | 'fkrtl-kepatuhan' | 'admin' | 'insight-tracer';
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -147,6 +147,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             strokeLinecap="round"
             strokeLinejoin="round"
             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'insight-tracer',
+      label: 'Insight Tracer',
+      badge: 'PROFI UI',
+      description: 'Performance Tracker & Geographical Statistics',
+      icon: (active) => (
+        <svg
+          className={`w-5 h-5 transition-colors ${active ? 'text-white' : 'text-slate-500 dark:text-slate-400 group-hover:text-[#6C5DD3]'}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={active ? 2.2 : 1.8}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
           />
         </svg>
       ),

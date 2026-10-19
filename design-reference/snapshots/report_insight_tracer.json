@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-10-19T11:54:50.119Z",
+  "reference": "design-reference/dashboard_preview.png",
+  "actual": "design-reference/snapshots/actual_insight_tracer.png",
+  "diff_image": "design-reference/snapshots/diff_insight_tracer.png",
+  "dimensions": {
+    "width": 1600,
+    "height": 1081
+  },
+  "total_pixels": 1729600,
+  "mismatched_pixels": 392536,
+  "mismatch_ratio_percent": 22.695,
+  "tolerance_threshold_percent": 1,
+  "status": "FAILED"
+}

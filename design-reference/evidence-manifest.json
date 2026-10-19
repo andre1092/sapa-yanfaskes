@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": "SAPA YANFASKES & PROFI UI FIDELITY",
+  "version": "1.1.0",
+  "generated_at": "2026-10-19T18:49:30Z",
+  "operational_mode": "STRICT_REFERENCE",
+  "authoritative_references": [
+    {
+      "ref_id": "DRIBBLE-21916256",
+      "title": "Dashboard, Performance Tracker, Geographical Statistics",
+      "author": "Octet Design Studio",
+      "url": "https://dribbble.com/shots/21916256-Dashboard-Performance-Tracker-Geographical-Statistics",
+      "local_asset": "design-reference/shot_slide1.png",
+      "preview_asset": "design-reference/dashboard_preview.png",
+      "dimensions": "6400x4800 (Native) / 1600x1081 (Preview)"
+    }
+  ],
+  "design_tokens": {
+    "insight_tracer": {
+      "bg_main": "#F1F1F4",
+      "bg_sidebar": "#1E1F31",
+      "sidebar_active": "#2E2F45",
+      "sidebar_text_muted": "#8E8FA3",
+      "card_bg": "#FFFFFF",
+      "card_border": "#E8E8EE",
+      "accent_purple": "#6C5DD3",
+      "accent_blue": "#3F8CFF",
+      "badge_green_bg": "#E4F8DD",
+      "badge_green_text": "#27AE60"
+    }
+  },
+  "elements": [
+    {
+      "element_id": "INSIGHT_TRACER_SIDEBAR",
+      "element_name": "Insight Tracer Dark Nav Sidebar",
+      "source_id": "DRIBBLE-21916256",
+      "source_type": "DRIBBLE_SHOT_CANVAS",
+      "source_version": "21916256",
+      "source_location": "design-reference/shot_slide1.png (x: 0..419)",
+      "geometry_evidence": {
+        "width": "w-64 (approx 260px)",
+        "padding": "p-5"
+      },
+      "typography_evidence": {
+        "brand": "font-bold text-white text-base",
+        "category_header": "text-xs font-semibold text-[#8E8FA3] uppercase tracking-wider",
+        "menu_items": "text-sm text-[#8E8FA3] hover:text-white"
+      },
+      "color_evidence": {
+        "background": "#1E1F31",
+        "active_item_bg": "#2E2F45",
+        "active_item_text": "#FFFFFF"
+      },
+      "asset_evidence": {
+        "brand_icon": "Triangle/diamond tracer logo",
+        "menu_groups": ["ACTION CENTRE", "INSIGHTS", "ENGAGEMENTS", "MANAGE"]
+      },
+      "interaction_evidence": {
+        "active_tab": "Dashboard highlighted"
+      },
+      "responsive_evidence": {
+        "desktop": "Fixed left rail",
+        "mobile": "Collapsible sidebar drawer"
+      },
+      "verification_status": "VERIFIED"
+    },
+    {
+      "element_id": "INSIGHT_TRACER_HEADER",
+      "element_name": "Dashboard Header with Date Selector",
+      "source_id": "DRIBBLE-21916256",
+      "source_type": "DRIBBLE_SHOT_CANVAS",
+      "source_version": "21916256",
+      "source_location": "design-reference/shot_slide1.png",
+      "geometry_evidence": {
+        "height": "h-16",
+        "layout": "flex justify-between items-center px-8"
+      },
+      "typography_evidence": {
+        "title": "text-2xl font-bold text-[#1E1F31]",
+        "date_range": "text-xs font-medium text-[#4F5065]"
+      },
+      "color_evidence": {
+        "button_bg": "#FFFFFF",
+        "button_border": "#E8E8EE"
+      },
+      "asset_evidence": {
+        "calendar_icon": "Lucide calendar icon",
+        "date_value": "Jan 2023 - Feb 2023"
+      },
+      "interaction_evidence": {
+        "date_picker_toggle": "Opens calendar dropdown"
+      },
+      "responsive_evidence": {
+        "desktop": "Full row with actions"
+      },
+      "verification_status": "VERIFIED"
+    },
+    {
+      "element_id": "KPI_TOUCHPOINTS_CARD",
+      "element_name": "Touchpoints Metrics Card",
+      "source_id": "DRIBBLE-21916256",
+      "source_type": "DRIBBLE_SHOT_CANVAS",
+      "source_version": "21916256",
+      "source_location": "Box (0.286, 0.860) in OCR",
+      "geometry_evidence": {
+        "grid": "grid grid-cols-2 gap-4",
+        "card_padding": "p-6"
+      },
+      "typography_evidence": {
+        "title": "text-base font-bold text-[#1E1F31]",
+        "subtitle": "text-xs text-[#8E8FA3]",
+        "metric_value": "text-xl font-bold text-[#1E1F31]",
+        "metric_label": "text-xs text-[#8E8FA3]"
+      },
+      "color_evidence": {
+        "background": "#FFFFFF",
+        "badge_increase": "#E4F8DD text-[#27AE60]"
+      },
+      "asset_evidence": {
+        "metrics": [
+          {"value": "23.4k", "label": "Clicks", "badge": "+14%"},
+          {"value": "6.4k", "label": "Impressions", "badge": "+16%"},
+          {"value": "43.2k", "label": "Organic", "badge": "+11%"},
+          {"value": "83k", "label": "Non-Organic", "badge": "+18%"}
+        ],
+        "footer": "Compared To Last 30 Days"
+      },
+      "interaction_evidence": {
+        "hover": "Subtle card elevation"
+      },
+      "responsive_evidence": {
+        "desktop": "col-span-6",
+        "mobile": "col-span-12"
+      },
+      "verification_status": "VERIFIED"
+    },
+    {
+      "element_id": "KPI_INSTALLS_CARD",
+      "element_name": "Installs Metrics Card",
+      "source_id": "DRIBBLE-21916256",
+      "source_type": "DRIBBLE_SHOT_CANVAS",
+      "source_version": "21916256",
+      "source_location": "Box (0.667, 0.865) in OCR",
+      "geometry_evidence": {
+        "grid": "grid grid-cols-2 gap-4",
+        "card_padding": "p-6"
+      },
+      "typography_evidence": {
+        "title": "text-base font-bold text-[#1E1F31]",
+        "subtitle": "text-xs text-[#8E8FA3]"
+      },
+      "color_evidence": {
+        "background": "#FFFFFF",
+        "badge_increase": "#E4F8DD text-[#27AE60]"
+      },
+      "asset_evidence": {
+        "metrics": [
+          {"value": "45.2k", "label": "Organic", "badge": "0%"},
+          {"value": "36.4k", "label": "Non-Organic", "badge": "+12%"},
+          {"value": "0%", "label": "Organic"},
+          {"value": "14.6k", "label": "Fraudulent", "badge": "+16%"}
+        ],
+        "footer": "Compared To Last 30 Days"
+      },
+      "interaction_evidence": {
+        "hover": "Subtle card elevation"
+      },
+      "responsive_evidence": {
+        "desktop": "col-span-6",
+        "mobile": "col-span-12"
+      },
+      "verification_status": "VERIFIED"
+    },
+    {
+      "element_id": "GEO_DISTRIBUTION_CARD",
+      "element_name": "Geographical Distribution World Map & Country List",
+      "source_id": "DRIBBLE-21916256",
+      "source_type": "DRIBBLE_SHOT_CANVAS",
+      "source_version": "21916256",
+      "source_location": "Box (0.286, 0.500) in OCR",
+      "geometry_evidence": {
+        "split": "grid grid-cols-12 gap-6",
+        "map_cols": "col-span-7",
+        "country_cols": "col-span-5"
+      },
+      "typography_evidence": {
+        "title": "text-base font-bold text-[#1E1F31]",
+        "tab_pill": "text-xs font-semibold px-3 py-1 rounded-full",
+        "country_name": "text-sm font-medium text-[#1E1F31]",
+        "country_count": "text-sm font-bold text-[#1E1F31]",
+        "country_pct": "text-xs text-[#8E8FA3]"
+      },
+      "color_evidence": {
+        "map_fill": "#E5E7EB",
+        "map_hotspot": "#6C5DD3",
+        "progress_bar": "#3F8CFF"
+      },
+      "asset_evidence": {
+        "pills": ["Clicks", "Organic Installs", "Non-Organic Installs"],
+        "map_stats": [
+          {"value": "25,344", "label": "Viewed"},
+          {"value": "21,887", "label": "Dropouts"},
+          {"value": "12,834", "label": "Responses"}
+        ],
+        "countries": [
+          {"name": "India", "responses": "14,230", "percent": "50.61%"},
+          {"name": "United States", "responses": "8,210", "percent": "26.21%"},
+          {"name": "Australia", "responses": "1,054", "percent": "4.61%"},
+          {"name": "United Kingdom", "responses": "3,540", "percent": "12.44%"},
+          {"name": "Greenland", "responses": "1,782", "percent": "6.61%"}
+        ]
+      },
+      "interaction_evidence": {
+        "pill_switch": "Switches map metric overlay"
+      },
+      "responsive_evidence": {
+        "desktop": "col-span-12",
+        "mobile": "stacked vertically"
+      },
+      "verification_status": "VERIFIED"
+    },
+    {
+      "element_id": "MEDIA_SOURCE_TABLE",
+      "element_name": "Breakdown By Media Source Data Table",
+      "source_id": "DRIBBLE-21916256",
+      "source_type": "DRIBBLE_SHOT_CANVAS",
+      "source_version": "21916256",
+      "source_location": "Box (0.286, 0.103) in OCR",
+      "geometry_evidence": {
+        "table": "w-full text-left border-collapse"
+      },
+      "typography_evidence": {
+        "title": "text-base font-bold text-[#1E1F31]",
+        "th": "text-xs font-semibold text-[#8E8FA3] uppercase py-3 border-b border-[#E8E8EE]",
+        "td": "text-sm text-[#1E1F31] py-3.5 border-b border-[#F1F1F4]"
+      },
+      "color_evidence": {
+        "background": "#FFFFFF",
+        "row_hover": "hover:bg-[#F9F9FB]"
+      },
+      "asset_evidence": {
+        "headers": ["Media Source", "Clicks", "Installs", "Impressions", "Click To Install", "Rejected Installs"],
+        "sample_rows": [
+          {"source": "Demo Partner", "clicks": "5.41k", "installs": "1.24k", "impressions": "18.2k", "c2i": "22.9%", "rejected": "0%"}
+        ]
+      },
+      "interaction_evidence": {
+        "row_hover": "Subtle row highlight"
+      },
+      "responsive_evidence": {
+        "mobile": "overflow-x-auto"
+      },
+      "verification_status": "VERIFIED"
+    }
+  ]
+}

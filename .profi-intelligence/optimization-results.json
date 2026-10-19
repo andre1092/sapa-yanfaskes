@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-10-19T11:27:13Z",
+  "system_info": {
+    "platform": "macOS Apple Silicon",
+    "model": "Apple M2",
+    "ram_total_gb": 24.0,
+    "disk_free_gb": 214.22,
+    "disk_total_gb": 460.43
+  },
+  "benchmark_summary": {
+    "total_benchmarks": 3,
+    "passed": 3,
+    "token_savings_targeted_ast_percent": 99.83
+  },
+  "detailed_results": [
+    {
+      "test_id": "TEST_1_TARGETED_AST_SEARCH",
+      "description": "Inspeksi fungsi `health_check` via ast-grep targeted query vs pembacaan mentah utuh",
+      "baseline": {
+        "method": "Naive full file read (api/index.py)",
+        "bytes": 151078,
+        "estimated_tokens": 39757
+      },
+      "optimized": {
+        "method": "ast-grep targeted AST extraction",
+        "bytes": 260,
+        "estimated_tokens": 68,
+        "latency_ms": 22.89
+      },
+      "measured_token_savings_percent": 99.83,
+      "status": "PASSED"
+    },
+    {
+      "test_id": "TEST_SUITE_10_SCENARIOS",
+      "description": "Eksekusi 10 skenario evaluasi deterministik pytest",
+      "duration_ms": 427.05,
+      "exit_code": 0,
+      "summary": "..........                                                               [100%]\n10 passed in 0.22s",
+      "status": "PASSED"
+    },
+    {
+      "test_id": "RUFF_STATIC_ANALYSIS",
+      "description": "Analisis statis dan deteksi error deterministik via Ruff",
+      "duration_ms": 10.48,
+      "exit_code": 0,
+      "violations": 0,
+      "status": "PASSED"
+    }
+  ]
+}

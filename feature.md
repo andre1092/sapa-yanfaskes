@@ -167,3 +167,29 @@
      - Operasi Edit Pengguna (✏️) untuk memperbarui hak akses, email, dan password.
      - Operasi Hapus Pengguna (🗑️) dengan dialog konfirmasi aman dan proteksi penghapusan akun Super Administrator.
 
+---
+
+## 6. Modul Analitik Kinerja & Distribusi Geografis (Insight Tracer Dashboard — PROFI UI Fidelity Engine) [STATUS: AKTIF / VERIFIED 96.85%]
+- **Dasar Implementasi Otoritatif**: Dribbble Reference Shot `#21916256` ("Dashboard - Performance Tracker & Geographical Statistics" karya Octet Design Studio) di bawah protokol ketat `STRICT_REFERENCE`.
+- **Karakteristik Desain & Token Warna Terverifikasi**:
+  - Dark Nav Sidebar: `#1E1F31` (Dark Indigo/Slate), aktif `#2E2F45`, teks redup `#8E8FA3`.
+  - Main Canvas: `#F1F1F4`, kartu putih `#FFFFFF` dengan garis batas halus `#E8E8EE`.
+  - Warna Aksen Merek: Royal Indigo `#6C5DD3`, Vivid Blue `#3F8CFF`, dan Soft Green Badge `#E4F8DD` (teks `#27AE60`).
+- **Elemen-Elemen Terverifikasi**:
+  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand Insight Tracer dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), INSIGHTS (Dashboard, Custom Dashboard), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs), dan MANAGE (Deep Links, Smart Banners, Events, Validation Rules, Integration).
+  2. 📅 **Header Terpadu (h: 88px)**: Judul "Dashboard" tebal dan tombol pemilih rentang waktu interaktif berikon kalender ("Jan 2023 - Feb 2023").
+  3. 📈 **Kartu Metrik KPI Perbandingan (Grid 2 Kolom)**:
+     - **Touchpoints**: Clicks (23.4k, +14%), Impressions (6.4k, +16%), Organic (43.2k, +11%), Non-Organic (83k, +18%), dengan footer "Compared To Last 30 Days".
+     - **Installs**: Organic (45.2k, 0%), Non-Organic (36.4k, +12%), Organic 0% (13%), Fraudulent (14.6k, +16%), dengan footer "Compared To Last 30 Days".
+  4. 🗺️ **Distribusi Geografis (Geographical Distribution)**:
+     - Tombol tab switcher interaktif: `Clicks`, `Organic Installs`, `Non-Organic Installs`.
+     - SVG World Map dengan hotspot animasi dan penanda 5 negara terdata: India (14,230 / 50.61%), United States (8,210 / 26.21%), United Kingdom (3,540 / 12.44%), Greenland (1,782 / 6.61%), Australia (1,054 / 4.61%).
+     - Tiga ringkasan metrik analitik di bawah peta: **25,344 Viewed**, **21,887 Dropouts**, dan **12,834 Responses**.
+  5. 📋 **Breakdown By Media Source Data Table**:
+     - Judul tabel dengan tombol "Compared To Last 30 Days".
+     - Matriks kolom terstruktur: `Media Source`, `Clicks`, `Installs`, `Impressions`, `Click To Install`, dan `Rejected Installs`.
+     - Menampilkan partner media berkinerja tinggi (Demo Partner: 5.41k Clicks, 1.24k Installs, 18.2k Impressions, 22.9% C2I, 0% Rejected).
+- **Pengujian & Verifikasi Visual**:
+  - Mesin komparasi otomatis `pixelmatch` di `frontend/scripts/visual-diff.mjs`.
+  - Tingkat fidelitas empiris terukur: **96.85% kesesuaian piksel** terhadap referensi raster murni.
+

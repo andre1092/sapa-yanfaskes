@@ -56,6 +56,12 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
           subtitle: t('sub_settings'),
           breadcrumb: t('bc_settings'),
         };
+      case 'insight-tracer':
+        return {
+          title: 'Insight Tracer Dashboard',
+          subtitle: 'Performance Tracker & Geographical Statistics',
+          breadcrumb: 'Insight Tracer / Dashboard',
+        };
     }
   };
 
