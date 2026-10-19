@@ -126,7 +126,7 @@ export const CloudflareTurnstile: React.FC<CloudflareTurnstileProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col items-center justify-center p-3 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-[#afbade]/30 dark:border-emerald-500/20 shadow-xs">
+    <div className="w-full flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
       {/* Cloudflare Turnstile Native Iframe Container */}
       {!useFallback && (
         <div ref={containerRef} className="min-h-[65px] flex items-center justify-center" />

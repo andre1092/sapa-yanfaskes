@@ -152,10 +152,11 @@
 ---
 
 ## 4. Fitur Keamanan & Multi-Tenant (Security & IAM) [STATUS: AKTIF / LIVE]
-- **Gerbang Masuk Resmi (Official Login Page)**:
-  - Antarmuka bertema Glassmorphism BPJS Kesehatan (`#2b4390`, `#44853b`, `#6573a1`, dan kartu kaca semi-transparan `backdrop-blur-xl`).
-  - Formulir login interaktif dengan verifikasi kredensial terintegrasi terhadap daftar pengguna sistem (`userStore.ts`), input identitas (Username/Email) dan Kata Sandi dengan tombol toggle Show/Hide password.
-  - Fitur "Ingat Saya" (*Remember Me*) untuk mempertahankan sesi login secara aman di perangkat lokal.
+- **Gerbang Masuk Resmi (Official Login Page — Split-Screen Enterprise Portal)**:
+  - Mengusung tata letak dua kolom (**Split-Screen Enterprise**) non-AI yang bersih, terpercaya, dan berwibawa:
+    - **Panel Kiri (Branding Institusional BPJS Kesehatan)**: Latar belakang solid warna hijau resmi BPJS Kesehatan (`#009B4D`), logo lambang resmi BPJS Kesehatan, informasi pilar 8 indikator kepatuhan, integrasi data real-time, serta penanda legal hak cipta institusi BPJS Kesehatan. Menghindari warna deep navy/gelap dan bola glow neon agar tidak terkesan generik AI.
+    - **Panel Kanan (Formulir Masuk Bersih)**: Latar putih bersih (`bg-white`), input field solid standar perbankan/pemerintahan (`border-slate-300`, fokus ring `#009B4D`), tombol submit solid hijau resmi BPJS Kesehatan (`#009B4D`), dan fitur ingat sesi login.
+  - **Peniadaan Pilihan SSO BPJS**: Opsi tombol login Single Sign-On (SSO) BPJS dan divider "Atau" ditiadakan sepenuhnya untuk menjamin alur masuk langsung yang fokus dan deterministik.
   - Penanganan pesan peringatan (*error alert*) yang ramah pengguna apabila kredensial tidak sesuai atau verifikasi keamanan belum diselesaikan.
 - **Perlindungan Keamanan Resmi Cloudflare (Official Cloudflare Protection)**:
   - **Cloudflare Turnstile Anti-Bot Protection**:

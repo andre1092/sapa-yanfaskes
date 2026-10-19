@@ -13,8 +13,8 @@ Sesuai aturan sistem, struktur menu wajib terdiri dari 5 pilar utama:
 ```
 SAPA YANFASKES
 │
-├── 🔐 0. Gerbang Autentikasi (Official Login Page) [BARU]
-│   └── Deskripsi: Halaman masuk resmi bertema Glassmorphism BPJS Kesehatan dengan validasi kredensial pengguna, remember me, toggle show/hide password, dan verifikasi keamanan bot Cloudflare Turnstile resmi.
+├── 🔐 0. Gerbang Autentikasi (Official Login Page — Split-Screen Enterprise BPJS Green) [BARU]
+│   └── Deskripsi: Halaman masuk resmi bertata letak Split-Screen Enterprise (kiri: panel identitas hijau resmi BPJS #009B4D non-navy/non-AI, kanan: formulir masuk bersih putih) dengan validasi kredensial pengguna, remember me, toggle show/hide password, tanpa pilihan SSO, dan verifikasi keamanan resmi Cloudflare Turnstile.
 │   └── Komponen: LoginPage.tsx & CloudflareTurnstile.tsx
 │   └── Keamanan: Cloudflare Turnstile Site Key & Content Security Policy Headers
 │

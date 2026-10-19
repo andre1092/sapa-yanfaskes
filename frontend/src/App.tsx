@@ -101,15 +101,7 @@ export default function App() {
 
   // 1. Jika belum login (sesi authStore tidak aktif), tampilkan LoginPage resmi dengan pengamanan Cloudflare
   if (!isStoreAuth) {
-    return (
-      <LoginPage
-        onSsoLogin={() => {
-          if (AUTH0_DOMAIN && AUTH0_CLIENT_ID) {
-            window.location.search = '';
-          }
-        }}
-      />
-    );
+    return <LoginPage />;
   }
 
   // 2. Jika sudah terautentikasi dan ada URL query preview=insight-tracer, render InsightTracerDashboard
