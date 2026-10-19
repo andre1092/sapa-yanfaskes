@@ -85,6 +85,7 @@ export const TmoComplianceTab: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [apiData, setApiData] = useState<TmoApiResponse | null>(null);
+  const [hoveredMonth, setHoveredMonth] = useState<TmoMonthlyChartItem | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -404,44 +405,178 @@ export const TmoComplianceTab: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Monthly Trend Chart */}
+      {/* 4. Monthly Trend Chart: SVG LINE CHART */}
       {apiData?.monthly_chart && apiData.monthly_chart.length > 0 && (
-        <div className="glass-card rounded-2xl p-6 border border-[#afbade]/30 dark:border-white/10 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
+        <div className="glass-card rounded-3xl p-5 sm:p-6 border border-[#afbade]/30 dark:border-white/10 shadow-xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
             <div>
-              <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-[#f7fcfa] flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#44853b]" />
-                Tren Bulanan Capaian Kepatuhan Update TMO
-              </h3>
-              <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
-                Rata-rata persentase kepatuhan fasilitas kesehatan per bulan di tahun 2026.
+                GRAFIK BULANAN: TREN CAPAIAN UPDATE TMO (%)
+              </h4>
+              <p className="text-[11px] text-[#6573a1] dark:text-[#afbade]">
+                Tren rata-rata persentase kepatuhan pembaruan data TMO & jadwal operasi per bulan di tahun 2026 • Bobot 5%
               </p>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#44853b]" />
+                <span className="text-[#6573a1] dark:text-[#afbade] font-medium text-[11px]">Capaian TMO</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-0.5 border-t-2 border-dashed border-amber-500" />
+                <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px]">Target 100%</span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2 pt-4">
-            {apiData.monthly_chart.map((m) => (
-              <div
-                key={m.bulan}
-                className="flex flex-col items-center p-3 rounded-xl bg-white/40 dark:bg-slate-900/40 border border-[#afbade]/20 dark:border-white/5 hover:border-[#44853b]/40 transition-all text-center space-y-1.5"
-              >
-                <span className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300">
-                  {m.short_name}
-                </span>
-                <div className="w-full bg-[#afbade]/20 dark:bg-slate-800 rounded-full h-16 flex items-end p-0.5">
-                  <div
-                    style={{ height: `${Math.min(m.avg_capaian, 100)}%` }}
-                    className="w-full rounded-full bg-gradient-to-t from-[#2b4390] to-[#44853b] transition-all"
-                  />
-                </div>
-                <span className="font-mono font-bold text-[10.5px] text-[#44853b] dark:text-emerald-400">
-                  {fmtNum(m.avg_capaian, 0)}%
-                </span>
-                <span className="text-[9.5px] text-[#6573a1] dark:text-slate-500">
-                  {m.total_operasi} op
-                </span>
+          {/* Interactive Tooltip Snapshot Banner */}
+          <div className="h-10 mb-2 flex items-center justify-between px-3 py-1.5 rounded-xl bg-white/40 dark:bg-slate-900/40 border border-[#afbade]/20 dark:border-white/5">
+            {hoveredMonth ? (
+              <div className="flex items-center gap-3 text-xs">
+                <span className="font-bold text-[#2b4390] dark:text-white">{hoveredMonth.bulan_indo || hoveredMonth.bulan}:</span>
+                <span className="font-mono font-bold text-[#44853b] dark:text-emerald-400">{fmtNum(hoveredMonth.avg_capaian, 1)}%</span>
+                <span className="text-[#6573a1] dark:text-slate-400 font-mono">({hoveredMonth.total_operasi} Jadwal Operasi • {hoveredMonth.met_count} RS Patuh)</span>
               </div>
-            ))}
+            ) : (
+              <span className="text-xs text-[#6573a1] dark:text-slate-400 italic">
+                Arahkan kursor pada titik bulan untuk melihat rincian capaian TMO.
+              </span>
+            )}
+          </div>
+
+          <div className="relative pt-2">
+            <div className="w-full h-56 sm:h-64">
+              <svg viewBox="0 0 900 240" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="tmoCapaianGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#44853b" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#44853b" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Grid horizontal lines */}
+                {[0, 25, 50, 75, 100].map((val) => {
+                  const y = 200 - (val / 100) * 160;
+                  return (
+                    <g key={val}>
+                      <line
+                        x1="45"
+                        y1={y}
+                        x2="880"
+                        y2={y}
+                        stroke="currentColor"
+                        strokeDasharray={val === 100 ? '4 4' : '2 2'}
+                        className={val === 100 ? 'text-amber-500 stroke-amber-500/80 stroke-[1.5]' : 'text-slate-300 dark:text-slate-800 stroke-[1]'}
+                      />
+                      <text
+                        x="38"
+                        y={y + 3.5}
+                        textAnchor="end"
+                        className="text-[10px] font-mono fill-[#6573a1] dark:fill-slate-400 select-none"
+                      >
+                        {val}%
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Target label 100 */}
+                <text
+                  x="875"
+                  y={200 - (100 / 100) * 160 - 5}
+                  textAnchor="end"
+                  className="text-[10px] font-bold fill-amber-700 dark:fill-amber-400 select-none"
+                >
+                  Target 100%
+                </text>
+
+                {/* SVG Curve & Area */}
+                {(() => {
+                  const chartData = apiData.monthly_chart;
+                  const points = chartData.map((d, i) => {
+                    const x = 70 + (i / Math.max(chartData.length - 1, 1)) * 800;
+                    const y = 200 - (Math.min(Math.max(d.avg_capaian, 0), 100) / 100) * 160;
+                    return { x, y, data: d };
+                  });
+
+                  if (points.length === 0) return null;
+
+                  let pathD = `M ${points[0].x} ${points[0].y}`;
+                  for (let i = 0; i < points.length - 1; i++) {
+                    const p0 = points[i];
+                    const p1 = points[i + 1];
+                    const mx = (p0.x + p1.x) / 2;
+                    pathD += ` C ${mx} ${p0.y}, ${mx} ${p1.y}, ${p1.x} ${p1.y}`;
+                  }
+
+                  const areaD = `${pathD} L ${points[points.length - 1].x} 200 L ${points[0].x} 200 Z`;
+
+                  return (
+                    <g>
+                      <path d={areaD} fill="url(#tmoCapaianGradient)" />
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke="#44853b"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="drop-shadow-md"
+                      />
+
+                      {/* Interactive Markers */}
+                      {points.map((pt, i) => {
+                        const isHovered = hoveredMonth?.bulan === pt.data.bulan;
+                        return (
+                          <g
+                            key={i}
+                            className="cursor-pointer transition-transform"
+                            onMouseEnter={() => setHoveredMonth(pt.data)}
+                            onMouseLeave={() => setHoveredMonth(null)}
+                          >
+                            <circle
+                              cx={pt.x}
+                              cy={pt.y}
+                              r={isHovered ? 6 : 4}
+                              fill="#44853b"
+                              stroke="#ffffff"
+                              strokeWidth={isHovered ? 2.5 : 1.8}
+                              className="transition-all duration-200"
+                            />
+                            {/* Value label on top of point */}
+                            <text
+                              x={pt.x}
+                              y={pt.y - 8}
+                              textAnchor="middle"
+                              className={`text-[9.5px] font-mono font-bold select-none ${
+                                isHovered ? 'fill-[#44853b] dark:fill-emerald-400' : 'fill-[#2b4390] dark:fill-slate-300'
+                              }`}
+                            >
+                              {fmtNum(pt.data.avg_capaian, 0)}%
+                            </text>
+                            {/* Month label below */}
+                            <text
+                              x={pt.x}
+                              y={220}
+                              textAnchor="middle"
+                              className={`text-[10px] select-none ${
+                                isHovered
+                                  ? 'font-bold fill-[#44853b] dark:fill-emerald-400'
+                                  : 'fill-[#6573a1] dark:fill-[#afbade]'
+                              }`}
+                            >
+                              {pt.data.short_name}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </g>
+                  );
+                })()}
+              </svg>
+            </div>
           </div>
         </div>
       )}
