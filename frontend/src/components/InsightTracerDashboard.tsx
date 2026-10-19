@@ -70,7 +70,7 @@ const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
 
 export const InsightTracerDashboard: React.FC = () => {
   const [geoTab, setGeoTab] = useState<'Clicks' | 'Organic Installs' | 'Non-Organic Installs'>('Clicks');
-  const [activeMenu, setActiveMenu] = useState('Dashboard');
+  const [activeMenu, setActiveMenu] = useState('Capaian Kepatuhan FKRTL');
 
   const menuSections = [
     {
@@ -78,10 +78,10 @@ export const InsightTracerDashboard: React.FC = () => {
       items: [{ name: 'Home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' }],
     },
     {
-      category: 'INSIGHTS',
+      category: 'DASHBOARD',
       items: [
-        { name: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-        { name: 'Custom Dashboard', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
+        { name: 'Capaian Kepatuhan FKRTL', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+        { name: 'Capaian Kepatuhan FKTP', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
       ],
     },
     {
@@ -121,7 +121,7 @@ export const InsightTracerDashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <span className="font-bold text-lg tracking-tight text-white">Insight Tracer</span>
+            <span className="font-bold text-lg tracking-tight text-white">SAPA Yanfaskes</span>
           </div>
           <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#E4F8DD]/20 text-[#27AE60] border border-[#27AE60]/40 uppercase tracking-wide">
             LIVE
@@ -172,7 +172,7 @@ export const InsightTracerDashboard: React.FC = () => {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Top Header Navbar */}
         <header className="h-[88px] bg-white border-b border-[#E8E8EE] flex items-center justify-between px-10 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-[#1E1F31] tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-[#1E1F31] tracking-tight">{activeMenu}</h1>
 
           <div className="flex items-center gap-4">
             {/* Date Range Selector Sesuai Referensi OCR */}

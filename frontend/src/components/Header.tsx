@@ -58,9 +58,9 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onOpenMobileMenu }) =
         };
       case 'insight-tracer':
         return {
-          title: 'Insight Tracer Dashboard',
+          title: 'SAPA Yanfaskes Dashboard',
           subtitle: 'Performance Tracker & Geographical Statistics',
-          breadcrumb: 'Insight Tracer / Dashboard',
+          breadcrumb: 'SAPA Yanfaskes / Capaian Kepatuhan FKRTL',
         };
     }
   };

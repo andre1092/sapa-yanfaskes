@@ -169,15 +169,15 @@
 
 ---
 
-## 6. Modul Analitik Kinerja & Distribusi Geografis (Insight Tracer Dashboard — PROFI UI Fidelity Engine) [STATUS: AKTIF / VERIFIED 96.85%]
+## 6. Modul Analitik Kinerja & Distribusi Geografis (SAPA Yanfaskes Dashboard — PROFI UI Fidelity Engine) [STATUS: AKTIF / VERIFIED 96.85%]
 - **Dasar Implementasi Otoritatif**: Dribbble Reference Shot `#21916256` ("Dashboard - Performance Tracker & Geographical Statistics" karya Octet Design Studio) di bawah protokol ketat `STRICT_REFERENCE`.
 - **Karakteristik Desain & Token Warna Terverifikasi**:
   - Dark Nav Sidebar: `#1E1F31` (Dark Indigo/Slate), aktif `#2E2F45`, teks redup `#8E8FA3`.
   - Main Canvas: `#F1F1F4`, kartu putih `#FFFFFF` dengan garis batas halus `#E8E8EE`.
   - Warna Aksen Merek: Royal Indigo `#6C5DD3`, Vivid Blue `#3F8CFF`, dan Soft Green Badge `#E4F8DD` (teks `#27AE60`).
 - **Elemen-Elemen Terverifikasi**:
-  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand Insight Tracer dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), INSIGHTS (Dashboard, Custom Dashboard), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs), dan MANAGE (Deep Links, Smart Banners, Events, Validation Rules, Integration).
-  2. 📅 **Header Terpadu (h: 88px)**: Judul "Dashboard" tebal dan tombol pemilih rentang waktu interaktif berikon kalender ("Jan 2023 - Feb 2023").
+  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand SAPA Yanfaskes dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), DASHBOARD (Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs), dan MANAGE (Deep Links, Smart Banners, Events, Validation Rules, Integration).
+  2. 📅 **Header Terpadu (h: 88px)**: Judul reaktif ("Capaian Kepatuhan FKRTL") tebal dan tombol pemilih rentang waktu interaktif berikon kalender ("Jan 2023 - Feb 2023").
   3. 📈 **Kartu Metrik KPI Perbandingan (Grid 2 Kolom)**:
      - **Touchpoints**: Clicks (23.4k, +14%), Impressions (6.4k, +16%), Organic (43.2k, +11%), Non-Organic (83k, +18%), dengan footer "Compared To Last 30 Days".
      - **Installs**: Organic (45.2k, 0%), Non-Organic (36.4k, +12%), Organic 0% (13%), Fraudulent (14.6k, +16%), dengan footer "Compared To Last 30 Days".

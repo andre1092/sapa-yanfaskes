@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'insight-tracer',
-      label: 'Insight Tracer',
+      label: 'SAPA Yanfaskes',
       badge: 'PROFI UI',
       description: 'Performance Tracker & Geographical Statistics',
       icon: (active) => (
