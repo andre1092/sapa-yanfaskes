@@ -13,6 +13,11 @@ Sesuai aturan sistem, struktur menu wajib terdiri dari 5 pilar utama:
 ```
 SAPA YANFASKES
 │
+├── 🔐 0. Gerbang Autentikasi (Official Login Page) [BARU]
+│   └── Deskripsi: Halaman masuk resmi bertema Glassmorphism BPJS Kesehatan dengan validasi kredensial pengguna, remember me, toggle show/hide password, dan verifikasi keamanan bot Cloudflare Turnstile resmi.
+│   └── Komponen: LoginPage.tsx & CloudflareTurnstile.tsx
+│   └── Keamanan: Cloudflare Turnstile Site Key & Content Security Policy Headers
+│
 ├── 🏠 1. Home
 │   └── Deskripsi: Ringkasan eksekutif, portal overview, status integrasi, metrik makro faskes.
 │   └── Tab ID: 'home'
@@ -73,8 +78,8 @@ SAPA YANFASKES
 │       └── 📋 Breakdown By Media Source Data Table (Demo Partner, Google Ads, Meta Audience, Apple Search Ads)
 │
 └── 🚪 6. Log out
-    └── Deskripsi: Terminasi sesi pengguna, pembersihan token Auth0 / identitas sesi lokal, dan pengalihan ke gerbang login.
-    └── Aksi: `logout()` via Auth0 React SDK
+    └── Deskripsi: Terminasi sesi pengguna, pembersihan token dan kredensial sesi lokal di authStore, serta pengalihan otomatis kembali ke Halaman Login Resmi.
+    └── Aksi: Modal Dialog Konfirmasi Keluar & `logoutUser()` via Zustand `authStore.ts` / Auth0 React SDK fallback.
 ```
 
 ---

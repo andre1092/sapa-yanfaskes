@@ -151,10 +151,27 @@
 
 ---
 
-## 4. Fitur Keamanan & Multi-Tenant (Security & IAM)
-- **Otentikasi Aman**: Integrasi OAuth 2.0 / OIDC melalui Auth0 React SDK.
-- **Isolasi Data Multi-Tenant**: Context injection pada query PostgreSQL dan filter token faskes sehingga pengguna RS hanya dapat melihat data fasilitas kesehatannya sendiri.
-- **Perlindungan Token**: Tanpa penyimpanan kunci privat Google Service Account di sisi publik frontend.
+## 4. Fitur Keamanan & Multi-Tenant (Security & IAM) [STATUS: AKTIF / LIVE]
+- **Gerbang Masuk Resmi (Official Login Page)**:
+  - Antarmuka bertema Glassmorphism BPJS Kesehatan (`#2b4390`, `#44853b`, `#6573a1`, dan kartu kaca semi-transparan `backdrop-blur-xl`).
+  - Formulir login interaktif dengan verifikasi kredensial terintegrasi terhadap daftar pengguna sistem (`userStore.ts`), input identitas (Username/Email) dan Kata Sandi dengan tombol toggle Show/Hide password.
+  - Fitur "Ingat Saya" (*Remember Me*) untuk mempertahankan sesi login secara aman di perangkat lokal.
+  - Penanganan pesan peringatan (*error alert*) yang ramah pengguna apabila kredensial tidak sesuai atau verifikasi keamanan belum diselesaikan.
+- **Perlindungan Keamanan Resmi Cloudflare (Official Cloudflare Protection)**:
+  - **Cloudflare Turnstile Anti-Bot Protection**:
+    - Integrasi skrip widget resmi `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit`.
+    - Dukungan konfigurasi variabel lingkungan `VITE_CLOUDFLARE_TURNSTILE_SITE_KEY` serta fallback test key resmi Cloudflare `1x00000000000000000000AA` (*Always Passes* untuk verifikasi deterministik).
+    - Mekanisme fallback interaktif jika koneksi ke server Cloudflare terhalang secara lokal.
+    - Menghalangi pengiriman kredensial form secara otomatis (*brute-force* atau serangan bot otomasi) sebelum verifikasi captcha/turnstile sukses.
+  - **HTTP Security Headers & Content Security Policy (CSP)**:
+    - Konfigurasi `vercel.json` diperkuat dengan header proteksi: `Content-Security-Policy` yang mengizinkan domain skrip dan frame resmi Cloudflare (`challenges.cloudflare.com`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, dan `Permissions-Policy`.
+- **Terminasi Sesi Pengguna & Dialog Konfirmasi Keluar (Log Out)**:
+  - Tombol aksi "Keluar Sesi (Log Out)" pada bilah navigasi samping (`Sidebar.tsx` dan `InsightTracerDashboard.tsx`).
+  - Modal dialog konfirmasi keluar bertema Glassmorphism untuk mencegah terminasi sesi yang tidak disengaja.
+  - Pembersihan token sesi, status login, dan identitas pengguna di `authStore.ts`, serta pengalihan otomatis ke Halaman Login.
+- **Isolasi Data Multi-Tenant & Perlindungan Token**:
+  - Context injection pada query PostgreSQL dan filter token faskes sehingga pengguna RS hanya dapat melihat data fasilitas kesehatannya sendiri.
+  - Tanpa penyimpanan kunci privat Google Service Account di sisi publik frontend.
 
 ---
 

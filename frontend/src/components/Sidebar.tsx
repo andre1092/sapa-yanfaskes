@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useLanguageStore } from '../store/languageStore';
+import { useAuthStore } from '../store/authStore';
+import { useUserStore } from '../store/userStore';
 
 export type NavTab = 'home' | 'fktp' | 'fktp-antrol' | 'fkrtl' | 'fkrtl-antrol' | 'fkrtl-kepatuhan' | 'admin' | 'insight-tracer';
 
@@ -34,6 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, logout } = useAuth0();
+  const { user: authUser, logoutUser } = useAuthStore();
+  const { profile } = useUserStore();
   const { t } = useLanguageStore();
   const [isHovered, setIsHovered] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
@@ -187,10 +191,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleLogout = () => {
-    logout({ logoutParams: { returnTo: window.location.origin } });
+    logoutUser();
+    try {
+      logout({ logoutParams: { returnTo: window.location.origin } });
+    } catch (e) {
+      // ignore
+    }
   };
 
-  const userDisplayName = user?.name || user?.nickname || (user?.email ? user.email.split('@')[0] : 'Petugas BPJS');
+  const userDisplayName =
+    user?.name ||
+    user?.nickname ||
+    authUser?.name ||
+    profile?.name ||
+    (user?.email ? user.email.split('@')[0] : 'Petugas BPJS');
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
   return (

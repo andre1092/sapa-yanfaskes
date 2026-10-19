@@ -1,16 +1,22 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
-interface User {
-  sub: string;
+export interface AuthUser {
+  id: string;
+  username: string;
+  name: string;
+  email: string;
   role: string;
+  sub?: string;
 }
 
 interface AuthState {
   accessToken: string | null;
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
-  setAuth: (token: string, user: User) => void;
+  setAuth: (token: string, user: AuthUser) => void;
+  loginUser: (user: AuthUser, token?: string) => void;
+  logoutUser: () => void;
   clearAuth: () => void;
 }
 
@@ -23,14 +29,22 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: false,
         setAuth: (accessToken, user) =>
           set({ accessToken, user, isAuthenticated: true }),
+        loginUser: (user, token) =>
+          set({
+            accessToken: token || `token_${Date.now()}`,
+            user,
+            isAuthenticated: true,
+          }),
+        logoutUser: () =>
+          set({ accessToken: null, user: null, isAuthenticated: false }),
         clearAuth: () =>
           set({ accessToken: null, user: null, isAuthenticated: false }),
       }),
       {
         name: 'auth-session',
-        // ONLY persist user info and auth status. Access token MUST NOT be stored in localStorage.
         partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
       }
     )
   )
 );
+

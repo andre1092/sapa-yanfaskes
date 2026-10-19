@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
 import { UserManagementView } from './UserManagementView';
+import { useAuthStore } from '../store/authStore';
 
 // Sub-komponen SVG World Map untuk Geographical Distribution
 const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
@@ -72,9 +73,11 @@ const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
 };
 
 export const InsightTracerDashboard: React.FC = () => {
+  const { logoutUser } = useAuthStore();
   const [geoTab, setGeoTab] = useState<'Clicks' | 'Organic Installs' | 'Non-Organic Installs'>('Clicks');
   const [activeMenu, setActiveMenu] = useState('Capaian Kepatuhan FKRTL');
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const menuSections = [
     {
@@ -193,7 +196,75 @@ export const InsightTracerDashboard: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Bottom Section: Log Out Action */}
+        <div className={`p-3 border-t border-[#2A2B3F] transition-all duration-300 ${
+          isSidebarHovered ? 'px-4' : 'px-2 flex justify-center'
+        }`}>
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            title={!isSidebarHovered ? 'Log Out' : undefined}
+            className={`w-full flex items-center rounded-xl text-xs font-bold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-600 transition-all duration-200 cursor-pointer ${
+              isSidebarHovered
+                ? 'gap-3 px-3.5 py-2.5 justify-start text-left'
+                : 'justify-center p-2.5'
+            }`}
+          >
+            <svg
+              className="w-4 h-4 flex-shrink-0 text-rose-500 hover:text-white transition-colors"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            {isSidebarHovered && (
+              <span className="truncate">Keluar Sesi (Log Out)</span>
+            )}
+          </button>
+        </div>
       </aside>
+
+      {/* Modal Dialog Konfirmasi Log Out */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm rounded-3xl p-6 bg-[#1E1F31] border border-rose-500/30 shadow-2xl text-center space-y-4 text-white animate-scaleUp">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base tracking-tight">Konfirmasi Keluar Sesi</h3>
+              <p className="text-xs text-[#8E8FA3] mt-1.5 leading-relaxed">
+                Apakah Anda yakin ingin mengakhiri sesi kerja aktif di sistem SAPA Yanfaskes dan kembali ke Halaman Login?
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  logoutUser();
+                  setShowLogoutModal(false);
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-950/40 transition-all cursor-pointer"
+              >
+                Ya, Keluar Sesi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 2. AREA KONTEN UTAMA                                          */}

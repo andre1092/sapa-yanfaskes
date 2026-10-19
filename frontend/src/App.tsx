@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
+import { useAuthStore } from './store/authStore';
+import { LoginPage } from './components/LoginPage';
 import { Sidebar } from './components/Sidebar';
 import type { NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -16,91 +18,11 @@ const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN || '';
 const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID || '';
 const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
-function MainLayout() {
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+// Komponen Tampilan Dashboard Utama
+function DashboardLayout() {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // 1. Loading Authentication State with BPJS Glassmorphism Spinner
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-200 relative overflow-hidden">
-        {/* Ambient BPJS Background Aura */}
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/15 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-blue-600/15 rounded-full blur-[130px] pointer-events-none" />
-
-        <div className="relative flex items-center justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#009B4D] via-[#10B981] to-[#00529C] animate-spin opacity-60 blur-sm" />
-          <div className="absolute w-12 h-12 rounded-xl bg-slate-900 border border-emerald-500/50 flex items-center justify-center shadow-lg shadow-emerald-950/50">
-            <div className="w-4 h-4 rounded-full bg-emerald-400 animate-pulse" />
-          </div>
-        </div>
-        <p className="mt-6 text-sm font-semibold tracking-wide text-emerald-300">
-          Memverifikasi Sesi Keamanan SSO...
-        </p>
-        <span className="text-xs text-slate-400 mt-1">SAPA YANFASKES • Zero-Trust IAM Gateway</span>
-      </div>
-    );
-  }
-
-  // 2. Unauthenticated SSO Login Screen with BPJS Glassmorphism Theme
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 p-4 relative overflow-hidden">
-        {/* Background ambient lighting (BPJS Green & BPJS Blue) */}
-        <div className="absolute -top-24 -left-24 w-[500px] h-[500px] bg-[#009B4D]/15 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-[500px] h-[500px] bg-[#00529C]/20 rounded-full blur-[150px] pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-emerald-600/10 rounded-full blur-[180px] pointer-events-none" />
-
-        <div className="relative z-10 glass-panel p-8 sm:p-10 rounded-3xl shadow-2xl border border-white/10 text-center max-w-md w-full">
-          {/* Logo Badge (BPJS Green-Blue Gradient) */}
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-[#009B4D] via-[#0A50A1] to-[#00529C] p-[1.5px] shadow-xl shadow-emerald-600/20 mb-6">
-            <div className="w-full h-full bg-slate-950 rounded-[15px] flex items-center justify-center">
-              <svg
-                className="w-8 h-8 text-emerald-400"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            SAPA <span className="bpjs-gradient-text">YANFASKES</span>
-          </h1>
-          <p className="text-slate-300 text-sm mt-1.5 mb-8">
-            Saluran Analisis Performa & Akselerasi Fasilitas Kesehatan
-          </p>
-
-          <button
-            onClick={() => loginWithRedirect()}
-            className="w-full flex items-center justify-center gap-3 bpjs-gradient-btn text-white font-bold rounded-xl px-5 py-4 transition-all duration-300 shadow-lg shadow-emerald-950/40 active:scale-[0.99] cursor-pointer border border-emerald-400/30"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-            </svg>
-            <span>Masuk Melalui Single Sign-On (SSO)</span>
-          </button>
-
-          <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-center gap-2 text-xs text-slate-400">
-            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <span>Terlindungi Protokol Zero-Trust BPJS Kesehatan</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 3. Authenticated Dashboard with Glassmorphism Background Aura & Left Sidebar Layout
   return (
     <div className="relative min-h-screen flex flex-row overflow-x-hidden">
       {/* Dynamic Ambient Background Aura (BPJS Green & Blue Lighting Refractions) */}
@@ -149,28 +71,55 @@ function MainLayout() {
   );
 }
 
+// Wrapper jika Auth0 dikonfigurasi
+function Auth0MainLayout() {
+  const { isLoading } = useAuth0();
+  const { isAuthenticated: isStoreAuth } = useAuthStore();
+
+  if (isLoading && !isStoreAuth) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-200 relative overflow-hidden">
+        <div className="relative flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#009B4D] via-[#10B981] to-[#00529C] animate-spin opacity-60 blur-sm" />
+          <div className="absolute w-12 h-12 rounded-xl bg-slate-900 border border-emerald-500/50 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+            <div className="w-4 h-4 rounded-full bg-emerald-400 animate-pulse" />
+          </div>
+        </div>
+        <p className="mt-6 text-sm font-semibold tracking-wide text-emerald-300">
+          Memverifikasi Sesi Keamanan SSO...
+        </p>
+        <span className="text-xs text-slate-400 mt-1">SAPA YANFASKES • Zero-Trust IAM Gateway</span>
+      </div>
+    );
+  }
+
+  return <DashboardLayout />;
+}
+
 export default function App() {
-  // Preview mode untuk visual fidelity testing & headless automated snapshots
+  const { isAuthenticated: isStoreAuth } = useAuthStore();
+
+  // 1. Jika belum login (sesi authStore tidak aktif), tampilkan LoginPage resmi dengan pengamanan Cloudflare
+  if (!isStoreAuth) {
+    return (
+      <LoginPage
+        onSsoLogin={() => {
+          if (AUTH0_DOMAIN && AUTH0_CLIENT_ID) {
+            window.location.search = '';
+          }
+        }}
+      />
+    );
+  }
+
+  // 2. Jika sudah terautentikasi dan ada URL query preview=insight-tracer, render InsightTracerDashboard
   if (typeof window !== 'undefined' && window.location.search.includes('preview=insight-tracer')) {
     return <InsightTracerDashboard />;
   }
 
+  // 3. Jika Auth0 belum terkonfigurasi, render DashboardLayout langsung
   if (!AUTH0_DOMAIN || !AUTH0_CLIENT_ID) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950 p-6 text-center">
-        <div className="glass-card border border-rose-500/30 p-8 rounded-2xl max-w-lg">
-          <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-bold text-white">Konfigurasi Auth0 Belum Lengkap</h2>
-          <p className="text-sm text-slate-400 mt-2">
-            Environment variable <code className="text-rose-300">VITE_AUTH0_DOMAIN</code> atau <code className="text-rose-300">VITE_AUTH0_CLIENT_ID</code> belum terpasang.
-          </p>
-        </div>
-      </div>
-    );
+    return <DashboardLayout />;
   }
 
   return (
@@ -183,7 +132,7 @@ export default function App() {
       }}
       cacheLocation="localstorage"
     >
-      <MainLayout />
+      <Auth0MainLayout />
     </Auth0Provider>
   );
 }
