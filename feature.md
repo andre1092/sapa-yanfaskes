@@ -33,6 +33,17 @@
 - **Komponen Kontrol**: `LanguageSwitcher` floating glassmorphism dropdown di `Header.tsx` dengan bendera negara (🇮🇩 / 🇬🇧), indikator centang aktif, penutup otomatis *click-outside* & tombol *Esc*.
 - **Mesin Lokalisasi**: `languageStore.ts` (Zustand + `persist` ke `localStorage` key `sapa-language-storage`), sinkronisasi atribut `document.documentElement.lang`, serta kamus translasi bilingual komprehensif (`t(...)`) untuk Header, Breadcrumbs, Sidebar, Portal Overview, dan Theme Toggle.
 
+### C. Bilah Navigasi Samping Auto-Hide & Hover-Expand (Icon-Only Rail Mode) [STATUS: AKTIF / LIVE]
+- **Perilaku Kursor Menjauh (Auto-Collapse / Unhover)**:
+  - Bilah navigasi samping secara otomatis menyusut (*auto-hide/collapse*) menjadi rel ramping (*slim rail*).
+  - Menyembunyikan seluruh teks label menu, kategori header, nama brand teks, dan detail akun profil.
+  - **Murni hanya menampilkan simbol/ikon menu** navigasi secara rapi, vertikal, dan presisi di tengah kolom rel.
+  - Dilengkapi atribut `title` pada masing-masing ikon sebagai indikator kontekstual saat pengguna mengarahkan kursor ke ikon tertentu.
+- **Perilaku Kursor Mendekat (Hover-Expand)**:
+  - Bilah navigasi melebar kembali secara mulus (*smooth transition* `transition-all duration-300 ease-in-out`).
+  - Menampilkan kembali nama aplikasi, badge status, judul kategori menu, label teks menu lengkap, chevron ekspansi, serta panel profil pengguna dan tombol logout.
+- **Komponen Pengendali**: `Sidebar.tsx` dan `InsightTracerDashboard.tsx`.
+
 ---
 
 ## 2. Fitur Analisis & Visualisasi Data (Data Analytics & Visualization)

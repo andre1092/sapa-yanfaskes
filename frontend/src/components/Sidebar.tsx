@@ -269,7 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Navigation Items Section */}
-          <div className="py-5 px-3 overflow-y-auto max-h-[calc(100vh-190px)]">
+          <div className="flex-1 py-5 px-3 overflow-y-auto">
             <div className={`px-3 mb-2.5 transition-opacity duration-200 ${
               isHovered || isOpenMobile ? 'opacity-100 block' : 'opacity-0 hidden'
             }`}>
@@ -428,67 +428,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Bottom Section: User Info Card & Logout Button */}
-        <div className={`p-3 border-t border-[#afbade]/30 dark:border-slate-800/80 bg-white/40 dark:bg-slate-950/50 backdrop-blur-md space-y-2.5 transition-all duration-300 ${
-          isHovered || isOpenMobile ? 'px-4' : 'px-2 flex flex-col items-center'
-        }`}>
-          {/* User Profile Card */}
-          <div className={`flex items-center rounded-xl bg-white/80 dark:bg-slate-800/60 border border-[#afbade]/30 dark:border-emerald-500/20 shadow-sm transition-all ${
-            isHovered || isOpenMobile ? 'gap-3 px-3 py-2.5 w-full' : 'p-2 justify-center'
-          }`}>
-            {user?.picture ? (
-              <img
-                src={user.picture}
-                alt={userDisplayName}
-                className="w-8 h-8 rounded-full object-cover border border-[#44853b]/40 shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#44853b] to-[#2b4390] flex items-center justify-center font-bold text-xs text-white shadow-md shadow-[#44853b]/30 shrink-0">
-                {userInitials}
-              </div>
-            )}
-
-            {(isHovered || isOpenMobile) && (
-              <>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-bold text-[#2b4390] dark:text-slate-200 truncate" title={userDisplayName}>
-                    {userDisplayName}
-                  </span>
-                  <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-medium truncate" title={user?.email || ''}>
-                    {user?.email || t('user_role')}
-                  </span>
+        {/* Bottom Section: User Info Card & Logout Button (Hanya tampil saat kursor mendekat / hover) */}
+        {(isHovered || isOpenMobile) && (
+          <div className="p-3 border-t border-[#afbade]/30 dark:border-slate-800/80 bg-white/40 dark:bg-slate-950/50 backdrop-blur-md space-y-2.5 transition-all duration-300 px-4">
+            {/* User Profile Card */}
+            <div className="flex items-center rounded-xl bg-white/80 dark:bg-slate-800/60 border border-[#afbade]/30 dark:border-emerald-500/20 shadow-sm transition-all gap-3 px-3 py-2.5 w-full">
+              {user?.picture ? (
+                <img
+                  src={user.picture}
+                  alt={userDisplayName}
+                  className="w-8 h-8 rounded-full object-cover border border-[#44853b]/40 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#44853b] to-[#2b4390] flex items-center justify-center font-bold text-xs text-white shadow-md shadow-[#44853b]/30 shrink-0">
+                  {userInitials}
                 </div>
-                <div className="w-2 h-2 rounded-full bg-[#44853b] ring-4 ring-[#44853b]/20 shrink-0" title={t('user_status')} />
-              </>
-            )}
-          </div>
+              )}
 
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            title={!isHovered && !isOpenMobile ? t('nav_logout') : undefined}
-            className={`flex items-center justify-center rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/20 transition-all duration-200 active:scale-[0.98] shadow-sm cursor-pointer ${
-              isHovered || isOpenMobile
-                ? 'w-full gap-2 px-3.5 py-2'
-                : 'w-10 h-10 p-0'
-            }`}
-          >
-            <svg
-              className="w-4 h-4 text-rose-500 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-xs font-bold text-[#2b4390] dark:text-slate-200 truncate" title={userDisplayName}>
+                  {userDisplayName}
+                </span>
+                <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-medium truncate" title={user?.email || ''}>
+                  {user?.email || t('user_role')}
+                </span>
+              </div>
+              <div className="w-2 h-2 rounded-full bg-[#44853b] ring-4 ring-[#44853b]/20 shrink-0" title={t('user_status')} />
+            </div>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/20 transition-all duration-200 active:scale-[0.98] shadow-sm cursor-pointer w-full gap-2 px-3.5 py-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            {(isHovered || isOpenMobile) && <span>{t('nav_logout')}</span>}
-          </button>
-        </div>
+              <svg
+                className="w-4 h-4 text-rose-500 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              <span>{t('nav_logout')}</span>
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );
