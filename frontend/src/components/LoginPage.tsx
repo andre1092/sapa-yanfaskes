@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useUserStore } from '../store/userStore';
+import { useLogStore } from '../store/logStore';
 import { CloudflareTurnstile } from './CloudflareTurnstile';
 
 interface LoginPageProps {
@@ -10,6 +11,7 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onSuccessLogin }) => {
   const { loginUser } = useAuthStore();
   const { users, updateProfile } = useUserStore();
+  const { addLog } = useLogStore();
 
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +35,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccessLogin }) => {
 
     // Validasi Pengamanan Cloudflare Turnstile
     if (!turnstileToken) {
+      addLog({
+        userId: 'usr_guest',
+        userName: cleanInput || 'Tamu / Anonim',
+        userRole: 'Tamu / Anonim',
+        action: 'LOGIN',
+        module: 'Otentikasi Akun',
+        status: 'FAILED',
+        details: 'Gagal login: Verifikasi keamanan Cloudflare Turnstile belum diselesaikan.',
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       setErrorMessage('Harap selesaikan verifikasi keamanan Cloudflare terlebih dahulu.');
       return;
     }
@@ -49,15 +62,50 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccessLogin }) => {
 
       if (!matchedUser) {
         setIsLoading(false);
+        addLog({
+          userId: 'usr_guest',
+          userName: cleanInput,
+          userRole: 'Tamu / Anonim',
+          action: 'LOGIN',
+          module: 'Otentikasi Akun',
+          status: 'FAILED',
+          details: `Gagal login: Kredensial untuk akun '${cleanInput}' tidak cocok.`,
+          ipAddress: '10.14.88.21 (Intranet BPJS)',
+          device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+        });
         setErrorMessage('Username/Email atau kata sandi yang Anda masukkan tidak sesuai.');
         return;
       }
 
       if (matchedUser.status === 'Nonaktif') {
         setIsLoading(false);
+        addLog({
+          userId: matchedUser.id,
+          userName: matchedUser.name,
+          userRole: matchedUser.role,
+          action: 'LOGIN',
+          module: 'Otentikasi Akun',
+          status: 'FAILED',
+          details: `Gagal login: Akun '${matchedUser.username}' berstatus nonaktif.`,
+          ipAddress: '10.14.88.21 (Intranet BPJS)',
+          device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+        });
         setErrorMessage('Akun Anda saat ini berstatus nonaktif. Silakan hubungi Administrator.');
         return;
       }
+
+      // Catat log sukses
+      addLog({
+        userId: matchedUser.id,
+        userName: matchedUser.name,
+        userRole: matchedUser.role,
+        action: 'LOGIN',
+        module: 'Otentikasi Akun',
+        status: 'SUCCESS',
+        details: `Pengguna '${matchedUser.name}' (${matchedUser.role}) berhasil masuk ke sistem SAPA Yanfaskes.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
 
       // Login berhasil: Simpan status sesi ke authStore & sinkronkan profil
       loginUser(

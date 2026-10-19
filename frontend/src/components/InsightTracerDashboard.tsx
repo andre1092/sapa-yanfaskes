@@ -3,8 +3,10 @@ import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
 import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
 import { UserManagementView } from './UserManagementView';
+import { LogsView } from './LogsView';
 import { AdminSettings } from './AdminSettings';
 import { useAuthStore } from '../store/authStore';
+import { useLogStore } from '../store/logStore';
 
 // Sub-komponen SVG World Map untuk Geographical Distribution
 const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
@@ -75,11 +77,29 @@ const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
 };
 
 export const InsightTracerDashboard: React.FC = () => {
-  const { logoutUser } = useAuthStore();
+  const { user, logoutUser } = useAuthStore();
+  const { addLog } = useLogStore();
   const [geoTab, setGeoTab] = useState<'Clicks' | 'Organic Installs' | 'Non-Organic Installs'>('Clicks');
   const [activeMenu, setActiveMenu] = useState('Capaian Kepatuhan FKRTL');
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const handleMenuSelect = (menuName: string) => {
+    setActiveMenu(menuName);
+    if (user) {
+      addLog({
+        userId: user.id || 'usr_001',
+        userName: user.name || user.username || 'Pengguna',
+        userRole: (user.role as any) || 'User',
+        action: 'VIEW',
+        module: menuName,
+        status: 'SUCCESS',
+        details: `Pengguna membuka dan meninjau modul ${menuName}.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
+    }
+  };
 
   const menuSections = [
     {
@@ -102,13 +122,13 @@ export const InsightTracerDashboard: React.FC = () => {
         { name: 'Installs & Uninstalls', icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4' },
         { name: 'Agency', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
         { name: 'Fraud', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-        { name: 'Logs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
       ],
     },
     {
       category: 'MANAGE',
       items: [
         { name: 'User', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+        { name: 'Logs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
         { name: 'Smart Banners', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
         { name: 'Events', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
         { name: 'Validation Rules', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
@@ -169,7 +189,7 @@ export const InsightTracerDashboard: React.FC = () => {
                   return (
                     <button
                       key={item.name}
-                      onClick={() => setActiveMenu(item.name)}
+                      onClick={() => handleMenuSelect(item.name)}
                       title={!isSidebarHovered ? item.name : undefined}
                       className={`w-full flex items-center rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
                         isSidebarHovered
@@ -257,6 +277,19 @@ export const InsightTracerDashboard: React.FC = () => {
               </button>
               <button
                 onClick={() => {
+                  if (user) {
+                    addLog({
+                      userId: user.id || 'usr_001',
+                      userName: user.name || user.username || 'Pengguna',
+                      userRole: (user.role as any) || 'User',
+                      action: 'LOGOUT',
+                      module: 'Otentikasi Akun',
+                      status: 'SUCCESS',
+                      details: 'Pengguna mengakhiri sesi kerja (Log Out) dan kembali ke Halaman Login.',
+                      ipAddress: '10.14.88.21 (Intranet BPJS)',
+                      device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+                    });
+                  }
                   logoutUser();
                   setShowLogoutModal(false);
                 }}
@@ -301,6 +334,8 @@ export const InsightTracerDashboard: React.FC = () => {
             <FktpAntrolDashboard />
           ) : activeMenu === 'User' || activeMenu === 'user' ? (
             <UserManagementView />
+          ) : activeMenu === 'Logs' || activeMenu === 'logs' ? (
+            <LogsView />
           ) : activeMenu === 'Integration' || activeMenu === 'Validation Rules' ? (
             <AdminSettings />
           ) : (

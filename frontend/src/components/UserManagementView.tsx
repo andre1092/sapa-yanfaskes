@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useUserStore, type UserAccount, type UserRole } from '../store/userStore';
+import { useLogStore } from '../store/logStore';
 
 export const UserManagementView: React.FC = () => {
   const { users, profile, addUser, editUser, deleteUser } = useUserStore();
+  const { addLog } = useLogStore();
 
   // Filter & Search States
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,16 +88,49 @@ export const UserManagementView: React.FC = () => {
 
     if (!cleanUsername || !cleanName || !cleanEmail || !cleanPassword) {
       setFormError('Seluruh bidang formulir wajib diisi dengan benar.');
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: isEditing ? 'UPDATE' : 'ADD',
+        module: 'Manajemen Pengguna',
+        status: 'FAILED',
+        details: `Gagal ${isEditing ? 'memperbarui' : 'menambahkan'} pengguna: Bidang formulir belum lengkap.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       return;
     }
 
     if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       setFormError('Format alamat email tidak valid.');
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: isEditing ? 'UPDATE' : 'ADD',
+        module: 'Manajemen Pengguna',
+        status: 'FAILED',
+        details: `Gagal ${isEditing ? 'memperbarui' : 'menambahkan'} pengguna: Format email '${cleanEmail}' tidak valid.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       return;
     }
 
     if (cleanPassword.length < 6) {
       setFormError('Password keamanan minimal harus terdiri dari 6 karakter.');
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: isEditing ? 'UPDATE' : 'ADD',
+        module: 'Manajemen Pengguna',
+        status: 'FAILED',
+        details: `Gagal ${isEditing ? 'memperbarui' : 'menambahkan'} pengguna: Kata sandi kurang dari 6 karakter.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       return;
     }
 
@@ -105,6 +140,17 @@ export const UserManagementView: React.FC = () => {
     );
     if (usernameConflict) {
       setFormError(`Username "${cleanUsername}" sudah digunakan oleh akun lain.`);
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: isEditing ? 'UPDATE' : 'ADD',
+        module: 'Manajemen Pengguna',
+        status: 'FAILED',
+        details: `Gagal ${isEditing ? 'memperbarui' : 'menambahkan'} pengguna: Username '${cleanUsername}' sudah terdaftar.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       return;
     }
 
@@ -117,6 +163,17 @@ export const UserManagementView: React.FC = () => {
         role: formRole,
         status: formStatus,
       });
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: 'UPDATE',
+        module: 'Manajemen Pengguna',
+        status: 'SUCCESS',
+        details: `Berhasil memperbarui data pengguna: ${cleanName} (@${cleanUsername} - Role: ${formRole}).`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       showToast(`Data pengguna "${cleanName}" berhasil diperbarui.`);
     } else {
       addUser({
@@ -127,6 +184,17 @@ export const UserManagementView: React.FC = () => {
         role: formRole,
         status: formStatus,
       });
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: 'ADD',
+        module: 'Manajemen Pengguna',
+        status: 'SUCCESS',
+        details: `Berhasil menambahkan pengguna baru: ${cleanName} (@${cleanUsername} - Role: ${formRole}).`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       showToast(`Pengguna baru "${cleanName}" berhasil ditambahkan.`);
     }
 
@@ -135,6 +203,17 @@ export const UserManagementView: React.FC = () => {
 
   const confirmDelete = (u: UserAccount) => {
     if (u.username === 'superadmin' || u.username === profile.username) {
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: 'DELETE',
+        module: 'Manajemen Pengguna',
+        status: 'FAILED',
+        details: `Gagal menghapus pengguna: Akun '${u.username}' terproteksi sistem dari penghapusan.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       showToast('Akun Super Admin utama atau akun yang sedang aktif tidak dapat dihapus!');
       return;
     }
@@ -146,8 +225,30 @@ export const UserManagementView: React.FC = () => {
     if (!userToDelete) return;
     const success = deleteUser(userToDelete.id);
     if (success) {
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: 'DELETE',
+        module: 'Manajemen Pengguna',
+        status: 'SUCCESS',
+        details: `Berhasil menghapus akun pengguna: ${userToDelete.name} (@${userToDelete.username}).`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       showToast(`Akun pengguna "${userToDelete.name}" berhasil dihapus.`);
     } else {
+      addLog({
+        userId: profile.username || 'usr_admin',
+        userName: profile.name || 'Administrator',
+        userRole: (profile.role as any) || 'Super Admin',
+        action: 'DELETE',
+        module: 'Manajemen Pengguna',
+        status: 'FAILED',
+        details: `Gagal menghapus akun pengguna '${userToDelete.name}' karena kendala proteksi sistem.`,
+        ipAddress: '10.14.88.21 (Intranet BPJS)',
+        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
+      });
       showToast('Gagal menghapus pengguna karena memiliki proteksi hak akses sistem.');
     }
     setShowDeleteModal(false);

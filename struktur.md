@@ -29,10 +29,11 @@ SAPA YANFASKES (SISTEM TATA LETAK TUNGGAL NON-OVERLAPPING)
     │   └── 🏥 Capaian Kepatuhan FKTP: Modul Pemanfaatan Antrol FKTP (KPI, diagram garis tren bulanan, matriks capaian faskes, dan hover popover data antrean).
     │
     ├── ⚡ C. ENGAGEMENTS
-    │   └── Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs.
+    │   └── Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud.
     │
     ├── ⚙️ D. MANAGE
     │   ├── 👥 User: Manajemen Pengguna RBAC 3 Tingkatan (Super Admin, Admin, User) dengan operasi CRUD lengkap, pencarian, dan unduh data CSV.
+    │   ├── 📋 Logs [BARU]: Catatan Aktivitas Sistem (Audit Trail) merekam seluruh aktivitas nyata user, admin, dan superadmin termasuk log gagal login, view, add, update, delete, live search, 4 kartu KPI, filter status/aksi/role, dan ekspor CSV resmi.
     │   └── 🔗 Integration: Pusat Pengaturan Sistem, Profil Administrator, dan Sinkronisasi Live Data Faskes (AdminSettings.tsx).
     │
     └── 🚪 E. Keluar Sesi (Log Out)

@@ -209,7 +209,7 @@
   - Main Canvas: `#F1F1F4`, kartu putih `#FFFFFF` dengan garis batas halus `#E8E8EE`.
   - Warna Aksen Merek: Royal Indigo `#6C5DD3`, Vivid Blue `#3F8CFF`, dan Soft Green Badge `#E4F8DD` (teks `#27AE60`).
 - **Elemen-Elemen Terverifikasi**:
-  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand SAPA Yanfaskes dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), DASHBOARD (Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud, Logs), dan MANAGE (User [Manajemen Pengguna 3 Role RBAC: Super Admin, Admin, User], Smart Banners, Events, Validation Rules, Integration). Dilengkapi fitur auto-hide/collapse (icon-only rail) saat kursor menjauh dan expand saat kursor mendekat.
+  1. 🧭 **Sidebar Navigasi Gelap (w: 302px)**: Memuat logo brand SAPA Yanfaskes dengan badge "LIVE" hijau, serta 4 kelompok menu hierarkis: ACTION CENTRE (Home), DASHBOARD (Capaian Kepatuhan FKRTL, Capaian Kepatuhan FKTP), ENGAGEMENTS (Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud), dan MANAGE (User [Manajemen Pengguna 3 Role RBAC: Super Admin, Admin, User], Logs [Audit Trail Aktivitas Riil & Tracking Gagal], Smart Banners, Events, Validation Rules, Integration). Dilengkapi fitur auto-hide/collapse (icon-only rail) saat kursor menjauh dan expand saat kursor mendekat.
   2. 📅 **Header Terpadu (h: 88px)**: Judul reaktif ("Capaian Kepatuhan FKRTL") tebal dan tombol pemilih rentang waktu interaktif berikon kalender ("Jan 2023 - Feb 2023").
   3. 📈 **Kartu Metrik KPI Perbandingan (Grid 2 Kolom)**:
      - **Touchpoints**: Clicks (23.4k, +14%), Impressions (6.4k, +16%), Organic (43.2k, +11%), Non-Organic (83k, +18%), dengan footer "Compared To Last 30 Days".
@@ -225,4 +225,44 @@
 - **Pengujian & Verifikasi Visual**:
   - Mesin komparasi otomatis `pixelmatch` di `frontend/scripts/visual-diff.mjs`.
   - Tingkat fidelitas empiris terukur: **96.85% kesesuaian piksel** terhadap referensi raster murni.
+
+---
+
+## 7. Modul Audit Trail & Riwayat Aktivitas Pengguna (Activity Logs — Menu MANAGE) [STATUS: AKTIF / LIVE]
+- **Lokasi & Aksesibilitas**:
+  - Ditempatkan di bawah kategori menu **MANAGE** tepat di samping modul **User** pada bilah navigasi samping SAPA Yanfaskes (`InsightTracerDashboard.tsx`).
+  - Menjamin pengawasan tata kelola administratif yang terpusat dan terstruktur.
+- **Pencatatan Aktivitas Nyata Multi-Peran (Multi-Role Real Activity Logging)**:
+  - Merekam seluruh aktivitas real-time dari setiap tingkatan peran: **Super Admin**, **Admin**, **User**, serta percobaan dari **Tamu / Anonim**.
+  - **Tipe Aksi Terdata (`ActionType`)**:
+    - `LOGIN`: Pencatatan login sesi akun, identitas pengguna, status keberhasilan, dan identifikasi penolakan bot Turnstile / password salah.
+    - `LOGOUT`: Pencatatan terminasi sesi pengguna secara resmi.
+    - `VIEW`: Pencatatan navigasi dan pembukaan modul-modul dashboard (Capaian Kepatuhan FKRTL, Pemanfaatan Antrol, Capaian Kepatuhan FKTP, User Management, Logs, Integration).
+    - `ADD`: Pencatatan pembuatan akun pengguna baru beserta rincian username, email, dan role yang ditugaskan.
+    - `UPDATE`: Pencatatan pembaruan profil atau modifikasi hak akses pengguna.
+    - `DELETE`: Pencatatan penghapusan akun pengguna dari sistem.
+- **Pencatatan Log Gagal & Peringatan Keamanan (Failed Attempts & Error Tracking)**:
+  - Mencatat status `FAILED` secara mendalam pada setiap kegagalan operasi:
+    - Gagal Login: Percobaan dengan kata sandi salah, akun berstatus nonaktif, atau belum menyelesaikan verifikasi Cloudflare Turnstile.
+    - Gagal Tambah User: Validasi formulir gagal, email tidak valid, atau username duplikat.
+    - Gagal Hapus User: Percobaan penghapusan akun terproteksi (Super Admin Utama).
+    - Penandaan visual badge merah berlatar lembut (`bg-rose-50 text-rose-700 border-rose-200`) untuk log berstatus GAGAL vs badge hijau berlatar lembut (`bg-emerald-50 text-emerald-700 border-emerald-200`) untuk BERHASIL.
+- **Dasbor Analitik & Antarmuka Audit Trail (`LogsView.tsx`)**:
+  - **4 Kartu KPI Ringkasan**:
+    1. *Total Aktivitas*: Akumulasi seluruh interaksi log yang terekam.
+    2. *Tingkat Keberhasilan*: Persentase rasio aktivitas berstatus SUCCESS terhadap total log.
+    3. *Aktivitas Gagal*: Jumlah insiden kegagalan (status FAILED) yang membutuhkan perhatian audit.
+    4. *Pengguna Aktif*: Total jumlah akun pengguna unik yang tercatat beraktivitas.
+  - **Filter Multi-Dimensi & Pencarian Cepat**:
+    - *Live Search Bar*: Pencarian instan berdasarkan Nama, Username, Deskripsi Aksi, Modul Target, atau Alamat IP.
+    - *Filter Status*: Semua Status, Berhasil (SUCCESS), Gagal (FAILED).
+    - *Filter Tipe Aksi*: Semua Aksi, LOGIN, LOGOUT, VIEW, ADD, UPDATE, DELETE.
+    - *Filter Peran (Role)*: Semua Peran, Super Admin, Admin, User, Tamu/Anonim.
+  - **Tabel Riwayat Aktivitas Berstruktur**:
+    - Menampilkan kolom: `Waktu & Tanggal`, `Pengguna & Peran`, `Aksi`, `Modul`, `Status`, `Detail Keterangan`, dan `Alamat IP & Klien`.
+- **Aksi Administratif & Ekspor Data**:
+  - **Ekspor CSV Resmi**: Mengunduh seluruh atau hasil filter log aktivitas ke format file CSV dengan nama file berstempel waktu (`sapa-audit-logs-YYYY-MM-DD.csv`).
+  - **Pembersihan Log Terproteksi (Clear Logs)**: Operasi pembersihan log dengan konfirmasi dialog aman khusus peran Super Admin.
+- **Mesin Persistensi**: `frontend/src/store/logStore.ts` (Zustand + `localStorage` key `sapa-audit-logs`) dengan seed data riwayat aktivitas realistis saat inisialisasi awal.
+
 
