@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
+import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
 import { UserManagementView } from './UserManagementView';
+import { AdminSettings } from './AdminSettings';
 import { useAuthStore } from '../store/authStore';
 
 // Sub-komponen SVG World Map untuk Geographical Distribution
@@ -88,6 +90,7 @@ export const InsightTracerDashboard: React.FC = () => {
       category: 'DASHBOARD',
       items: [
         { name: 'Capaian Kepatuhan FKRTL', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+        { name: 'Pemanfaatan Antrol FKRTL', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
         { name: 'Capaian Kepatuhan FKTP', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
       ],
     },
@@ -292,10 +295,14 @@ export const InsightTracerDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-8 space-y-6">
           {activeMenu === 'Capaian Kepatuhan FKRTL' ? (
             <LaporanKepatuhanDashboard />
+          ) : activeMenu === 'Pemanfaatan Antrol FKRTL' ? (
+            <PemanfaatanAntrolDashboard />
           ) : activeMenu === 'Capaian Kepatuhan FKTP' ? (
             <FktpAntrolDashboard />
           ) : activeMenu === 'User' || activeMenu === 'user' ? (
             <UserManagementView />
+          ) : activeMenu === 'Integration' || activeMenu === 'Validation Rules' ? (
+            <AdminSettings />
           ) : (
             <>
               {/* BARIS 1: 2 KARTU METRIK UTAMA (TOUCHPOINTS & INSTALLS) */}

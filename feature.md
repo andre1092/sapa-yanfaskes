@@ -34,15 +34,18 @@
 - **Mesin Lokalisasi**: `languageStore.ts` (Zustand + `persist` ke `localStorage` key `sapa-language-storage`), sinkronisasi atribut `document.documentElement.lang`, serta kamus translasi bilingual komprehensif (`t(...)`) untuk Header, Breadcrumbs, Sidebar, Portal Overview, dan Theme Toggle.
 
 ### C. Bilah Navigasi Samping Auto-Hide & Hover-Expand (Icon-Only Rail Mode) [STATUS: AKTIF / LIVE]
+- **Arsitektur Tata Letak Tunggal (Non-Overlapping Single Root Layout)**:
+  - Seluruh layout dan pembungkus UI lama (`DashboardLayout`, `Sidebar.tsx` lama, `Header.tsx` lama, `BlankContentArea.tsx` lama) telah **dihapus secara total**.
+  - Aplikasi setelah login secara eksklusif menggunakan **UI/UX Baru SAPA Yanfaskes (`InsightTracerDashboard.tsx`)** sebagai satu-satunya layout utama dengan 1 sidebar navigasi samping dan 1 top header.
 - **Perilaku Kursor Menjauh (Auto-Collapse / Unhover)**:
-  - Bilah navigasi samping secara otomatis menyusut (*auto-hide/collapse*) menjadi rel ramping (*slim rail*).
+  - Bilah navigasi samping secara otomatis menyusut (*auto-hide/collapse*) menjadi rel ramping (*slim rail* 72px).
   - Menyembunyikan seluruh teks label menu, kategori header, nama brand teks, dan detail akun profil.
   - **Murni hanya menampilkan simbol/ikon menu** navigasi secara rapi, vertikal, dan presisi di tengah kolom rel.
   - Dilengkapi atribut `title` pada masing-masing ikon sebagai indikator kontekstual saat pengguna mengarahkan kursor ke ikon tertentu.
 - **Perilaku Kursor Mendekat (Hover-Expand)**:
-  - Bilah navigasi melebar kembali secara mulus (*smooth transition* `transition-all duration-300 ease-in-out`).
-  - Menampilkan kembali nama aplikasi, badge status, judul kategori menu, label teks menu lengkap, chevron ekspansi, serta panel profil pengguna dan tombol logout.
-- **Komponen Pengendali**: `Sidebar.tsx` dan `InsightTracerDashboard.tsx`.
+  - Bilah navigasi melebar kembali secara mulus (*smooth transition* 300ms cubic ease-in-out ke 302px).
+  - Menampilkan kembali nama aplikasi, badge status, judul kategori menu, label teks menu lengkap, serta panel profil pengguna dan tombol logout.
+- **Komponen Pengendali Tunggal**: `InsightTracerDashboard.tsx`.
 
 ---
 
