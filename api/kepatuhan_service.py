@@ -87,6 +87,20 @@ def fetch_sheet_csv(spreadsheet_id: str, label: str) -> List[Dict[str, str]]:
             return _SERVICE_CACHE[cache_key][1]
         return []
 
+def clear_kepatuhan_cache(module: Optional[str] = None) -> Dict[str, Any]:
+    global _SERVICE_CACHE
+    if not module or module == "all":
+        cleared_count = len(_SERVICE_CACHE)
+        _SERVICE_CACHE.clear()
+        logger.info(f"Semua cache kepatuhan ({cleared_count} keys) berhasil dibersihkan.")
+        return {"status": "success", "cleared_count": cleared_count, "target": "all"}
+
+    keys_to_del = [k for k in _SERVICE_CACHE if module.lower() in k.lower()]
+    for k in keys_to_del:
+        _SERVICE_CACHE.pop(k, None)
+    logger.info(f"Cache kepatuhan untuk modul '{module}' ({len(keys_to_del)} keys) berhasil dibersihkan.")
+    return {"status": "success", "cleared_count": len(keys_to_del), "target": module}
+
 def get_ref_lookup() -> Dict[str, Dict[str, str]]:
     raw = fetch_sheet_csv(REF_FASKES_SPREADSHEET_ID, "REF_FASKES")
     lookup = {}

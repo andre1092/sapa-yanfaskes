@@ -4,6 +4,7 @@ import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
 import { UserManagementView } from './UserManagementView';
 import { LogsView } from './LogsView';
+import { DataIntegrationView } from './DataIntegrationView';
 import { AdminSettings } from './AdminSettings';
 import { useAuthStore } from '../store/authStore';
 import { useLogStore } from '../store/logStore';
@@ -336,7 +337,9 @@ export const InsightTracerDashboard: React.FC = () => {
             <UserManagementView />
           ) : activeMenu === 'Logs' || activeMenu === 'logs' ? (
             <LogsView />
-          ) : activeMenu === 'Integration' || activeMenu === 'Validation Rules' ? (
+          ) : activeMenu === 'Integration' || activeMenu === 'integration' ? (
+            <DataIntegrationView />
+          ) : activeMenu === 'Validation Rules' ? (
             <AdminSettings />
           ) : (
             <>

@@ -34,7 +34,7 @@ SAPA YANFASKES (SISTEM TATA LETAK TUNGGAL NON-OVERLAPPING)
     ├── ⚙️ D. MANAGE
     │   ├── 👥 User: Manajemen Pengguna RBAC 3 Tingkatan (Super Admin, Admin, User) dengan operasi CRUD lengkap, pencarian, dan unduh data CSV.
     │   ├── 📋 Logs [BARU]: Catatan Aktivitas Sistem (Audit Trail) merekam seluruh aktivitas nyata user, admin, dan superadmin termasuk log gagal login, view, add, update, delete, live search, 4 kartu KPI, filter status/aksi/role, dan ekspor CSV resmi.
-    │   └── 🔗 Integration: Pusat Pengaturan Sistem, Profil Administrator, dan Sinkronisasi Live Data Faskes (AdminSettings.tsx).
+    │   └── 🔗 Integration [DIPERBARUI]: Pusat Integrasi & Pembaruan Data Capaian (Data Integration & Update Hub — DataIntegrationView.tsx) mengelola sinkronisasi live Google Spreadsheet untuk 11 modul capaian (9 Tab Kepatuhan Mutu FKRTL, Antrol RS, Antrol FKTP Primer), One-Click Master Sync, pencatatan jejak audit UPDATE real-time, dan ekspor rekapitulasi status CSV.
     │
     └── 🚪 E. Keluar Sesi (Log Out)
         └── Aksi: Modal Dialog Konfirmasi Keluar resmi dan pemanggilan `logoutUser()` yang mengembalikan pengguna ke Gerbang Login.

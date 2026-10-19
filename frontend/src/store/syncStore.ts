@@ -2,17 +2,37 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface SyncState {
-  lastUpdateAntrol: string;
+  // Stempel waktu masing-masing modul capaian
+  lastUpdateRingkasan: string;
   lastUpdateNakes: string;
   lastUpdatePengaduan: string;
   lastUpdateUmabl: string;
   lastUpdateDisplayTt: string;
+  lastUpdateTmo: string;
+  lastUpdateAntreanWtl: string;
+  lastUpdateSurkon: string;
+  lastUpdateRme: string;
+  lastUpdateAntrol: string;
+  lastUpdateFktp: string;
   lastUpdateAll: string;
-  setSyncAntrol: (customTime?: string) => void;
+
+  // Setter individual
+  setSyncRingkasan: (customTime?: string) => void;
   setSyncNakes: (customTime?: string) => void;
   setSyncPengaduan: (customTime?: string) => void;
   setSyncUmabl: (customTime?: string) => void;
   setSyncDisplayTt: (customTime?: string) => void;
+  setSyncTmo: (customTime?: string) => void;
+  setSyncAntreanWtl: (customTime?: string) => void;
+  setSyncSurkon: (customTime?: string) => void;
+  setSyncRme: (customTime?: string) => void;
+  setSyncAntrol: (customTime?: string) => void;
+  setSyncFktp: (customTime?: string) => void;
+
+  // Setter generik per modul
+  setSyncModule: (moduleId: string, customTime?: string) => void;
+
+  // Master sync
   setSyncAll: (customTime?: string) => void;
 }
 
@@ -31,16 +51,22 @@ export const formatCurrentTimestamp = (): string => {
 export const useSyncStore = create<SyncState>()(
   persist(
     (set) => ({
-      lastUpdateAntrol: '26/09/2026 14:15:00',
-      lastUpdateNakes: '26/09/2026 14:20:00',
-      lastUpdatePengaduan: '26/09/2026 14:25:00',
-      lastUpdateUmabl: '26/09/2026 14:30:00',
-      lastUpdateDisplayTt: '26/09/2026 14:35:00',
-      lastUpdateAll: '26/09/2026 14:35:00',
+      lastUpdateRingkasan: '19/10/2026 21:00:00',
+      lastUpdateNakes: '19/10/2026 21:00:00',
+      lastUpdatePengaduan: '19/10/2026 21:00:00',
+      lastUpdateUmabl: '19/10/2026 21:00:00',
+      lastUpdateDisplayTt: '19/10/2026 21:00:00',
+      lastUpdateTmo: '19/10/2026 21:00:00',
+      lastUpdateAntreanWtl: '19/10/2026 21:00:00',
+      lastUpdateSurkon: '19/10/2026 21:00:00',
+      lastUpdateRme: '19/10/2026 21:00:00',
+      lastUpdateAntrol: '19/10/2026 21:00:00',
+      lastUpdateFktp: '19/10/2026 21:00:00',
+      lastUpdateAll: '19/10/2026 21:00:00',
 
-      setSyncAntrol: (customTime) => {
+      setSyncRingkasan: (customTime) => {
         const time = customTime || formatCurrentTimestamp();
-        set({ lastUpdateAntrol: time, lastUpdateAll: time });
+        set({ lastUpdateRingkasan: time, lastUpdateAll: time });
       },
 
       setSyncNakes: (customTime) => {
@@ -63,14 +89,92 @@ export const useSyncStore = create<SyncState>()(
         set({ lastUpdateDisplayTt: time, lastUpdateAll: time });
       },
 
+      setSyncTmo: (customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        set({ lastUpdateTmo: time, lastUpdateAll: time });
+      },
+
+      setSyncAntreanWtl: (customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        set({ lastUpdateAntreanWtl: time, lastUpdateAll: time });
+      },
+
+      setSyncSurkon: (customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        set({ lastUpdateSurkon: time, lastUpdateAll: time });
+      },
+
+      setSyncRme: (customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        set({ lastUpdateRme: time, lastUpdateAll: time });
+      },
+
+      setSyncAntrol: (customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        set({ lastUpdateAntrol: time, lastUpdateAll: time });
+      },
+
+      setSyncFktp: (customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        set({ lastUpdateFktp: time, lastUpdateAll: time });
+      },
+
+      setSyncModule: (moduleId, customTime) => {
+        const time = customTime || formatCurrentTimestamp();
+        switch (moduleId) {
+          case 'ringkasan':
+            set({ lastUpdateRingkasan: time, lastUpdateAll: time });
+            break;
+          case 'nakes':
+            set({ lastUpdateNakes: time, lastUpdateAll: time });
+            break;
+          case 'pengaduan':
+            set({ lastUpdatePengaduan: time, lastUpdateAll: time });
+            break;
+          case 'umabl':
+            set({ lastUpdateUmabl: time, lastUpdateAll: time });
+            break;
+          case 'display-tt':
+            set({ lastUpdateDisplayTt: time, lastUpdateAll: time });
+            break;
+          case 'tmo':
+            set({ lastUpdateTmo: time, lastUpdateAll: time });
+            break;
+          case 'antrean-wtl':
+            set({ lastUpdateAntreanWtl: time, lastUpdateAll: time });
+            break;
+          case 'surkon':
+            set({ lastUpdateSurkon: time, lastUpdateAll: time });
+            break;
+          case 'rme':
+            set({ lastUpdateRme: time, lastUpdateAll: time });
+            break;
+          case 'antrol':
+            set({ lastUpdateAntrol: time, lastUpdateAll: time });
+            break;
+          case 'fktp':
+            set({ lastUpdateFktp: time, lastUpdateAll: time });
+            break;
+          default:
+            set({ lastUpdateAll: time });
+            break;
+        }
+      },
+
       setSyncAll: (customTime) => {
         const time = customTime || formatCurrentTimestamp();
         set({
-          lastUpdateAntrol: time,
+          lastUpdateRingkasan: time,
           lastUpdateNakes: time,
           lastUpdatePengaduan: time,
           lastUpdateUmabl: time,
           lastUpdateDisplayTt: time,
+          lastUpdateTmo: time,
+          lastUpdateAntreanWtl: time,
+          lastUpdateSurkon: time,
+          lastUpdateRme: time,
+          lastUpdateAntrol: time,
+          lastUpdateFktp: time,
           lastUpdateAll: time,
         });
       },

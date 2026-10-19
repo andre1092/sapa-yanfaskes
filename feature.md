@@ -179,26 +179,30 @@
 
 ---
 
-## 5. Fitur Pengaturan & Manajemen Admin (Admin Settings) [STATUS: AKTIF / LIVE - 4 TAB TERINTEGRASI]
-- **Palet Warna Harmonis (7 Warna Resmi BPJS)**: Implementasi penuh token `#2b4390`, `#44853b`, `#f7fcfa`, `#afbade`, `#83a67e`, `#d4ecd1`, `#6573a1` dengan kontras adaptif bebas teks putih pudar (*zero invisible text*).
-- **Struktur 4 Tab Glassmorphism**:
-  1. 👤 **Tab Profil**:
-     - Form penyuntingan data diri: Nama Lengkap Administrator, Username, Alamat Email Resmi, dan opsi Ubah Kata Sandi (Password).
-     - Tombol Simpan 100% fungsional dengan persistensi data lokal di store `userStore.ts`.
-     - Dialog Konfirmasi Khusus Verifikasi Email: Saat email diubah dan disimpan, muncul dialog interaktif *"Info Sapa Yanfaskes: Harap verifikasi akun Anda untuk mengaktifkan fitur-fitur pada SAPA YANFASKES"*.
-     - Surat Digital Simulasi No-Reply Official (`no-reply@sapa-yanfaskes.bpjs-kesehatan.go.id`): Berisi link verifikasi ber-token serta tombol *"VERIFIKASI SEKARANG"* dan tautan langsung untuk membuka webmail pengguna.
-  2. 🏥 **Tab Integrasi Data FKTP**:
-     - Ruang kerja persiapan integrasi data fasilitas kesehatan tingkat pertama (Puskesmas, Klinik Pratama, DPP) berdesain Glassmorphism BPJS rapi.
-  3. 🏢 **Tab Integrasi Data FKRTL**:
-     - Tombol-tombol integrasi live untuk setiap modul: Pemanfaatan Antrol, Tab 01 Nakes, Tab 02 Pengaduan, Tab 03 Umabl, Tab 04 Display TT, dan Tombol Master Sinkronisasi Semua Modul.
-     - Perekaman stempel waktu riil (*real-time timestamp*) pada saat tombol diklik melalui store persist `syncStore.ts`.
-     - Stempel waktu otomatis disebarkan dan ditampilkan sebagai informasi *Last Update : ...* pada menu Pemanfaatan Antrol dan banner header Laporan Kepatuhan FKRTL.
-  4. 👥 **Tab User Setting (Manajemen Pengguna)**:
-     - Tabel komprehensif daftar pengguna: Username, Nama Lengkap, Email Akun, Kata Sandi dengan tombol toggle Show/Hide (👁️), Peran/Role (Super Administrator, Administrator KC, Verifikator Yanfaskes, Viewer Direksi), Status Akun, dan Terakhir Masuk.
-     - Fitur *Live Search* instan dan *Filter Role* interaktif.
-     - Operasi Tambah Pengguna Baru (+) dengan form modal Glassmorphism validasi lengkap.
-     - Operasi Edit Pengguna (✏️) untuk memperbarui hak akses, email, dan password.
-     - Operasi Hapus Pengguna (🗑️) dengan dialog konfirmasi aman dan proteksi penghapusan akun Super Administrator.
+## 5. Modul Pusat Integrasi & Pembaruan Data Capaian (Data Integration & Update Hub — Menu Integration) [STATUS: AKTIF / LIVE]
+- **Tujuan & Desain Antarmuka Eksekutif**:
+  - Mentransformasi menu **Integration** menjadi pusat kendali pembaruan data capaian fasilitas kesehatan yang profesional, rapi, bersih, berstruktur, dan mudah dipahami.
+  - Mengadopsi palet warna institusional BPJS Kesehatan (`#2b4390`, `#44853b`, `#d4ecd1`, `#6573a1`) dengan kartu putih modern bergaris batas halus (*non-AI enterprise theme*).
+- **Cakupan 11 Modul Capaian Terverifikasi**:
+  1. **Tab 00. Ringkasan Nilai Akhir Kepatuhan FKRTL**: Konsolidasi capaian 8 pilar standar mutu rumah sakit (Target: ≥ 85.00 Poin).
+  2. **Tab 01. Kesesuaian Jadwal Praktik Dokter / Nakes**: Kepatuhan jadwal praktik nakes di HFIS vs riil (Bobot 25%, Target: 100%).
+  3. **Tab 02. Tindak Lanjut & Penyelesaian Pengaduan SIPP**: Waktu respon dan SLA 1-3 hari kerja penanganan keluhan peserta (Bobot 20%, Target: 100%).
+  4. **Tab 03. Umpan Balik Peserta (KESSAN)**: Evaluasi indeks kepuasan peserta customer feedback per tier target responden (Bobot 10%, Target: ≥ 100%).
+  5. **Tab 04. Pembaruan Display Ketersediaan Tempat Tidur**: Jumlah hari update harian ketersediaan TT rawat inap (Bobot 10%, Target: ≥ 25 Hari).
+  6. **Tab 05. Pembaruan Display TMO & Jadwal Operasi**: Kepatuhan display jadwal operasi dan faskes obat kronis/PRB (Bobot 5%, Target: 100%).
+  7. **Tab 06. Antrean MJKN & Waktu Tunggu Layanan**: Pemantauan task antrean online Mobile JKN dan waktu tunggu farmasi/poli (Bobot 20%, Target: 100%).
+  8. **Tab 07. Penerbitan Surat Kontrol (Surkon) & SPRI**: Penerbitan berkas rujukan dan kontrol elektronik V-Claim (Bobot 5%, Target: ≥ 90%).
+  9. **Tab 08. Integrasi Rekam Medis Elektronik (RME)**: Kepatuhan bridging data resume medis elektronik rawat jalan & inap (Bobot 5%, Target: ≥ 95%).
+  10. **Pemanfaatan Antrol FKRTL**: Transaksi antrean online rumah sakit (2.052 baris data Google Sheets, target 80% MJKN & 95% All).
+  11. **Pemanfaatan Antrol FKTP**: Pemanfaatan antrean online fasilitas pelayanan primer tingkat pertama (Puskesmas, Klinik Pratama, DPP).
+- **Fitur Pembaruan & Orkestrasi Data**:
+  - **Sinkronisasi Serentak (Master Sync)**: Tombol *One-Click Master Sync* untuk menyegarkan cache backend dan frontend 11 modul secara paralel, memperbarui stempel waktu `lastUpdateAll`, dan mencatat riwayat audit trail.
+  - **Pembaruan Tunggal Per Modul (Granular Update)**: Tombol "Perbarui Data" pada setiap kartu modul dengan indikator animasi pemuatan (*spinner*) dan notifikasi toast sukses.
+  - **Akses Langsung Dokumen Sumber**: Tombol "Buka Sheet" dan fitur "Salin ID Spreadsheet" untuk transparansi dokumen Google Drive.
+  - **Pencarian Cepat & Filter Kategori**: Filter tab (Semua Modul, Kepatuhan FKRTL, Antrol RS, Antrol FKTP) dan pencarian instan (*live search*).
+  - **Ekspor Rekapitulasi Status (CSV)**: Unduhan rekapitulasi status koneksi, spreadsheet ID, target, bobot, dan stempel waktu pembaruan terakhir.
+- **Perekaman Riwayat Audit Otomatis**:
+  - Terintegrasi langsung ke `logStore.ts`, setiap eksekusi pembaruan data secara otomatis mencatat log `UPDATE` berstatus `SUCCESS` atau `FAILED` beserta identitas user dan modul target.
 
 ---
 

@@ -57,7 +57,8 @@ try:
         process_tmo_kepatuhan,
         process_antrean_wtl_kepatuhan,
         process_surkon_kepatuhan,
-        process_rme_kepatuhan
+        process_rme_kepatuhan,
+        clear_kepatuhan_cache
     )
 except Exception:
     try:
@@ -66,7 +67,8 @@ except Exception:
             process_tmo_kepatuhan,
             process_antrean_wtl_kepatuhan,
             process_surkon_kepatuhan,
-            process_rme_kepatuhan
+            process_rme_kepatuhan,
+            clear_kepatuhan_cache
         )
     except Exception as e:
         pass
@@ -3165,6 +3167,31 @@ async def get_fkrtl_kepatuhan_rme(
         raise HTTPException(
             status_code=500,
             detail=f"Gagal memproses data Laporan Kepatuhan Rekam Medis Elektronik (RME): {str(e)}"
+        )
+
+
+@app.post("/api/v1/fkrtl-kepatuhan-sync")
+@app.get("/api/v1/fkrtl-kepatuhan-sync")
+async def sync_fkrtl_kepatuhan(
+    module: Optional[str] = "all",
+    user=Depends(require_auth)
+):
+    try:
+        res = clear_kepatuhan_cache(module)
+        from datetime import datetime
+        now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        return {
+            "status": "success",
+            "message": f"Sinkronisasi data kepatuhan FKRTL ({module}) berhasil diperbarui.",
+            "module": module,
+            "cache_cleared": res.get("cleared_count", 0),
+            "last_update": now_str
+        }
+    except Exception as e:
+        logger.error(f"Error in sync_fkrtl_kepatuhan: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal melakukan sinkronisasi data kepatuhan FKRTL: {str(e)}"
         )
 
 
