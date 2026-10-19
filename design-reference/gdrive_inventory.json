@@ -1,0 +1,134 @@
+{
+  "name": "Capaian Kepatuhan FKRTL",
+  "id": "1_xwmdQjTwznbujUObJ1WuwYe4S1QAdsG",
+  "files": [
+    {
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "webViewLink": "https://docs.google.com/spreadsheets/d/1jzNWEPc4yGodIQQJ8VgVsN3V3mgQ_WaIWDxyYgjhAkM/edit?usp=drivesdk",
+      "id": "1jzNWEPc4yGodIQQJ8VgVsN3V3mgQ_WaIWDxyYgjhAkM",
+      "name": "nilai_kepatuhan_fkrtl",
+      "modifiedTime": "2026-10-02T02:44:39.020Z"
+    },
+    {
+      "mimeType": "application/vnd.google-apps.spreadsheet",
+      "webViewLink": "https://docs.google.com/spreadsheets/d/17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs/edit?usp=drivesdk",
+      "id": "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs",
+      "name": "ref_fkrtl",
+      "modifiedTime": "2026-04-30T07:13:44.292Z"
+    }
+  ],
+  "folders": [
+    {
+      "name": "08 RME",
+      "id": "1WsLfyMDOhpx5Pa6KMb6Hj3C2sFjLutHy",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/1pFTad-Hwl8PqVxgf5xiJn0lE63ssI9ZeI4VLpLwtl7c/edit?usp=drivesdk",
+          "id": "1pFTad-Hwl8PqVxgf5xiJn0lE63ssI9ZeI4VLpLwtl7c",
+          "name": "08_RME",
+          "modifiedTime": "2026-09-29T16:58:29.253Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "07 SURKON",
+      "id": "1O7_a07qMCjwCMplTbB_GiCrteNFo-zN3",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/1zgkvAL2qu2pcUtphUNJtcqDsFZFWFmxm91Jivwp3PCM/edit?usp=drivesdk",
+          "id": "1zgkvAL2qu2pcUtphUNJtcqDsFZFWFmxm91Jivwp3PCM",
+          "name": "07_surkon_terbit",
+          "modifiedTime": "2026-10-15T08:22:48.973Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "06 ANTREAN MJKN DAN WAKTU TUNGGU",
+      "id": "1iqSxnSFTSgXcP50cokNp62t_BoghXwCa",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/16bki76IUsf9BzsIxFBlmKMcN5qJ6Eh7-3oZWY0fLm4c/edit?usp=drivesdk",
+          "id": "16bki76IUsf9BzsIxFBlmKMcN5qJ6Eh7-3oZWY0fLm4c",
+          "name": "06_antrean_waktu_tunggu",
+          "modifiedTime": "2026-10-15T08:12:53.201Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "05 UPDATE TMO",
+      "id": "1y_IMIuKB4bPrlFazMyRHfixAaTBu28dz",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/1zVl0oKveMyQTPOC9wYyWPb41apzK0xu9h2dVbh2gMkY/edit?usp=drivesdk",
+          "id": "1zVl0oKveMyQTPOC9wYyWPb41apzK0xu9h2dVbh2gMkY",
+          "name": "05_update_tmo",
+          "modifiedTime": "2026-10-15T07:43:18.203Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "04 UPDATE DISPLAY TT",
+      "id": "1tNUg9oETz5Nr_nyat45_Yh0s_jPISFi7",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/10JV-1frRvBbUg3bgakoUiDnu-FaUT72-oE8i2THTSOk/edit?usp=drivesdk",
+          "id": "10JV-1frRvBbUg3bgakoUiDnu-FaUT72-oE8i2THTSOk",
+          "name": "04_display_tt",
+          "modifiedTime": "2026-10-15T07:15:53.498Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "03 UMBAL PESERTA",
+      "id": "1TNXuTZO7XL9-0Qf2VszZjiN5zZXisMS4",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/148m1t4Z-jaagUFRuJ-ClCUdVvHQyLdSVjQ3fsxoRzj8/edit?usp=drivesdk",
+          "id": "148m1t4Z-jaagUFRuJ-ClCUdVvHQyLdSVjQ3fsxoRzj8",
+          "name": "03_umbal_peserta",
+          "modifiedTime": "2026-10-15T06:59:25.710Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "02 PENYELESAIAN PENGADUAN",
+      "id": "15QeXntuyaWDv_UbB39M88lCJUS6EZMus",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk/edit?usp=drivesdk",
+          "id": "1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk",
+          "name": "02_penyelesaian_pengaduan_FKRTL",
+          "modifiedTime": "2026-10-15T06:40:19.081Z"
+        }
+      ],
+      "folders": []
+    },
+    {
+      "name": "01 JADWAL PRAKTIK NAKES",
+      "id": "1B-FjHe6XM2qCC0Lih1MmIILSHttS-RZ_",
+      "files": [
+        {
+          "mimeType": "application/vnd.google-apps.spreadsheet",
+          "webViewLink": "https://docs.google.com/spreadsheets/d/1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU/edit?usp=drivesdk",
+          "id": "1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU",
+          "name": "01_jadwal_praktik",
+          "modifiedTime": "2026-10-02T03:20:32.577Z"
+        }
+      ],
+      "folders": []
+    }
+  ]
+}

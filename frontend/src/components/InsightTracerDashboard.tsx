@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
+import { FktpAntrolDashboard } from './FktpAntrolDashboard';
 
 // Sub-komponen SVG World Map untuk Geographical Distribution
 const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
@@ -190,8 +192,14 @@ export const InsightTracerDashboard: React.FC = () => {
 
         {/* Dashboard Scrollable Canvas */}
         <main className="flex-1 overflow-y-auto p-8 space-y-6">
-          {/* BARIS 1: 2 KARTU METRIK UTAMA (TOUCHPOINTS & INSTALLS) */}
-          <div className="grid grid-cols-12 gap-6">
+          {activeMenu === 'Capaian Kepatuhan FKRTL' ? (
+            <LaporanKepatuhanDashboard />
+          ) : activeMenu === 'Capaian Kepatuhan FKTP' ? (
+            <FktpAntrolDashboard />
+          ) : (
+            <>
+              {/* BARIS 1: 2 KARTU METRIK UTAMA (TOUCHPOINTS & INSTALLS) */}
+              <div className="grid grid-cols-12 gap-6">
             {/* Kartu 1: Touchpoints */}
             <div className="col-span-12 lg:col-span-6 bg-white rounded-2xl p-6 border border-[#E8E8EE] shadow-xs flex flex-col justify-between">
               <div>
@@ -456,6 +464,8 @@ export const InsightTracerDashboard: React.FC = () => {
               </table>
             </div>
           </div>
+            </>
+          )}
         </main>
       </div>
     </div>

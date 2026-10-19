@@ -38,15 +38,17 @@ SAPA YANFASKES
 │       │   ├── Tren Bulanan Pemanfaatan Antrean Online
 │       │   ├── Analisis Agregasi per Faskes / Rumah Sakit
 │       │   └── Analisis Distribusi per Poliklinik Spesialis
-│       └── 📋 Laporan Kepatuhan FKRTL (Tab ID: 'fkrtl-kepatuhan') [BARU]
-│           ├── Tab 01. Jadwal Praktek Nakes (Kepatuhan jadwal dokter/nakes)
-│           ├── Tab 02. Penyelesaian Pengaduan (Kecepatan respon penanganan keluhan)
-│           ├── Tab 03. Umabl Peserta (Umpan Balik / Kepuasan Peserta JKN)
-│           ├── Tab 04. Update Display TT (Pemutakhiran ketersediaan tempat tidur)
-│           ├── Tab 05. Update TMO (Tempat Pelayanan Obat / Telemedicine)
-│           ├── Tab 06. Antrean & WTL (Waktu Tunggu Layanan poliklinik & farmasi)
-│           ├── Tab 07. Surkon (Penerbitan Surat Kontrol terjadwal)
-│           └── Tab 08. RME (Adopsi & Integrasi Rekam Medis Elektronik)
+│       └── 📋 Laporan Kepatuhan FKRTL (Tab ID: 'fkrtl-kepatuhan') [LENGKAP - 9 TAB SPREADSHEET]
+│           ├── Tab 00. Ringkasan Nilai Akhir (Konsolidasi 8 pilar standar mutu kepatuhan FKRTL dari nilai_kepatuhan_fkrtl)
+│           ├── Tab 01. Jadwal Praktik Nakes (Kepatuhan jadwal dokter/nakes dari 01_jadwal_praktik)
+│           ├── Tab 02. Penyelesaian Pengaduan (Kecepatan respon penanganan keluhan dari 02_penyelesaian_pengaduan_FKRTL)
+│           ├── Tab 03. Umbal Peserta (Umpan Balik / Kepuasan Peserta JKN KESSAN dari 03_umbal_peserta)
+│           ├── Tab 04. Update Display TT (Pemutakhiran ketersediaan tempat tidur harian dari 04_display_tt)
+│           ├── Tab 05. Update TMO (Tempat Pelayanan Obat / Jadwal Operasi dari 05_update_tmo)
+│           ├── Tab 06. Antrean MJKN & WTL (Waktu Tunggu Layanan Task 2-4 & Pemanfaatan Mobile JKN dari 06_antrean_waktu_tunggu)
+│           ├── Tab 07. Surkon (Penerbitan Surat Kontrol & SPRI bridging V-Claim dari 07_surkon_terbit)
+│           └── Tab 08. RME (Adopsi & Integrasi Rekam Medis Elektronik <= 7 hari dari 08_RME)
+│           └── Master Referensi RS (Metadata kelas, kabupaten, status dari ref_fkrtl)
 │   └── Rute Frontend: '/fkrtl'
 │
 ├── ⚙️ 4. Settings (Admin & Pengaturan)

@@ -1,0 +1,293 @@
+{
+  "nilai_kepatuhan_fkrtl": {
+    "id": "1jzNWEPc4yGodIQQJ8VgVsN3V3mgQ_WaIWDxyYgjhAkM",
+    "sheets": [
+      "Sheet1"
+    ],
+    "headers": [
+      "kode ppk",
+      "nama ppk",
+      "tipe ppk",
+      "Nilai akhir all",
+      "Nilai Akhir Jadwaldokter",
+      "Nilai Akhir Pengaduan",
+      "Nilai Akhir Kessan",
+      "Nilai Akhir Tt",
+      "Nilai Akhir Tmo",
+      "Nilai Akhir Surkon",
+      "Nilai Akhir Waktulayan",
+      "Nilai Akhir Rme",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS & KU Ranap",
+      "51.25",
+      "6.25",
+      "5",
+      "10",
+      "0",
+      "5",
+      "5",
+      "20",
+      "0",
+      "September\u00a02026"
+    ]
+  },
+  "01_jadwal_praktik": {
+    "id": "1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "kode_ppk",
+      "nama_ppk",
+      "Tipe Faskes",
+      "Capaian Nilai",
+      "Total Kunjungan",
+      "Tidak Sesuai",
+      "Sesuai",
+      "Persen Sesuai",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "1332R002",
+      "RSU dr. H. KOESNADI BONDOWOSO",
+      "RS Kelas B",
+      "25",
+      "42",
+      "31",
+      "11",
+      "26.19 %",
+      "25",
+      "January\u00a02026"
+    ]
+  },
+  "02_penyelesaian_pengaduan_FKRTL": {
+    "id": "1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "Kode FKRTL",
+      "Nama FKRTL",
+      "Tipe Faskes",
+      "Penilaian.",
+      "pengaduan 3 bulan terakhir (termasuk bulan N)",
+      "Jml Pengaduan Bln penilaian",
+      "Jml Pengaduan Ditindaklanjuti sesuai SLA",
+      "Jml Pengaduan Top 10 Tahun lalu",
+      "Jml Pengaduan Tidak Ditindaklanjuti",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "75",
+      "1",
+      "0.00",
+      "0.00",
+      "0.00",
+      "0.00",
+      "75.00",
+      "January\u00a02026"
+    ]
+  },
+  "03_umbal_peserta": {
+    "id": "148m1t4Z-jaagUFRuJ-ClCUdVvHQyLdSVjQ3fsxoRzj8",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "Kode FKRTL",
+      "Nama FKRTL",
+      "Tipe Faskes",
+      "Capaian",
+      "Jlh Kunjungan",
+      "Jlh Responden",
+      "Target",
+      "% Jlh Responden Target",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "100",
+      "6004",
+      "671",
+      "357",
+      "187.96%",
+      "100",
+      "January\u00a02026"
+    ]
+  },
+  "04_display_tt": {
+    "id": "10JV-1frRvBbUg3bgakoUiDnu-FaUT72-oE8i2THTSOk",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "Kode FKTP",
+      "Nama FKTP",
+      "Nmtypeppk",
+      "Capaian",
+      "Jumlah Update",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "100",
+      "26",
+      "100",
+      "January\u00a02026"
+    ]
+  },
+  "05_update_tmo": {
+    "id": "1zVl0oKveMyQTPOC9wYyWPb41apzK0xu9h2dVbh2gMkY",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "Kode FKRTL",
+      "Nama FKRTL",
+      "Nmtypeppk",
+      "Flagtarget",
+      "Capaian Nilai",
+      "Jumlah Jadwal Operasi",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "TMO",
+      "100",
+      "355",
+      "100.0",
+      "January\u00a02026"
+    ]
+  },
+  "06_antrean_waktu_tunggu": {
+    "id": "16bki76IUsf9BzsIxFBlmKMcN5qJ6Eh7-3oZWY0fLm4c",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "Kode FKTP",
+      "Nama FKTP",
+      "Tipe Faskes",
+      "Rata-rata Waktu task 2-4",
+      "Capaian",
+      "Kunjungan dengan MJKN",
+      "Kunjungan dengan Antrean Online",
+      "% Target Nasional",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "00 hari 00:38:35",
+      "100",
+      "2492",
+      "5059",
+      "30.00 %",
+      "100",
+      "January\u00a02026"
+    ]
+  },
+  "07_surkon_terbit": {
+    "id": "1zgkvAL2qu2pcUtphUNJtcqDsFZFWFmxm91Jivwp3PCM",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "Kode FKRTL",
+      "Nama FKRTL",
+      "Tipe Faskes",
+      "Capaian",
+      "Totalsep",
+      "Persentase",
+      "Sesuai",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "75",
+      "3817",
+      "83.76%",
+      "3197",
+      "75",
+      "January\u00a02026"
+    ]
+  },
+  "08_RME": {
+    "id": "1pFTad-Hwl8PqVxgf5xiJn0lE63ssI9ZeI4VLpLwtl7c",
+    "sheets": [
+      "Sheet 1"
+    ],
+    "headers": [
+      "kode FKRTL",
+      "nama FKRTL",
+      "TIpe Faskes",
+      "Capaian",
+      "Jlh Sep Ritl > 7 hari",
+      "Jlh Sep Ritl < 7 hari",
+      "Jlh Sep Rjtl > 7 hari",
+      "Jlh Sep Rjtl < 7 hari",
+      "Capaian",
+      "bulan"
+    ],
+    "sample_row": [
+      "0188R003",
+      "RS WIJAYA KUSUMA",
+      "RS Swasta Setara Type C",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "1/31/2026"
+    ]
+  },
+  "ref_fkrtl": {
+    "id": "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs",
+    "sheets": [
+      "RS"
+    ],
+    "headers": [
+      "No",
+      "kode_ppk",
+      "kabupaten",
+      "nama_ppk",
+      "kelas_ppk",
+      "kepemilikan",
+      "vendor",
+      "keterangan"
+    ],
+    "sample_row": [
+      "1",
+      "1329R001",
+      "Jember",
+      "RSD DR SOEBANDI JEMBER",
+      "B",
+      "Pemda",
+      "IT RS (dikembangkan sendiri)"
+    ]
+  }
+}

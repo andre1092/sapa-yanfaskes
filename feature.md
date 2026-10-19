@@ -96,15 +96,16 @@
   - **4 Kartu Ringkasan KPI**: Rata-rata Capaian (skala 100), Kontribusi Nilai Riil (bobot 20%), Pengaduan Bulan Penilaian (Sesuai SLA vs Tidak Ditindaklanjuti), dan Status Kepatuhan RS (Tercapai nilai 100 vs Belum Tercapai).
   - **Grafik Tren Bulanan (Line Chart)**: Kurva SVG interaktif dengan garis target 100 poin dan tooltip detail bulanan.
   - **Tabel Matriks Kepatuhan Pengaduan**: Kolom No, Nama Faskes, Tipe Faskes, Pengaduan 3 Bln Terakhir, Jml Pengaduan Bln Penilaian, Jml Pengaduan Ditindaklanjuti Sesuai SLA, Jml Pengaduan Top 10 Thn Lalu, Jml Pengaduan Tidak Ditindaklanjuti, Capaian, dan Status (Tercapai / Belum Tercapai).
-- Dilengkapi **8 Segmented Glassmorphism Tabs**:
-  1. 👨‍⚕️ **01. Jadwal Praktek Nakes**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes terintegrasi live Google Sheets (Target: 100%, Bobot: 25%).
-  2. 📢 **02. Penyelesaian Pengaduan**: Tindak lanjut dan penyelesaian pengaduan sesuai SLA 1-3 hari kerja di Aplikasi SIPP terintegrasi live Google Sheets (Target: 100%, Bobot: 20%).
-  3. 💬 **03. Umabl Peserta**: Evaluasi Indeks Kepuasan Peserta (IKP) melalui instrumen KESSAN (Target: ≥88%).
-  4. 🛏️ **04. Update Display TT**: Pemutakhiran real-time integrasi ketersediaan tempat tidur rawat inap (Target: ≥95%).
-  5. 💊 **05. Update TMO**: Pemutakhiran Tempat Pelayanan Obat kronis/PRB dan Telemedicine (Target: ≥85%).
-  6. ⏱️ **06. Antrean & WTL**: Pemantauan Waktu Tunggu Layanan poliklinik & farmasi serta integrasi sistem antrol (Target: ≥85%).
-  7. 📝 **07. Surkon**: Penerbitan Surat Kontrol terjadwal melalui bridging sistem elektronik (Target: ≥90%).
-  8. 📑 **08. RME**: Tingkat integrasi Rekam Medis Elektronik dengan platform SatuSehat & BPJS Kesehatan (Target: ≥95%).
+- Dilengkapi **9 Segmented Glassmorphism Tabs Terintegrasi Google Drive Folder**:
+  0. 🏆 **00. Ringkasan Nilai Akhir**: Konsolidasi capaian 8 pilar standar mutu kepatuhan FKRTL terintegrasi live dari spreadsheet `nilai_kepatuhan_fkrtl` (Target Nasional: ≥85.00 Poin).
+  1. 👨‍⚕️ **01. Jadwal Praktik Nakes**: Monitoring kesesuaian jadwal praktek dokter spesialis / nakes terintegrasi live dari subfolder `01 JADWAL PRAKTIK NAKES/01_jadwal_praktik` (Target: 100%, Bobot: 25%).
+  2. 📢 **02. Penyelesaian Pengaduan**: Tindak lanjut dan penyelesaian pengaduan sesuai SLA 1-3 hari kerja di Aplikasi SIPP terintegrasi live dari subfolder `02 PENYELESAIAN PENGADUAN/02_penyelesaian_pengaduan_FKRTL` (Target: 100%, Bobot: 20%).
+  3. 💬 **03. Umbal Peserta (KESSAN)**: Evaluasi Indeks Kepuasan Peserta (IKP) melalui instrumen KESSAN terintegrasi live dari subfolder `03 UMBAL PESERTA/03_umbal_peserta` (Target: ≥100% target responden, Bobot: 10%).
+  4. 🛏️ **04. Update Display TT**: Pemutakhiran ketersediaan tempat tidur rawat inap terintegrasi live dari subfolder `04 UPDATE DISPLAY TT/04_display_tt` (Target: ≥25 hari, Bobot: 10%).
+  5. 💊 **05. Update TMO**: Pemutakhiran Tempat Pelayanan Obat kronis/PRB dan Jadwal Tindakan Operasi terintegrasi live dari subfolder `05 UPDATE TMO/05_update_tmo` (Target: 100%, Bobot: 5%).
+  6. ⏱️ **06. Antrean MJKN & WTL**: Pemantauan Waktu Tunggu Layanan Task 2-4 dan rasio adopsi antrean Mobile JKN terintegrasi live dari subfolder `06 ANTREAN MJKN DAN WAKTU TUNGGU/06_antrean_waktu_tunggu` (Target: 100%, Bobot: 20%).
+  7. 📝 **07. Surkon**: Penerbitan Surat Kontrol & SPRI bridging sistem V-Claim BPJS Kesehatan terintegrasi live dari subfolder `07 SURKON/07_surkon_terbit` (Target: ≥90%, Bobot: 5%).
+  8. 📑 **08. RME**: Tingkat integrasi dan adopsi Rekam Medis Elektronik rawat jalan & rawat inap ≤ 7 hari terintegrasi live dari subfolder `08 RME/08_RME` (Target: ≥95%, Bobot: 5%).
 
 ### E. Modul Pemanfaatan Antrol FKTP (Fasilitas Kesehatan Tingkat Pertama) [STATUS: DALAM PENGEMBANGAN]
 - Terletak pada menu **FKTP > Pemanfaatan Antrol** (`fktp-antrol`).

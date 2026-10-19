@@ -51,6 +51,26 @@ except Exception:
         async def set_tenant_context(session, tenant_id: str, user_id: str, is_superadmin: bool = False):
             pass
 
+try:
+    from .kepatuhan_service import (
+        process_ringkasan_kepatuhan,
+        process_tmo_kepatuhan,
+        process_antrean_wtl_kepatuhan,
+        process_surkon_kepatuhan,
+        process_rme_kepatuhan
+    )
+except Exception:
+    try:
+        from kepatuhan_service import (
+            process_ringkasan_kepatuhan,
+            process_tmo_kepatuhan,
+            process_antrean_wtl_kepatuhan,
+            process_surkon_kepatuhan,
+            process_rme_kepatuhan
+        )
+    except Exception as e:
+        pass
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("sapa-api")
 
@@ -2393,6 +2413,7 @@ async def get_fkrtl_kepatuhan_pengaduan(
 
 
 @app.get("/api/v1/fkrtl-kepatuhan/umabl")
+@app.get("/api/v1/fkrtl-kepatuhan/umbal")
 async def get_fkrtl_kepatuhan_umabl(
     kabupaten: Optional[str] = None,
     nama_ppk: Optional[str] = None,
@@ -3030,6 +3051,122 @@ async def get_fkrtl_kepatuhan_display_tt(
             status_code=500,
             detail=f"Gagal memproses data Laporan Kepatuhan Pembaruan (Update) Data Ketersediaan Tempat Tidur: {str(e)}"
         )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/ringkasan")
+async def get_fkrtl_kepatuhan_ringkasan(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        return process_ringkasan_kepatuhan(
+            kabupaten=kabupaten,
+            nama_ppk=nama_ppk,
+            bulan=bulan,
+            tipe_faskes=tipe_faskes
+        )
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_ringkasan: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Ringkasan Nilai Kepatuhan FKRTL: {str(e)}"
+        )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/tmo")
+async def get_fkrtl_kepatuhan_tmo(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        return process_tmo_kepatuhan(
+            kabupaten=kabupaten,
+            nama_ppk=nama_ppk,
+            bulan=bulan,
+            tipe_faskes=tipe_faskes
+        )
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_tmo: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Laporan Kepatuhan Update TMO: {str(e)}"
+        )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/antrean-wtl")
+async def get_fkrtl_kepatuhan_antrean_wtl(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        return process_antrean_wtl_kepatuhan(
+            kabupaten=kabupaten,
+            nama_ppk=nama_ppk,
+            bulan=bulan,
+            tipe_faskes=tipe_faskes
+        )
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_antrean_wtl: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Laporan Kepatuhan Antrean MJKN dan Waktu Tunggu Layanan: {str(e)}"
+        )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/surkon")
+async def get_fkrtl_kepatuhan_surkon(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        return process_surkon_kepatuhan(
+            kabupaten=kabupaten,
+            nama_ppk=nama_ppk,
+            bulan=bulan,
+            tipe_faskes=tipe_faskes
+        )
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_surkon: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Laporan Kepatuhan Surat Kontrol (SURKON): {str(e)}"
+        )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/rme")
+async def get_fkrtl_kepatuhan_rme(
+    kabupaten: Optional[str] = None,
+    nama_ppk: Optional[str] = None,
+    bulan: Optional[str] = None,
+    tipe_faskes: Optional[str] = None,
+    user=Depends(require_auth)
+):
+    try:
+        return process_rme_kepatuhan(
+            kabupaten=kabupaten,
+            nama_ppk=nama_ppk,
+            bulan=bulan,
+            tipe_faskes=tipe_faskes
+        )
+    except Exception as e:
+        logger.error(f"Error in get_fkrtl_kepatuhan_rme: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal memproses data Laporan Kepatuhan Rekam Medis Elektronik (RME): {str(e)}"
+        )
+
 
 # ==============================================================================
 # --- FKTP PEMANFAATAN ANTROL (FASILITAS KESEHATAN TINGKAT PERTAMA) ---
