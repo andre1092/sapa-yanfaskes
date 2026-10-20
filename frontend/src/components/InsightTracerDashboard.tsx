@@ -155,10 +155,12 @@ export const InsightTracerDashboard: React.FC = () => {
           isSidebarHovered ? 'justify-between px-7' : 'justify-center px-0'
         }`}>
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-[#6C5DD3] to-[#3F8CFF] flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+            <div className="w-10 h-10 shrink-0 rounded-xl bg-white/10 p-1 flex items-center justify-center shadow-md border border-white/15 overflow-hidden">
+              <img
+                src="/logo-sapa-yanfaskes.png"
+                alt="Logo SAPA Yanfaskes"
+                className="w-full h-full object-contain"
+              />
             </div>
             {isSidebarHovered && (
               <span className="font-bold text-lg tracking-tight text-white truncate transition-opacity duration-200">

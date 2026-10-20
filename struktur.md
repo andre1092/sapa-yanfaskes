@@ -14,11 +14,11 @@ Sesuai aturan sistem, struktur menu wajib terdiri dari 5 pilar utama:
 SAPA YANFASKES (SISTEM TATA LETAK TUNGGAL NON-OVERLAPPING)
 │
 ├── 🔐 0. Gerbang Autentikasi (Official Login Page — Split-Screen Enterprise BPJS Green)
-│   └── Deskripsi: Halaman masuk resmi bertata letak Split-Screen Enterprise (kiri: panel identitas hijau resmi BPJS #009B4D non-navy/non-AI, kanan: formulir masuk bersih putih) dengan validasi kredensial pengguna, remember me, toggle show/hide password, tanpa pilihan SSO, dan verifikasi keamanan resmi Cloudflare Turnstile.
+│   └── Deskripsi: Halaman masuk resmi bertata letak Split-Screen Enterprise dengan Logo Resmi SAPA Yanfaskes (Nano Banana 2.1 high-res emblem), panel identitas hijau resmi BPJS #009B4D non-navy/non-AI, formulir masuk bersih putih dengan validasi kredensial pengguna, remember me, toggle show/hide password, tanpa pilihan SSO, dan verifikasi keamanan resmi Cloudflare Turnstile.
 │   └── Komponen: LoginPage.tsx & CloudflareTurnstile.tsx
 │
 └── 📊 1. SAPA Yanfaskes Dashboard (Root Layout Utama Aplikasi)
-    └── Komponen Induk: InsightTracerDashboard.tsx (Satu-satunya Sidebar Auto-Hide/Hover-Expand & Header Tunggal)
+    └── Komponen Induk: InsightTracerDashboard.tsx (Satu-satunya Sidebar Auto-Hide/Hover-Expand dengan Logo Resmi SAPA Yanfaskes Nano Banana 2.1 & Header Tunggal)
     │
     ├── 🧭 A. ACTION CENTRE
     │   └── 🏠 Home: Ringkasan KPI eksekutif (Touchpoints, Installs, Peta Distribusi Geografis, Breakdown Media Table).

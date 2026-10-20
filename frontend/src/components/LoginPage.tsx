@@ -154,19 +154,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccessLogin }) => {
         {/* Brand & Emblem Header */}
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-md p-1.5 shrink-0">
-              {/* Emblem Lambang Resmi BPJS Kesehatan */}
-              <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
-                <circle cx="50" cy="50" r="44" stroke="#009B4D" strokeWidth="8" />
-                <path
-                  d="M50 20C33.4 20 20 33.4 20 50C20 66.6 33.4 80 50 80C66.6 80 80 66.6 80 50"
-                  stroke="#00529C"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                />
-                <circle cx="50" cy="50" r="14" fill="#009B4D" />
-                <path d="M45 42L55 50L45 58" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-lg p-1.5 shrink-0 border border-white/40">
+              <img
+                src="/logo-sapa-yanfaskes.png"
+                alt="Logo SAPA Yanfaskes"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <span className="text-xs uppercase tracking-wider font-bold text-emerald-100 block">
