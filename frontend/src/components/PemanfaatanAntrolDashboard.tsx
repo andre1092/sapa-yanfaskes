@@ -3,7 +3,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useFkrtlAntrolData } from '../hooks/useDashboardData';
 import type { FkrtlFilterParams } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
-import { exportToCSV, exportToExcel, exportToJPEG } from '../utils/exportUtils';
+import { exportToCSV, exportToExcel, exportToJPEG, POLI_EXPORT_COLUMNS } from '../utils/exportUtils';
 import { useSyncStore } from '../store/syncStore';
 
 const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
@@ -37,12 +37,18 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       if (filters.nama_rs && filters.nama_rs !== '(All)') params.append('nama_rs', filters.nama_rs);
       if (filters.bulan && filters.bulan !== '(All)') params.append('bulan', filters.bulan);
       if (filters.tahun && filters.tahun !== '(All)') params.append('tahun', filters.tahun);
-      if (filters.sumber && filters.sumber !== 'All Sumber' && filters.sumber !== 'Semua Sumber') params.append('sumber', filters.sumber);
+      if (filters.sumber) params.append('sumber', filters.sumber);
+      if (filters.kelas_rs && filters.kelas_rs !== '(All)') params.append('kelas_rs', filters.kelas_rs);
 
       const res = await apiClient.get(`/api/v1/fkrtl-export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const exportData = res.data.data || [];
+      if (exportData.length === 0) {
+        alert(res.data.message || 'Tidak ada data untuk filter yang dipilih.');
+        setDownloadingType(null);
+        return;
+      }
 
       if (format === 'csv') {
         exportToCSV(exportData, type);
@@ -163,8 +169,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
   const isNoData =
     !data ||
-    data.status === 'no_data' ||
-    ((data.trend_per_bulan?.length ?? 0) === 0 && (data.top_faskes?.length ?? 0) === 0);
+    ((data.trend_per_bulan?.length ?? 0) === 0 &&
+      (data.top_faskes?.length ?? 0) === 0 &&
+      (data.top_poli?.length ?? 0) === 0);
 
   const filterOptions = {
     kabupaten: data?.filter_options?.kabupaten || ['(All)', 'Bondowoso', 'Jember', 'Lumajang'],
@@ -997,7 +1004,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           Grafik Batang Horisontal Nama Poli
                         </h3>
                         <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
-                          Capaian pemanfaatan antrol berdasarkan Poliklinik BPJS
+                          Capaian pemanfaatan antrol berdasarkan Poliklinik BPJS{sortedPoli.length > 0 ? ` • ${sortedPoli.length} poli` : ''}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -1050,10 +1057,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
                       {sortedPoli.length === 0 ? (
                         <div className="w-full py-16 text-center text-[#6573a1] dark:text-slate-400 text-xs italic">
-                          Tidak ada data Poli
+                          {data?.poli_message || 'Tidak ada data poli untuk filter yang dipilih.'}
                         </div>
                       ) : (
-                        sortedPoli.map((p, idx) => {
+                        sortedPoli.map((p) => {
                           const val = p.avg_capaian ?? 0;
                           const widthPercent = Math.min(Math.max(val, 0), 100);
                           const isTarget95 = val >= 95;
@@ -1062,12 +1069,12 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 
                           return (
-                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                            <div key={p.kode_poli || p.poli} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
                               {/* Nama Poli (Sumbu Y) */}
                               <div className="w-32 sm:w-44 shrink-0 text-right">
                                 <span 
                                   className="text-xs font-bold text-[#2b4390] dark:text-slate-300 group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors line-clamp-1 block"
-                                  title={p.poli}
+                                  title={p.kode_poli ? `${p.poli} (${p.kode_poli})` : p.poli}
                                 >
                                   {p.poli}
                                 </span>
@@ -1176,29 +1183,19 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
             <thead>
               <tr>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Kabupaten</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Nmppk</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Nama Poli</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Flag Bridging Antrean</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>% Antrol All Sumber</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Flag Mobile JKN</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>% Antrol MJKN</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Flag Tidak Antrol</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>Total SEP</th>
+                {POLI_EXPORT_COLUMNS.map(column => (
+                  <th key={column.key} style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>{column.header}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {jpegData.data.map((row, idx) => (
                 <tr key={idx}>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px' }}>{row.Kabupaten}</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px' }}>{row.Nama_RS}</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px' }}>{row.Nama_Poli}</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.flag_bridging}</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.all_sumber_pct.toFixed(2)}%</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.flag_mjkn}</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.mjkn_pct.toFixed(2)}%</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.flag_tidak_antrol}</td>
-                  <td style={{ border: '1px solid #4D94FF', padding: '6px', textAlign: 'right' }}>{row.total_sep}</td>
+                  {POLI_EXPORT_COLUMNS.map(column => (
+                    <td key={column.key} style={{ border: '1px solid #4D94FF', padding: '6px' }}>
+                      {column.key === 'capaian_pct' ? formatPercentID(row[column.key]) : row[column.key]}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

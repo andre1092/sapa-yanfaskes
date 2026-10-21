@@ -2,6 +2,22 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { toJpeg } from 'html-to-image';
 
+export const POLI_EXPORT_COLUMNS = [
+  { header: 'Periode', key: 'Periode', width: 14 },
+  { header: 'Kode Faskes', key: 'Kdppk', width: 16 },
+  { header: 'Nama Faskes', key: 'Nama_RS', width: 36 },
+  { header: 'Kode Poli', key: 'Kode_Poli', width: 14 },
+  { header: 'Nama Poli', key: 'Nama_Poli', width: 28 },
+  { header: 'Sumber Antrean', key: 'Sumber', width: 20 },
+  { header: 'Jumlah Antrean', key: 'jumlah_antrean', width: 20 },
+  { header: 'SEP dengan Antrol', key: 'sep_antrol', width: 22 },
+  { header: 'SEP RJTL', key: 'sep_rjtl', width: 18 },
+  { header: 'Capaian (%)', key: 'capaian_pct', width: 18 },
+  { header: 'Pembaruan Dashboard', key: 'last_update', width: 25 },
+];
+
+const csvCell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+
 export const exportToCSV = (data: any[], type: 'faskes' | 'poli') => {
   if (data.length === 0) return;
 
@@ -15,12 +31,9 @@ export const exportToCSV = (data: any[], type: 'faskes' | 'poli') => {
 `;
     });
   } else {
-    csvContent += 'Kabupaten,Nmppk,Nama Poli,Flag Bridging Antrean,% Antrol All Sumber,Flag Mobile JKN,% Antrol MJKN,Flag Tidak Antrol,Total SEP\\n';
+    csvContent = POLI_EXPORT_COLUMNS.map(column => csvCell(column.header)).join(',') + '\r\n';
     data.forEach(row => {
-      const allPct = typeof row.all_sumber_pct === 'number' ? row.all_sumber_pct.toFixed(2) + '%' : row.all_sumber_pct;
-      const mjknPct = typeof row.mjkn_pct === 'number' ? row.mjkn_pct.toFixed(2) + '%' : row.mjkn_pct;
-      csvContent += `"${row.Kabupaten}","${row.Nama_RS}","${row.Nama_Poli}","${row.flag_bridging}","${allPct}","${row.flag_mjkn}","${mjknPct}","${row.flag_tidak_antrol}","${row.total_sep}"
-`;
+      csvContent += POLI_EXPORT_COLUMNS.map(column => csvCell(row[column.key])).join(',') + '\r\n';
     });
   }
 
@@ -94,17 +107,7 @@ export const exportToExcel = async (data: any[], type: 'faskes' | 'poli') => {
       }
     });
   } else {
-    sheet.columns = [
-      { header: 'Kabupaten', key: 'kabupaten', width: 20 },
-      { header: 'Nmppk', key: 'nmppk', width: 35 },
-      { header: 'Nama Poli', key: 'nama_poli', width: 25 },
-      { header: 'Flag Bridging Antrean', key: 'flag_bridging', width: 20 },
-      { header: '% Antrol All Sumber', key: 'all_pct', width: 20 },
-      { header: 'Flag Mobile JKN', key: 'flag_mjkn', width: 15 },
-      { header: '% Antrol MJKN', key: 'mjkn_pct', width: 15 },
-      { header: 'Flag Tidak Antrol', key: 'flag_tidak', width: 20 },
-      { header: 'Total SEP', key: 'total_sep', width: 15 }
-    ];
+    sheet.columns = POLI_EXPORT_COLUMNS;
 
     const headerRow = sheet.getRow(1);
     headerRow.height = 30;
@@ -121,20 +124,8 @@ export const exportToExcel = async (data: any[], type: 'faskes' | 'poli') => {
     });
 
     data.forEach(row => {
-      const dbRow = sheet.addRow({
-        kabupaten: row.Kabupaten,
-        nmppk: row.Nama_RS,
-        nama_poli: row.Nama_Poli,
-        flag_bridging: row.flag_bridging,
-        all_pct: row.all_sumber_pct / 100,
-        flag_mjkn: row.flag_mjkn,
-        mjkn_pct: row.mjkn_pct / 100,
-        flag_tidak: row.flag_tidak_antrol,
-        total_sep: row.total_sep
-      });
-
-      dbRow.getCell(5).numFmt = '0.00%';
-      dbRow.getCell(7).numFmt = '0.00%';
+      const dbRow = sheet.addRow({ ...row, capaian_pct: row.capaian_pct / 100 });
+      dbRow.getCell(10).numFmt = '0.00%';
 
       dbRow.eachCell((cell) => {
         cell.font = { name: 'Arial', size: 10 };

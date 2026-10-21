@@ -67,16 +67,22 @@ Berdasarkan standarisasi evaluasi integrasi sistem antrean online BPJS Kesehatan
 - **Struktur Sheet & GID Resmi**:
   1. `DB_FASKES` (GID: `0`): 25 baris faskes (kolom: Kdppk, Kabupaten, Nama_FKRTL, Kelas_RS, Kepemilikan, Jenis_PPK, Vendor FKRTL).
   2. `DB_LAP_ANTROL_FKRTL` (GID: `861718582`): 2.052 baris (kolom: Timestamp, Kdppk, Faskes, Kdkr, Kdkc, Cabang, Capaian, Jumlah Antrian by Sumber, Jumlah Peserta Jkn, Jumlah Sep Rjtl, Sumber).
-  3. `antrol_by_poli` (GID: `565078682`): 1.371 baris (kolom: Timestamp, Kdppk, Nmppk, Politujuan, Flag Bridging Antrean, % Antrol All Sumber, Flag Mobile JKN, % Antrol MJKN, Flag Tidak Antrol, Total SEP, kode_unique, jml_sep_all).
-  4. `ref_poli` (GID: `1213587497`): 234 baris (kolom: Politujuan, NMPOLI, Status_aktif).
+  3. `per_poli` (GID: `218599645`): Periode, Kode Kepwil, Kode Cabang, Nama Cabang, Kdppk, Nmppk, Kode Poli, Nama Poli, Jenis PPK, Kelas Faskes, Sumber Antrean, Validasi Poli, Capaian (%), Waktu Pengambilan, Last Update Dashboard, Jumlah Antrean Sesuai Sumber, Jumlah SEP dengan Antrol, Jumlah SEP RJTL.
 
-### Standar Format Timestamp & Aturan Snapshot
-- **Format Timestamp Resmi**: `MM/DD/YYYY HH:MM:SS` (contoh: `09/24/2026 03:14:56` atau `01/31/2026 23:59:59`).
-- **Snapshot Bulanan Terbaru**: Untuk grafik batang horisontal bulanan, nilai agregasi per bulan dihitung menggunakan baris yang memiliki nilai Timestamp Terbaru (`max(Timestamp)`) pada bulan bersangkutan.
-- **Last Update Global**: Mengambil timestamp mutakhir dari keseluruhan dataset spreadsheet, diformat presisi `MM/DD/YYYY HH:MM:SS`.
+### Periode dan Snapshot Poli
+- `Periode` berformat `YYYY-MM`; tidak diturunkan dari waktu pengambilan.
+- Snapshot terbaru dipilih per periode, faskes, sumber, dan validasi berdasarkan `Last Update Dashboard` lalu `Waktu Pengambilan`. Pengambilan tiap faskes dapat berbeda waktu.
+- Kode faskes/poli dipertahankan sebagai string, termasuk nol di depan. Nama, kabupaten, dan kelas faskes dihubungkan ke `DB_FASKES` melalui `Kdppk`; nilai `(All)` pada kolom lingkup bukan atribut faskes.
+- Hanya validasi `Include` dan sumber yang dipilih yang digunakan; `All Sumber` memerlukan baris tersendiri dan tidak disimpulkan dari Mobile JKN.
+- Capaian Mobile JKN per poli = jumlah seluruh antrean sesuai sumber / jumlah seluruh SEP dengan Antrol × 100. Capaian All Sumber menggunakan SEP RJTL sebagai penyebut. Persentase baris tidak dirata-ratakan; pembagi nol menghasilkan 0.
+- Data poli kosong/tidak valid ditampilkan dengan keterangan, tanpa data contoh. Ekspor menggunakan baris dan filter yang sama dengan grafik.
+- Data awal Oktober 2026 mencakup 342 baris, 25 faskes, 33 poli, khusus Mobile JKN.
+
+### Timestamp Ringkasan Faskes
+- `DB_LAP_ANTROL_FKRTL` tetap memakai snapshot bulanan dan timestamp aslinya; perubahan poli tidak mengubah perhitungan ringkasan faskes.
 
 ### Strategi Optimasi Data Engine (Sub-2-Second)
-- **Parallel ThreadPoolExecutor**: Unduhan 4 tab CSV dilakukan secara paralel dalam 1.09 detik.
+- **Parallel ThreadPoolExecutor**: Pembacaan 3 tab CSV dilakukan secara paralel dalam 1.09 detik.
 - **In-Memory Polars DataFrame Cache**: Request berikutnya diproses seketika (< 20ms) dengan Polars vectorized aggregations.
 - **Client Cache**: TanStack React Query pada sisi frontend (`staleTime: 3 menit`).
 
