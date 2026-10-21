@@ -70,6 +70,25 @@
   - **Console Tab**: Bebas error (**0 Console Errors**, **0 Warnings**).
   - **Network Tab**: 112 request sukses tanpa error 4xx/5xx (**0 Failed Requests**).
 
+### E. Routing Subpath & Sinkronisasi URL Langsung `/kepatuhanfkrtl` [STATUS: AKTIF / LIVE]
+- **Direct Deep-Linking Subpath**:
+  - Mengakses `https://sapa-yanfaskes.vercel.app/kepatuhanfkrtl` (atau `/kepatuhan-fkrtl`) langsung mengaktifkan dan membuka modul **Capaian Kepatuhan FKRTL** beserta tab default **Ringkasan Nilai Akhir**.
+  - Mengintegrasikan fungsi penentu rute awal `getMenuFromCurrentPath()` pada `InsightTracerDashboard.tsx` serta mempertahankan target navigasi setelah verifikasi login berhasil.
+- **Sinkronisasi Dua Arah HTML5 History API**:
+  - Menggunakan `window.history.pushState` saat pengguna mengklik menu di sidebar, otomatis memperbarui address bar browser ke `/kepatuhanfkrtl` tanpa memicu refresh halaman.
+  - Penanganan event `popstate` menjamin tombol *Back* dan *Forward* pada peramban berfungsi secara deterministik dan presisi.
+- **Konfigurasi Serverless Wildcard Rewrite**:
+  - Didukung konfigurasi `vercel.json` rewrite `/(.*)` ke `/frontend/index.html` untuk memastikan seluruh subpath URL di-serve dengan status HTTP 200 tanpa error 404 pada Vercel edge network.
+
+### F. Pembaruan Data Terkini & Agregasi Multi-Bulan Tab Ringkasan FKRTL [STATUS: AKTIF / LIVE]
+- **Integrasi Data Paling Update (Oktober 2026)**:
+  - Tersambung langsung ke Google Spreadsheet `1jzNWEPc4yGodIQQJ8VgVsN3V3mgQ_WaIWDxyYgjhAkM` dengan penanganan otomatis bulan terbaru (**Oktober 2026** rata-rata nilai akhir: 52.20 poin, 25 fasilitas kesehatan).
+- **Resolusi Isolasi Data & Anti-Duplikasi Faskes**:
+  - Memperbaiki backend `api/kepatuhan_service.py` untuk mengaktifkan pemfilteran parameter `bulan` (mencegah penumpukan 75 baris campuran 3 bulan ke dalam 1 tabel).
+  - Setiap faskes ditampilkan tepat 1 baris per bulan aktif (nomor urut 1–25 tersortir dari skor tertinggi).
+- **Grafik Tren Bulanan Multi-Point Kronologis**:
+  - Grafik garis SVG bulanan kini secara dinamis menampilkan 3 titik tren kronologis kalender (**Agustus 2026**, **September 2026**, **Oktober 2026**) lengkap dengan kurva area gradien BPJS, indikator target putus-putus $\ge 85$ poin, dan interaksi tooltip interaktif saat di-hover.
+
 ---
 
 ## 2. Fitur Analisis & Visualisasi Data (Data Analytics & Visualization)

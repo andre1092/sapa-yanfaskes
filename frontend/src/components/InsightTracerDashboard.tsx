@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
 import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
@@ -8,6 +8,41 @@ import { DataIntegrationView } from './DataIntegrationView';
 import { AdminSettings } from './AdminSettings';
 import { useAuthStore } from '../store/authStore';
 import { useLogStore } from '../store/logStore';
+
+// Pemetaan Rute URL ke Menu Dashboard
+const ROUTE_MAP: Record<string, string> = {
+  '/kepatuhanfkrtl': 'Capaian Kepatuhan FKRTL',
+  '/kepatuhan-fkrtl': 'Capaian Kepatuhan FKRTL',
+  '/antrolfkrtl': 'Pemanfaatan Antrol FKRTL',
+  '/antrol-fkrtl': 'Pemanfaatan Antrol FKRTL',
+  '/kepatuhanfktp': 'Capaian Kepatuhan FKTP',
+  '/kepatuhan-fktp': 'Capaian Kepatuhan FKTP',
+  '/user': 'User',
+  '/logs': 'Logs',
+  '/integration': 'Integration',
+  '/validation-rules': 'Validation Rules',
+  '/home': 'Home',
+};
+
+const MENU_TO_ROUTE: Record<string, string> = {
+  'Capaian Kepatuhan FKRTL': '/kepatuhanfkrtl',
+  'Pemanfaatan Antrol FKRTL': '/antrolfkrtl',
+  'Capaian Kepatuhan FKTP': '/kepatuhanfktp',
+  'User': '/user',
+  'Logs': '/logs',
+  'Integration': '/integration',
+  'Validation Rules': '/validation-rules',
+  'Home': '/',
+};
+
+const getMenuFromCurrentPath = (): string => {
+  if (typeof window === 'undefined') return 'Capaian Kepatuhan FKRTL';
+  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
+  if (path.includes('kepatuhanfkrtl') || path.includes('kepatuhan-fkrtl')) {
+    return 'Capaian Kepatuhan FKRTL';
+  }
+  return ROUTE_MAP[path] || 'Capaian Kepatuhan FKRTL';
+};
 
 // Sub-komponen SVG World Map untuk Geographical Distribution
 const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
@@ -81,12 +116,39 @@ export const InsightTracerDashboard: React.FC = () => {
   const { user, logoutUser } = useAuthStore();
   const { addLog } = useLogStore();
   const [geoTab, setGeoTab] = useState<'Clicks' | 'Organic Installs' | 'Non-Organic Installs'>('Clicks');
-  const [activeMenu, setActiveMenu] = useState('Capaian Kepatuhan FKRTL');
+  const [activeMenu, setActiveMenu] = useState<string>(getMenuFromCurrentPath);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveMenu(getMenuFromCurrentPath());
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    // Sinkronisasi rute URL awal jika membuka /kepatuhanfkrtl
+    const initial = getMenuFromCurrentPath();
+    setActiveMenu(initial);
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname.toLowerCase();
+      if (initial === 'Capaian Kepatuhan FKRTL' && (currentPath === '/kepatuhanfkrtl' || currentPath === '/kepatuhan-fkrtl')) {
+        if (window.location.pathname !== '/kepatuhanfkrtl') {
+          window.history.replaceState({ menu: 'Capaian Kepatuhan FKRTL' }, '', '/kepatuhanfkrtl');
+        }
+      }
+    }
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleMenuSelect = (menuName: string) => {
     setActiveMenu(menuName);
+    if (typeof window !== 'undefined') {
+      const targetPath = MENU_TO_ROUTE[menuName] || `/${menuName.toLowerCase().replace(/\s+/g, '-')}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({ menu: menuName }, '', targetPath);
+      }
+    }
     if (user) {
       addLog({
         userId: user.id || 'usr_001',

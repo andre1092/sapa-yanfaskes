@@ -24,9 +24,9 @@ SAPA YANFASKES (SISTEM TATA LETAK TUNGGAL NON-OVERLAPPING)
     │   └── 🏠 Home: Ringkasan KPI eksekutif (Touchpoints, Installs, Peta Distribusi Geografis, Breakdown Media Table).
     │
     ├── 📈 B. DASHBOARD
-    │   ├── 🏢 Capaian Kepatuhan FKRTL: Modul 9 Tab Kepatuhan Google Drive resmi (Ringkasan Nilai Akhir, Nakes, Pengaduan, Umbal, Display TT, TMO, Antrean & WTL, Surkon, RME) dengan diagram garis tren seragam.
-    │   ├── 📊 Pemanfaatan Antrol FKRTL: Analisis tren bulanan antrol dan distribusi faskes serta poliklinik.
-    │   └── 🏥 Capaian Kepatuhan FKTP: Modul Pemanfaatan Antrol FKTP (KPI, diagram garis tren bulanan, matriks capaian faskes, dan hover popover data antrean).
+    │   ├── 🏢 Capaian Kepatuhan FKRTL (Rute URL: /kepatuhanfkrtl): Modul 9 Tab Kepatuhan Google Drive resmi (Ringkasan Nilai Akhir, Nakes, Pengaduan, Umbal, Display TT, TMO, Antrean & WTL, Surkon, RME) dengan diagram garis tren seragam dan data terupdate per Oktober 2026.
+    │   ├── 📊 Pemanfaatan Antrol FKRTL (Rute URL: /antrolfkrtl): Analisis tren bulanan antrol dan distribusi faskes serta poliklinik.
+    │   └── 🏥 Capaian Kepatuhan FKTP (Rute URL: /kepatuhanfktp): Modul Pemanfaatan Antrol FKTP (KPI, diagram garis tren bulanan, matriks capaian faskes, dan hover popover data antrean).
     │
     ├── ⚡ C. ENGAGEMENTS
     │   └── Activity, Touchpoints, Installs & Uninstalls, Agency, Fraud.

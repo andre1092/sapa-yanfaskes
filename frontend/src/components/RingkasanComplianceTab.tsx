@@ -77,7 +77,7 @@ const fmtNum = (val: unknown, decimals: number = 1): string => {
 export const RingkasanComplianceTab: React.FC = () => {
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  const [selectedBulan, setSelectedBulan] = useState<string>('October 2026');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -105,6 +105,8 @@ export const RingkasanComplianceTab: React.FC = () => {
       }
       if (selectedBulan && selectedBulan !== 'Semua Bulan') {
         params.append('bulan', selectedBulan);
+      } else if (selectedBulan === 'Semua Bulan') {
+        params.append('bulan', 'Semua Bulan');
       }
       if (selectedTipeFaskes && selectedTipeFaskes !== 'Semua Tipe Faskes') {
         params.append('tipe_faskes', selectedTipeFaskes);
@@ -143,7 +145,7 @@ export const RingkasanComplianceTab: React.FC = () => {
   const filterOptions = apiData?.filter_options || {
     kabupaten: ['Semua Kabupaten'],
     nama_ppk: ['Semua Faskes'],
-    bulan: ['September 2026'],
+    bulan: ['Semua Bulan', 'October 2026', 'September 2026', 'August 2026'],
     tipe_faskes: ['Semua Tipe Faskes'],
   };
 
@@ -634,8 +636,14 @@ export const RingkasanComplianceTab: React.FC = () => {
               Rincian bobot capaian per rumah sakit dari spreadsheet nilai_kepatuhan_fkrtl.
             </p>
           </div>
-          <div className="text-xs text-[#6573a1] dark:text-slate-400">
-            Menampilkan <span className="font-bold text-[#2b4390] dark:text-white">{processedRows.length}</span> fasilitas
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#44853b]/10 text-[#44853b] dark:text-emerald-300 border border-[#44853b]/25">
+              <span className="w-2 h-2 rounded-full bg-[#44853b] animate-pulse" />
+              Periode: {apiData?.selected_period || selectedBulan || 'October 2026'}
+            </span>
+            <span className="text-xs text-[#6573a1] dark:text-slate-400">
+              Menampilkan <span className="font-bold text-[#2b4390] dark:text-white">{processedRows.length}</span> fasilitas
+            </span>
           </div>
         </div>
 
@@ -681,7 +689,7 @@ export const RingkasanComplianceTab: React.FC = () => {
                 ) : (
                   paginatedRows.map((row, idx) => (
                     <tr
-                      key={row.kode_ppk}
+                      key={`${row.kode_ppk}_${row.bulan}_${idx}`}
                       className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
                     >
                       <td className="py-3 px-3 text-center text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">
@@ -691,7 +699,14 @@ export const RingkasanComplianceTab: React.FC = () => {
                         {row.kode_ppk}
                       </td>
                       <td className="py-3 px-3 font-bold text-[#2b4390] dark:text-white group-hover:text-[#44853b] transition-colors">
-                        {row.nama_ppk}
+                        <div className="flex flex-col">
+                          <span>{row.nama_ppk}</span>
+                          {(selectedBulan === 'Semua Bulan' || !selectedBulan) && (
+                            <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-mono font-normal">
+                              Periode: {row.bulan}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-3 text-[#2b4390] dark:text-slate-300">{row.kabupaten}</td>
                       <td className="py-3 px-2 text-center font-mono">{fmtNum(row.jadwal_dokter_pct, 1)}</td>

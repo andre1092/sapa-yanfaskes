@@ -183,10 +183,48 @@ def process_ringkasan_kepatuhan(
             "status": "Patuh" if nilai_all >= 85.0 else "Belum Patuh"
         })
 
-    # Filter Cascading
+    # Filter Cascading & Normalisasi Bulan Kronologis
     all_kab = sorted(list(set(r["kabupaten"] for r in joined if r["kabupaten"])))
-    all_bulan = sorted(list(set(r["bulan"] for r in joined if r["bulan"])))
+    all_bulan = sorted(
+        list(set(r["bulan"] for r in joined if r["bulan"])),
+        key=lambda x: MONTH_ORDER.index(x) if x in MONTH_ORDER else 999
+    )
+    latest_month = all_bulan[-1] if all_bulan else "October 2026"
 
+    # Jika bulan tidak ditentukan atau kosong, defaultkan ke bulan paling update (October 2026)
+    target_bulan = bulan if (bulan and bulan != "undefined") else latest_month
+
+    # Bangun Data Grafik Bulanan Dinamis (Menampilkan Semua Bulan yang Tersedia)
+    chart_pool = joined
+    if kabupaten and kabupaten != "Semua Kabupaten":
+        chart_pool = [r for r in chart_pool if r["kabupaten"].lower() == kabupaten.lower()]
+    if nama_ppk and nama_ppk != "Semua Faskes":
+        chart_pool = [r for r in chart_pool if r["nama_ppk"].lower() == nama_ppk.lower()]
+    if tipe_faskes and tipe_faskes != "Semua Tipe Faskes":
+        chart_pool = [r for r in chart_pool if r["tipe_faskes"].lower() == tipe_faskes.lower()]
+
+    monthly_chart = []
+    for b in all_bulan:
+        b_rows = [r for r in chart_pool if r["bulan"] == b]
+        b_total = len(b_rows)
+        b_avg = round(sum(r["nilai_akhir_all"] for r in b_rows) / b_total, 2) if b_total else 0.0
+        b_met = sum(1 for r in b_rows if r["nilai_akhir_all"] >= 85.0)
+
+        parts = b.split()
+        short_m = parts[0][:3] if parts else b
+        short_yr = parts[1][-2:] if len(parts) > 1 else ""
+        short_name = f"{short_m} {short_yr}".strip()
+
+        monthly_chart.append({
+            "bulan": b,
+            "bulan_indo": MONTH_INDO.get(b, b),
+            "short_name": short_name,
+            "avg_capaian": b_avg,
+            "faskes_count": b_total,
+            "met_count": b_met
+        })
+
+    # Filter Baris Tabel & Indikator KPI Berdasarkan Kriteria & Bulan Aktif
     filtered = joined
     if kabupaten and kabupaten != "Semua Kabupaten":
         filtered = [r for r in filtered if r["kabupaten"].lower() == kabupaten.lower()]
@@ -198,6 +236,13 @@ def process_ringkasan_kepatuhan(
         filtered = [r for r in filtered if r["nama_ppk"].lower() == nama_ppk.lower()]
     if tipe_faskes and tipe_faskes != "Semua Tipe Faskes":
         filtered = [r for r in filtered if r["tipe_faskes"].lower() == tipe_faskes.lower()]
+    if target_bulan and target_bulan != "Semua Bulan":
+        filtered = [r for r in filtered if r["bulan"].lower() == target_bulan.lower()]
+
+    # Sort berdasarkan nilai akhir tertinggi dan re-index nomor urut
+    filtered.sort(key=lambda x: x["nilai_akhir_all"], reverse=True)
+    for idx, item in enumerate(filtered, start=1):
+        item["no"] = idx
 
     total_faskes = len(filtered)
     avg_all = round(sum(r["nilai_akhir_all"] for r in filtered) / total_faskes, 2) if total_faskes else 0.0
@@ -219,10 +264,12 @@ def process_ringkasan_kepatuhan(
         val = round(sum(r[col] for r in filtered) / total_faskes, 2) if total_faskes else 0.0
         pilar_summary.append({"label": label, "avg_nilai": val})
 
-    filtered.sort(key=lambda x: x["nilai_akhir_all"], reverse=True)
+    # Opsi bulan: sediakan urutan kronologis dan 'Semua Bulan'
+    bulan_options = ["Semua Bulan"] + list(reversed(all_bulan))
 
     return {
         "status": "success",
+        "selected_period": target_bulan,
         "kpi": {
             "avg_nilai_akhir": avg_all,
             "target_nasional": 85.0,
@@ -232,27 +279,18 @@ def process_ringkasan_kepatuhan(
             "persen_kepatuhan": round((patuh_count / total_faskes * 100), 1) if total_faskes else 0.0,
             "pilar_summary": pilar_summary
         },
-        "monthly_chart": [
-            {
-                "bulan": "September 2026",
-                "bulan_indo": "September 2026",
-                "short_name": "Sep 26",
-                "avg_capaian": avg_all,
-                "faskes_count": total_faskes,
-                "met_count": patuh_count
-            }
-        ],
+        "monthly_chart": monthly_chart,
         "table_data": filtered,
         "filter_options": {
             "kabupaten": ["Semua Kabupaten"] + all_kab,
             "nama_ppk": ["Semua Faskes"] + avail_faskes,
-            "bulan": ["Semua Bulan"] + all_bulan,
+            "bulan": bulan_options,
             "tipe_faskes": ["Semua Tipe Faskes"] + avail_tipe
         },
         "active_filters": {
             "kabupaten": kabupaten or "Semua Kabupaten",
             "nama_ppk": nama_ppk or "Semua Faskes",
-            "bulan": bulan or "Semua Bulan",
+            "bulan": target_bulan,
             "tipe_faskes": tipe_faskes or "Semua Tipe Faskes"
         }
     }
