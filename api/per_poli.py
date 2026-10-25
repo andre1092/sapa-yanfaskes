@@ -91,29 +91,40 @@ def build_poli_data(df_poli, df_faskes, tahun=None, bulan=None, kabupaten=None, 
     for original in df_poli.to_dicts():
         row = {key: _text(value) for key, value in original.items()}
         period = row["Periode"]
-        if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", period) or row["Validasi Poli"].lower() != "include":
+        period_date = _timestamp(period)
+        legacy_period = bool(re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", period))
+        if (not legacy_period and period_date is None) or row["Validasi Poli"].lower() != "include":
             continue
         if not row["Kdppk"] or not row["Kode Poli"] or not row["Nama Poli"] or not row["Sumber Antrean"]:
             continue
         updated, collected = _timestamp(row["Last Update Dashboard"]), _timestamp(row["Waktu Pengambilan"])
         if updated is None or collected is None:
             continue
+        if period_date is not None and period_date != updated:
+            continue
+        row["_month"] = period if legacy_period else period_date.strftime("%Y-%m")
         row["_snapshot"] = (updated, collected)
         row["_source"] = _source(row["Sumber Antrean"])
-        snapshots[(period, row["Kdppk"], row["_source"], row["Validasi Poli"].lower())].append(row)
+        snapshots[(row["_month"], row["_source"])].append(row)
 
     metadata = _metadata(df_faskes)
     selected_source = _source(sumber)
     sources = set()
     invalid = 0
     for group in snapshots.values():
-        latest = max(row["_snapshot"] for row in group)
+        # A month uses one BI update per source, never a mixture of old and new FKRTL.
+        latest = max(row["_snapshot"][0] for row in group)
+        collected_by_faskes = {}
+        for row in group:
+            if row["_snapshot"][0] == latest:
+                code = row["Kdppk"]
+                collected_by_faskes[code] = max(collected_by_faskes.get(code, datetime.min), row["_snapshot"][1])
         dedup = {}
         for row in group:
-            if row["_snapshot"] == latest:
-                dedup[row["Kode Poli"]] = row
+            if row["_snapshot"] == (latest, collected_by_faskes.get(row["Kdppk"])):
+                dedup[(row["Kdppk"], row["Kode Poli"])] = row
         for row in dedup.values():
-            period, code = row["Periode"], row["Kdppk"]
+            period, code = row["_month"], row["Kdppk"]
             if tahun and tahun != "(All)" and period[:4] != str(tahun):
                 continue
             if not _month_matches(period, bulan):
@@ -134,7 +145,7 @@ def build_poli_data(df_poli, df_faskes, tahun=None, bulan=None, kabupaten=None, 
             numerator, sep_antrol, sep_rjtl = counts
             denominator = sep_antrol if selected_source == "Mobile JKN" else sep_rjtl
             result["data"].append({
-                "Periode": period, "Kdppk": code, "Nama_RS": name,
+                "Periode": row["Periode"], "Kdppk": code, "Nama_RS": name,
                 "Kabupaten": meta.get("Kabupaten", ""), "Kelas_RS": meta.get("Kelas_RS", ""),
                 "Kode_Poli": row["Kode Poli"], "Nama_Poli": row["Nama Poli"], "Sumber": selected_source,
                 "jumlah_antrean": numerator, "sep_antrol": sep_antrol, "sep_rjtl": sep_rjtl,

@@ -35,6 +35,73 @@ class PerPoliTest(unittest.TestCase):
         result = self.build([row(), row(**{"Last Update Dashboard": "2026-10-19 02:00:00", "Waktu Pengambilan": "2026-10-21 12:00:00", "Jumlah Antrean Sesuai Sumber": 0})])
         self.assertEqual(result["top_poli"][0]["avg_capaian"], 50)
 
+    def test_timestamp_and_legacy_periods_share_calendar_month_snapshot(self):
+        result = self.build([
+            row(Periode="2026-10", **{"Last Update Dashboard": "2026-10-19 02:00:00"}),
+            row(Periode="2026-10-20T02:31:11", Kdppk="0002"),
+        ])
+        self.assertEqual([r["Kdppk"] for r in result["data"]], ["0002"])
+
+    def test_latest_dashboard_snapshot_is_global_before_hospital_filter(self):
+        rows = [
+            row(Periode="2026-10-19T02:00:00", **{"Last Update Dashboard": "2026-10-19 02:00:00"}),
+            row(Periode="2026-10-20T02:31:11", Kdppk="0002"),
+        ]
+        result = self.build(rows)
+        self.assertEqual([r["Kdppk"] for r in result["data"]], ["0002"])
+        self.assertFalse(self.build(rows, nama_rs="RS A")["data"])
+        self.assertFalse(self.build(rows, kabupaten="JEMBER")["data"])
+
+    def test_latest_snapshots_are_independent_per_month_and_source(self):
+        rows = [
+            row(Periode="2026-09-20T02:31:11", **{"Last Update Dashboard": "2026-09-20 02:31:11"}),
+            row(Periode="2026-10-19T02:00:00", **{"Last Update Dashboard": "2026-10-19 02:00:00"}),
+            row(Periode="2026-10-20T02:31:11", Kdppk="0002"),
+            row(Periode="2026-10-19T02:00:00", **{"Sumber Antrean": "All Sumber", "Last Update Dashboard": "2026-10-19 02:00:00", "Jumlah Antrean Sesuai Sumber": 20}),
+        ]
+        mobile = self.build(rows)
+        self.assertEqual(len(mobile["data"]), 2)
+        self.assertEqual({r["last_update"] for r in mobile["data"]}, {"2026-09-20 02:31:11", "2026-10-20 02:31:11"})
+        all_sources = self.build(rows, sumber="All Sumber")
+        self.assertEqual(len(all_sources["data"]), 1)
+        self.assertEqual(all_sources["top_poli"][0]["avg_capaian"], 80)
+
+    def test_timestamp_period_filters_and_weighted_original_counts(self):
+        rows = [
+            row(Periode="2026-10-20T02:31:11"),
+            row(Periode="2026-10-20T02:31:11", Kdppk="0002", **{"Jumlah Antrean Sesuai Sumber": 90, "Jumlah SEP dengan Antrol": 100}),
+            row(Periode="2025-10-20T02:31:11", **{"Last Update Dashboard": "2025-10-20 02:31:11"}),
+        ]
+        for month in ("Oktober 2026", "Okt 26", "2026-10", "10"):
+            with self.subTest(month=month):
+                result = self.build(rows, tahun="2026", bulan=month)
+                self.assertEqual(len(result["data"]), 2)
+                self.assertEqual(sum(r["jumlah_antrean"] for r in result["data"]), 100)
+                self.assertEqual(sum(r["sep_antrol"] for r in result["data"]), 120)
+                self.assertEqual(result["top_poli"][0]["avg_capaian"], 83.33)
+        self.assertFalse(self.build(rows, bulan="September 2026")["data"])
+
+    def test_collection_dedup_remains_per_hospital_at_latest_dashboard_time(self):
+        latest = row(Periode="2026-10-20T02:31:11", **{"Waktu Pengambilan": "2026-10-21 12:00:00", "Jumlah Antrean Sesuai Sumber": 20})
+        result = self.build([
+            row(Periode="2026-10-20T02:31:11"),
+            row(Periode="2026-10-20T02:31:11", **{"Kode Poli": "008", "Nama Poli": "REMOVED"}),
+            latest, latest,
+            row(Periode="2026-10-20T02:31:11", Kdppk="0002", **{"Waktu Pengambilan": "2026-10-21 11:32:00"}),
+        ])
+        self.assertEqual(len(result["data"]), 2)
+        self.assertEqual(result["top_poli"], [{"poli": "POLI A", "kode_poli": "005", "avg_capaian": 75.0}])
+
+    def test_invalid_timestamp_period_is_rejected(self):
+        for period in ("2026-13", "2026-02-30T02:31:11", "2026-10-20T25:31:11", "2026-10-20T02:31:11junk", "invalid"):
+            with self.subTest(period=period):
+                self.assertFalse(self.build([row(Periode=period)])["data"])
+
+    def test_timestamp_period_must_match_dashboard_update(self):
+        result = self.build([row(Periode="2026-10-20T03:31:11")])
+        self.assertFalse(result["data"])
+        self.assertFalse(result["top_poli"])
+
     def test_source_is_never_combined(self):
         rows = [row(), row(**{"Sumber Antrean": "All Sumber", "Jumlah Antrean Sesuai Sumber": 20})]
         self.assertEqual(self.build(rows, sumber=None)["top_poli"][0]["avg_capaian"], 80)
