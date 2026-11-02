@@ -1,3 +1,4 @@
+import { useSession } from './auth/useSession';
 import { useAuthStore } from './store/authStore';
 import { LoginPage } from './components/LoginPage';
 import { InsightTracerDashboard } from './components/InsightTracerDashboard';
@@ -5,9 +6,10 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 export default function App() {
   const { isAuthenticated: isStoreAuth } = useAuthStore();
+  const session = useSession();
 
   // 1. Jika belum login (sesi belum aktif), tampilkan Halaman Login Resmi
-  if (!isStoreAuth) {
+  if (!session.ready || !session.authenticated || !isStoreAuth) {
     return <LoginPage />;
   }
 

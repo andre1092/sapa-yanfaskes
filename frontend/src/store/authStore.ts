@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { logoutSession } from '../auth/session';
 
 export interface AuthUser {
   id: string;
@@ -11,40 +11,21 @@ export interface AuthUser {
 }
 
 interface AuthState {
-  accessToken: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
-  setAuth: (token: string, user: AuthUser) => void;
-  loginUser: (user: AuthUser, token?: string) => void;
+  syncSession: (user: AuthUser | null) => void;
   logoutUser: () => void;
   clearAuth: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  devtools(
-    persist(
-      (set) => ({
-        accessToken: null,
-        user: null,
-        isAuthenticated: false,
-        setAuth: (accessToken, user) =>
-          set({ accessToken, user, isAuthenticated: true }),
-        loginUser: (user, token) =>
-          set({
-            accessToken: token || `token_${Date.now()}`,
-            user,
-            isAuthenticated: true,
-          }),
-        logoutUser: () =>
-          set({ accessToken: null, user: null, isAuthenticated: false }),
-        clearAuth: () =>
-          set({ accessToken: null, user: null, isAuthenticated: false }),
-      }),
-      {
-        name: 'auth-session',
-        partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
-      }
-    )
-  )
-);
-
+// UI projection only. Auth0 owns session authority and keeps tokens in memory.
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  isAuthenticated: false,
+  syncSession: (user) => set({ user, isAuthenticated: Boolean(user) }),
+  logoutUser: () => {
+    set({ user: null, isAuthenticated: false });
+    logoutSession();
+  },
+  clearAuth: () => set({ user: null, isAuthenticated: false }),
+}));
