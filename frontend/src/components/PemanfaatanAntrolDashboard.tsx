@@ -1,15 +1,18 @@
+import { Typography } from '@mui/material';
+import MainCard from '../berry/MainCard';
+import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import '../berry/berry-dashboards.css';
+import { FilterSelect, FilterOption } from './ui/FilterSelect';
+import { AnimatedButton } from './ui/AnimatedButton';
 import React, { useEffect, useState } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useFkrtlAntrolData } from '../hooks/useDashboardData';
 import type { FkrtlFilterParams } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
 import { exportToCSV, exportToExcel, exportToJPEG, POLI_EXPORT_COLUMNS } from '../utils/exportUtils';
 import { useSyncStore } from '../store/syncStore';
 
-const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
 export const PemanfaatanAntrolDashboard: React.FC = () => {
-  const { getAccessTokenSilently } = useAuth0();
   const [downloadingType, setDownloadingType] = useState<'faskes'|'poli'|null>(null);
   const [openDropdown, setOpenDropdown] = useState<'faskes'|'poli'|null>(null);
   const [jpegData, setJpegData] = useState<{data: any[], type: 'faskes'|'poli'}|null>(null);
@@ -30,7 +33,6 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     setDownloadingType(type);
     setOpenDropdown(null);
     try {
-      const token = await getAccessTokenSilently({ authorizationParams: { audience: AUTH0_AUDIENCE } });
       const params = new URLSearchParams();
       params.append('type', type);
       if (filters.kabupaten && filters.kabupaten !== '(All)') params.append('kabupaten', filters.kabupaten);
@@ -40,9 +42,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       if (filters.sumber) params.append('sumber', filters.sumber);
       if (filters.kelas_rs && filters.kelas_rs !== '(All)') params.append('kelas_rs', filters.kelas_rs);
 
-      const res = await apiClient.get(`/api/v1/fkrtl-export?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Use the shared client so export follows the same session and refresh flow as dashboard data.
+      const res = await apiClient.get(`/api/v1/fkrtl-export?${params.toString()}`);
       const exportData = res.data.data || [];
       if (exportData.length === 0) {
         alert(res.data.message || 'Tidak ada data untuk filter yang dipilih.');
@@ -65,24 +66,6 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       setDownloadingType(null);
     }
   };
-
-  useEffect(() => {
-    const interceptor = apiClient.interceptors.request.use(async (config) => {
-      try {
-        const token = await getAccessTokenSilently({
-          authorizationParams: {
-            audience: AUTH0_AUDIENCE,
-          },
-        });
-        config.headers.Authorization = `Bearer ${token}`;
-      } catch (e) {
-        console.error('Auth0 Token Error', e);
-      }
-      return config;
-    });
-
-    return () => apiClient.interceptors.request.eject(interceptor);
-  }, [getAccessTokenSilently]);
 
   // Filters State: urutan sesuai permintaan (Kabupaten, Nama Faskes, Bulan, Tahun, Sumber)
   const [filters, setFilters] = useState<FkrtlFilterParams>({
@@ -134,7 +117,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   };
 
   const formatPercentID = (num: number | undefined): string => {
-    if (num === undefined || isNaN(num)) return '0,00%';
+    if (num === undefined || isNaN(num)) return '-';
     return num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
   };
 
@@ -142,7 +125,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     return (
       <div className="p-6 lg:p-8 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-slate-300">Memuat Live Data Google Spreadsheet FKRTL...</p>
+        <p className="text-sm font-semibold text-[var(--text-muted)]">Memuat Live Data Google Spreadsheet FKRTL...</p>
       </div>
     );
   }
@@ -150,20 +133,33 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   if (isError && !data) {
     return (
       <div className="p-6 lg:p-8">
-        <div className="bg-rose-500/10 border border-rose-500/30 p-6 rounded-2xl text-center max-w-xl mx-auto">
+        <div className="bg-rose-500/10 border border-rose-500/30 p-6 rounded-lg text-center max-w-xl mx-auto">
           <svg className="w-10 h-10 text-rose-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h3 className="text-lg font-bold text-white">Gagal Mengambil Data Google Sheets</h3>
-          <p className="text-xs text-slate-400 mt-2">{(error as any)?.response?.data?.detail || error?.message || 'Terjadi kesalahan sistem.'}</p>
-          <button
+          <Typography component="h3" variant="h5" className="text-lg font-bold text-[var(--text-main)]">Gagal Mengambil Data Google Sheets</Typography>
+          <p className="text-xs text-[var(--text-muted)] mt-2">{(error as any)?.response?.data?.detail || error?.message || 'Terjadi kesalahan sistem.'}</p>
+          <AnimatedButton
             onClick={() => refetch()}
-            className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            className="mt-4 px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[var(--text-main)] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
           >
             Coba Muat Ulang
-          </button>
+          </AnimatedButton>
         </div>
       </div>
+    );
+  }
+
+  if (data?.status === 'unavailable') {
+    return (
+      <section className="sapa-page p-4 sm:p-6" aria-labelledby="antrol-unavailable-title">
+        <MainCard content={false} className="berry-dashboard-card p-5 sm:p-6" role="alert">
+          <p className="sapa-eyebrow">Antrean online FKRTL</p>
+          <Typography component="h1" variant="h3" id="antrol-unavailable-title" className="sapa-title mt-2">Data belum tersedia</Typography>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">Sumber data tidak dapat dihubungi. Capaian terkini belum dapat ditampilkan.</p>
+          <AnimatedButton onClick={() => refetch()} disabled={isLoading} className="sapa-button sapa-button-primary mt-4">{isLoading ? 'Memuat...' : 'Coba lagi'}</AnimatedButton>
+        </MainCard>
+      </section>
     );
   }
 
@@ -181,28 +177,29 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
     sumber: data?.filter_options?.sumber || ['All Sumber', 'Mobile JKN'],
   };
 
-  const lastUpdate = data?.last_update || liveSyncAntrol || '09/28/2026 02:18:15';
+  const lastUpdate = data?.last_update || liveSyncAntrol || 'Belum tersedia';
   const selectedPeriod = data?.selected_period || (filters.bulan !== '(All)' ? filters.bulan : (filters.tahun !== '(All)' ? `Tahun ${filters.tahun} (Semua Bulan)` : 'Tahun 2026 (Semua Bulan)'));
   const kpiValue = data?.kpi_capaian ?? 0.0;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="berry-dashboard sapa-page min-w-0 w-full p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+      <p className="sapa-filter-summary sapa-status text-xs text-[var(--text-muted)]" aria-live="polite"><span>Filter aktif: {Object.entries(filters).filter(([, value]) => value && value !== '(All)' && value !== 'All Sumber').map(([key, value]) => `${({ kabupaten: 'Wilayah', nama_rs: 'Faskes', bulan: 'Bulan', tahun: 'Tahun', sumber: 'Kanal', kelas_rs: 'Kelas RS' } as Record<string, string>)[key]}: ${value}`).join(' · ') || 'Semua data'}</span><AnimatedButton className="sapa-button sapa-button-secondary" onClick={handleResetFilter}>Reset filter</AnimatedButton></p>
       {/* 1. KOTAK KETERANGAN: "Last Update : ...." & Header Utama */}
-      <div className="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl border border-[#83a67e]/30 dark:border-emerald-500/30 bg-gradient-to-r from-[#d4ecd1]/30 via-white/50 to-[#afbade]/20 dark:from-emerald-950/40 dark:via-slate-900/60 dark:to-blue-950/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="berry-dashboard-heading min-w-0">
         <div>
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-8 rounded-full bpjs-gradient shadow-md shadow-[#44853b]/40" />
+
             <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#2b4390] dark:text-white tracking-tight">
-                Pemanfaatan Sistem Antrean Online FKRTL
-              </h2>
+              <Typography component="h1" variant="h3" className="sapa-title text-xl sm:text-2xl font-extrabold text-[var(--text-main)] tracking-tight">
+                Pemanfaatan Antrol FKRTL
+              </Typography>
               {/* Kotak Keterangan Last Update sesuai instruksi spesifik pengguna */}
-              <div className="mt-1 flex items-center gap-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#d4ecd1] border border-[#83a67e]/40 text-[#44853b] dark:bg-emerald-500/20 dark:border-emerald-400/40 dark:text-emerald-300 font-bold text-xs sm:text-sm tracking-wide shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-[#44853b] dark:bg-emerald-400 animate-pulse" />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="inline-flex max-w-full flex-wrap items-center gap-2 px-3 py-1 rounded-lg bg-[var(--surface-accent)] border border-[var(--border-color)] text-[var(--bpjs-green)] font-bold text-xs sm:text-sm tracking-wide">
+                  <span className="w-2 h-2 rounded-full bg-[var(--bpjs-green)]" />
                   <span>Last Update : {lastUpdate}</span>
                 </div>
-                <span className="text-[11px] text-[#6573a1] dark:text-slate-300 hidden sm:inline">
+                <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
                   (Live Data Google Sheets)
                 </span>
               </div>
@@ -211,53 +208,53 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
         </div>
 
         {/* Action Button: Download RS & Poli */}
-        <div className="flex flex-wrap gap-3 self-end md:self-center">
+        <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:shrink-0">
           {/* Download Faskes */}
           <div className="relative">
-            <button 
+            <AnimatedButton
               onClick={() => setOpenDropdown(openDropdown === 'faskes' ? null : 'faskes')}
               disabled={downloadingType === 'faskes'}
-              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/40 transition-all active:scale-95 cursor-pointer"
+              className="sapa-button sapa-button-primary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-main)] border border-[var(--border-color)] transition-all active:scale-95 cursor-pointer"
             >
-              <span>{downloadingType === 'faskes' ? '⏳ Mengunduh...' : '💾 Unduh Data RS'}</span>
+              <span>{downloadingType === 'faskes' ? 'Mengunduh...' : ' Unduh Data RS'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
+            </AnimatedButton>
             {openDropdown === 'faskes' && (
-              <div className="absolute right-0 mt-2 w-56 glass-panel border border-[#afbade]/40 dark:border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden bg-white/95 dark:bg-slate-900/95">
-                <button onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
+              <div className="absolute right-0 mt-2 w-56 berry-dashboard-card border border-[var(--border-color)] rounded-xl z-50 overflow-hidden min-w-0">
+                <AnimatedButton onClick={() => handleDownload('faskes', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[var(--surface-accent)]/40 text-left text-xs font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border-color)] cursor-pointer">
                   Format Excel (.xlsx)
-                </button>
-                <button onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
+                </AnimatedButton>
+                <AnimatedButton onClick={() => handleDownload('faskes', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[var(--surface-accent)]/40 text-left text-xs font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border-color)] cursor-pointer">
                   Format Gambar (.JPEG)
-                </button>
-                <button onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors cursor-pointer">
+                </AnimatedButton>
+                <AnimatedButton onClick={() => handleDownload('faskes', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[var(--surface-accent)]/40 text-left text-xs font-semibold text-[var(--text-main)] transition-colors cursor-pointer">
                   Format CSV (.csv)
-                </button>
+                </AnimatedButton>
               </div>
             )}
           </div>
 
           {/* Download Poli */}
           <div className="relative">
-            <button 
+            <AnimatedButton
               onClick={() => setOpenDropdown(openDropdown === 'poli' ? null : 'poli')}
               disabled={downloadingType === 'poli'}
-              className="bpjs-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/40 transition-all active:scale-95 cursor-pointer"
+              className="sapa-button sapa-button-primary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-main)] border border-[var(--border-color)] transition-all active:scale-95 cursor-pointer"
             >
-              <span>{downloadingType === 'poli' ? '⏳ Mengunduh...' : '💾 Unduh Data Poli'}</span>
+              <span>{downloadingType === 'poli' ? 'Mengunduh...' : ' Unduh Data Poli'}</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
+            </AnimatedButton>
             {openDropdown === 'poli' && (
-              <div className="absolute right-0 mt-2 w-56 glass-panel border border-[#afbade]/40 dark:border-emerald-500/30 rounded-xl shadow-2xl z-50 overflow-hidden bg-white/95 dark:bg-slate-900/95">
-                <button onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
+              <div className="absolute right-0 mt-2 w-56 berry-dashboard-card border border-[var(--border-color)] rounded-xl z-50 overflow-hidden min-w-0">
+                <AnimatedButton onClick={() => handleDownload('poli', 'xlsx')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[var(--surface-accent)]/40 text-left text-xs font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border-color)] cursor-pointer">
                   Format Excel (.xlsx)
-                </button>
-                <button onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors border-b border-[#afbade]/20 dark:border-emerald-500/15 cursor-pointer">
+                </AnimatedButton>
+                <AnimatedButton onClick={() => handleDownload('poli', 'jpeg')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[var(--surface-accent)]/40 text-left text-xs font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border-color)] cursor-pointer">
                   Format Gambar (.JPEG)
-                </button>
-                <button onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[#d4ecd1]/40 dark:hover:bg-emerald-900/30 text-left text-xs font-semibold text-[#2b4390] dark:text-slate-200 transition-colors cursor-pointer">
+                </AnimatedButton>
+                <AnimatedButton onClick={() => handleDownload('poli', 'csv')} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-[var(--surface-accent)]/40 text-left text-xs font-semibold text-[var(--text-main)] transition-colors cursor-pointer">
                   Format CSV (.csv)
-                </button>
+                </AnimatedButton>
               </div>
             )}
           </div>
@@ -265,195 +262,195 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       </div>
 
       {/* 2. MAIN LAYOUT: Panel Filter Kiri + Area Visualisasi Kanan */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid min-w-0 grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Kolom Kiri: KPI Card & Kontrol Filtering (Col span 3.5 / 12) */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-5">
+        <div className="min-w-0 lg:col-span-4 xl:col-span-3 space-y-5">
           {/* KPI Pemanfaatan Antrol Card */}
-          <div className="glass-card rounded-2xl overflow-hidden border border-[#83a67e]/30 dark:border-emerald-500/30 shadow-xl shadow-[#2b4390]/10">
-            <div className="bpjs-gradient px-4 py-3.5 text-center border-b border-[#83a67e]/30 shadow-sm">
-              <h3 className="text-base font-bold text-white tracking-wide flex items-center justify-center gap-2">
-                <svg className="w-5 h-5 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <MainCard content={false} className="min-w-0 berry-dashboard-card rounded-lg overflow-hidden border border-[var(--border-color)] min-w-0">
+            <div className="bg-[var(--bpjs-navy)] px-4 py-3.5 text-center border-b border-[var(--border-color)]">
+              <Typography component="h3" variant="h5" className="text-base font-bold text-[var(--on-primary)] tracking-wide flex items-center justify-center gap-2">
+                <svg className="w-5 h-5 text-[var(--on-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 Pemanfaatan Antrol
-              </h3>
-              <p className="text-xs font-medium text-emerald-100 mt-0.5">
+              </Typography>
+              <p className="text-xs font-medium text-[var(--on-primary)] mt-0.5">
                 {filters.bulan === '(All)' ? `Akumulasi ${selectedPeriod}` : `Periode ${selectedPeriod}`}
               </p>
             </div>
-            <div className="bg-[#f0f7f4] dark:bg-slate-900/80 backdrop-blur-md py-6 text-center">
-              <span className="text-4xl font-extrabold text-[#2b4390] dark:text-white tracking-tight drop-shadow-md">
+            <div className="bg-[var(--surface-subtle)] py-6 text-center">
+              <span className="sapa-lead-value text-4xl font-extrabold text-[var(--text-main)] tracking-tight drop-">
                 {formatPercentID(kpiValue)}
               </span>
               <div className="mt-2.5 flex items-center justify-center gap-2">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40 shadow-sm">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]">
                   Target BPJS: &ge;85%
                 </span>
               </div>
             </div>
-          </div>
+          </MainCard>
 
           {/* Panel Kontrol Filter (Urutan: Kabupaten, Nama Faskes, Bulan, Tahun, Sumber) */}
-          <div className="glass-card rounded-2xl p-5 space-y-4 shadow-lg border border-[#afbade]/30 dark:border-emerald-500/20">
-            <div className="flex items-center justify-between border-b border-[#afbade]/30 dark:border-slate-800 pb-2.5">
-              <span className="text-xs font-bold text-[#2b4390] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-[#44853b] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <MainCard content={false} className="min-w-0 berry-dashboard-card rounded-lg p-5 space-y-4 border border-[var(--border-color)] min-w-0">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2.5">
+              <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-1.5">
+                <svg className="w-4 h-4 text-[var(--bpjs-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 Filter Analitik
               </span>
-              <button
+              <AnimatedButton
                 onClick={handleResetFilter}
-                className="text-[11px] font-semibold text-[#6573a1] hover:text-[#44853b] dark:text-slate-400 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--bpjs-green)] transition-colors cursor-pointer"
               >
                 Reset
-              </button>
+              </AnimatedButton>
             </div>
 
             {/* Filter 1: Kabupaten */}
             <div>
-              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">1. Kabupaten</label>
-              <select
+              <label htmlFor="PemanfaatanAntrolDashboard-filter-1" className="block text-xs font-bold text-[var(--text-main)] mb-1">1. Kabupaten</label>
+              <FilterSelect aria-label="Kabupaten" id="PemanfaatanAntrolDashboard-filter-1"
                 value={filters.kabupaten || '(All)'}
                 onChange={(e) => handleFilterChange('kabupaten', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
+                className="sapa-control min-w-0 w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] transition-colors cursor-pointer"
               >
                 {filterOptions.kabupaten.map((k) => (
-                  <option key={k} value={k} className="bg-slate-900 text-white">
+                  <FilterOption key={k} value={k} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {k}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter 2: Nama Faskes */}
             <div>
-              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">2. Nama Faskes</label>
-              <select
+              <label htmlFor="PemanfaatanAntrolDashboard-filter-2" className="block text-xs font-bold text-[var(--text-main)] mb-1">2. Nama Faskes</label>
+              <FilterSelect aria-label="Fasilitas kesehatan" id="PemanfaatanAntrolDashboard-filter-2"
                 value={filters.nama_rs || '(All)'}
                 onChange={(e) => handleFilterChange('nama_rs', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
+                className="sapa-control min-w-0 w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] transition-colors cursor-pointer"
               >
                 {filterOptions.nama_rs?.map((n) => (
-                  <option key={n} value={n} className="bg-slate-900 text-white truncate">
+                  <FilterOption key={n} value={n} className="bg-[var(--surface-subtle)] text-[var(--text-main)] truncate">
                     {n}
-                  </option>
-                )) || <option value="(All)" className="bg-slate-900 text-white">(All)</option>}
-              </select>
+                  </FilterOption>
+                )) || <FilterOption value="(All)" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">(All)</FilterOption>}
+              </FilterSelect>
             </div>
 
             {/* Filter 3: Bulan */}
             <div>
-              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">3. Bulan</label>
-              <select
+              <label htmlFor="PemanfaatanAntrolDashboard-filter-3" className="block text-xs font-bold text-[var(--text-main)] mb-1">3. Bulan</label>
+              <FilterSelect aria-label="Bulan" id="PemanfaatanAntrolDashboard-filter-3"
                 value={filters.bulan || '(All)'}
                 onChange={(e) => handleFilterChange('bulan', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
+                className="sapa-control min-w-0 w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] transition-colors cursor-pointer"
               >
                 {filterOptions.bulan.map((b) => (
-                  <option key={b} value={b} className="bg-slate-900 text-white">
+                  <FilterOption key={b} value={b} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {b}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter 4: Tahun */}
             <div>
-              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">4. Tahun</label>
-              <select
+              <label htmlFor="PemanfaatanAntrolDashboard-filter-4" className="block text-xs font-bold text-[var(--text-main)] mb-1">4. Tahun</label>
+              <FilterSelect aria-label="Tahun" id="PemanfaatanAntrolDashboard-filter-4"
                 value={filters.tahun || '2026'}
                 onChange={(e) => handleFilterChange('tahun', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
+                className="sapa-control min-w-0 w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] transition-colors cursor-pointer"
               >
                 {filterOptions.tahun.map((y) => (
-                  <option key={y} value={y} className="bg-slate-900 text-white">
+                  <FilterOption key={y} value={y} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {y}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter 5: Sumber */}
             <div>
-              <label className="block text-xs font-bold text-[#2b4390] dark:text-slate-300 mb-1">5. Sumber</label>
-              <select
+              <label htmlFor="PemanfaatanAntrolDashboard-filter-5" className="block text-xs font-bold text-[var(--text-main)] mb-1">5. Sumber</label>
+              <FilterSelect aria-label="Sumber antrean" id="PemanfaatanAntrolDashboard-filter-5"
                 value={filters.sumber || 'All Sumber'}
                 onChange={(e) => handleFilterChange('sumber', e.target.value)}
-                className="glass-input w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] transition-colors cursor-pointer"
+                className="sapa-control min-w-0 w-full rounded-xl px-3.5 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] transition-colors cursor-pointer"
               >
                 {filterOptions.sumber.map((s) => (
-                  <option key={s} value={s} className="bg-slate-900 text-white">
+                  <FilterOption key={s} value={s} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {s}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
-          </div>
+          </MainCard>
 
           {/* Kotak Keterangan Analisis & Kebijakan */}
-          <div className="glass-card rounded-2xl p-4.5 text-[#6573a1] dark:text-slate-300 text-xs leading-relaxed space-y-1.5 border border-[#afbade]/30 dark:border-white/10">
-            <span className="font-bold text-[#44853b] dark:text-emerald-300 block flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <MainCard content={false} className="min-w-0 berry-dashboard-card rounded-lg p-4.5 text-[var(--text-muted)] text-xs leading-relaxed space-y-1.5 border border-[var(--border-color)] min-w-0">
+            <span className="font-bold text-[var(--bpjs-green)] block flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-[var(--bpjs-green)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Keterangan Analisis:
             </span>
             <p>- Validasi Jumlah Kunjungan berdasarkan Nomor Kartu, Tanggal Pelayanan, Faskes Layan dan Poli sama dengan SEP Terbit.</p>
             <p>- Poli Exclude adalah HIV, HDL, INF, IGD, ICU, 043, 060, KDN, 168, RDT, NUK, KEM, RAT, UGD.</p>
-          </div>
+          </MainCard>
         </div>
 
         {/* Kolom Kanan: 3 Visualisasi Grafik (Bulanan Horisontal, Faskes Vertikal, Poli Vertikal) */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+        <div className="min-w-0 lg:col-span-8 xl:col-span-9 space-y-6">
           {isNoData ? (
             /* No Data State */
-            <div className="glass-card border border-dashed border-emerald-500/30 rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[450px]">
-              <div className="w-16 h-16 rounded-2xl bg-slate-800/80 border border-emerald-500/30 flex items-center justify-center mb-4 text-emerald-400 shadow-lg shadow-emerald-950/30">
+            <MainCard content={false} className="min-w-0 berry-dashboard-card border border-dashed border-emerald-500/30 rounded-lg p-6 sm:p-12 text-center flex flex-col items-center justify-center min-h-[450px] min-w-0">
+              <div className="w-16 h-16 rounded-lg bg-[var(--surface-subtle)] border border-emerald-500/30 flex items-center justify-center mb-4 text-emerald-400">
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold text-white">{data?.message || 'Data Tidak Ditemukan.'}</h3>
-              <p className="text-xs text-slate-300 mt-2 max-w-sm">
+              <Typography component="h3" variant="h5" className="text-xl font-bold text-[var(--text-main)]">{data?.message || 'Data Tidak Ditemukan.'}</Typography>
+              <p className="text-xs text-[var(--text-muted)] mt-2 max-w-sm">
                 Tidak ada catatan yang cocok untuk kombinasi parameter filter yang dipilih.
               </p>
-              <button
+              <AnimatedButton
                 onClick={handleResetFilter}
-                className="mt-5 bpjs-gradient-btn px-5 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
+                className="mt-5 sapa-button sapa-button-primary px-5 py-2.5 rounded-xl text-[var(--text-main)] text-xs font-bold transition-all cursor-pointer"
               >
                 Reset Filter
-              </button>
-            </div>
+              </AnimatedButton>
+            </MainCard>
           ) : (
             <>
               {/* 1. LINE CHART BULANAN (MENGAMBIL TIMESTAMP TERBARU) */}
-              <div className="glass-card rounded-2xl p-6 shadow-xl border border-[#afbade]/30 dark:border-emerald-500/20">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[#afbade]/30 dark:border-emerald-500/20 gap-3">
+              <MainCard content={false} className="min-w-0 berry-dashboard-card rounded-lg p-4 sm:p-6 border border-[var(--border-color)] min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[var(--border-color)] gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
-                      Line Chart Bulanan — Tren Capaian Antrol
-                    </h3>
-                    <p className="text-xs text-[#6573a1] dark:text-slate-300 mt-1">
-                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-[#44853b] dark:text-emerald-400">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
+                    <Typography component="h3" variant="h5" className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
+                      Line Chart Bulanan - Tren Capaian Antrol
+                    </Typography>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">
+                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-[var(--bpjs-green)]">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     {showTarget80 && (
-                      <span className="flex items-center gap-1.5 text-xs text-[#2b4390] bg-[#afbade]/20 px-2.5 py-1 rounded-lg border border-[#afbade]/40 dark:text-sky-300 dark:bg-sky-500/10 dark:border-sky-500/30">
-                        <span className="w-3 h-0.5 border-t-2 border-dashed border-[#2b4390] dark:border-sky-400 inline-block" />
+                      <span className="flex items-center gap-1.5 text-xs text-[var(--text-main)] bg-[var(--border-color)]/20 px-2.5 py-1 rounded-lg border border-[var(--border-color)]">
+                        <span className="w-3 h-0.5 border-t-2 border-dashed border-[var(--border-color)] inline-block" />
                         <span className="text-[11px] font-semibold">Target MJKN: 80%</span>
                       </span>
                     )}
                     {showTarget95 && (
-                      <span className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-300 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">
-                        <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-600 dark:border-amber-400 inline-block" />
+                      <span className="flex items-center gap-1.5 text-xs text-[var(--warning-text)] bg-[var(--warning-soft)] px-2.5 py-1 rounded-lg border border-[var(--border-color)]">
+                        <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-600 inline-block" />
                         <span className="text-[11px] font-semibold">Target All Sumber: 95%</span>
                       </span>
                     )}
-                    <span className="flex items-center gap-1.5 text-xs text-[#44853b] bg-[#d4ecd1] px-2.5 py-1 rounded-lg border border-[#83a67e]/40 dark:text-emerald-300 dark:bg-emerald-500/10 dark:border-emerald-500/30">
-                      <span className="w-2 h-2 rounded-full bg-[#44853b] dark:bg-emerald-400 inline-block shadow-sm shadow-[#44853b]/60" />
+                    <span className="flex items-center gap-1.5 text-xs text-[var(--bpjs-green)] bg-[var(--surface-accent)] px-2.5 py-1 rounded-lg border border-[var(--border-color)]">
+                      <span className="w-2 h-2 rounded-full bg-[var(--bpjs-green)] inline-block" />
                       <span className="text-[11px] font-semibold">Realisasi</span>
                     </span>
                   </div>
@@ -465,49 +462,49 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     const activeItem = data.trend_per_bulan[hoveredMonthIndex];
                     const met = (activeItem?.avg_capaian ?? 0) >= 85;
                     return (
-                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-white/95 dark:bg-slate-900/90 border border-[#83a67e]/40 dark:border-emerald-500/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fadeIn">
+                      <div className="w-full p-2.5 sm:p-3 rounded-xl bg-[var(--surface)] border border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40' : 'bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/50 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40'}`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${met ? 'bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]/40   ' : 'bg-[var(--border-color)]/30 text-[var(--bpjs-navy)] border border-[var(--border-color)]/50   '}`}>
                             {activeItem.month}
                           </div>
                           <div>
-                            <div className="text-xs font-bold text-[#2b4390] dark:text-white flex items-center gap-2">
+                            <div className="text-xs font-bold text-[var(--text-main)] flex items-center gap-2">
                               <span>{activeItem.month_full || activeItem.month}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'}`}>
-                                {met ? '★ Memenuhi Target (≥85%)' : '⚠️ Di Bawah Target (<85%)'}
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${met ? 'bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]/40   ' : 'bg-[var(--warning-soft)] text-[var(--warning-text)] border border-[var(--border-color)]   '}`}>
+                                {met ? ' Memenuhi Target (≥85%)' : ' Di Bawah Target (<85%)'}
                               </span>
                             </div>
-                            <div className="text-[11px] text-[#6573a1] dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
-                              <svg className="w-3.5 h-3.5 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5 mt-0.5 font-mono">
+                              <svg className="w-3.5 h-3.5 text-[var(--bpjs-green)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              <span>Snapshot Timestamp: <strong className="text-[#44853b] dark:text-emerald-300">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
+                              <span>Snapshot Timestamp: <strong className="text-[var(--bpjs-green)]">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right sm:border-l sm:border-[#afbade]/30 dark:sm:border-slate-800 sm:pl-4 shrink-0">
-                          <div className="text-[10px] uppercase tracking-wider text-[#6573a1] dark:text-slate-400 font-bold">Capaian Antrol</div>
-                          <div className={`text-base font-extrabold font-mono ${met ? 'text-[#44853b] dark:text-emerald-400' : 'text-[#2b4390] dark:text-cyan-400'}`}>
+                        <div className="text-right sm:border-l sm:border-[var(--border-color)] sm:pl-4 shrink-0">
+                          <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Capaian Antrol</div>
+                          <div className={`text-base font-extrabold font-mono ${met ? 'text-[var(--bpjs-green)] ' : 'text-[var(--bpjs-navy)] '}`}>
                             {formatPercentID(activeItem.avg_capaian)}
                           </div>
                         </div>
                       </div>
                     );
                   })() : (
-                    <div className="w-full p-2.5 sm:p-3 rounded-xl bg-[#afbade]/10 dark:bg-slate-800/30 border border-dashed border-[#afbade]/40 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs text-[#6573a1] dark:text-slate-400">
+                    <div className="w-full p-2.5 sm:p-3 rounded-xl bg-[var(--border-color)]/10 border border-dashed border-[var(--border-color)] flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/70 dark:bg-slate-800/60 text-[#2b4390] dark:text-blue-300 border border-[#afbade]/30 dark:border-slate-700 shrink-0">
-                          <svg className="w-4 h-4 text-[#44853b] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--surface)] text-[var(--text-main)] border border-[var(--border-color)] shrink-0">
+                          <svg className="w-4 h-4 text-[var(--bpjs-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
                         <div>
-                          <span className="font-semibold text-[#2b4390] dark:text-slate-200">Eksplorasi Snapshot Bulanan</span>
-                          <span className="hidden sm:inline text-[11px] text-[#6573a1] dark:text-slate-400 ml-1.5">— Arahkan kursor pada kurva grafik atau kartu bulan di bawah untuk rincian data.</span>
+                          <span className="font-semibold text-[var(--text-main)]">Eksplorasi Snapshot Bulanan</span>
+                          <span className="hidden sm:inline text-[11px] text-[var(--text-muted)] ml-1.5">- Arahkan kursor pada kurva grafik atau kartu bulan di bawah untuk rincian data.</span>
                         </div>
                       </div>
-                      <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/60 dark:bg-slate-800/40 border border-[#afbade]/30 dark:border-slate-700 text-[#44853b] dark:text-emerald-400 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#44853b] animate-ping" />
+                      <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--surface)] border border-[var(--border-color)] text-[var(--bpjs-green)] shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--bpjs-green)]" />
                         <span>Interactive Chart</span>
                       </div>
                     </div>
@@ -575,23 +572,23 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                   const target95Y = calcY(95);
 
                   return (
-                    <div className="w-full overflow-x-auto select-none">
+                    <div aria-label="Area data yang dapat digulir" role="region" tabIndex={0} className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain select-none">
                       <div className="min-w-[680px]">
                         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto overflow-visible">
                           <defs>
                             <linearGradient id="lineGradBPJS" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#2b4390" />
-                              <stop offset="35%" stopColor="#6573a1" />
-                              <stop offset="70%" stopColor="#44853b" />
-                              <stop offset="100%" stopColor="#83a67e" />
+                              <stop offset="0%" stopColor="var(--bpjs-navy)" />
+                              <stop offset="35%" stopColor="var(--text-muted)" />
+                              <stop offset="70%" stopColor="var(--bpjs-green)" />
+                              <stop offset="100%" stopColor="var(--border-color)" />
                             </linearGradient>
                             <linearGradient id="areaGradBPJS" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stopColor="#44853b" stopOpacity="0.25" />
-                              <stop offset="60%" stopColor="#2b4390" stopOpacity="0.08" />
-                              <stop offset="100%" stopColor="#2b4390" stopOpacity="0.0" />
+                              <stop offset="0%" stopColor="var(--bpjs-green)" stopOpacity="0.25" />
+                              <stop offset="60%" stopColor="var(--bpjs-navy)" stopOpacity="0.08" />
+                              <stop offset="100%" stopColor="var(--bpjs-navy)" stopOpacity="0.0" />
                             </linearGradient>
                             <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-                              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#44853b" floodOpacity="0.30" />
+                              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="var(--bpjs-green)" floodOpacity="0.30" />
                             </filter>
                           </defs>
 
@@ -601,20 +598,20 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                             const is100 = level === 100 && yDomainMax > 100;
                             return (
                               <g key={level}>
-                                <line 
-                                  x1={padL} 
-                                  x2={padL + chartW} 
-                                  y1={y} 
-                                  y2={y} 
-                                  stroke="currentColor" 
-                                  className={is100 ? "text-[#44853b]/40 dark:text-emerald-500/40" : "text-slate-300 dark:text-slate-800"}
-                                  strokeDasharray={is100 ? "3 3" : "4 4"} 
+                                <line
+                                  x1={padL}
+                                  x2={padL + chartW}
+                                  y1={y}
+                                  y2={y}
+                                  stroke="currentColor"
+                                  className={is100 ? "text-[var(--bpjs-green)]/40 " : "text-[var(--text-muted)] "}
+                                  strokeDasharray={is100 ? "3 3" : "4 4"}
                                 />
-                                <text 
-                                  x={padL - 10} 
-                                  y={y + 3.5} 
-                                  textAnchor="end" 
-                                  className={`text-[10px] font-mono ${is100 ? "fill-[#44853b] dark:fill-emerald-400 font-bold" : "fill-[#6573a1] dark:fill-slate-400"}`}
+                                <text
+                                  x={padL - 10}
+                                  y={y + 3.5}
+                                  textAnchor="end"
+                                  className={`text-[10px] font-mono ${is100 ? "fill-[var(--bpjs-green)]  font-bold" : "fill-[var(--text-muted)] "}`}
                                 >
                                   {level}%
                                 </text>
@@ -625,29 +622,29 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           {/* 80% Target Benchmark Line (Mobile JKN) - Posisi kiri anti-collision */}
                           {showTarget80 && (
                             <g>
-                              <line 
-                                x1={padL} 
-                                x2={padL + chartW} 
-                                y1={target80Y} 
-                                y2={target80Y} 
-                                stroke="#2b4390" 
-                                strokeDasharray="5 3" 
-                                strokeWidth="1.2" 
+                              <line
+                                x1={padL}
+                                x2={padL + chartW}
+                                y1={target80Y}
+                                y2={target80Y}
+                                stroke="var(--bpjs-navy)"
+                                strokeDasharray="5 3"
+                                strokeWidth="1.2"
                               />
-                              <rect 
-                                x={padL + 6} 
-                                y={target80Y - 16} 
-                                width="82" 
-                                height="14" 
-                                rx="3" 
-                                fill="rgba(43, 67, 144, 0.92)" 
-                                stroke="rgba(175, 186, 222, 0.6)" 
-                                strokeWidth="1" 
+                              <rect
+                                x={padL + 6}
+                                y={target80Y - 16}
+                                width="82"
+                                height="14"
+                                rx="3"
+                                fill="rgba(43, 67, 144, 0.92)"
+                                stroke="rgba(175, 186, 222, 0.6)"
+                                strokeWidth="1"
                               />
-                              <text 
-                                x={padL + 47} 
-                                y={target80Y - 5.5} 
-                                textAnchor="middle" 
+                              <text
+                                x={padL + 47}
+                                y={target80Y - 5.5}
+                                textAnchor="middle"
                                 className="text-[8px] fill-white font-bold tracking-wider"
                               >
                                 TARGET 80%
@@ -658,29 +655,29 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           {/* 95% Target Benchmark Line (All Sumber) - Posisi kiri anti-collision */}
                           {showTarget95 && (
                             <g>
-                              <line 
-                                x1={padL} 
-                                x2={padL + chartW} 
-                                y1={target95Y} 
-                                y2={target95Y} 
-                                stroke="#F59E0B" 
-                                strokeDasharray="6 4" 
-                                strokeWidth="1.5" 
+                              <line
+                                x1={padL}
+                                x2={padL + chartW}
+                                y1={target95Y}
+                                y2={target95Y}
+                                stroke="var(--warning)"
+                                strokeDasharray="6 4"
+                                strokeWidth="1.5"
                               />
-                              <rect 
-                                x={padL + 6} 
-                                y={target95Y - 16} 
-                                width="82" 
-                                height="14" 
-                                rx="3" 
-                                fill="rgba(245, 158, 11, 0.95)" 
-                                stroke="rgba(245, 158, 11, 0.5)" 
-                                strokeWidth="1" 
+                              <rect
+                                x={padL + 6}
+                                y={target95Y - 16}
+                                width="82"
+                                height="14"
+                                rx="3"
+                                fill="rgba(245, 158, 11, 0.95)"
+                                stroke="rgba(245, 158, 11, 0.5)"
+                                strokeWidth="1"
                               />
-                              <text 
-                                x={padL + 47} 
-                                y={target95Y - 5.5} 
-                                textAnchor="middle" 
+                              <text
+                                x={padL + 47}
+                                y={target95Y - 5.5}
+                                textAnchor="middle"
                                 className="text-[8px] fill-white font-bold tracking-wider"
                               >
                                 TARGET 95%
@@ -695,13 +692,13 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
                           {/* The Glowing Curved Line */}
                           {lineD && (
-                            <path 
-                              d={lineD} 
-                              fill="none" 
-                              stroke="url(#lineGradBPJS)" 
-                              strokeWidth="3.5" 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
+                            <path
+                              d={lineD}
+                              fill="none"
+                              stroke="url(#lineGradBPJS)"
+                              strokeWidth="3.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                               filter="url(#lineGlow)"
                               className="transition-all duration-700"
                             />
@@ -716,53 +713,53 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               <g key={pt.idx} className="transition-all">
                                 {/* Vertical dotted guide on hover */}
                                 {isHovered && (
-                                  <line 
-                                    x1={pt.x} 
-                                    y1={padT} 
-                                    x2={pt.x} 
-                                    y2={padT + chartH} 
-                                    stroke="rgba(68, 133, 59, 0.6)" 
-                                    strokeDasharray="3 3" 
-                                    strokeWidth="1.5" 
+                                  <line
+                                    x1={pt.x}
+                                    y1={padT}
+                                    x2={pt.x}
+                                    y2={padT + chartH}
+                                    stroke="rgba(68, 133, 59, 0.6)"
+                                    strokeDasharray="3 3"
+                                    strokeWidth="1.5"
                                   />
                                 )}
 
                                 {/* Outer Ring with Pulse */}
-                                <circle 
-                                  cx={pt.x} 
-                                  cy={pt.y} 
-                                  r={isHovered ? 9 : 6} 
-                                  fill="#ffffff" 
-                                  stroke={isTargetMet ? "#44853b" : "#2b4390"} 
-                                  strokeWidth={isHovered ? 3 : 2} 
+                                <circle
+                                  cx={pt.x}
+                                  cy={pt.y}
+                                  r={isHovered ? 9 : 6}
+                                  fill="var(--surface)"
+                                  stroke={isTargetMet ? "var(--bpjs-green)" : "var(--bpjs-navy)"}
+                                  strokeWidth={isHovered ? 3 : 2}
                                   className="cursor-pointer transition-all duration-200"
                                 />
 
                                 {/* Inner Dot */}
-                                <circle 
-                                  cx={pt.x} 
-                                  cy={pt.y} 
-                                  r={isHovered ? 4.5 : 2.5} 
-                                  fill={isTargetMet ? "#44853b" : "#2b4390"} 
+                                <circle
+                                  cx={pt.x}
+                                  cy={pt.y}
+                                  r={isHovered ? 4.5 : 2.5}
+                                  fill={isTargetMet ? "var(--bpjs-green)" : "var(--bpjs-navy)"}
                                   className="pointer-events-none"
                                 />
 
                                 {/* Value pill above point */}
                                 <g transform={`translate(${pt.x}, ${pt.y - 14})`}>
-                                  <rect 
-                                    x="-24" 
-                                    y="-12" 
-                                    width="48" 
-                                    height="15" 
-                                    rx="4" 
-                                    fill={isHovered ? "#2b4390" : isTargetMet ? "#44853b" : "#6573a1"} 
-                                    stroke="#ffffff" 
-                                    strokeWidth="1" 
-                                    className="transition-colors shadow-sm"
+                                  <rect
+                                    x="-24"
+                                    y="-12"
+                                    width="48"
+                                    height="15"
+                                    rx="4"
+                                    fill={isHovered ? "var(--bpjs-navy)" : isTargetMet ? "var(--bpjs-green)" : "var(--text-muted)"}
+                                    stroke="var(--surface)"
+                                    strokeWidth="1"
+                                    className="transition-colors"
                                   />
-                                  <text 
-                                    textAnchor="middle" 
-                                    y="-1" 
+                                  <text
+                                    textAnchor="middle"
+                                    y="-1"
                                     className="text-[9.5px] font-extrabold font-mono fill-white"
                                   >
                                     {formatPercentID(pt.item.avg_capaian)}
@@ -770,24 +767,24 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 </g>
 
                                 {/* Month Name label on X Axis */}
-                                <text 
-                                  x={pt.x} 
-                                  y={padT + chartH + 20} 
-                                  textAnchor="middle" 
+                                <text
+                                  x={pt.x}
+                                  y={padT + chartH + 20}
+                                  textAnchor="middle"
                                   className={`text-[11px] font-bold transition-colors cursor-pointer ${
-                                    isHovered ? 'fill-[#44853b] dark:fill-emerald-300 font-extrabold' : 'fill-[#2b4390] dark:fill-slate-300'
+                                    isHovered ? 'fill-[var(--bpjs-green)]  font-extrabold' : 'fill-[var(--bpjs-navy)] '
                                   }`}
                                 >
                                   {pt.item.month}
                                 </text>
 
                                 {/* Transparent Hit Box to easily trigger hover */}
-                                <rect 
-                                  x={pt.x - (chartW / (coords.length * 2))} 
-                                  y={padT} 
-                                  width={chartW / coords.length} 
-                                  height={chartH + padB} 
-                                  fill="transparent" 
+                                <rect
+                                  x={pt.x - (chartW / (coords.length * 2))}
+                                  y={padT}
+                                  width={chartW / coords.length}
+                                  height={chartH + padB}
+                                  fill="transparent"
                                   className="cursor-pointer"
                                   onMouseEnter={() => setHoveredMonthIndex(pt.idx)}
                                   onMouseLeave={() => setHoveredMonthIndex(null)}
@@ -802,20 +799,20 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                 })()}
 
                 {/* Strip Detail Snapshot Timestamp Terbaru per Bulan */}
-                <div className="mt-5 pt-4 border-t border-[#afbade]/30 dark:border-emerald-500/20">
-                  <div className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <div className="mt-5 pt-4 border-t border-[var(--border-color)]">
+                  <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-wider mb-2.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-[#44853b] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3.5 h-3.5 text-[var(--bpjs-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       Daftar Snapshot Timestamp Terbaru per Bulan
                     </span>
-                    <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-normal">
+                    <span className="text-[10px] text-[var(--text-muted)] font-normal">
                       Klik/Arahkan kursor pada kartu untuk menyorot titik kurva
                     </span>
                   </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2">
+
+                  <div className="grid min-w-0 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-2">
                     {(data?.trend_per_bulan ?? []).map((item, idx) => {
                       const isHovered = hoveredMonthIndex === idx;
                       const met = (item?.avg_capaian ?? 0) >= 85;
@@ -826,18 +823,18 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           onMouseLeave={() => setHoveredMonthIndex(null)}
                           className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                             isHovered
-                              ? 'bg-[#d4ecd1]/50 border-[#44853b] shadow-md shadow-[#44853b]/20 -translate-y-0.5 dark:bg-emerald-500/20 dark:border-emerald-400'
-                              : 'bg-white/70 dark:bg-slate-950/60 border-[#afbade]/30 dark:border-white/10 hover:border-[#44853b]/40'
+                              ? 'bg-[var(--surface-accent)]/50 border-[var(--bpjs-green)] shadow-md shadow-[var(--bpjs-green)]/20 -translate-y-0.5  '
+                              : 'bg-[var(--surface)]  border-[var(--border-color)]/30  hover:border-[var(--bpjs-green)]/40'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-xs font-bold text-[#2b4390] dark:text-white truncate">{item.month}</span>
-                            <span className={`text-[9px] font-extrabold ${met ? 'text-[#44853b] dark:text-emerald-400' : 'text-[#6573a1] dark:text-cyan-400'}`}>
+                            <span className="text-xs font-bold text-[var(--text-main)] truncate">{item.month}</span>
+                            <span className={`text-[9px] font-extrabold ${met ? 'text-[var(--bpjs-green)] ' : 'text-[var(--text-muted)] '}`}>
                               {formatPercentID(item.avg_capaian)}
                             </span>
                           </div>
-                          <div className="text-[9.5px] font-mono text-[#6573a1] dark:text-slate-400 truncate flex items-center gap-1" title={item.latest_timestamp}>
-                            <svg className="w-2.5 h-2.5 text-[#44853b] dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="text-[9.5px] font-mono text-[var(--text-muted)] truncate flex items-center gap-1" title={item.latest_timestamp}>
+                            <svg className="w-2.5 h-2.5 text-[var(--bpjs-green)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span className="truncate">{item.latest_timestamp || 'N/A'}</span>
@@ -847,39 +844,39 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     })}
                   </div>
                 </div>
-              </div>
+              </MainCard>
 
               {/* GRID 2 KOLOM BERDAMPINGAN: GRAFIK FASKES (KIRI) & GRAFIK NAMA POLI (KANAN) */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="grid min-w-0 grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* 2. GRAFIK BATANG HORISONTAL FASKES (KIRI) */}
-                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-[#afbade]/30 dark:border-white/10 flex flex-col justify-between">
+                <MainCard content={false} className="min-w-0 berry-dashboard-card rounded-lg p-5 sm:p-6 border border-[var(--border-color)] flex flex-col justify-between min-w-0">
                   <div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[#afbade]/30 dark:border-slate-800 gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[var(--border-color)] gap-3">
                       <div>
-                        <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#2b4390] shadow-sm shadow-[#2b4390]/50" />
+                        <Typography component="h3" variant="h5" className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-navy)]" />
                           Grafik Batang Horisontal Faskes
-                        </h3>
-                        <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+                        </Typography>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
                           Capaian pemanfaatan antrol per Rumah Sakit FKRTL
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button
+                        <AnimatedButton
                           onClick={() => setSortFaskesDesc(!sortFaskesDesc)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#afbade]/20 hover:bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--border-color)]/20 hover:bg-[var(--border-color)]/30 text-[var(--text-main)] border border-[var(--border-color)] flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <span>{sortFaskesDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
-                        </button>
+                        </AnimatedButton>
                         {showTarget80 && (
-                          <span className="flex items-center gap-1.5 text-xs text-[#2b4390] bg-[#afbade]/20 px-2 py-0.5 rounded-lg border border-[#afbade]/40 dark:text-sky-300 dark:bg-sky-500/10 dark:border-sky-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-[#2b4390] dark:border-sky-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-[var(--text-main)] bg-[var(--border-color)]/20 px-2 py-0.5 rounded-lg border border-[var(--border-color)]">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-[var(--border-color)] inline-block" />
                             <span className="text-[10.5px] font-semibold">Target MJKN: 80%</span>
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-600 dark:border-amber-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-[var(--warning-text)] bg-[var(--warning-soft)] px-2 py-0.5 rounded-lg border border-[var(--border-color)]">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-600 inline-block" />
                             <span className="text-[10.5px] font-semibold">Target All Sumber: 95%</span>
                           </span>
                         )}
@@ -887,22 +884,22 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </div>
 
                     {/* Horizontal Scale Ruler Header */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-[#6573a1] dark:text-slate-400 font-mono">
-                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-[#6573a1] dark:text-slate-500">
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-[var(--text-muted)] font-mono">
+                      <div className="w-24 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         Nama FKRTL
                       </div>
-                      <div className="flex-1 relative h-5">
+                      <div className="min-w-0 flex-1 relative h-5">
                         <span className="absolute left-0 bottom-0">0%</span>
                         <span className="absolute left-1/4 -translate-x-1/2 bottom-0 hidden md:inline">25%</span>
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
                         <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden md:inline">75%</span>
                         {showTarget80 && (
-                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-[#2b4390] dark:text-sky-400 font-bold bg-[#afbade]/30 dark:bg-slate-900/90 px-1 rounded border border-[#afbade]/50 dark:border-sky-500/30">
+                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-[var(--text-main)] font-bold bg-[var(--border-color)]/30 px-1 rounded border border-[var(--border-color)]">
                             80%
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-slate-900/90 px-1 rounded border border-amber-300 dark:border-amber-500/30">
+                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-[var(--warning-text)] font-bold bg-[var(--warning-soft)] px-1 rounded border border-[var(--border-color)]">
                             95%
                           </span>
                         )}
@@ -911,9 +908,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </div>
 
                     {/* Horizontal Bars List */}
-                    <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div tabIndex={0} role="region" aria-label="Grafik per fasilitas, gulir untuk melihat data lainnya" className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
                       {sortedFaskes.length === 0 ? (
-                        <div className="w-full py-16 text-center text-[#6573a1] dark:text-slate-400 text-xs italic">
+                        <div className="w-full py-16 text-center text-[var(--text-muted)] text-xs italic">
                           Tidak ada data Faskes
                         </div>
                       ) : (
@@ -926,11 +923,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 
                           return (
-                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                            <div key={idx} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[var(--surface-accent)]/20 p-1 rounded-xl transition-colors">
                               {/* Nama Faskes (Sumbu Y) */}
-                              <div className="w-32 sm:w-44 shrink-0 text-right">
-                                <span 
-                                  className="text-xs font-bold text-[#2b4390] dark:text-slate-300 group-hover:text-[#44853b] dark:group-hover:text-cyan-300 transition-colors line-clamp-1 block"
+                              <div className="w-24 sm:w-44 shrink-0 text-right">
+                                <span
+                                  className="text-xs font-bold text-[var(--text-main)] group-hover:text-[var(--bpjs-green)] transition-colors line-clamp-1 block"
                                   title={f.faskes}
                                 >
                                   {f.faskes.replace(/\(.*?\)/g, '').trim()}
@@ -938,21 +935,21 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               </div>
 
                               {/* Horizontal Bar Track & Fill */}
-                              <div className="flex-1 bg-slate-200/80 dark:bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-[#afbade]/30 dark:border-white/10 group-hover:border-[#2b4390]/40 dark:group-hover:border-blue-500/40 transition-colors overflow-hidden">
+                              <div className="min-w-0 flex-1 bg-[var(--surface-subtle)] rounded-xl h-8 relative p-1 flex items-center border border-[var(--border-color)] group-hover:border-[var(--border-color)] transition-colors overflow-hidden">
                                 {/* Garis Target Vertikal 80% (Hanya muncul jika filter sumber Mobile JKN) */}
                                 {showTarget80 && (
-                                  <div 
-                                    style={{ left: '80%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-[#2b4390] dark:border-sky-400/90 z-20 pointer-events-none"
+                                  <div
+                                    style={{ left: '80%' }}
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-[var(--border-color)] z-20 pointer-events-none"
                                     title="Garis Target Mobile JKN (80%)"
                                   />
                                 )}
 
                                 {/* Garis Target Vertikal 95% (Hanya muncul jika filter sumber All Sumber) */}
                                 {showTarget95 && (
-                                  <div 
-                                    style={{ left: '95%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-600 dark:border-amber-400/90 z-20 pointer-events-none"
+                                  <div
+                                    style={{ left: '95%' }}
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-600 z-20 pointer-events-none"
                                     title="Garis Target All Sumber (95%)"
                                   />
                                 )}
@@ -961,27 +958,27 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 <div
                                   style={{ width: `${widthPercent}%` }}
                                   className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
-                                    isMet 
-                                      ? 'bg-gradient-to-r from-[#2b4390] via-[#44853b] to-[#83a67e]' 
-                                      : 'bg-gradient-to-r from-[#2b4390] via-[#6573a1] to-[#afbade]'
+                                    isMet
+                                      ? 'bg-[var(--bpjs-green)]'
+                                      : 'bg-[var(--bpjs-navy)]'
                                   }`}
                                 >
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
+
                                 </div>
 
                                 {/* Percentage Display & Target Badges */}
-                                <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
+                                <div className="absolute right-3 z-30 flex items-center gap-1.5 bg-[var(--panel-bg)] px-1 rounded">
                                   {showTarget95 && isTarget95 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 font-bold">
-                                      ★ &ge;95%
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)] font-bold">
+                                       &ge;95%
                                     </span>
                                   )}
                                   {showTarget80 && isTarget80 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30 font-bold">
-                                      ✓ &ge;80%
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--border-color)]/30 text-[var(--text-main)] border border-[var(--border-color)] font-bold">
+                                       &ge;80%
                                     </span>
                                   )}
-                                  <span className="text-xs font-mono font-black text-white drop-shadow-sm">
+                                  <span className="text-xs font-mono font-semibold text-[var(--text-main)] drop-">
                                     {formatPercentID(f.avg_capaian)}
                                   </span>
                                 </div>
@@ -992,37 +989,37 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </MainCard>
 
                 {/* 3. GRAFIK BATANG HORISONTAL NAMA POLI (KANAN) */}
-                <div className="glass-card rounded-2xl p-5 sm:p-6 shadow-xl border border-[#afbade]/30 dark:border-white/10 flex flex-col justify-between">
+                <MainCard content={false} className="min-w-0 berry-dashboard-card rounded-lg p-5 sm:p-6 border border-[var(--border-color)] flex flex-col justify-between min-w-0">
                   <div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[#afbade]/30 dark:border-slate-800 gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-5 border-b border-[var(--border-color)] gap-3">
                       <div>
-                        <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
+                        <Typography component="h3" variant="h5" className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
                           Grafik Batang Horisontal Nama Poli
-                        </h3>
-                        <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+                        </Typography>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
                           Capaian pemanfaatan antrol berdasarkan Poliklinik BPJS{sortedPoli.length > 0 ? ` • ${sortedPoli.length} poli` : ''}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <button
+                        <AnimatedButton
                           onClick={() => setSortPoliDesc(!sortPoliDesc)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#afbade]/20 hover:bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-slate-800/80 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--border-color)]/20 hover:bg-[var(--border-color)]/30 text-[var(--text-main)] border border-[var(--border-color)] flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
                           <span>{sortPoliDesc ? 'Tertinggi ↓' : 'Terendah ↑'}</span>
-                        </button>
+                        </AnimatedButton>
                         {showTarget80 && (
-                          <span className="flex items-center gap-1.5 text-xs text-[#2b4390] bg-[#afbade]/20 px-2 py-0.5 rounded-lg border border-[#afbade]/40 dark:text-sky-300 dark:bg-sky-500/10 dark:border-sky-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-[#2b4390] dark:border-sky-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-[var(--text-main)] bg-[var(--border-color)]/20 px-2 py-0.5 rounded-lg border border-[var(--border-color)]">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-[var(--border-color)] inline-block" />
                             <span className="text-[10.5px] font-semibold">Target MJKN: 80%</span>
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="flex items-center gap-1.5 text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/30">
-                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-600 dark:border-amber-400 inline-block" />
+                          <span className="flex items-center gap-1.5 text-xs text-[var(--warning-text)] bg-[var(--warning-soft)] px-2 py-0.5 rounded-lg border border-[var(--border-color)]">
+                            <span className="w-2.5 h-0.5 border-t-2 border-dashed border-amber-600 inline-block" />
                             <span className="text-[10.5px] font-semibold">Target All Sumber: 95%</span>
                           </span>
                         )}
@@ -1030,22 +1027,22 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </div>
 
                     {/* Horizontal Scale Ruler Header */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-[#6573a1] dark:text-slate-400 font-mono">
-                      <div className="w-32 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-[#6573a1] dark:text-slate-500">
+                    <div className="flex items-center gap-2.5 sm:gap-3 mb-2 text-[10px] text-[var(--text-muted)] font-mono">
+                      <div className="w-24 sm:w-44 shrink-0 text-right pr-2 font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         Nama Poli Spesialis
                       </div>
-                      <div className="flex-1 relative h-5">
+                      <div className="min-w-0 flex-1 relative h-5">
                         <span className="absolute left-0 bottom-0">0%</span>
                         <span className="absolute left-1/4 -translate-x-1/2 bottom-0 hidden md:inline">25%</span>
                         <span className="absolute left-1/2 -translate-x-1/2 bottom-0">50%</span>
                         <span className="absolute left-3/4 -translate-x-1/2 bottom-0 hidden md:inline">75%</span>
                         {showTarget80 && (
-                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-[#2b4390] dark:text-sky-400 font-bold bg-[#afbade]/30 dark:bg-slate-900/90 px-1 rounded border border-[#afbade]/50 dark:border-sky-500/30">
+                          <span className="absolute left-[80%] -translate-x-1/2 bottom-0 text-[var(--text-main)] font-bold bg-[var(--border-color)]/30 px-1 rounded border border-[var(--border-color)]">
                             80%
                           </span>
                         )}
                         {showTarget95 && (
-                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-slate-900/90 px-1 rounded border border-amber-300 dark:border-amber-500/30">
+                          <span className="absolute left-[95%] -translate-x-1/2 bottom-0 text-[var(--warning-text)] font-bold bg-[var(--warning-soft)] px-1 rounded border border-[var(--border-color)]">
                             95%
                           </span>
                         )}
@@ -1054,9 +1051,9 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                     </div>
 
                     {/* Horizontal Bars List */}
-                    <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div tabIndex={0} role="region" aria-label="Grafik per fasilitas, gulir untuk melihat data lainnya" className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1 custom-scrollbar">
                       {sortedPoli.length === 0 ? (
-                        <div className="w-full py-16 text-center text-[#6573a1] dark:text-slate-400 text-xs italic">
+                        <div className="w-full py-16 text-center text-[var(--text-muted)] text-xs italic">
                           {data?.poli_message || 'Tidak ada data poli untuk filter yang dipilih.'}
                         </div>
                       ) : (
@@ -1069,11 +1066,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           const isMet = showTarget95 ? isTarget95 : isTarget80;
 
                           return (
-                            <div key={p.kode_poli || p.poli} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-900/40 p-1 rounded-xl transition-colors">
+                            <div key={p.kode_poli || p.poli} className="group flex items-center gap-2.5 sm:gap-3 hover:bg-[var(--surface-accent)]/20 p-1 rounded-xl transition-colors">
                               {/* Nama Poli (Sumbu Y) */}
-                              <div className="w-32 sm:w-44 shrink-0 text-right">
-                                <span 
-                                  className="text-xs font-bold text-[#2b4390] dark:text-slate-300 group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors line-clamp-1 block"
+                              <div className="w-24 sm:w-44 shrink-0 text-right">
+                                <span
+                                  className="text-xs font-bold text-[var(--text-main)] group-hover:text-[var(--bpjs-green)] transition-colors line-clamp-1 block"
                                   title={p.kode_poli ? `${p.poli} (${p.kode_poli})` : p.poli}
                                 >
                                   {p.poli}
@@ -1081,21 +1078,21 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               </div>
 
                               {/* Horizontal Bar Track & Fill */}
-                              <div className="flex-1 bg-slate-200/80 dark:bg-slate-950/80 rounded-xl h-8 relative p-1 flex items-center border border-[#afbade]/30 dark:border-white/10 group-hover:border-[#44853b]/40 dark:group-hover:border-emerald-500/40 transition-colors overflow-hidden">
+                              <div className="min-w-0 flex-1 bg-[var(--surface-subtle)] rounded-xl h-8 relative p-1 flex items-center border border-[var(--border-color)] group-hover:border-[var(--border-color)] transition-colors overflow-hidden">
                                 {/* Garis Target Vertikal 80% (Hanya muncul jika filter sumber Mobile JKN) */}
                                 {showTarget80 && (
-                                  <div 
-                                    style={{ left: '80%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-[#2b4390] dark:border-sky-400/90 z-20 pointer-events-none"
+                                  <div
+                                    style={{ left: '80%' }}
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-[var(--border-color)] z-20 pointer-events-none"
                                     title="Garis Target Mobile JKN (80%)"
                                   />
                                 )}
 
                                 {/* Garis Target Vertikal 95% (Hanya muncul jika filter sumber All Sumber) */}
                                 {showTarget95 && (
-                                  <div 
-                                    style={{ left: '95%' }} 
-                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-600 dark:border-amber-400/90 z-20 pointer-events-none"
+                                  <div
+                                    style={{ left: '95%' }}
+                                    className="absolute top-0 bottom-0 w-0.5 border-r border-dashed border-amber-600 z-20 pointer-events-none"
                                     title="Garis Target All Sumber (95%)"
                                   />
                                 )}
@@ -1104,27 +1101,27 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 <div
                                   style={{ width: `${widthPercent}%` }}
                                   className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
-                                    isMet 
-                                      ? 'bg-gradient-to-r from-[#2b4390] via-[#44853b] to-[#83a67e]' 
-                                      : 'bg-gradient-to-r from-[#2b4390] via-[#6573a1] to-[#afbade]'
+                                    isMet
+                                      ? 'bg-[var(--bpjs-green)]'
+                                      : 'bg-[var(--bpjs-navy)]'
                                   }`}
                                 >
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-white/20 pointer-events-none" />
+
                                 </div>
 
                                 {/* Percentage Display & Target Badges */}
-                                <div className="absolute right-3 z-30 flex items-center gap-1.5 drop-shadow-md">
+                                <div className="absolute right-3 z-30 flex items-center gap-1.5 bg-[var(--panel-bg)] px-1 rounded">
                                   {showTarget95 && isTarget95 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 font-bold">
-                                      ★ &ge;95%
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)] font-bold">
+                                       &ge;95%
                                     </span>
                                   )}
                                   {showTarget80 && isTarget80 && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#afbade]/30 text-[#2b4390] border border-[#afbade]/40 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/30 font-bold">
-                                      ✓ &ge;80%
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--border-color)]/30 text-[var(--text-main)] border border-[var(--border-color)] font-bold">
+                                       &ge;80%
                                     </span>
                                   )}
-                                  <span className="text-xs font-mono font-black text-white drop-shadow-sm">
+                                  <span className="text-xs font-mono font-semibold text-[var(--text-main)] drop-">
                                     {formatPercentID(p.avg_capaian)}
                                   </span>
                                 </div>
@@ -1135,71 +1132,71 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+                </MainCard>
               </div>
             </>
           )}
         </div>
       </div>
-      
+
       {/* Hidden Tables for JPEG Export */}
       {jpegData && jpegData.type === 'faskes' && (
         <div id="jpeg-export-faskes" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '800px', backgroundColor: 'white', padding: '20px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-            <thead>
-              <tr>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Nama FKRTL</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>All Sumber<br/>(Target 95%)</th>
-                <th style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Mobile JKN<br/>(Target 80%)</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table size="small" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+            <TableHead>
+              <TableRow>
+                <TableCell style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Nama FKRTL</TableCell>
+                <TableCell style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>All Sumber<br/>(Target 95%)</TableCell>
+                <TableCell style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Mobile JKN<br/>(Target 80%)</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {jpegData.data.map((row, idx) => (
-                <tr key={idx}>
-                  <td style={{ border: '1px solid black', padding: '6px' }}>{row.Faskes}</td>
-                  <td style={{ 
+                <TableRow key={idx}>
+                  <TableCell style={{ border: '1px solid black', padding: '6px' }}>{row.Faskes}</TableCell>
+                  <TableCell style={{
                     border: '1px solid black', padding: '6px', textAlign: 'right',
                     backgroundColor: row.all_sumber_pct >= 95 ? '#C6EFCE' : '#FFC7CE',
                     color: row.all_sumber_pct >= 95 ? '#006100' : '#9C0006'
                   }}>
                     {row.all_sumber_pct.toFixed(2)}%
-                  </td>
-                  <td style={{ 
+                  </TableCell>
+                  <TableCell style={{
                     border: '1px solid black', padding: '6px', textAlign: 'right',
                     backgroundColor: row.mjkn_pct >= 80 ? '#C6EFCE' : '#FFC7CE',
                     color: row.mjkn_pct >= 80 ? '#006100' : '#9C0006'
                   }}>
                     {row.mjkn_pct.toFixed(2)}%
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {jpegData && jpegData.type === 'poli' && (
         <div id="jpeg-export-poli" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '1200px', backgroundColor: 'white', padding: '20px' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
-            <thead>
-              <tr>
+          <Table size="small" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
+            <TableHead>
+              <TableRow>
                 {POLI_EXPORT_COLUMNS.map(column => (
-                  <th key={column.key} style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>{column.header}</th>
+                  <TableCell key={column.key} style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>{column.header}</TableCell>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {jpegData.data.map((row, idx) => (
-                <tr key={idx}>
+                <TableRow key={idx}>
                   {POLI_EXPORT_COLUMNS.map(column => (
-                    <td key={column.key} style={{ border: '1px solid #4D94FF', padding: '6px' }}>
+                    <TableCell key={column.key} style={{ border: '1px solid #4D94FF', padding: '6px' }}>
                       {column.key === 'capaian_pct' ? formatPercentID(row[column.key]) : row[column.key]}
-                    </td>
+                    </TableCell>
                   ))}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

@@ -1,10 +1,33 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "project": "SAPA YANFASKES & PROFI UI FIDELITY",
-  "version": "1.1.0",
-  "generated_at": "2026-10-19T18:49:30Z",
-  "operational_mode": "STRICT_REFERENCE",
-  "authoritative_references": [
+  "project": "SAPA YANFASKES",
+  "version": "3.0.0",
+  "generated_at": "2026-10-27",
+  "operational_mode": "USER_APPROVED_BERRY_ADAPTATION",
+  "design_tokens": {
+    "source": "frontend/src/berry/BerryThemeProvider.tsx",
+    "palette": "frontend/src/berry/colors.ts",
+    "typography": "Poppins",
+    "default_theme": "light",
+    "feedback_ms": 120,
+    "transition_ms": 220,
+    "reduced_motion": "MUI GlobalStyles and CSS overrides"
+  },
+  "interaction_revision": {
+    "source": "User-approved Berry migration, 2026-10-27",
+    "status": "PRODUCTION_VERIFIED",
+    "scope": [
+      "Berry shell/login",
+      "Four dashboards and nine compliance tabs",
+      "Four administration views",
+      "MUI select, buttons, dialogs, tabs, theme and language controls"
+    ],
+    "verification_note": "Adapted upstream source, not screenshot-only imitation; no runtime equivalence beyond verified workflows is claimed.",
+    "evidence": "artifacts/berry-migration/",
+    "deployment": "dpl_9jRmuPNCHT4Lqdf3cuzxmYfUFp5r",
+    "production_evidence": "artifacts/berry-migration/production-layout/"
+  },
+  "archived_references": [
     {
       "ref_id": "DRIBBLE-21916256",
       "title": "Dashboard, Performance Tracker, Geographical Statistics",
@@ -13,23 +36,29 @@
       "local_asset": "design-reference/shot_slide1.png",
       "preview_asset": "design-reference/dashboard_preview.png",
       "dimensions": "6400x4800 (Native) / 1600x1081 (Preview)"
+    },
+    {
+      "ref_id": "USER-APPROVED-REFINED-HEALTHCARE-2026-10-24",
+      "title": "Approved SAPA YANFASKES UI/UX Redesign",
+      "source_type": "USER_APPROVED_PLAN",
+      "direction": "Refined healthcare, BPJS navy and green, Plus Jakarta Sans, precise layouts, selective depth, purposeful motion",
+      "scope": "Entire application; preserve data, permissions, routes, calculations and exports",
+      "baseline": "artifacts/ui-redesign/baseline.json"
     }
   ],
-  "design_tokens": {
-    "insight_tracer": {
-      "bg_main": "#F1F1F4",
-      "bg_sidebar": "#1E1F31",
-      "sidebar_active": "#2E2F45",
-      "sidebar_text_muted": "#8E8FA3",
-      "card_bg": "#FFFFFF",
-      "card_border": "#E8E8EE",
-      "accent_purple": "#6C5DD3",
-      "accent_blue": "#3F8CFF",
-      "badge_green_bg": "#E4F8DD",
-      "badge_green_text": "#27AE60"
+  "authoritative_references": [
+    {
+      "ref_id": "BERRY-c5709e34",
+      "title": "Berry free React admin template",
+      "url": "https://github.com/codedthemes/berry-free-react-admin-template",
+      "commit": "c5709e34ceb162eb2b46ad55f16464aa8b0794b3",
+      "source_type": "USER_REQUESTED_REPOSITORY",
+      "direction": "Berry MUI white navigation, pale workspace, purple/blue semantic palette, Poppins, MainCard and MUI controls",
+      "scope": "All application UI; retain routes, roles, API calculations and exports",
+      "evidence": "artifacts/berry-migration/upstream.json"
     }
-  },
-  "elements": [
+  ],
+  "archived_elements": [
     {
       "element_id": "INSIGHT_TRACER_SIDEBAR",
       "element_name": "Insight Tracer Dark Nav Sidebar",
@@ -53,7 +82,12 @@
       },
       "asset_evidence": {
         "brand_icon": "Triangle/diamond tracer logo",
-        "menu_groups": ["ACTION CENTRE", "INSIGHTS", "ENGAGEMENTS", "MANAGE"]
+        "menu_groups": [
+          "ACTION CENTRE",
+          "INSIGHTS",
+          "ENGAGEMENTS",
+          "MANAGE"
+        ]
       },
       "interaction_evidence": {
         "active_tab": "Dashboard highlighted"
@@ -118,10 +152,26 @@
       },
       "asset_evidence": {
         "metrics": [
-          {"value": "23.4k", "label": "Clicks", "badge": "+14%"},
-          {"value": "6.4k", "label": "Impressions", "badge": "+16%"},
-          {"value": "43.2k", "label": "Organic", "badge": "+11%"},
-          {"value": "83k", "label": "Non-Organic", "badge": "+18%"}
+          {
+            "value": "23.4k",
+            "label": "Clicks",
+            "badge": "+14%"
+          },
+          {
+            "value": "6.4k",
+            "label": "Impressions",
+            "badge": "+16%"
+          },
+          {
+            "value": "43.2k",
+            "label": "Organic",
+            "badge": "+11%"
+          },
+          {
+            "value": "83k",
+            "label": "Non-Organic",
+            "badge": "+18%"
+          }
         ],
         "footer": "Compared To Last 30 Days"
       },
@@ -155,10 +205,25 @@
       },
       "asset_evidence": {
         "metrics": [
-          {"value": "45.2k", "label": "Organic", "badge": "0%"},
-          {"value": "36.4k", "label": "Non-Organic", "badge": "+12%"},
-          {"value": "0%", "label": "Organic"},
-          {"value": "14.6k", "label": "Fraudulent", "badge": "+16%"}
+          {
+            "value": "45.2k",
+            "label": "Organic",
+            "badge": "0%"
+          },
+          {
+            "value": "36.4k",
+            "label": "Non-Organic",
+            "badge": "+12%"
+          },
+          {
+            "value": "0%",
+            "label": "Organic"
+          },
+          {
+            "value": "14.6k",
+            "label": "Fraudulent",
+            "badge": "+16%"
+          }
         ],
         "footer": "Compared To Last 30 Days"
       },
@@ -196,18 +261,51 @@
         "progress_bar": "#3F8CFF"
       },
       "asset_evidence": {
-        "pills": ["Clicks", "Organic Installs", "Non-Organic Installs"],
+        "pills": [
+          "Clicks",
+          "Organic Installs",
+          "Non-Organic Installs"
+        ],
         "map_stats": [
-          {"value": "25,344", "label": "Viewed"},
-          {"value": "21,887", "label": "Dropouts"},
-          {"value": "12,834", "label": "Responses"}
+          {
+            "value": "25,344",
+            "label": "Viewed"
+          },
+          {
+            "value": "21,887",
+            "label": "Dropouts"
+          },
+          {
+            "value": "12,834",
+            "label": "Responses"
+          }
         ],
         "countries": [
-          {"name": "India", "responses": "14,230", "percent": "50.61%"},
-          {"name": "United States", "responses": "8,210", "percent": "26.21%"},
-          {"name": "Australia", "responses": "1,054", "percent": "4.61%"},
-          {"name": "United Kingdom", "responses": "3,540", "percent": "12.44%"},
-          {"name": "Greenland", "responses": "1,782", "percent": "6.61%"}
+          {
+            "name": "India",
+            "responses": "14,230",
+            "percent": "50.61%"
+          },
+          {
+            "name": "United States",
+            "responses": "8,210",
+            "percent": "26.21%"
+          },
+          {
+            "name": "Australia",
+            "responses": "1,054",
+            "percent": "4.61%"
+          },
+          {
+            "name": "United Kingdom",
+            "responses": "3,540",
+            "percent": "12.44%"
+          },
+          {
+            "name": "Greenland",
+            "responses": "1,782",
+            "percent": "6.61%"
+          }
         ]
       },
       "interaction_evidence": {
@@ -239,9 +337,23 @@
         "row_hover": "hover:bg-[#F9F9FB]"
       },
       "asset_evidence": {
-        "headers": ["Media Source", "Clicks", "Installs", "Impressions", "Click To Install", "Rejected Installs"],
+        "headers": [
+          "Media Source",
+          "Clicks",
+          "Installs",
+          "Impressions",
+          "Click To Install",
+          "Rejected Installs"
+        ],
         "sample_rows": [
-          {"source": "Demo Partner", "clicks": "5.41k", "installs": "1.24k", "impressions": "18.2k", "c2i": "22.9%", "rejected": "0%"}
+          {
+            "source": "Demo Partner",
+            "clicks": "5.41k",
+            "installs": "1.24k",
+            "impressions": "18.2k",
+            "c2i": "22.9%",
+            "rejected": "0%"
+          }
         ]
       },
       "interaction_evidence": {
@@ -252,5 +364,113 @@
       },
       "verification_status": "VERIFIED"
     }
-  ]
+  ],
+  "elements": [],
+  "verification": {
+    "status": "VERIFIED_WITH_DOCUMENTED_LIMITATIONS",
+    "summary": "artifacts/ui-redesign/verification-summary.md",
+    "baseline": "artifacts/ui-redesign/baseline.json",
+    "layout": "artifacts/ui-redesign/layout-report.json",
+    "accessibility": "artifacts/ui-redesign/chart-a11y-report.json",
+    "workflows": [
+      "artifacts/ui-redesign/workflow-report.json",
+      "artifacts/ui-redesign/dashboard-workflows.json",
+      "artifacts/ui-redesign/admin-workflows.json"
+    ],
+    "visual_diff": "artifacts/ui-redesign/visual-report.json",
+    "performance": "artifacts/ui-redesign/performance-report.json",
+    "graph_refresh": "artifacts/ui-redesign/graph-refresh.log",
+    "note": "Approved original design supersedes archived reference. Browser fixtures and live-service limits are documented in the summary."
+  },
+  "heroui_revision": {
+    "version": "3.2.6",
+    "direction": "Existing approved refined healthcare design with shared HeroUI controls",
+    "scope": [
+      "shell and login",
+      "56 dashboard selectors",
+      "nine compliance tabs",
+      "administration forms and dialogs",
+      "button feedback and reduced motion"
+    ],
+    "verification": "artifacts/heroui-upgrade/verification-summary.md"
+  },
+  "ui_ux_pro_max_revision": {
+    "date": "2026-10-26",
+    "direction": "Precise premium healthcare workspace inspired by ui-ux-pro-max, retaining BPJS identity and Plus Jakarta Sans",
+    "scope": [
+      "light/dark semantic theme and purposeful motion",
+      "icon navigation, keyboard menu search and editorial home",
+      "login and administration",
+      "FKRTL/FKTP/Antrol dashboards and nine compliance tabs",
+      "filter summaries and resets, table captions, sync feedback"
+    ],
+    "verification": "artifacts/ui-pro-max/verification-summary.md",
+    "screenshots": "artifacts/ui-pro-max/",
+    "deployment": {
+      "url": "https://sapa-yanfaskes.vercel.app",
+      "id": "dpl_32Q5AiE2sXaQQeTowoGXuFFFHGgT",
+      "status": "READY",
+      "verified": "artifacts/ui-pro-max-production/verification-summary.md"
+    }
+  },
+  "monitoring_laras": {
+    "date": "2026-10-27",
+    "direction": "Refined healthcare; semantic BPJS palette; accessible CSS bars with source mark values",
+    "source": "https://docs.google.com/spreadsheets/d/1rKEVk54FM7pDf2FpNA35ycTvvMsG542npXsU_xjaaoE/edit",
+    "route": "/monitoring-laras",
+    "api": "/api/v1/monitoring-laras",
+    "evidence": "artifacts/laras",
+    "methodology": "Unweighted aggregate marks. Latest period for comparisons, monthly history retained. Unsupported filter grains remain missing.",
+    "verification": {
+      "unit_tests": 20,
+      "source_api_checks": 85,
+      "browser_workflows": 17,
+      "theme_layouts": 12,
+      "axe_audits": 12,
+      "source_scope": "Kurang dari 60 Menit; all visit types only in current snapshot"
+    },
+    "deployment": {
+      "public_url": "https://sapa-yanfaskes.vercel.app/monitoring-laras",
+      "deployment_id": "dpl_DNUq71RBBrrKwgUL3Ccnwj42UnZ3",
+      "state": "READY",
+      "project_id": "prj_lHnvYuYZTfTvCU6Ei0IPlQfmM6RA",
+      "team_id": "team_AYGDOJZxBycQSbnhZ34woyTE",
+      "rollback_deployment": "dpl_Cwye5gYT7Xwc2W9phqf1roH1owVc",
+      "source_files_verified": 11,
+      "http_checks": 11,
+      "asset_sha256_matches": 4,
+      "production_browser_workflows": 14,
+      "production_axe_audits": 12,
+      "production_layouts": 12,
+      "source_kpi_seconds": 2361.68,
+      "comparison_period": "2026-10"
+    }
+  },
+  "monitoring_laras_duration": {
+    "format": "DD hari HH:MM:SS",
+    "deployment": "dpl_VCn197wDT65J5e7Yi3uYsroR4JWe",
+    "verification": "artifacts/laras/duration-verification.md"
+  },
+  "sidebar_revision": {
+    "date": "2026-10-28",
+    "status": "LOCAL_VERIFIED",
+    "scope": "Floating sidebar supersedes Berry drawer appearance only; existing routes, account actions and dashboard behavior retained",
+    "reference_images": [
+      "artifacts/sidebar-reference/references/image-1.png",
+      "artifacts/sidebar-reference/references/image-2.png",
+      "artifacts/sidebar-reference/references/image-3.png",
+      "artifacts/sidebar-reference/references/image-4.png",
+      "artifacts/sidebar-reference/references/image-5.png"
+    ],
+    "geometry": {
+      "collapsed_px": 84,
+      "expanded_px": 264,
+      "desktop_inset_top_left_px": 24,
+      "desktop_bottom_px": 32,
+      "radius_px": 24
+    },
+    "interaction": "Hover/focus expands; pin reserves content gutter; mobile uses MUI temporary Drawer; theme uses existing persisted store",
+    "verification": "artifacts/sidebar-reference/verification.md",
+    "production_deployed": false
+  }
 }

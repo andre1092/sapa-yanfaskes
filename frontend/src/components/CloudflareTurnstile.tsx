@@ -126,7 +126,7 @@ export const CloudflareTurnstile: React.FC<CloudflareTurnstileProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+    <div className="w-full flex flex-col items-center justify-center px-1 py-2.5 rounded-lg bg-[var(--surface-subtle)] border border-[var(--panel-border)]">
       {/* Cloudflare Turnstile Native Iframe Container */}
       {!useFallback && (
         <div ref={containerRef} className="min-h-[65px] flex items-center justify-center" />
@@ -165,7 +165,7 @@ export const CloudflareTurnstile: React.FC<CloudflareTurnstileProps> = ({
       )}
 
       {/* Cloudflare Official Security Footer Badge */}
-      <div className="mt-2 flex items-center justify-center gap-1.5 text-[10px] text-[#6573a1] dark:text-slate-400">
+      <div className="mt-2 flex items-center justify-center gap-1.5 text-[10px] text-[var(--text-muted)]">
         <svg className="w-3.5 h-3.5 text-[#F38020]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19.4 13.7c-.1-.7-.4-1.3-.9-1.8-.5-.5-1.2-.8-2-.9-.4-1.2-1.3-2.2-2.4-2.8-1.2-.6-2.5-.8-3.8-.5-1.3.3-2.4 1-3.2 2-1.3-.1-2.6.4-3.5 1.3-.9 1-1.3 2.3-1.2 3.6.1 1.3.8 2.5 1.8 3.2 1 .8 2.3 1.1 3.6 1h10.4c1.1 0 2.2-.4 3-1.2.8-.8 1.3-1.9 1.3-3 0-.3 0-.6-.1-.9z" />
         </svg>

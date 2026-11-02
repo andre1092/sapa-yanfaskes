@@ -1,3 +1,8 @@
+import { Typography } from '@mui/material';
+import MainCard from '../berry/MainCard';
+import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import '../berry/berry-dashboards.css';
+import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 
@@ -265,39 +270,55 @@ export const NakesComplianceTab: React.FC = () => {
   const totalTercapai = kpi.total_tercapai ?? kpi.total_met ?? 0;
   const totalBelumTercapai = kpi.total_belum_tercapai ?? kpi.total_unmet ?? kpi.total_records;
 
+  if (!apiData) {
+    return (
+      <MainCard content={false} className="berry-dashboard-card p-5 sm:p-6" aria-busy={loading} aria-live="polite">
+        <p className="sapa-eyebrow">Data kepatuhan FKRTL</p>
+        <Typography component="h2" variant="h4" className="sapa-section-heading text-lg font-semibold text-[var(--text-main)] mt-2">{loading ? 'Memuat data kepatuhan' : 'Data belum tersedia'}</Typography>
+        <p className="text-sm text-[var(--text-muted)] mt-2">{loading ? 'Mengambil data sesuai filter yang dipilih.' : error || 'Belum ada data untuk ditampilkan.'}</p>
+        {!loading && <button type="button" onClick={fetchData} className="sapa-button sapa-button-primary mt-4">Coba lagi</button>}
+      </MainCard>
+    );
+  }
+
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="sapa-dashboard-body space-y-6">
+      <p className="sapa-filter-summary sapa-status flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]" aria-live="polite">
+        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{selectedBulan}</span><span>{selectedTipeFaskes}</span>
+        <span>{statusFilter === 'ALL' ? 'Semua status' : statusFilter === 'TERCAPAI' ? 'Target tercapai' : 'Belum mencapai target'}</span>
+        {searchQuery && <span>Pencarian: {searchQuery}</span>}
+      </p>
       {/* Alert Error State if any */}
       {error && (
-        <div className="glass-card rounded-2xl p-4 border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 flex items-center justify-between gap-3 text-xs">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-4 border border-amber-500/40 bg-amber-500/10 text-amber-800 flex items-center justify-between gap-3 text-xs min-w-0">
           <div className="flex items-center gap-2">
-            <span>⚠️</span>
+            <span></span>
             <span>{error}</span>
           </div>
           <button
             onClick={fetchData}
-            className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 font-bold transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 font-bold transition-colors cursor-pointer"
           >
             Coba Lagi
           </button>
-        </div>
+        </MainCard>
       )}
 
       {/* 1. FILTER BAR 4 DIMENSI + SEARCH (KABUPATEN, NAMA FASKES, BULAN, TIPE FASKES) */}
-      <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg relative overflow-hidden">
+      <MainCard content={false} className="berry-dashboard-card rounded-lg p-4 sm:p-5 border border-[var(--border-color)] relative overflow-hidden min-w-0">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300">
+              <span className="p-2 rounded-xl bg-[var(--surface-accent)] text-[var(--bpjs-green)]">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
               </span>
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-[#f7fcfa] uppercase tracking-wider">
+                <Typography component="h4" variant="h5" className="text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">
                   Filter Analisis Jadwal Praktek Nakes
-                </h4>
-                <p className="text-[11px] text-[#6573a1] dark:text-[#afbade]">
+                </Typography>
+                <p className="text-[11px] text-[var(--text-muted)]">
                   Pilih parameter Kabupaten, Nama Faskes, Bulan, dan Tipe Faskes untuk memfilter data real-time
                 </p>
               </div>
@@ -305,7 +326,7 @@ export const NakesComplianceTab: React.FC = () => {
 
             <button
               onClick={handleResetFilters}
-              className="self-start sm:self-center px-3 py-1.5 rounded-xl text-xs font-bold text-[#2b4390] dark:text-white hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800 border border-[#afbade]/40 dark:border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="self-start sm:self-center px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] hover:bg-[var(--surface-accent)]/40 border border-[var(--border-color)] transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Reset Semua Filter"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -318,223 +339,223 @@ export const NakesComplianceTab: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Filter Kabupaten */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>📍 Kabupaten</span>
+              <label htmlFor="NakesComplianceTab-filter-1" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Kabupaten</span>
               </label>
-              <select
+              <FilterSelect aria-label="Kabupaten" id="NakesComplianceTab-filter-1"
                 value={selectedKabupaten}
                 onChange={(e) => handleKabupatenChange(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.kabupaten.map((kab) => (
-                  <option key={kab} value={kab} className="bg-slate-900 text-white">
+                  <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {kab}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter Nama Faskes */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>🏥 Nama Faskes (FKRTL)</span>
+              <label htmlFor="NakesComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Nama Faskes (FKRTL)</span>
               </label>
-              <select
+              <FilterSelect aria-label="Fasilitas kesehatan" id="NakesComplianceTab-filter-2"
                 value={selectedNamaPpk}
                 onChange={(e) => setSelectedNamaPpk(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm truncate"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
               >
                 {filterOptions.nama_ppk.map((faskes) => (
-                  <option key={faskes} value={faskes} className="bg-slate-900 text-white">
+                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {faskes}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter Bulan */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>🗓️ Bulan</span>
+              <label htmlFor="NakesComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Bulan</span>
               </label>
-              <select
+              <FilterSelect aria-label="Bulan" id="NakesComplianceTab-filter-3"
                 value={selectedBulan}
                 onChange={(e) => setSelectedBulan(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.bulan.map((bln) => (
-                  <option key={bln} value={bln} className="bg-slate-900 text-white">
+                  <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {bln}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter Tipe Faskes */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>🏷️ Tipe Faskes</span>
+              <label htmlFor="NakesComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Tipe Faskes</span>
               </label>
-              <select
+              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="NakesComplianceTab-filter-4"
                 value={selectedTipeFaskes}
                 onChange={(e) => handleTipeFaskesChange(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.tipe_faskes.map((tipe) => (
-                  <option key={tipe} value={tipe} className="bg-slate-900 text-white">
+                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {tipe}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
           </div>
         </div>
-      </div>
+      </MainCard>
 
       {/* 2. KARTU KPI UTAMA (PERSEN SESUAI, CAPAIAN BOBOT 25%, TOTAL KUNJUNGAN, STATUS TERCAPAI) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="sapa-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: PERSEN SESUAI */}
-        <div className="glass-card rounded-2xl p-5 border border-[#83a67e]/40 dark:border-emerald-500/20 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="sapa-kpi-lead sapa-metric berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Persen Sesuai
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)]">
               Target 100%
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#2b4390] dark:text-[#f7fcfa] font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--text-main)] font-mono tracking-tight">
               {formatPercentID(kpi.avg_persen_sesuai)}
             </span>
             <span
               className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 kpi.avg_persen_sesuai >= 100
-                  ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300'
-                  : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300'
+                  ? 'bg-[var(--surface-accent)] text-[var(--accent-text)] border border-[var(--border-color)]/40  '
+                  : 'bg-amber-100 text-amber-800 border border-amber-300  '
               }`}
             >
               {kpi.avg_persen_sesuai >= 100 ? 'Tercapai' : 'Belum Tercapai'}
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Tertimbang (Sesuai/Total)</span>
-            <span className="font-bold font-mono text-[#2b4390] dark:text-white">
+            <span className="font-bold font-mono text-[var(--text-main)]">
               {formatPercentID(kpi.weighted_persen_sesuai)}
             </span>
           </div>
-        </div>
+        </MainCard>
 
         {/* KPI 2: CAPAIAN (BOBOT 25%) */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-blue-500/20 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Capaian
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/30 text-[#2b4390] dark:bg-blue-500/20 dark:text-sky-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--border-color)]/30 text-[var(--text-main)]">
               Bobot {kpi.bobot_persen}%
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#44853b] dark:text-emerald-400 font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--bpjs-green)] font-mono tracking-tight">
               {kpi.avg_capaian.toFixed(1)}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+            <span className="text-xs text-[var(--text-muted)] font-semibold">
               poin dari skala 100
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Kontribusi Nilai Riil</span>
-            <span className="font-bold font-mono text-[#44853b] dark:text-emerald-300">
+            <span className="font-bold font-mono text-[var(--bpjs-green)]">
               {((kpi.avg_capaian * kpi.bobot_persen) / 100).toFixed(2)}%
             </span>
           </div>
-        </div>
+        </MainCard>
 
         {/* KPI 3: TOTAL KUNJUNGAN & DOKTER SESUAI */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Kunjungan Nakes
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--border-color)]/20 text-[var(--text-main)]">
               Total Log
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#2b4390] dark:text-sky-300 font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--text-main)] font-mono tracking-tight">
               {formatNumberID(kpi.total_kunjungan)}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+            <span className="text-xs text-[var(--text-muted)] font-semibold">
               kunjungan
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Sesuai / Tidak Sesuai</span>
-            <span className="font-bold font-mono text-[#2b4390] dark:text-white">
+            <span className="font-bold font-mono text-[var(--text-main)]">
               {formatNumberID(kpi.total_sesuai)} / {formatNumberID(kpi.total_tidak_sesuai)}
             </span>
           </div>
-        </div>
+        </MainCard>
 
         {/* KPI 4: STATUS TERCAPAI RS */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Status Kepatuhan RS
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--border-color)]/20 text-[var(--text-main)]">
               Nilai 100 = Tercapai
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#44853b] dark:text-emerald-400 font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--bpjs-green)] font-mono tracking-tight">
               {totalTercapai}
             </span>
-            <span className="text-xs text-[#44853b] dark:text-emerald-400 font-semibold">
+            <span className="text-xs text-[var(--bpjs-green)] font-semibold">
               RS Tercapai (100)
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Belum Tercapai (&lt; 100)</span>
-            <span className="font-bold font-mono text-amber-600 dark:text-amber-400">
+            <span className="font-bold font-mono text-[var(--warning-text)]">
               {totalBelumTercapai} RS
             </span>
           </div>
-        </div>
+        </MainCard>
       </div>
 
       {/* 3. DUA LINE CHART TERPISAH (KANAN DAN KIRI) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* LINE CHART KIRI: PERSEN SESUAI (%) */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-xl relative overflow-hidden flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#2b4390] shadow-sm shadow-[#2b4390]/50" />
+              <Typography component="h3" variant="h5" className="sapa-section-heading text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-navy)]" />
                 Grafik Bulanan: Persen Sesuai (%)
-              </h3>
-              <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
+              </Typography>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Tren rata-rata kesesuaian jadwal praktek nakes (Januari - September 2026)
               </p>
             </div>
 
             <div className="flex items-center gap-3 text-xs font-semibold">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#2b4390] border-2 border-white shadow-sm" />
-                <span className="text-[#2b4390] dark:text-[#afbade]">Persen Sesuai</span>
+                <span className="w-3 h-3 rounded-full bg-[var(--bpjs-navy)] border-2 border-white" />
+                <span className="text-[var(--text-main)]">Persen Sesuai</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-0.5 bg-amber-500 border-t border-dashed border-amber-500" />
-                <span className="text-amber-600 dark:text-amber-400 text-[11px]">Target 100%</span>
+                <span className="text-[var(--warning-text)] text-[11px]">Target 100%</span>
               </div>
             </div>
           </div>
@@ -542,7 +563,7 @@ export const NakesComplianceTab: React.FC = () => {
           {/* SVG Left Chart */}
           <div className="relative w-full h-64 select-none">
             {monthlyChart.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-xs text-[#6573a1] dark:text-slate-400 italic">
+              <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)] italic">
                 Tidak ada data bulanan.
               </div>
             ) : (
@@ -573,8 +594,8 @@ export const NakesComplianceTab: React.FC = () => {
                   <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="leftPersenGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2b4390" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#2b4390" stopOpacity="0.0" />
+                        <stop offset="0%" stopColor="var(--bpjs-navy)" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="var(--bpjs-navy)" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
 
@@ -588,7 +609,7 @@ export const NakesComplianceTab: React.FC = () => {
                             y1={y}
                             x2={width - paddingRight}
                             y2={y}
-                            stroke="#afbade"
+                            stroke="var(--border-color)"
                             strokeOpacity={tick === 100 ? '0.4' : '0.15'}
                             strokeDasharray={tick === 100 ? '4 3' : undefined}
                             strokeWidth={tick === 100 ? '1.5' : '1'}
@@ -598,7 +619,7 @@ export const NakesComplianceTab: React.FC = () => {
                             y={y + 3.5}
                             textAnchor="end"
                             fontSize="9.5"
-                            className="font-mono fill-[#6573a1] dark:fill-slate-400 font-medium"
+                            className="font-mono fill-[var(--text-muted)] font-medium"
                           >
                             {tick}%
                           </text>
@@ -612,7 +633,7 @@ export const NakesComplianceTab: React.FC = () => {
                       y1={yTarget100}
                       x2={width - paddingRight}
                       y2={yTarget100}
-                      stroke="#d97706"
+                      stroke="var(--warning)"
                       strokeWidth="1.5"
                       strokeDasharray="4 3"
                     />
@@ -622,7 +643,7 @@ export const NakesComplianceTab: React.FC = () => {
                     <path
                       d={pathPersen}
                       fill="none"
-                      stroke="#2b4390"
+                      stroke="var(--bpjs-navy)"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -646,8 +667,8 @@ export const NakesComplianceTab: React.FC = () => {
                             cx={cx}
                             cy={cy}
                             r={isSelected ? 6 : 4}
-                            fill="#2b4390"
-                            stroke="#ffffff"
+                            fill="var(--bpjs-navy)"
+                            stroke="var(--surface)"
                             strokeWidth="2"
                             className="transition-transform duration-200 group-hover:scale-125"
                           />
@@ -658,8 +679,8 @@ export const NakesComplianceTab: React.FC = () => {
                             fontSize="9.5"
                             className={`font-semibold transition-colors ${
                               isSelected
-                                ? 'fill-[#2b4390] dark:fill-white font-black'
-                                : 'fill-[#6573a1] dark:fill-slate-400 group-hover:fill-[#2b4390] dark:group-hover:fill-white'
+                                ? 'fill-[var(--bpjs-navy)]  font-black'
+                                : 'fill-[var(--text-muted)]  group-hover:fill-[var(--bpjs-navy)] '
                             }`}
                           >
                             {d.short_name}
@@ -681,51 +702,51 @@ export const NakesComplianceTab: React.FC = () => {
 
             {/* Hover Tooltip Left Chart */}
             {hoveredMonthPersen && (
-              <div className="absolute top-2 right-2 glass-card p-2.5 rounded-xl border border-[#2b4390]/30 shadow-lg pointer-events-none text-xs z-20 min-w-[170px] animate-fadeIn">
-                <div className="font-bold text-[#2b4390] dark:text-white border-b border-[#afbade]/30 pb-1 mb-1 flex items-center justify-between">
+              <div className="absolute top-2 right-2 berry-dashboard-card p-2.5 rounded-xl border border-[var(--border-color)] pointer-events-none text-xs z-20 min-w-[170px] min-w-0">
+                <div className="font-bold text-[var(--text-main)] border-b border-[var(--border-color)] pb-1 mb-1 flex items-center justify-between">
                   <span>{hoveredMonthPersen.bulan_indo}</span>
-                  <span className="text-[10px] px-1 py-0.2 rounded bg-[#afbade]/20 text-[#2b4390] dark:text-slate-300">
+                  <span className="text-[10px] px-1 py-0.2 rounded bg-[var(--border-color)]/20 text-[var(--text-main)]">
                     {hoveredMonthPersen.faskes_count} RS
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-[#6573a1] dark:text-slate-400">Persen Sesuai:</span>
-                  <span className="font-mono font-bold text-[#2b4390] dark:text-sky-300">
+                  <span className="text-[var(--text-muted)]">Persen Sesuai:</span>
+                  <span className="font-mono font-bold text-[var(--text-main)]">
                     {formatPercentID(hoveredMonthPersen.avg_persen_sesuai)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-[#6573a1] dark:text-slate-400">Dokter Sesuai:</span>
-                  <span className="font-mono text-[#44853b] dark:text-emerald-300">
+                  <span className="text-[var(--text-muted)]">Dokter Sesuai:</span>
+                  <span className="font-mono text-[var(--bpjs-green)]">
                     {formatNumberID(hoveredMonthPersen.total_sesuai)}
                   </span>
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </MainCard>
 
         {/* LINE CHART KANAN: CAPAIAN (POIN) */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-xl relative overflow-hidden flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-[#44853b] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
+              <Typography component="h3" variant="h5" className="sapa-section-heading text-xs sm:text-sm font-bold text-[var(--bpjs-green)] uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
                 Grafik Bulanan: Capaian (Poin)
-              </h3>
-              <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
+              </Typography>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Tren rata-rata skor capaian kepatuhan faskes (Bobot 25%)
               </p>
             </div>
 
             <div className="flex items-center gap-3 text-xs font-semibold">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#44853b] border-2 border-white shadow-sm" />
-                <span className="text-[#44853b] dark:text-emerald-400">Capaian</span>
+                <span className="w-3 h-3 rounded-full bg-[var(--bpjs-green)] border-2 border-white" />
+                <span className="text-[var(--bpjs-green)]">Capaian</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-0.5 bg-amber-500 border-t border-dashed border-amber-500" />
-                <span className="text-amber-600 dark:text-amber-400 text-[11px]">Target 100 Poin</span>
+                <span className="text-[var(--warning-text)] text-[11px]">Target 100 Poin</span>
               </div>
             </div>
           </div>
@@ -733,7 +754,7 @@ export const NakesComplianceTab: React.FC = () => {
           {/* SVG Right Chart */}
           <div className="relative w-full h-64 select-none">
             {monthlyChart.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-xs text-[#6573a1] dark:text-slate-400 italic">
+              <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)] italic">
                 Tidak ada data bulanan.
               </div>
             ) : (
@@ -764,8 +785,8 @@ export const NakesComplianceTab: React.FC = () => {
                   <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="rightCapaianGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#44853b" stopOpacity="0.3" />
-                        <stop offset="100%" stopColor="#44853b" stopOpacity="0.0" />
+                        <stop offset="0%" stopColor="var(--bpjs-green)" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="var(--bpjs-green)" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
 
@@ -779,7 +800,7 @@ export const NakesComplianceTab: React.FC = () => {
                             y1={y}
                             x2={width - paddingRight}
                             y2={y}
-                            stroke="#83a67e"
+                            stroke="var(--border-color)"
                             strokeOpacity={tick === 100 ? '0.4' : '0.15'}
                             strokeDasharray={tick === 100 ? '4 3' : undefined}
                             strokeWidth={tick === 100 ? '1.5' : '1'}
@@ -789,7 +810,7 @@ export const NakesComplianceTab: React.FC = () => {
                             y={y + 3.5}
                             textAnchor="end"
                             fontSize="9.5"
-                            className="font-mono fill-[#6573a1] dark:fill-slate-400 font-medium"
+                            className="font-mono fill-[var(--text-muted)] font-medium"
                           >
                             {tick}
                           </text>
@@ -803,7 +824,7 @@ export const NakesComplianceTab: React.FC = () => {
                       y1={yTarget100}
                       x2={width - paddingRight}
                       y2={yTarget100}
-                      stroke="#d97706"
+                      stroke="var(--warning)"
                       strokeWidth="1.5"
                       strokeDasharray="4 3"
                     />
@@ -813,7 +834,7 @@ export const NakesComplianceTab: React.FC = () => {
                     <path
                       d={pathCapaian}
                       fill="none"
-                      stroke="#44853b"
+                      stroke="var(--bpjs-green)"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -837,8 +858,8 @@ export const NakesComplianceTab: React.FC = () => {
                             cx={cx}
                             cy={cy}
                             r={isSelected ? 6 : 4}
-                            fill="#44853b"
-                            stroke="#ffffff"
+                            fill="var(--bpjs-green)"
+                            stroke="var(--surface)"
                             strokeWidth="2"
                             className="transition-transform duration-200 group-hover:scale-125"
                           />
@@ -849,8 +870,8 @@ export const NakesComplianceTab: React.FC = () => {
                             fontSize="9.5"
                             className={`font-semibold transition-colors ${
                               isSelected
-                                ? 'fill-[#44853b] dark:fill-emerald-400 font-black'
-                                : 'fill-[#6573a1] dark:fill-slate-400 group-hover:fill-[#44853b] dark:group-hover:fill-emerald-400'
+                                ? 'fill-[var(--bpjs-green)]  font-black'
+                                : 'fill-[var(--text-muted)]  group-hover:fill-[var(--bpjs-green)] '
                             }`}
                           >
                             {d.short_name}
@@ -872,41 +893,41 @@ export const NakesComplianceTab: React.FC = () => {
 
             {/* Hover Tooltip Right Chart */}
             {hoveredMonthCapaian && (
-              <div className="absolute top-2 right-2 glass-card p-2.5 rounded-xl border border-[#44853b]/30 shadow-lg pointer-events-none text-xs z-20 min-w-[170px] animate-fadeIn">
-                <div className="font-bold text-[#44853b] dark:text-emerald-400 border-b border-[#83a67e]/30 pb-1 mb-1 flex items-center justify-between">
+              <div className="absolute top-2 right-2 berry-dashboard-card p-2.5 rounded-xl border border-[var(--border-color)] pointer-events-none text-xs z-20 min-w-[170px] min-w-0">
+                <div className="font-bold text-[var(--bpjs-green)] border-b border-[var(--border-color)] pb-1 mb-1 flex items-center justify-between">
                   <span>{hoveredMonthCapaian.bulan_indo}</span>
-                  <span className="text-[10px] px-1 py-0.2 rounded bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300">
+                  <span className="text-[10px] px-1 py-0.2 rounded bg-[var(--surface-accent)] text-[var(--bpjs-green)]">
                     {hoveredMonthCapaian.faskes_count} RS
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-[#6573a1] dark:text-slate-400">Skor Capaian:</span>
-                  <span className="font-mono font-bold text-[#44853b] dark:text-emerald-300">
+                  <span className="text-[var(--text-muted)]">Skor Capaian:</span>
+                  <span className="font-mono font-bold text-[var(--bpjs-green)]">
                     {hoveredMonthCapaian.avg_capaian.toFixed(1)} poin
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-[#6573a1] dark:text-slate-400">Kontribusi Bobot:</span>
-                  <span className="font-mono text-[#2b4390] dark:text-white">
+                  <span className="text-[var(--text-muted)]">Kontribusi Bobot:</span>
+                  <span className="font-mono text-[var(--text-main)]">
                     {((hoveredMonthCapaian.avg_capaian * 25) / 100).toFixed(2)}%
                   </span>
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </MainCard>
       </div>
 
       {/* 4. TABEL MATRIKS KEPATUHAN DETAIL (NAMA FASKES, TIPE FASKES, TOTAL KUNJUNGAN, TIDAK SESUAI, SESUAI, PERSEN SESUAI, CAPAIAN, STATUS) */}
-      <div className="glass-card rounded-2xl shadow-xl border border-[#afbade]/30 dark:border-white/10 overflow-hidden">
+      <MainCard content={false} className="berry-dashboard-card rounded-lg border border-[var(--border-color)] overflow-hidden min-w-0">
         {/* Table Header Bar */}
-        <div className="p-4 sm:p-5 border-b border-[#afbade]/30 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#f0f7f4] dark:bg-slate-900/40">
+        <div className="p-4 sm:p-5 border-b border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--surface-subtle)]">
           <div>
-            <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
+            <Typography component="h3" variant="h5" className="sapa-section-heading text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
               Tabel Matriks Kepatuhan Jadwal Praktek Nakes
-            </h3>
-            <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+            </Typography>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Menampilkan {processedTableRows.length} data fasilitas kesehatan terverifikasi
             </p>
           </div>
@@ -914,28 +935,28 @@ export const NakesComplianceTab: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             {/* Filter Status Kepatuhan: Tercapai / Belum Tercapai */}
             <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Status:</label>
-              <select
+              <label htmlFor="NakesComplianceTab-filter-5" className="text-xs font-bold text-[var(--text-main)]">Status:</label>
+              <FilterSelect aria-label="Status capaian" id="NakesComplianceTab-filter-5"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
+                className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
-                <option value="ALL" className="bg-slate-900 text-white">Semua Status</option>
-                <option value="TERCAPAI" className="bg-slate-900 text-white">Tercapai (Nilai 100)</option>
-                <option value="BELUM_TERCAPAI" className="bg-slate-900 text-white">Belum Tercapai (&lt; 100)</option>
-              </select>
+                <FilterOption value="ALL" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Semua Status</FilterOption>
+                <FilterOption value="TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Tercapai (Nilai 100)</FilterOption>
+                <FilterOption value="BELUM_TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Belum Tercapai (&lt; 100)</FilterOption>
+              </FilterSelect>
             </div>
 
             {/* Live Search */}
             <div className="relative w-full sm:w-64">
-              <input
+              <input aria-label="Cari Nama Faskes / Tipe..."
                 type="text"
                 placeholder="Cari Nama Faskes / Tipe..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="glass-input w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#2b4390] dark:text-white placeholder-[#6573a1] dark:placeholder-slate-500 bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                className="sapa-control w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)]"
               />
-              <svg className="w-3.5 h-3.5 text-[#6573a1] dark:text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
@@ -943,192 +964,193 @@ export const NakesComplianceTab: React.FC = () => {
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#e6f2ed] dark:bg-slate-900/80 text-[#2b4390] dark:text-[#afbade] uppercase text-[10.5px] font-bold tracking-wider border-b border-[#afbade]/30 dark:border-slate-800">
-              <tr>
-                <th className="py-3 px-3.5 text-center w-12">No</th>
-                <th
-                  className="py-3 px-3.5 cursor-pointer hover:text-[#44853b] transition-colors"
+        <div aria-label="Area data yang dapat digulir" role="region" tabIndex={0} className="overflow-x-auto custom-scrollbar">
+          <Table size="small" className="sapa-data-table sapa-table w-full text-left text-xs">
+              <caption className="sr-only">Rincian kepatuhan fasilitas kesehatan sesuai filter dan periode yang dipilih</caption>
+            <TableHead className="bg-[var(--surface-subtle)] text-[var(--text-main)] uppercase text-[10.5px] font-bold tracking-wider border-b border-[var(--border-color)]">
+              <TableRow>
+                <TableCell className="py-3 px-3.5 text-center w-12">No</TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('nama_ppk')}
                 >
                   <div className="flex items-center gap-1">
                     <span>Nama Faskes</span>
                     {sortField === 'nama_ppk' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
-                  className="py-3 px-3.5 cursor-pointer hover:text-[#44853b] transition-colors"
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('tipe_faskes')}
                 >
                   <div className="flex items-center gap-1">
                     <span>Tipe Faskes</span>
                     {sortField === 'tipe_faskes' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
-                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('total_kunjungan')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Total Kunjungan</span>
                     {sortField === 'total_kunjungan' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
-                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('tidak_sesuai')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Tidak Sesuai</span>
                     {sortField === 'tidak_sesuai' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
-                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('sesuai')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Sesuai</span>
                     {sortField === 'sesuai' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
-                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('persen_sesuai')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Persen Sesuai</span>
                     {sortField === 'persen_sesuai' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
-                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
+                  className="py-3 px-3.5 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                   onClick={() => handleSort('capaian')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Capaian</span>
                     {sortField === 'capaian' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th className="py-3 px-3.5 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#afbade]/20 dark:divide-slate-800/60 font-medium">
+                </TableCell>
+                <TableCell className="py-3 px-3.5 text-center">Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody className="divide-y divide-[var(--border-color)]/20 font-medium">
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-[#6573a1] dark:text-slate-400">
+                <TableRow>
+                  <TableCell colSpan={9} className="py-12 text-center text-[var(--text-muted)]">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-6 h-6 border-2 border-[#44853b] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-6 h-6 border-2 border-[var(--border-color)] border-t-transparent rounded-full animate-spin" />
                       <span>Memuat data live Jadwal Praktek Nakes...</span>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : paginatedRows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-[#6573a1] dark:text-slate-400 italic">
+                <TableRow>
+                  <TableCell colSpan={9} className="py-12 text-center text-[var(--text-muted)] italic">
                     Tidak ada data fasilitas kesehatan yang sesuai dengan filter.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 paginatedRows.map((row, idx) => {
                   const isTercapai = row.capaian >= 100 || row.persen_sesuai >= 100 || row.status === 'Tercapai';
                   const rowNumber = (currentPage - 1) * itemsPerPage + idx + 1;
 
                   return (
-                    <tr
+                    <TableRow
                       key={`${row.kode_ppk}-${row.bulan}-${idx}`}
-                      className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
+                      className="hover:bg-[var(--surface-accent)]/20 transition-colors group"
                     >
-                      <td className="py-3 px-3.5 text-center text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">
+                      <TableCell className="py-3 px-3.5 text-center text-[var(--text-muted)] font-mono text-[11px]">
                         {rowNumber}
-                      </td>
-                      <td className="py-3 px-3.5 font-bold text-[#2b4390] dark:text-white group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 font-bold text-[var(--text-main)] group-hover:text-[var(--bpjs-green)] transition-colors">
                         {row.nama_ppk}
-                      </td>
-                      <td className="py-3 px-3.5">
-                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[#d4ecd1]/50 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300 border border-[#afbade]/30 dark:border-white/5">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5">
+                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[var(--surface-accent)]/50 text-[var(--text-main)] border border-[var(--border-color)]">
                           {row.tipe_faskes}
                         </span>
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-[#2b4390] dark:text-slate-200">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 text-center font-mono font-bold text-[var(--text-main)]">
                         {formatNumberID(row.total_kunjungan)}
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-amber-600 dark:text-amber-400">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 text-center font-mono font-bold text-[var(--warning-text)]">
                         {formatNumberID(row.tidak_sesuai)}
-                      </td>
-                      <td className="py-3 px-3.5 text-center font-mono font-bold text-[#44853b] dark:text-emerald-400">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 text-center font-mono font-bold text-[var(--bpjs-green)]">
                         {formatNumberID(row.sesuai)}
-                      </td>
-                      <td className="py-3 px-3.5 text-center">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <div className="w-16 bg-[#afbade]/20 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-[#afbade]/30 dark:border-white/5">
+                          <div className="w-16 bg-[var(--border-color)]/20 rounded-full h-2 overflow-hidden border border-[var(--border-color)]">
                             <div
                               style={{ width: `${Math.min(row.persen_sesuai, 100)}%` }}
                               className={`h-full rounded-full transition-all duration-500 ${
                                 isTercapai
-                                  ? 'bg-gradient-to-r from-[#44853b] to-[#83a67e]'
-                                  : 'bg-gradient-to-r from-amber-500 to-rose-400'
+                                  ? 'bg-[var(--bpjs-green)]'
+                                  : 'bg-amber-500'
                               }`}
                             />
                           </div>
-                          <span className="font-mono font-bold text-[#2b4390] dark:text-white text-[11px] w-12 text-right">
+                          <span className="font-mono font-bold text-[var(--text-main)] text-[11px] w-12 text-right">
                             {formatPercentID(row.persen_sesuai)}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3 px-3.5 text-center">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 text-center">
                         <span
                           className={`font-mono font-bold px-2.5 py-0.5 rounded-md text-[11px] ${
                             row.capaian >= 100
-                              ? 'bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300'
+                              ? 'bg-[var(--surface-accent)] text-[var(--accent-text)]  '
                               : row.capaian >= 50
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-sky-300'
+                              ? 'bg-blue-100 text-blue-800  '
                               : row.capaian > 0
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
-                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                              ? 'bg-amber-100 text-amber-800  '
+                              : 'bg-[var(--surface-subtle)] text-slate-600  '
                           }`}
                         >
                           {row.capaian}
                         </span>
-                      </td>
-                      <td className="py-3 px-3.5 text-center">
+                      </TableCell>
+                      <TableCell className="py-3 px-3.5 text-center">
                         {isTercapai ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
-                            ✓ Tercapai
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]">
+                             Tercapai
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
-                            ⚠ Belum Tercapai
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                             Belum Tercapai
                           </span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-4 border-t border-[#afbade]/30 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-[#6573a1] dark:text-slate-400">
+        <div className="p-4 border-t border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[var(--text-muted)]">
             <span>Baris per halaman:</span>
-            <select
+            <FilterSelect aria-label="Jumlah baris per halaman"
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-lg px-2 py-1 text-xs text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10"
+              className="sapa-control rounded-lg px-2 py-1 text-xs text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)]"
             >
-              <option value={10}>10</option>
-              <option value={15}>15</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+              <FilterOption value={10}>10</FilterOption>
+              <FilterOption value={15}>15</FilterOption>
+              <FilterOption value={25}>25</FilterOption>
+              <FilterOption value={50}>50</FilterOption>
+              <FilterOption value={100}>100</FilterOption>
+            </FilterSelect>
             <span>
               Menampilkan {processedTableRows.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
               {Math.min(currentPage * itemsPerPage, processedTableRows.length)} dari {processedTableRows.length} baris
@@ -1139,37 +1161,37 @@ export const NakesComplianceTab: React.FC = () => {
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="px-2.5 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+              className="px-2.5 py-1 rounded-lg border border-[var(--border-color)] text-[var(--text-main)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--surface-accent)]/40"
             >
               «
             </button>
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+              className="px-3 py-1 rounded-lg border border-[var(--border-color)] text-[var(--text-main)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--surface-accent)]/40"
             >
               Sebelumnya
             </button>
-            <span className="px-3 py-1 font-mono font-bold text-[#2b4390] dark:text-white">
+            <span className="px-3 py-1 font-mono font-bold text-[var(--text-main)]">
               {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage >= totalPages}
-              className="px-3 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+              className="px-3 py-1 rounded-lg border border-[var(--border-color)] text-[var(--text-main)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--surface-accent)]/40"
             >
               Selanjutnya
             </button>
             <button
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage >= totalPages}
-              className="px-2.5 py-1 rounded-lg border border-[#afbade]/40 dark:border-white/10 text-[#2b4390] dark:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800"
+              className="px-2.5 py-1 rounded-lg border border-[var(--border-color)] text-[var(--text-main)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--surface-accent)]/40"
             >
               »
             </button>
           </div>
         </div>
-      </div>
+      </MainCard>
     </div>
   );
 };

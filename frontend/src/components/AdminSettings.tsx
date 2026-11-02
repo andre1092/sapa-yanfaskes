@@ -1,14 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../lib/apiClient';
-import { useSyncStore, formatCurrentTimestamp } from '../store/syncStore';
-import { useUserStore, type UserAccount } from '../store/userStore';
+import {
+  Stack,
+  Typography,
+  FormLabel,
+  TextField,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Chip,
+  Tabs,
+  Tab,
+} from "@mui/material";
+import MainCard from "../berry/MainCard";
+import { FilterOption } from "./ui/FilterSelect";
+import { AnimatedButton } from "./ui/AnimatedButton";
+import { AdminDialog, AdminSelect } from "./AdminDialog";
+import React, { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../lib/apiClient";
+import { useSyncStore, formatCurrentTimestamp } from "../store/syncStore";
+import { useUserStore, type UserAccount } from "../store/userStore";
 
-type SettingsTab = 'profile' | 'fktp' | 'fkrtl' | 'users';
+type SettingsTab = "profile" | "fktp" | "fkrtl" | "users";
 
 export const AdminSettings: React.FC = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync Store
@@ -27,15 +45,23 @@ export const AdminSettings: React.FC = () => {
   } = useSyncStore();
 
   // User Store
-  const { profile, users, updateProfile, confirmEmailVerification, addUser, editUser, deleteUser } = useUserStore();
+  const {
+    profile,
+    users,
+    updateProfile,
+    confirmEmailVerification,
+    addUser,
+    editUser,
+    deleteUser,
+  } = useUserStore();
 
   // Profile Form States
   const [profileName, setProfileName] = useState(profile.name);
   const [profileUsername, setProfileUsername] = useState(profile.username);
   const [profileEmail, setProfileEmail] = useState(profile.email);
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -48,7 +74,7 @@ export const AdminSettings: React.FC = () => {
 
   // Email Verification Modal State & Dispatch
   const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [pendingEmailToVerify, setPendingEmailToVerify] = useState('');
+  const [pendingEmailToVerify, setPendingEmailToVerify] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailDispatchStatus, setEmailDispatchStatus] = useState<{
     success: boolean;
@@ -61,20 +87,25 @@ export const AdminSettings: React.FC = () => {
   const [syncingModule, setSyncingModule] = useState<string | null>(null);
 
   // User Management State
-  const [searchUserQuery, setSearchUserQuery] = useState('');
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState('Semua');
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [searchUserQuery, setSearchUserQuery] = useState("");
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState("Semua");
+  const [visiblePasswords, setVisiblePasswords] = useState<
+    Record<string, boolean>
+  >({});
 
   // Add/Edit User Modal State
   const [showUserModal, setShowUserModal] = useState(false);
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [userFormUsername, setUserFormUsername] = useState('');
-  const [userFormName, setUserFormName] = useState('');
-  const [userFormEmail, setUserFormEmail] = useState('');
-  const [userFormPassword, setUserFormPassword] = useState('');
-  const [userFormRole, setUserFormRole] = useState<UserAccount['role']>('Verifikator Yanfaskes');
-  const [userFormStatus, setUserFormStatus] = useState<UserAccount['status']>('Aktif');
+  const [userFormUsername, setUserFormUsername] = useState("");
+  const [userFormName, setUserFormName] = useState("");
+  const [userFormEmail, setUserFormEmail] = useState("");
+  const [userFormPassword, setUserFormPassword] = useState("");
+  const [userFormRole, setUserFormRole] = useState<UserAccount["role"]>(
+    "Verifikator Yanfaskes",
+  );
+  const [userFormStatus, setUserFormStatus] =
+    useState<UserAccount["status"]>("Aktif");
 
   // Delete User Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -88,30 +119,30 @@ export const AdminSettings: React.FC = () => {
   };
 
   const getWebmailUrl = (email: string) => {
-    const domain = (email.split('@')[1] || '').toLowerCase();
-    if (domain === 'bpjs-kesehatan.go.id') {
-      return 'https://mail.bpjs-kesehatan.go.id';
+    const domain = (email.split("@")[1] || "").toLowerCase();
+    if (domain === "bpjs-kesehatan.go.id") {
+      return "https://mail.bpjs-kesehatan.go.id";
     }
-    if (domain.includes('gmail.com')) {
-      return 'https://mail.google.com';
+    if (domain.includes("gmail.com")) {
+      return "https://mail.google.com";
     }
-    if (domain.includes('yahoo.')) {
-      return 'https://mail.yahoo.com';
+    if (domain.includes("yahoo.")) {
+      return "https://mail.yahoo.com";
     }
-    if (domain.includes('outlook.') || domain.includes('hotmail.')) {
-      return 'https://outlook.live.com';
+    if (domain.includes("outlook.") || domain.includes("hotmail.")) {
+      return "https://outlook.live.com";
     }
     return `mailto:${email}`;
   };
 
-  const currentVerificationUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://sapa-yanfaskes.vercel.app'}/verify?token=sapa_auth_${Date.now()}&email=${encodeURIComponent(pendingEmailToVerify || profileEmail)}`;
+  const currentVerificationUrl = `${typeof window !== "undefined" ? window.location.origin : "https://sapa-yanfaskes.vercel.app"}/verify?token=sapa_auth_${Date.now()}&email=${encodeURIComponent(pendingEmailToVerify || profileEmail)}`;
 
   const handleCopyVerificationLink = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(currentVerificationUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
-      showToast('Tautan verifikasi resmi berhasil disalin ke clipboard!');
+      showToast("Tautan verifikasi resmi berhasil disalin ke clipboard!");
     }
   };
 
@@ -122,11 +153,12 @@ export const AdminSettings: React.FC = () => {
 
     if (newPassword && newPassword !== confirmPassword) {
       setIsSavingProfile(false);
-      showToast('Konfirmasi kata sandi baru tidak cocok!');
+      showToast("Konfirmasi kata sandi baru tidak cocok!");
       return;
     }
 
-    const emailChanged = profileEmail.trim().toLowerCase() !== profile.email.trim().toLowerCase();
+    const emailChanged =
+      profileEmail.trim().toLowerCase() !== profile.email.trim().toLowerCase();
 
     if (emailChanged) {
       const targetEmail = profileEmail.trim();
@@ -147,29 +179,37 @@ export const AdminSettings: React.FC = () => {
       // Kirim email verifikasi resmi via backend FastAPI
       try {
         const verifyUrl = `${window.location.origin}/verify?token=sapa_auth_${Date.now()}&email=${encodeURIComponent(targetEmail)}`;
-        const res = await apiClient.post('/api/v1/auth/send-verification-email', {
-          to_email: targetEmail,
-          name: targetName,
-          verification_url: verifyUrl,
-        });
+        const res = await apiClient.post(
+          "/api/v1/auth/send-verification-email",
+          {
+            to_email: targetEmail,
+            name: targetName,
+            verification_url: verifyUrl,
+          },
+        );
 
         if (res.data?.success) {
           setEmailDispatchStatus({
             success: true,
-            message: res.data.message || `Email verifikasi berhasil dikirim ke ${targetEmail}`,
+            message:
+              res.data.message ||
+              `Email verifikasi berhasil dikirim ke ${targetEmail}`,
             method: res.data.method,
           });
           showToast(`Email verifikasi resmi telah dikirim ke ${targetEmail}`);
         } else {
           setEmailDispatchStatus({
             success: false,
-            message: res.data?.message || 'Pengiriman email server tertunda. Anda dapat menggunakan verifikasi langsung.',
+            message:
+              res.data?.message ||
+              "Pengiriman email server tertunda. Anda dapat menggunakan verifikasi langsung.",
           });
         }
       } catch (err: any) {
         setEmailDispatchStatus({
           success: false,
-          message: 'Server email fallback aktif. Anda dapat memverifikasi akun secara instan atau menyalin tautan verifikasi.',
+          message:
+            "Server email fallback aktif. Anda dapat memverifikasi akun secara instan atau menyalin tautan verifikasi.",
         });
       } finally {
         setIsSendingEmail(false);
@@ -180,11 +220,11 @@ export const AdminSettings: React.FC = () => {
         username: profileUsername.trim(),
         ...(newPassword ? { password: newPassword } : {}),
       });
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
       setIsSavingProfile(false);
-      showToast('Profil dan kredensial akun berhasil disimpan 100%!');
+      showToast("Profil dan kredensial akun berhasil disimpan.");
     }
   };
 
@@ -192,7 +232,9 @@ export const AdminSettings: React.FC = () => {
     confirmEmailVerification();
     setProfileEmail(pendingEmailToVerify);
     setShowVerifyModal(false);
-    showToast(`Email ${pendingEmailToVerify} berhasil diverifikasi! Seluruh fitur SAPA YANFASKES kini aktif.`);
+    showToast(
+      `Email ${pendingEmailToVerify} berhasil diverifikasi! Seluruh fitur SAPA YANFASKES kini aktif.`,
+    );
   };
 
   // --- TAB 3: INTEGRASI FKRTL LOGIC ---
@@ -201,48 +243,70 @@ export const AdminSettings: React.FC = () => {
     const nowTimestamp = formatCurrentTimestamp();
 
     try {
-      if (moduleId === 'antrol') {
+      if (moduleId === "antrol") {
         try {
-          const res = await apiClient.post('/api/v1/fkrtl-antrol-sync', {}, { timeout: 20000 });
+          const res = await apiClient.post(
+            "/api/v1/fkrtl-antrol-sync",
+            {},
+            { timeout: 20000 },
+          );
           if (res.data?.last_update) {
             setSyncAntrol(res.data.last_update);
           } else {
             setSyncAntrol(nowTimestamp);
           }
         } catch (e) {
-          console.warn('Sync endpoint fallback to get with refresh=true', e);
+          console.warn("Sync endpoint fallback to get with refresh=true", e);
           try {
-            const res = await apiClient.get('/api/v1/fkrtl-antrol-stats?refresh=true', { timeout: 20000 });
+            const res = await apiClient.get(
+              "/api/v1/fkrtl-antrol-stats?refresh=true",
+              { timeout: 20000 },
+            );
             if (res.data?.last_update) {
               setSyncAntrol(res.data.last_update);
             } else {
               setSyncAntrol(nowTimestamp);
             }
           } catch (errFallback) {
-            console.error('Failed to sync antrol data from backend:', errFallback);
+            console.error(
+              "Failed to sync antrol data from backend:",
+              errFallback,
+            );
             setSyncAntrol(nowTimestamp);
           }
         }
-        await queryClient.invalidateQueries({ queryKey: ['fkrtl-antrol-stats'] });
-        await queryClient.invalidateQueries({ queryKey: ['fkrtl-stats'] });
-      } else if (moduleId === 'nakes') {
-        await queryClient.invalidateQueries({ queryKey: ['fkrtl-kepatuhan-nakes'] });
+        await queryClient.invalidateQueries({
+          queryKey: ["fkrtl-antrol-stats"],
+        });
+        await queryClient.invalidateQueries({ queryKey: ["fkrtl-stats"] });
+      } else if (moduleId === "nakes") {
+        await queryClient.invalidateQueries({
+          queryKey: ["fkrtl-kepatuhan-nakes"],
+        });
         setSyncNakes(nowTimestamp);
-      } else if (moduleId === 'pengaduan') {
-        await queryClient.invalidateQueries({ queryKey: ['fkrtl-kepatuhan-pengaduan'] });
+      } else if (moduleId === "pengaduan") {
+        await queryClient.invalidateQueries({
+          queryKey: ["fkrtl-kepatuhan-pengaduan"],
+        });
         setSyncPengaduan(nowTimestamp);
-      } else if (moduleId === 'umabl') {
-        await queryClient.invalidateQueries({ queryKey: ['fkrtl-kepatuhan-umabl'] });
+      } else if (moduleId === "umabl") {
+        await queryClient.invalidateQueries({
+          queryKey: ["fkrtl-kepatuhan-umabl"],
+        });
         setSyncUmabl(nowTimestamp);
-      } else if (moduleId === 'display-tt') {
-        await queryClient.invalidateQueries({ queryKey: ['fkrtl-kepatuhan-display-tt'] });
+      } else if (moduleId === "display-tt") {
+        await queryClient.invalidateQueries({
+          queryKey: ["fkrtl-kepatuhan-display-tt"],
+        });
         setSyncDisplayTt(nowTimestamp);
-      } else if (moduleId === 'all') {
+      } else if (moduleId === "all") {
         await queryClient.invalidateQueries();
         setSyncAll(nowTimestamp);
       }
 
-      showToast(`Integrasi ${name} berhasil! Last Update diperbarui ke: ${nowTimestamp}`);
+      showToast(
+        `Integrasi ${name} berhasil! Last Update diperbarui ke: ${nowTimestamp}`,
+      );
     } finally {
       setTimeout(() => {
         setSyncingModule(null);
@@ -261,12 +325,12 @@ export const AdminSettings: React.FC = () => {
   const handleOpenAddUserModal = () => {
     setIsEditingUser(false);
     setEditingUserId(null);
-    setUserFormUsername('');
-    setUserFormName('');
-    setUserFormEmail('');
-    setUserFormPassword('');
-    setUserFormRole('Verifikator Yanfaskes');
-    setUserFormStatus('Aktif');
+    setUserFormUsername("");
+    setUserFormName("");
+    setUserFormEmail("");
+    setUserFormPassword("");
+    setUserFormRole("Verifikator Yanfaskes");
+    setUserFormStatus("Aktif");
     setShowUserModal(true);
   };
 
@@ -284,8 +348,13 @@ export const AdminSettings: React.FC = () => {
 
   const handleSaveUserForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userFormUsername.trim() || !userFormName.trim() || !userFormEmail.trim() || !userFormPassword.trim()) {
-      showToast('Harap lengkapi semua kolom isian pengguna.');
+    if (
+      !userFormUsername.trim() ||
+      !userFormName.trim() ||
+      !userFormEmail.trim() ||
+      !userFormPassword.trim()
+    ) {
+      showToast("Harap lengkapi semua kolom isian pengguna.");
       return;
     }
 
@@ -301,7 +370,10 @@ export const AdminSettings: React.FC = () => {
 
       // Sinkronisasi otomatis ke profil aktif jika user yang diedit adalah akun yang sedang login
       const targetUser = users.find((u) => u.id === editingUserId);
-      if (targetUser && targetUser.username.toLowerCase() === profile.username.toLowerCase()) {
+      if (
+        targetUser &&
+        targetUser.username.toLowerCase() === profile.username.toLowerCase()
+      ) {
         updateProfile({
           username: userFormUsername.trim(),
           name: userFormName.trim(),
@@ -334,13 +406,15 @@ export const AdminSettings: React.FC = () => {
     if (success) {
       showToast(`Pengguna ${userToDelete.username} berhasil dihapus.`);
     } else {
-      showToast(`Akun ${userToDelete.username} merupakan Super Admin utama dan dilindungi dari penghapusan.`);
+      showToast(
+        `Akun ${userToDelete.username} merupakan Super Admin utama dan dilindungi dari penghapusan.`,
+      );
     }
     setUserToDelete(null);
   };
 
   const filteredUsers = users.filter((u) => {
-    if (selectedRoleFilter !== 'Semua' && u.role !== selectedRoleFilter) {
+    if (selectedRoleFilter !== "Semua" && u.role !== selectedRoleFilter) {
       return false;
     }
     if (searchUserQuery.trim()) {
@@ -355,142 +429,96 @@ export const AdminSettings: React.FC = () => {
   });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8 animate-fadeIn">
+    <Stack
+      spacing={3}
+      sx={{ minWidth: 0 }}
+      className="sapa-page min-w-0 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8 animate-fadeIn"
+    >
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#2b4390] text-white shadow-2xl border border-[#83a67e]/40 animate-slideUp">
-          <span className="w-2 h-2 rounded-full bg-[#44853b] animate-ping" />
+        <MainCard
+          content={false}
+          sx={{ p: 0, minWidth: 0 }}
+          role="status"
+          aria-live="polite"
+          className="sapa-admin-toast fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 text-[var(--text-main)] animate-slideUp"
+        >
+          <span className="w-2 h-2 rounded-full bg-[var(--panel-bg)]" />
           <span className="text-xs font-bold">{toastMessage}</span>
-        </div>
+        </MainCard>
       )}
 
       {/* 1. Executive Banner Header */}
-      <div className="glass-panel p-5 sm:p-7 rounded-3xl border border-[#afbade]/40 dark:border-white/10 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-[#44853b]/15 to-[#2b4390]/15 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <Stack component="header" spacing={2}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          sx={{ justifyContent: "space-between", alignItems: { md: "center" } }}
+        >
           <div>
-            <div className="flex flex-wrap items-center gap-2 mb-2.5">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide border border-[#83a67e]/40 bg-[#d4ecd1]/40 text-[#44853b] dark:bg-emerald-500/10 dark:text-emerald-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#44853b] animate-pulse" />
-                SISTEM &amp; PENGATURAN ADMINISTRATOR
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-[#afbade]">
-                v1.3.0 Live Sync
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#2b4390] dark:text-[#f7fcfa] tracking-tight">
-              Admin <span className="bpjs-gradient-text">Settings</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-[#6573a1] dark:text-[#afbade] mt-1.5 max-w-2xl leading-relaxed">
-              Pusat kendali konfigurasi profil, orkestrasi pembaruan data live Google Spreadsheet FKRTL &amp; FKTP, serta manajemen hak akses pengguna aplikasi SAPA YANFASKES.
-            </p>
+            <Typography component="h1" variant="h3" className="sapa-page-title">
+              Pengaturan
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.75 }}
+            >
+              Kelola profil akun, sumber data fasilitas kesehatan, dan akses
+              pengguna.
+            </Typography>
           </div>
-
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="glass-card px-4 py-3 rounded-2xl border border-[#83a67e]/40 dark:border-white/10 shadow-md flex items-center gap-3.5 bg-white/60 dark:bg-slate-900/60">
-              <div className="w-10 h-10 rounded-xl bg-[#d4ecd1] dark:bg-emerald-950/60 border border-[#83a67e]/40 flex items-center justify-center text-lg">
-                🛡️
-              </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#6573a1] dark:text-slate-400 block">
-                  Status Akun
-                </span>
-                <span className="text-xs font-black text-[#44853b] dark:text-emerald-400 flex items-center gap-1.5 mt-0.5">
-                  <span className="w-2 h-2 rounded-full bg-[#44853b] animate-pulse" />
-                  {profile.isVerified ? 'Terverifikasi Resmi' : 'Menunggu Verifikasi'}
-                </span>
-                <span className="text-[10px] font-semibold text-[#2b4390] dark:text-[#afbade] block">
-                  {profile.role}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+          <Chip
+            size="small"
+            color={profile.isVerified ? "success" : "warning"}
+            label={
+              profile.isVerified ? "Akun terverifikasi" : "Menunggu verifikasi"
+            }
+          />
+        </Stack>
+      </Stack>
 
       {/* 2. 4 SEGMENTED GLASSMORPHISM TABS */}
-      <div className="glass-card rounded-2xl p-2 border border-[#afbade]/30 dark:border-white/10 shadow-md overflow-x-auto custom-scrollbar">
-        <div className="flex items-center gap-2 min-w-max">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer select-none ${
-              activeTab === 'profile'
-                ? 'bpjs-gradient-btn text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/50'
-                : 'text-[#6573a1] hover:text-[#2b4390] hover:bg-[#d4ecd1]/30 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60 border border-transparent'
-            }`}
-          >
-            <span>👤</span>
-            <span>Profil</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('fktp')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer select-none ${
-              activeTab === 'fktp'
-                ? 'bpjs-gradient-btn text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/50'
-                : 'text-[#6573a1] hover:text-[#2b4390] hover:bg-[#d4ecd1]/30 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60 border border-transparent'
-            }`}
-          >
-            <span>🏥</span>
-            <span>Integrasi Data FKTP</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#afbade]/20 text-[#6573a1] dark:text-slate-400">
-              Persiapan
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('fkrtl')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer select-none ${
-              activeTab === 'fkrtl'
-                ? 'bpjs-gradient-btn text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/50'
-                : 'text-[#6573a1] hover:text-[#2b4390] hover:bg-[#d4ecd1]/30 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60 border border-transparent'
-            }`}
-          >
-            <span>🏢</span>
-            <span>Integrasi Data FKRTL</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#d4ecd1] text-[#44853b] font-bold">
-              Live Sync
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer select-none ${
-              activeTab === 'users'
-                ? 'bpjs-gradient-btn text-white shadow-md shadow-[#2b4390]/25 border border-[#83a67e]/50'
-                : 'text-[#6573a1] hover:text-[#2b4390] hover:bg-[#d4ecd1]/30 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60 border border-transparent'
-            }`}
-          >
-            <span>👥</span>
-            <span>User Setting</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#afbade]/30 text-[#2b4390] dark:bg-slate-800 dark:text-white font-mono font-bold">
-              {users.length} User
-            </span>
-          </button>
-        </div>
-      </div>
+      <Tabs
+        value={activeTab}
+        onChange={(_, value: SettingsTab) => setActiveTab(value)}
+        variant="scrollable"
+        scrollButtons="auto"
+        aria-label="Bagian pengaturan"
+      >
+        <Tab value="profile" label="Profil" />
+        <Tab value="fktp" label="Integrasi FKTP" />
+        <Tab value="fkrtl" label="Integrasi FKRTL" />
+        <Tab value="users" label="Akses pengguna" />
+      </Tabs>
 
       {/* 3. TAB CONTENT RENDERING */}
 
       {/* TAB 1: PROFIL */}
-      {activeTab === 'profile' && (
-        <div className="glass-card rounded-3xl p-6 sm:p-8 border border-[#afbade]/40 dark:border-white/10 shadow-xl space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-[#afbade]/30 dark:border-slate-800">
+      {activeTab === "profile" && (
+        <MainCard
+          content={false}
+          sx={{ p: 3, minWidth: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex items-center justify-between pb-4 border-b border-[var(--border-color)]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#d4ecd1] dark:bg-emerald-950/60 border border-[#83a67e]/40 flex items-center justify-center text-lg shadow-sm">
-                👤
-              </div>
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-[#2b4390] dark:text-[#f7fcfa]">
+                <Typography
+                  component="h2"
+                  variant="h4"
+                  className="text-base sm:text-lg font-bold text-[var(--text-main)]"
+                >
                   Profil Pengguna &amp; Keamanan Akun
-                </h2>
-                <p className="text-xs text-[#6573a1] dark:text-[#afbade] mt-0.5">
-                  Perbarui identitas administrator, username, email resmi, dan kata sandi akses sistem.
+                </Typography>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  Perbarui identitas administrator, username, email resmi, dan
+                  kata sandi akses sistem.
                 </p>
               </div>
             </div>
 
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40">
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[var(--panel-bg)] text-[var(--text-main)] border border-[var(--border-color)]">
               {profile.role}
             </span>
           </div>
@@ -499,108 +527,153 @@ export const AdminSettings: React.FC = () => {
             {/* Grid Input Data Diri */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">
-                  Nama Lengkap Administrator <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel
+                  htmlFor="adminsettings-field-1"
+                  className="text-xs font-bold text-[var(--text-main)]"
+                >
+                  Nama Lengkap Administrator{" "}
+                  <span className="text-[var(--text-muted)]">*</span>
+                </FormLabel>
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-field-1"
                   type="text"
                   required
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full glass-input rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">
-                  Username <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel
+                  htmlFor="adminsettings-field-2"
+                  className="text-xs font-bold text-[var(--text-main)]"
+                >
+                  Username <span className="text-[var(--text-muted)]">*</span>
+                </FormLabel>
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-field-2"
                   type="text"
                   required
                   value={profileUsername}
                   onChange={(e) => setProfileUsername(e.target.value)}
-                  className="w-full glass-input rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">
-                    Alamat Email Resmi <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-[#6573a1] dark:text-slate-400">
-                    Perubahan email memerlukan verifikasi tautan resmi SAPA YANFASKES
+                  <FormLabel
+                    htmlFor="adminsettings-profile-email"
+                    className="text-xs font-bold text-[var(--text-main)]"
+                  >
+                    Alamat Email Resmi{" "}
+                    <span className="text-[var(--text-muted)]">*</span>
+                  </FormLabel>
+                  <span className="text-[11px] text-[var(--text-muted)]">
+                    Perubahan email memerlukan verifikasi tautan resmi SAPA
+                    YANFASKES
                   </span>
                 </div>
-                <input
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-profile-email"
                   type="email"
                   required
                   value={profileEmail}
                   onChange={(e) => setProfileEmail(e.target.value)}
-                  className="w-full glass-input rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
             </div>
 
             {/* Bagian Ubah Password */}
-            <div className="pt-4 border-t border-[#afbade]/20 dark:border-slate-800 space-y-4">
+            <div className="pt-4 border-t border-[var(--border-color)] space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider">
-                    🔐 Ubah Kata Sandi (Password)
-                  </h3>
-                  <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
+                  <Typography
+                    component="h3"
+                    variant="h5"
+                    className="text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider"
+                  >
+                    Ubah Kata Sandi (Password)
+                  </Typography>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                     Kosongkan jika Anda tidak bermaksud mengganti kata sandi.
                   </p>
                 </div>
 
-                <button
+                <AnimatedButton
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-xs font-semibold text-[#2b4390] dark:text-sky-300 hover:underline flex items-center gap-1"
+                  className="sapa-button sapa-button-secondary text-xs font-semibold hover:underline flex items-center gap-1"
                 >
-                  <span>{showPassword ? '🙈 Sembunyikan' : '👁️ Tampilkan'} Sandi</span>
-                </button>
+                  <span>
+                    {showPassword ? " Sembunyikan" : " Tampilkan"} Sandi
+                  </span>
+                </AnimatedButton>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-[#6573a1] dark:text-slate-300">
+                  <FormLabel
+                    htmlFor="adminsettings-field-3"
+                    className="text-[11px] font-bold text-[var(--text-muted)]"
+                  >
                     Kata Sandi Lama
-                  </label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                  </FormLabel>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    id="adminsettings-field-3"
+                    type={showPassword ? "text" : "password"}
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                    sx={{ minWidth: 0 }}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-[#6573a1] dark:text-slate-300">
+                  <FormLabel
+                    htmlFor="adminsettings-field-4"
+                    className="text-[11px] font-bold text-[var(--text-muted)]"
+                  >
                     Kata Sandi Baru
-                  </label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                  </FormLabel>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    id="adminsettings-field-4"
+                    type={showPassword ? "text" : "password"}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                    sx={{ minWidth: 0 }}
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-[#6573a1] dark:text-slate-300">
+                  <FormLabel
+                    htmlFor="adminsettings-field-5"
+                    className="text-[11px] font-bold text-[var(--text-muted)]"
+                  >
                     Konfirmasi Sandi Baru
-                  </label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                  </FormLabel>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    id="adminsettings-field-5"
+                    type={showPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                    sx={{ minWidth: 0 }}
                   />
                 </div>
               </div>
@@ -608,632 +681,872 @@ export const AdminSettings: React.FC = () => {
 
             {/* Tombol Simpan */}
             <div className="pt-4 flex items-center justify-end gap-3">
-              <button
+              <AnimatedButton
                 type="submit"
-                disabled={isSavingProfile}
-                className="px-6 py-2.5 rounded-xl bpjs-gradient-btn text-white text-xs sm:text-sm font-bold shadow-md shadow-[#2b4390]/25 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                loading={isSavingProfile}
+                className="sapa-button sapa-button-primary px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer"
               >
-                <span>{isSavingProfile ? '⏳' : '💾'}</span>
-                <span>{isSavingProfile ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
-              </button>
+                <span>
+                  {isSavingProfile ? "Menyimpan..." : "Simpan Perubahan"}
+                </span>
+              </AnimatedButton>
             </div>
           </form>
-        </div>
+        </MainCard>
       )}
 
       {/* TAB 2: INTEGRASI DATA FKTP (KOSONGKAN DULU) */}
-      {activeTab === 'fktp' && (
-        <div className="glass-card rounded-3xl p-8 sm:p-12 border border-[#afbade]/40 dark:border-white/10 shadow-xl text-center flex flex-col items-center justify-center space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-[#d4ecd1]/50 border border-[#83a67e]/40 flex items-center justify-center text-4xl shadow-inner">
-            🏥
-          </div>
+      {activeTab === "fktp" && (
+        <MainCard
+          content={false}
+          sx={{ p: 4, minWidth: 0 }}
+          className="text-center flex flex-col items-center justify-center space-y-4"
+        >
           <div className="max-w-md">
-            <h3 className="text-lg sm:text-xl font-black text-[#2b4390] dark:text-white">
+            <Typography
+              component="h3"
+              variant="h5"
+              className="text-lg sm:text-xl font-black text-[var(--text-main)]"
+            >
               Integrasi Data FKTP (Pelayanan Primer)
-            </h3>
-            <p className="text-xs sm:text-sm text-[#6573a1] dark:text-[#afbade] mt-2 leading-relaxed">
-              Modul integrasi data Fasilitas Kesehatan Tingkat Pertama (Puskesmas, Klinik Pratama, dan Dokter Praktik Mandiri) saat ini dikosongkan terlebih dahulu dan sedang dipersiapkan untuk standarisasi indikator Kapitasi Berbasis Komitmen (KBK) dan rujukan primer.
+            </Typography>
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-2 leading-relaxed">
+              Modul integrasi data Fasilitas Kesehatan Tingkat Pertama
+              (Puskesmas, Klinik Pratama, dan Dokter Praktik Mandiri) saat ini
+              dikosongkan terlebih dahulu dan sedang dipersiapkan untuk
+              standarisasi indikator Kapitasi Berbasis Komitmen (KBK) dan
+              rujukan primer.
             </p>
           </div>
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-sky-300 border border-[#afbade]/30">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[var(--panel-bg)] text-[var(--text-main)] border border-[var(--border-color)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--panel-bg)] animate-pulse" />
             Tahap Perancangan Sumber Data
           </span>
-        </div>
+        </MainCard>
       )}
 
       {/* TAB 3: INTEGRASI DATA FKRTL (TOMBOL-TOMBOL UPDATE SPREADSHEET DENGAN LAST UPDATE) */}
-      {activeTab === 'fkrtl' && (
+      {activeTab === "fkrtl" && (
         <div className="space-y-6">
           {/* Master Sync Bar */}
-          <div className="glass-card rounded-3xl p-6 border border-[#83a67e]/40 dark:border-emerald-500/20 shadow-xl bg-gradient-to-r from-[#d4ecd1]/30 via-white/50 to-[#afbade]/20 dark:from-emerald-950/30 dark:via-slate-900/60 dark:to-blue-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <MainCard
+            content={false}
+            sx={{ p: 3, minWidth: 0 }}
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
             <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#44853b] text-white">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--panel-bg)] text-[var(--text-main)]">
                 SINKRONISASI MENYELURUH
               </span>
-              <h2 className="text-base sm:text-lg font-black text-[#2b4390] dark:text-white mt-1">
+              <Typography
+                component="h2"
+                variant="h4"
+                className="text-base sm:text-lg font-black text-[var(--text-main)] mt-1"
+              >
                 Integrasi Seluruh Modul FKRTL Sekaligus
-              </h2>
-              <p className="text-xs text-[#6573a1] dark:text-[#afbade] mt-0.5">
-                Segarkan seluruh cache data Google Spreadsheet FKRTL secara serentak untuk memperbarui antarmuka dashboard.
+              </Typography>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                Segarkan seluruh cache data Google Spreadsheet FKRTL secara
+                serentak untuk memperbarui antarmuka dashboard.
               </p>
             </div>
 
-            <button
-              onClick={() => handleSyncModule('all', 'Seluruh Modul FKRTL')}
-              disabled={syncingModule === 'all'}
-              className="px-5 py-2.5 rounded-xl bpjs-gradient-btn text-white text-xs sm:text-sm font-bold shadow-lg shadow-[#2b4390]/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+            <AnimatedButton
+              onClick={() => handleSyncModule("all", "Seluruh Modul FKRTL")}
+              loading={syncingModule === "all"}
+              className="sapa-button sapa-button-secondary px-5 py-2.5 rounded-xl sapa-button-primary text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0"
             >
-              <span className={syncingModule === 'all' ? 'animate-spin' : ''}>⚡</span>
-              <span>{syncingModule === 'all' ? 'Mengintegrasikan...' : 'Integrasikan Semua Modul'}</span>
-            </button>
-          </div>
+              <span
+                className={syncingModule === "all" ? "animate-spin" : ""}
+              ></span>
+              <span>
+                {syncingModule === "all"
+                  ? "Mengintegrasikan..."
+                  : "Integrasikan Semua Modul"}
+              </span>
+            </AnimatedButton>
+          </MainCard>
 
           {/* Cards Modul-Modul Integrasi FKRTL */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* 1. Antrol FKRTL */}
-            <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg flex flex-col justify-between gap-4 bg-white/60 dark:bg-slate-900/60">
+            <MainCard
+              content={false}
+              sx={{ p: 2.5, minWidth: 0 }}
+              className="flex flex-col justify-between gap-4"
+            >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[#2b4390] dark:text-white">
-                    <span className="text-base">⏱️</span>
+                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
+                    <span className="text-base">⏱</span>
                     <span>Pemanfaatan Antrol FKRTL</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#d4ecd1] text-[#44853b]">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
                     2.052 Baris
                   </span>
                 </div>
-                <p className="text-xs text-[#6573a1] dark:text-[#afbade] leading-relaxed">
-                  Data antrean online terintegrasi (Mobile JKN &amp; Bridging SIMRS). Memperbarui KPI, kurva tren bulanan, serta perankingan poliklinik dan rumah sakit.
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Data antrean online terintegrasi (Mobile JKN &amp; Bridging
+                  SIMRS). Memperbarui KPI, kurva tren bulanan, serta perankingan
+                  poliklinik dan rumah sakit.
                 </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#d4ecd1]/60 text-[#44853b] text-xs font-bold border border-[#83a67e]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#44853b]" />
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
                   <span>Last Update : {lastUpdateAntrol}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-[#6573a1] dark:text-slate-400">
+              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   Target: 80% &amp; 95%
                 </span>
-                <button
-                  onClick={() => handleSyncModule('antrol', 'Pemanfaatan Antrol FKRTL')}
-                  disabled={syncingModule === 'antrol'}
-                  className="px-4 py-2 rounded-xl bg-[#2b4390] hover:bg-[#2b4390]/90 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                <AnimatedButton
+                  onClick={() =>
+                    handleSyncModule("antrol", "Pemanfaatan Antrol FKRTL")
+                  }
+                  loading={syncingModule === "antrol"}
+                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className={syncingModule === 'antrol' ? 'animate-spin' : ''}>🔄</span>
-                  <span>{syncingModule === 'antrol' ? 'Memproses...' : 'Integrasikan Antrol'}</span>
-                </button>
+                  <span
+                    className={syncingModule === "antrol" ? "animate-spin" : ""}
+                  ></span>
+                  <span>
+                    {syncingModule === "antrol"
+                      ? "Memproses..."
+                      : "Integrasikan Antrol"}
+                  </span>
+                </AnimatedButton>
               </div>
-            </div>
+            </MainCard>
 
             {/* 2. Tab 01 Nakes */}
-            <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg flex flex-col justify-between gap-4 bg-white/60 dark:bg-slate-900/60">
+            <MainCard
+              content={false}
+              sx={{ p: 2.5, minWidth: 0 }}
+              className="flex flex-col justify-between gap-4"
+            >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[#2b4390] dark:text-white">
-                    <span className="text-base">👨‍⚕️</span>
+                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
                     <span>Tab 01. Jadwal Praktik Nakes</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#afbade]/20 text-[#2b4390] dark:text-sky-300">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Bobot 25%
                   </span>
                 </div>
-                <p className="text-xs text-[#6573a1] dark:text-[#afbade] leading-relaxed">
-                  Kesesuaian jadwal praktik dokter spesialis pada Aplikasi HFIS dengan data pelayanan faskes. Terhubung master referensi 26 rumah sakit KC Jember.
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Kesesuaian jadwal praktik dokter spesialis pada Aplikasi HFIS
+                  dengan data pelayanan faskes. Terhubung master referensi 26
+                  rumah sakit KC Jember.
                 </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#d4ecd1]/60 text-[#44853b] text-xs font-bold border border-[#83a67e]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#44853b]" />
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
                   <span>Last Update : {lastUpdateNakes}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-[#6573a1] dark:text-slate-400">
+              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   Target Nasional: 100%
                 </span>
-                <button
-                  onClick={() => handleSyncModule('nakes', 'Tab 01 Jadwal Nakes')}
-                  disabled={syncingModule === 'nakes'}
-                  className="px-4 py-2 rounded-xl bg-[#2b4390] hover:bg-[#2b4390]/90 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                <AnimatedButton
+                  onClick={() =>
+                    handleSyncModule("nakes", "Tab 01 Jadwal Nakes")
+                  }
+                  loading={syncingModule === "nakes"}
+                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className={syncingModule === 'nakes' ? 'animate-spin' : ''}>🔄</span>
-                  <span>{syncingModule === 'nakes' ? 'Memproses...' : 'Integrasikan Nakes'}</span>
-                </button>
+                  <span
+                    className={syncingModule === "nakes" ? "animate-spin" : ""}
+                  ></span>
+                  <span>
+                    {syncingModule === "nakes"
+                      ? "Memproses..."
+                      : "Integrasikan Nakes"}
+                  </span>
+                </AnimatedButton>
               </div>
-            </div>
+            </MainCard>
 
             {/* 3. Tab 02 Pengaduan */}
-            <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg flex flex-col justify-between gap-4 bg-white/60 dark:bg-slate-900/60">
+            <MainCard
+              content={false}
+              sx={{ p: 2.5, minWidth: 0 }}
+              className="flex flex-col justify-between gap-4"
+            >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[#2b4390] dark:text-white">
-                    <span className="text-base">📢</span>
+                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
                     <span>Tab 02. Penyelesaian Pengaduan</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#afbade]/20 text-[#2b4390] dark:text-sky-300">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Bobot 20%
                   </span>
                 </div>
-                <p className="text-xs text-[#6573a1] dark:text-[#afbade] leading-relaxed">
-                  Kecepatan tindak lanjut keluhan peserta sesuai SLA 1-3 hari kerja pada Aplikasi SIPP. Terkoneksi 228 baris data live Google Sheets.
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Kecepatan tindak lanjut keluhan peserta sesuai SLA 1-3 hari
+                  kerja pada Aplikasi SIPP. Terkoneksi 228 baris data live
+                  Google Sheets.
                 </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#d4ecd1]/60 text-[#44853b] text-xs font-bold border border-[#83a67e]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#44853b]" />
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
                   <span>Last Update : {lastUpdatePengaduan}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-[#6573a1] dark:text-slate-400">
+              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   Target Nasional: 100%
                 </span>
-                <button
-                  onClick={() => handleSyncModule('pengaduan', 'Tab 02 Penyelesaian Pengaduan')}
-                  disabled={syncingModule === 'pengaduan'}
-                  className="px-4 py-2 rounded-xl bg-[#2b4390] hover:bg-[#2b4390]/90 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                <AnimatedButton
+                  onClick={() =>
+                    handleSyncModule(
+                      "pengaduan",
+                      "Tab 02 Penyelesaian Pengaduan",
+                    )
+                  }
+                  loading={syncingModule === "pengaduan"}
+                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className={syncingModule === 'pengaduan' ? 'animate-spin' : ''}>🔄</span>
-                  <span>{syncingModule === 'pengaduan' ? 'Memproses...' : 'Integrasikan Pengaduan'}</span>
-                </button>
+                  <span
+                    className={
+                      syncingModule === "pengaduan" ? "animate-spin" : ""
+                    }
+                  ></span>
+                  <span>
+                    {syncingModule === "pengaduan"
+                      ? "Memproses..."
+                      : "Integrasikan Pengaduan"}
+                  </span>
+                </AnimatedButton>
               </div>
-            </div>
+            </MainCard>
 
             {/* 4. Tab 03 Umbal Peserta (KESSAN) */}
-            <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg flex flex-col justify-between gap-4 bg-white/60 dark:bg-slate-900/60">
+            <MainCard
+              content={false}
+              sx={{ p: 2.5, minWidth: 0 }}
+              className="flex flex-col justify-between gap-4"
+            >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[#2b4390] dark:text-white">
-                    <span className="text-base">💬</span>
+                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
                     <span>Tab 03. Umbal Peserta (KESSAN)</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#afbade]/20 text-[#2b4390] dark:text-sky-300">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Bobot 10%
                   </span>
                 </div>
-                <p className="text-xs text-[#6573a1] dark:text-[#afbade] leading-relaxed">
-                  Pengukuran umpan balik customer feedback peserta berdasarkan proporsi target responden dan sampling populasi kunjungan rumah sakit.
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Pengukuran umpan balik customer feedback peserta berdasarkan
+                  proporsi target responden dan sampling populasi kunjungan
+                  rumah sakit.
                 </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#d4ecd1]/60 text-[#44853b] text-xs font-bold border border-[#83a67e]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#44853b]" />
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
                   <span>Last Update : {lastUpdateUmabl}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-[#6573a1] dark:text-slate-400">
+              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   Target: &ge; 100% dari target
                 </span>
-                <button
-                  onClick={() => handleSyncModule('umabl', 'Tab 03 Umbal Peserta')}
-                  disabled={syncingModule === 'umabl'}
-                  className="px-4 py-2 rounded-xl bg-[#2b4390] hover:bg-[#2b4390]/90 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                <AnimatedButton
+                  onClick={() =>
+                    handleSyncModule("umabl", "Tab 03 Umbal Peserta")
+                  }
+                  loading={syncingModule === "umabl"}
+                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className={syncingModule === 'umabl' ? 'animate-spin' : ''}>🔄</span>
-                  <span>{syncingModule === 'umabl' ? 'Memproses...' : 'Integrasikan Umabl'}</span>
-                </button>
+                  <span
+                    className={syncingModule === "umabl" ? "animate-spin" : ""}
+                  ></span>
+                  <span>
+                    {syncingModule === "umabl"
+                      ? "Memproses..."
+                      : "Integrasikan Umabl"}
+                  </span>
+                </AnimatedButton>
               </div>
-            </div>
+            </MainCard>
 
             {/* 5. Tab 04 Display TT */}
-            <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-lg flex flex-col justify-between gap-4 bg-white/60 dark:bg-slate-900/60 md:col-span-2">
+            <MainCard
+              content={false}
+              sx={{ p: 2.5, minWidth: 0 }}
+              className="flex flex-col justify-between gap-4 md:col-span-2"
+            >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[#2b4390] dark:text-white">
-                    <span className="text-base">🛏️</span>
-                    <span>Tab 04. Pembaruan (Update) Data Ketersediaan Tempat Tidur</span>
+                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
+                    <span>
+                      Tab 04. Pembaruan (Update) Data Ketersediaan Tempat Tidur
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#afbade]/20 text-[#2b4390] dark:text-sky-300">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Bobot 10%
                   </span>
                 </div>
-                <p className="text-xs text-[#6573a1] dark:text-[#afbade] leading-relaxed">
-                  Memperhitungkan jumlah hari faskes melakukan pembaruan informasi data ketersediaan tempat tidur secara harian dalam 1 bulan dari spreadsheet Display TT.
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Memperhitungkan jumlah hari faskes melakukan pembaruan
+                  informasi data ketersediaan tempat tidur secara harian dalam 1
+                  bulan dari spreadsheet Display TT.
                 </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#d4ecd1]/60 text-[#44853b] text-xs font-bold border border-[#83a67e]/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#44853b]" />
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
                   <span>Last Update : {lastUpdateDisplayTt}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[11px] text-[#6573a1] dark:text-slate-400">
+              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
+                <span className="text-[11px] text-[var(--text-muted)]">
                   Target Nasional: &ge; 25 hari
                 </span>
-                <button
-                  onClick={() => handleSyncModule('display-tt', 'Tab 04 Display TT')}
-                  disabled={syncingModule === 'display-tt'}
-                  className="px-4 py-2 rounded-xl bg-[#2b4390] hover:bg-[#2b4390]/90 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                <AnimatedButton
+                  onClick={() =>
+                    handleSyncModule("display-tt", "Tab 04 Display TT")
+                  }
+                  loading={syncingModule === "display-tt"}
+                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className={syncingModule === 'display-tt' ? 'animate-spin' : ''}>🔄</span>
-                  <span>{syncingModule === 'display-tt' ? 'Memproses...' : 'Integrasikan Display TT'}</span>
-                </button>
+                  <span
+                    className={
+                      syncingModule === "display-tt" ? "animate-spin" : ""
+                    }
+                  ></span>
+                  <span>
+                    {syncingModule === "display-tt"
+                      ? "Memproses..."
+                      : "Integrasikan Display TT"}
+                  </span>
+                </AnimatedButton>
               </div>
-            </div>
+            </MainCard>
           </div>
         </div>
       )}
 
       {/* TAB 4: USER SETTING (DAFTAR USER, TAMBAH, EDIT, KURANG/HAPUS) */}
-      {activeTab === 'users' && (
-        <div className="glass-card rounded-3xl p-6 sm:p-8 border border-[#afbade]/40 dark:border-white/10 shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#afbade]/30 dark:border-slate-800">
+      {activeTab === "users" && (
+        <MainCard
+          content={false}
+          sx={{ p: 3, minWidth: 0 }}
+          className="space-y-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-[#2b4390] dark:text-[#f7fcfa] flex items-center gap-2">
-                <span>👥 Manajemen Pengguna Aplikasi (User Setting)</span>
-              </h2>
-              <p className="text-xs text-[#6573a1] dark:text-[#afbade] mt-0.5">
-                Daftar akun pengguna resmi, email institusi, kata sandi, serta hak akses peran dalam sistem SAPA YANFASKES.
+              <Typography
+                component="h2"
+                variant="h4"
+                className="text-base sm:text-lg font-bold text-[var(--text-main)] flex items-center gap-2"
+              >
+                <span> Manajemen Pengguna Aplikasi (User Setting)</span>
+              </Typography>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                Daftar akun pengguna resmi, email institusi, kata sandi, serta
+                hak akses peran dalam sistem SAPA YANFASKES.
               </p>
             </div>
 
-            <button
+            <AnimatedButton
               onClick={handleOpenAddUserModal}
-              className="px-4 py-2 rounded-xl bpjs-gradient-btn text-white text-xs font-bold shadow-md shadow-[#2b4390]/25 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+              className="sapa-button sapa-button-primary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto"
             >
-              <span>➕</span>
               <span>Tambah User Baru</span>
-            </button>
+            </AnimatedButton>
           </div>
 
           {/* Filter Bar User */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
-              <input
+              <TextField
+                size="small"
+                fullWidth
                 type="text"
                 placeholder="Cari berdasarkan username, nama, atau email..."
                 value={searchUserQuery}
                 onChange={(e) => setSearchUserQuery(e.target.value)}
-                className="w-full glass-input rounded-xl pl-9 pr-3.5 py-2 text-xs text-[#2b4390] dark:text-white placeholder-[#6573a1] dark:placeholder-slate-400 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+                sx={{ "& input": { pl: 4.5 }, minWidth: 0 }}
+                slotProps={{
+                  htmlInput: {
+                    "aria-label":
+                      "Cari berdasarkan username, nama, atau email...",
+                  },
+                }}
               />
-              <span className="absolute left-3 top-2.5 text-xs text-[#6573a1] dark:text-slate-400">🔍</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Filter Role:</label>
-              <select
-                value={selectedRoleFilter}
-                onChange={(e) => setSelectedRoleFilter(e.target.value)}
-                className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+              <FormLabel
+                htmlFor="adminsettings-field-6"
+                className="text-xs font-bold text-[var(--text-main)]"
               >
-                <option value="Semua">Semua Role ({users.length})</option>
-                <option value="Super Admin">Super Admin</option>
-                <option value="Admin KC Jember">Admin KC Jember</option>
-                <option value="Verifikator Yanfaskes">Verifikator Yanfaskes</option>
-                <option value="Viewer Eksekutif">Viewer Eksekutif</option>
-              </select>
+                Filter Role:
+              </FormLabel>
+              <AdminSelect
+                aria-label="Filter Role:"
+                id="adminsettings-field-6"
+                value={selectedRoleFilter}
+                onValueChange={(value) => setSelectedRoleFilter(value)}
+                className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--panel-bg)] border border-[var(--border-color)]"
+              >
+                <FilterOption value="Semua">
+                  Semua Role ({users.length})
+                </FilterOption>
+                <FilterOption value="Super Admin">Super Admin</FilterOption>
+                <FilterOption value="Admin KC Jember">
+                  Admin KC Jember
+                </FilterOption>
+                <FilterOption value="Verifikator Yanfaskes">
+                  Verifikator Yanfaskes
+                </FilterOption>
+                <FilterOption value="Viewer Eksekutif">
+                  Viewer Eksekutif
+                </FilterOption>
+              </AdminSelect>
             </div>
           </div>
 
           {/* Tabel Pengguna */}
-          <div className="overflow-x-auto rounded-2xl border border-[#afbade]/30 dark:border-slate-800">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#e6f2ed] dark:bg-slate-900/80 text-[#2b4390] dark:text-[#afbade] uppercase text-[10px] font-bold tracking-wider border-b border-[#afbade]/30 dark:border-slate-800">
-                <tr>
-                  <th className="py-3 px-4">No</th>
-                  <th className="py-3 px-4">Username</th>
-                  <th className="py-3 px-4">Nama Lengkap</th>
-                  <th className="py-3 px-4">Email Resmi</th>
-                  <th className="py-3 px-4">Password</th>
-                  <th className="py-3 px-4">Peran (Role)</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#afbade]/20 dark:divide-slate-800/60 font-medium">
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Tabel data, geser untuk melihat kolom lainnya"
+            className="min-w-0 max-w-full overflow-x-auto rounded-xl border border-[var(--border-color)]"
+          >
+            <Table className="sapa-table w-full text-left text-xs">
+              <TableHead className="bg-[var(--panel-bg)] text-[var(--text-main)] uppercase text-[10px] font-bold tracking-wider border-b border-[var(--border-color)]">
+                <TableRow>
+                  <TableCell className="py-3 px-4">No</TableCell>
+                  <TableCell className="py-3 px-4">Username</TableCell>
+                  <TableCell className="py-3 px-4">Nama Lengkap</TableCell>
+                  <TableCell className="py-3 px-4">Email Resmi</TableCell>
+                  <TableCell className="py-3 px-4">Password</TableCell>
+                  <TableCell className="py-3 px-4">Peran (Role)</TableCell>
+                  <TableCell className="py-3 px-4 text-center">
+                    Status
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-center">Aksi</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody className="divide-y divide-[var(--border-color)] font-medium">
                 {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-[#6573a1] dark:text-slate-400 italic">
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="py-8 text-center text-[var(--text-muted)] italic"
+                    >
                       Tidak ada pengguna yang sesuai dengan filter pencarian.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   filteredUsers.map((u, idx) => {
                     const isPassVisible = Boolean(visiblePasswords[u.id]);
-                    const isCurrentActiveUser = u.username.toLowerCase() === profile.username.toLowerCase();
+                    const isCurrentActiveUser =
+                      u.username.toLowerCase() ===
+                      profile.username.toLowerCase();
                     return (
-                      <tr
+                      <TableRow
                         key={u.id}
                         className={`transition-colors group ${
                           isCurrentActiveUser
-                            ? 'bg-[#d4ecd1]/40 dark:bg-emerald-950/30 border-l-4 border-l-[#44853b] hover:bg-[#d4ecd1]/50'
-                            : 'hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40'
+                            ? "bg-[var(--panel-bg)]  border-l-4 border-l-[#44853b] hover:bg-[var(--panel-bg)]"
+                            : "hover:bg-[var(--panel-bg)] "
                         }`}
                       >
-                        <td className="py-3 px-4 text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">{idx + 1}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-[#2b4390] dark:text-white">
+                        <TableCell className="py-3 px-4 text-[var(--text-muted)] font-mono text-[11px]">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-mono font-bold text-[var(--text-main)]">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span>@{u.username}</span>
                             {isCurrentActiveUser && (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-[#44853b] text-white shadow-sm inline-flex items-center gap-1">
-                                <span>⭐</span>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-[var(--panel-bg)] text-[var(--text-main)] inline-flex items-center gap-1">
                                 <span>Akun Anda (Login Saat Ini)</span>
                               </span>
                             )}
                           </div>
-                        </td>
-                        <td className="py-3 px-4 font-bold text-[#2b4390] dark:text-slate-200">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-bold text-[var(--text-main)]">
                           <div className="flex items-center gap-1.5">
                             <span>{u.name}</span>
                             {isCurrentActiveUser && (
-                              <span className="text-[10px] text-[#44853b] font-bold" title="Sesi login aktif saat ini">(Aktif)</span>
+                              <span
+                                className="text-[10px] text-[var(--text-main)] font-bold"
+                                title="Sesi login aktif saat ini"
+                              >
+                                (Aktif)
+                              </span>
                             )}
                           </div>
-                        </td>
-                        <td className="py-3 px-4 text-[#6573a1] dark:text-slate-400 font-mono text-[11px]">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-[var(--text-muted)] font-mono text-[11px]">
                           {u.email}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[11px] text-[#2b4390] dark:text-slate-300">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-mono text-[11px] text-[var(--text-main)]">
                           <div className="flex items-center gap-2">
-                            <span>{isPassVisible ? u.password : '••••••••••••'}</span>
-                            <button
+                            <span>
+                              {isPassVisible ? u.password : "••••••••••••"}
+                            </span>
+                            <AnimatedButton
                               type="button"
                               onClick={() => togglePasswordVisibility(u.id)}
-                              className="text-xs hover:scale-110 transition-transform opacity-70 hover:opacity-100"
-                              title={isPassVisible ? 'Sembunyikan sandi' : 'Lihat sandi'}
+                              className="sapa-button sapa-button-secondary text-xs transition-transform opacity-70 hover:opacity-100"
+                              title={
+                                isPassVisible
+                                  ? "Sembunyikan sandi"
+                                  : "Lihat sandi"
+                              }
+                              aria-label={
+                                isPassVisible
+                                  ? "Sembunyikan sandi"
+                                  : "Lihat sandi"
+                              }
                             >
-                              {isPassVisible ? '🙈' : '👁️'}
-                            </button>
+                              {isPassVisible ? "Sembunyikan" : "Tampilkan"}
+                            </AnimatedButton>
                           </div>
-                        </td>
-                        <td className="py-3 px-4">
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${
-                              u.role === 'Super Admin'
-                                ? 'bg-[#2b4390] text-white shadow-sm'
-                                : u.role === 'Admin KC Jember'
-                                ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40'
-                                : u.role === 'Verifikator Yanfaskes'
-                                ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'
-                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                              u.role === "Super Admin"
+                                ? "bg-[var(--panel-bg)] text-white "
+                                : u.role === "Admin KC Jember"
+                                  ? "bg-[var(--panel-bg)] text-[var(--text-main)] border border-[var(--border-color)]"
+                                  : u.role === "Verifikator Yanfaskes"
+                                    ? "bg-sky-100 text-sky-800  "
+                                    : "bg-slate-100 text-slate-700  "
                             }`}
                           >
                             {u.role}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
                           <span
                             className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                              u.status === 'Aktif'
-                                ? 'bg-[#d4ecd1] text-[#44853b]'
-                                : 'bg-amber-100 text-amber-800'
+                              u.status === "Aktif"
+                                ? "bg-[var(--panel-bg)] text-[var(--text-main)]"
+                                : "bg-amber-100 text-amber-800"
                             }`}
                           >
                             {u.status}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button
+                            <AnimatedButton
                               onClick={() => handleOpenEditUserModal(u)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#afbade]/20 text-[#2b4390] hover:bg-[#afbade]/40 dark:bg-slate-800 dark:text-sky-300 transition-colors"
+                              className="sapa-button sapa-button-secondary px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
                               title="Edit Pengguna"
                             >
-                              ✏️ Edit
-                            </button>
-                            <button
+                              Edit
+                            </AnimatedButton>
+                            <AnimatedButton
                               onClick={() => {
                                 setUserToDelete(u);
                                 setShowDeleteModal(true);
                               }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-300 transition-colors"
+                              className="sapa-button sapa-button-danger px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
                               title="Hapus / Kurang Pengguna"
                             >
-                              🗑️ Hapus
-                            </button>
+                              Hapus
+                            </AnimatedButton>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {/* Matriks Transparansi Hak Akses & Peran Pengguna Resmi (Role & Privilege Matrix) */}
-          <div className="mt-8 rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/40 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#afbade]/20 pb-3">
+          <MainCard
+            content={false}
+            sx={{ p: 2.5, minWidth: 0 }}
+            className="mt-8 space-y-4"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-color)] pb-3">
               <div>
-                <h3 className="text-xs sm:text-sm font-black text-[#2b4390] dark:text-white flex items-center gap-2">
-                  <span>🛡️</span>
-                  <span>Matriks Hak Akses &amp; Peran Pengguna Resmi (Role &amp; Privilege Matrix)</span>
-                </h3>
-                <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
-                  Daftar akun dan hak akses resmi yang beroperasi di aplikasi SAPA YANFASKES Kantor Cabang Jember.
+                <Typography
+                  component="h3"
+                  variant="h5"
+                  className="text-xs sm:text-sm font-black text-[var(--text-main)] flex items-center gap-2"
+                >
+                  <span>
+                    Matriks Hak Akses &amp; Peran Pengguna Resmi (Role &amp;
+                    Privilege Matrix)
+                  </span>
+                </Typography>
+                <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                  Daftar akun dan hak akses resmi yang beroperasi di aplikasi
+                  SAPA YANFASKES Kantor Cabang Jember.
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-[#d4ecd1] text-[#44853b] text-[10px] font-bold self-start sm:self-auto">
+              <span className="px-2.5 py-1 rounded-full bg-[var(--panel-bg)] text-[var(--text-main)] text-[10px] font-bold self-start sm:self-auto">
                 4 Peran Terdaftar
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Role 1: Super Admin */}
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-[#2b4390]/30 dark:border-sky-500/20 shadow-sm space-y-2.5">
+              <MainCard
+                content={false}
+                sx={{ p: 2, minWidth: 0 }}
+                className="space-y-2.5"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#2b4390] text-white">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Super Admin
                   </span>
-                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 1 (Full)</span>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    Level 1 (Full)
+                  </span>
                 </div>
-                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                <div className="text-[11.5px] font-bold text-[var(--text-main)]">
                   Andreas Dwi Rizko Nugroho (@admin_jember)
                 </div>
-                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
-                  Kontrol penuh seluruh aplikasi: Dashboard FKTP/FKRTL, trigger sinkronisasi spreadsheet manual, kelola semua akun &amp; hak akses, serta pengaturan profil.
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Kontrol penuh seluruh aplikasi: Dashboard FKTP/FKRTL, trigger
+                  sinkronisasi spreadsheet manual, kelola semua akun &amp; hak
+                  akses, serta pengaturan profil.
                 </p>
-                <div className="pt-1 text-[10px] font-bold text-[#44853b] flex items-center gap-1">
-                  <span>✅</span>
+                <div className="pt-1 text-[10px] font-bold text-[var(--text-main)] flex items-center gap-1">
                   <span>Akses Semua Menu &amp; Fitur</span>
                 </div>
-              </div>
+              </MainCard>
 
               {/* Role 2: Admin KC Jember */}
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-sm space-y-2.5">
+              <MainCard
+                content={false}
+                sx={{ p: 2, minWidth: 0 }}
+                className="space-y-2.5"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--panel-bg)] text-[var(--text-main)] border border-[var(--border-color)]">
                     Admin KC Jember
                   </span>
-                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 2 (Operasional)</span>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    Level 2 (Operasional)
+                  </span>
                 </div>
-                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                <div className="text-[11.5px] font-bold text-[var(--text-main)]">
                   dr. Siti Nurhaliza (@admin_yanfaskes)
                 </div>
-                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
-                  Operasional monitoring KC Jember: Akses analisis performa faskes, sinkronisasi data FKRTL berkala, ekspor laporan kepatuhan, dan verifikasi antrean.
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Operasional monitoring KC Jember: Akses analisis performa
+                  faskes, sinkronisasi data FKRTL berkala, ekspor laporan
+                  kepatuhan, dan verifikasi antrean.
                 </p>
-                <div className="pt-1 text-[10px] font-bold text-[#2b4390] dark:text-sky-300 flex items-center gap-1">
-                  <span>✅</span>
+                <div className="pt-1 text-[10px] font-bold text-[var(--text-main)] flex items-center gap-1">
                   <span>Dashboard, Tab 01-05 &amp; Integrasi</span>
                 </div>
-              </div>
+              </MainCard>
 
               {/* Role 3: Verifikator Yanfaskes */}
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-sky-200 dark:border-sky-500/20 shadow-sm space-y-2.5">
+              <MainCard
+                content={false}
+                sx={{ p: 2, minWidth: 0 }}
+                className="space-y-2.5"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Verifikator Yanfaskes
                   </span>
-                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 3 (Verifikasi)</span>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    Level 3 (Verifikasi)
+                  </span>
                 </div>
-                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                <div className="text-[11.5px] font-bold text-[var(--text-main)]">
                   Budi Prasetyo &amp; dr. Maya Safitri
                 </div>
-                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
-                  Pemeriksaan dan validasi teknis: Verifikasi pemanfaatan antrol faskes, kepatuhan display tempat tidur, SIP nakes, dan penanganan pengaduan faskes.
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Pemeriksaan dan validasi teknis: Verifikasi pemanfaatan antrol
+                  faskes, kepatuhan display tempat tidur, SIP nakes, dan
+                  penanganan pengaduan faskes.
                 </p>
-                <div className="pt-1 text-[10px] font-bold text-[#6573a1] dark:text-slate-400 flex items-center gap-1">
-                  <span>👁️</span>
+                <div className="pt-1 text-[10px] font-bold text-[var(--text-muted)] flex items-center gap-1">
                   <span>Validasi &amp; Monitoring Data</span>
                 </div>
-              </div>
+              </MainCard>
 
               {/* Role 4: Viewer Eksekutif */}
-              <div className="p-4 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+              <MainCard
+                content={false}
+                sx={{ p: 2, minWidth: 0 }}
+                className="space-y-2.5"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[var(--panel-bg)] text-[var(--text-main)]">
                     Viewer Eksekutif
                   </span>
-                  <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400">Level 4 (Read-Only)</span>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    Level 4 (Read-Only)
+                  </span>
                 </div>
-                <div className="text-[11.5px] font-bold text-[#2b4390] dark:text-white">
+                <div className="text-[11.5px] font-bold text-[var(--text-main)]">
                   Kepala Cabang BPJS Jember (@kacab_jember)
                 </div>
-                <p className="text-[11px] text-[#6573a1] dark:text-slate-300 leading-relaxed">
-                  Akses tinjauan tingkat pimpinan: Melihat ringkasan grafik agregat kepatuhan faskes wilayah Jember dan Lumajang tanpa wewenang mutasi konfigurasi.
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Akses tinjauan tingkat pimpinan: Melihat ringkasan grafik
+                  agregat kepatuhan faskes wilayah Jember dan Lumajang tanpa
+                  wewenang mutasi konfigurasi.
                 </p>
-                <div className="pt-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                  <span>🔒</span>
+                <div className="pt-1 text-[10px] font-bold text-[var(--text-muted)] flex items-center gap-1">
                   <span>Hanya Baca (Executive Summary)</span>
                 </div>
-              </div>
+              </MainCard>
             </div>
-          </div>
-        </div>
+          </MainCard>
+        </MainCard>
       )}
 
       {/* --- POP-UP MODAL: INFO VERIFIKASI EMAIL SAPA YANFASKES --- */}
       {showVerifyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="glass-card max-w-lg w-full rounded-3xl p-6 sm:p-7 border border-[#83a67e]/40 dark:border-emerald-500/30 shadow-2xl space-y-5 bg-white/95 dark:bg-slate-900/95 relative animate-scaleUp">
+        <AdminDialog
+          label="Verifikasi email"
+          onClose={() => setShowVerifyModal(false)}
+        >
+          <MainCard
+            content={false}
+            sx={{ p: 3, minWidth: 0 }}
+            className="max-w-lg w-full space-y-5 relative animate-scaleUp"
+          >
             {/* Header Modal */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#afbade]/30 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
               <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2b4390] to-[#44853b] text-white flex items-center justify-center text-sm shadow-md">
-                  ✉️
-                </span>
-                <h3 className="text-sm sm:text-base font-black text-[#2b4390] dark:text-white">
+                <Typography
+                  component="h3"
+                  variant="h5"
+                  className="text-sm sm:text-base font-black text-[var(--text-main)]"
+                >
                   Info Sapa Yanfaskes
-                </h3>
+                </Typography>
               </div>
-              <button
+              <AnimatedButton
                 onClick={() => setShowVerifyModal(false)}
-                className="text-[#6573a1] hover:text-[#2b4390] text-sm p-1"
+                className="sapa-button sapa-button-secondary text-sm p-1"
+                aria-label="Tutup dialog"
               >
-                ✕
-              </button>
+                Tutup
+              </AnimatedButton>
             </div>
 
             {/* Pesan Utama */}
-            <div className="p-4 rounded-2xl bg-[#d4ecd1]/40 border border-[#83a67e]/30 text-[#2b4390] dark:text-emerald-300 text-xs sm:text-sm font-semibold leading-relaxed">
-              Info Sapa Yanfaskes: Harap verifikasi akun Anda untuk mengaktifkan fitur-fitur pada SAPA YANFASKES.
-            </div>
+            <MainCard
+              content={false}
+              sx={{ p: 2, minWidth: 0 }}
+              className="text-[var(--text-main)] text-xs sm:text-sm font-semibold leading-relaxed"
+            >
+              Info Sapa Yanfaskes: Harap verifikasi akun Anda untuk mengaktifkan
+              fitur-fitur pada SAPA YANFASKES.
+            </MainCard>
 
             {/* Status Notifikasi Pengiriman Server */}
             {isSendingEmail ? (
-              <div className="p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/30 text-sky-800 dark:text-sky-300 text-xs flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sky-500 animate-ping shrink-0" />
-                <span>Sedang mengirimkan email verifikasi resmi via server SAPA YANFASKES...</span>
-              </div>
+              <MainCard
+                content={false}
+                sx={{ p: 1.5, minWidth: 0 }}
+                className="text-[var(--text-main)] text-xs flex items-center gap-2"
+              >
+                <span className="w-2 h-2 rounded-full bg-[var(--panel-bg)] shrink-0" />
+                <span>
+                  Sedang mengirimkan email verifikasi resmi via server SAPA
+                  YANFASKES...
+                </span>
+              </MainCard>
             ) : emailDispatchStatus ? (
               <div
                 className={`p-3 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
                   emailDispatchStatus.success
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
+                    ? "bg-emerald-50  border-emerald-300  text-emerald-800 "
+                    : "bg-amber-50  border-amber-300  text-amber-800 "
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span>{emailDispatchStatus.success ? '✅' : 'ℹ️'}</span>
+                  <span>{emailDispatchStatus.success ? "" : "ℹ"}</span>
                   <span>{emailDispatchStatus.message}</span>
                 </div>
                 {emailDispatchStatus.method && (
-                  <span className="px-2 py-0.5 rounded bg-emerald-200/80 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 text-[10px] font-mono font-bold uppercase self-start sm:self-auto">
+                  <span className="px-2 py-0.5 rounded bg-[var(--panel-bg)] text-[var(--text-main)] text-[10px] font-mono font-bold uppercase self-start sm:self-auto">
                     METODE: {emailDispatchStatus.method}
                   </span>
                 )}
               </div>
             ) : null}
 
-            <p className="text-xs text-[#6573a1] dark:text-slate-300 leading-relaxed">
-              Tautan verifikasi resmi telah dikirimkan ke alamat email tujuan:{' '}
-              <span className="font-bold text-[#2b4390] dark:text-white font-mono">{pendingEmailToVerify}</span>.
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              Tautan verifikasi resmi telah dikirimkan ke alamat email tujuan:{" "}
+              <span className="font-bold text-[var(--text-main)] font-mono">
+                {pendingEmailToVerify}
+              </span>
+              .
             </p>
 
             {/* Kartu Pratinjau Surat Email No-Reply Official */}
-            <div className="p-4 rounded-2xl border border-[#afbade]/40 dark:border-white/10 bg-slate-50/90 dark:bg-slate-950/80 space-y-3 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-[#afbade]/20 dark:border-slate-800 text-[11px] text-[#6573a1] dark:text-slate-400">
-                <span>Pengirim: <strong className="text-[#2b4390] dark:text-white">no-reply@sapa-yanfaskes.bpjs-kesehatan.go.id</strong></span>
-                <span className="px-2 py-0.5 rounded bg-[#d4ecd1] text-[#44853b] font-bold text-[10px]">Official Mail</span>
+            <MainCard
+              content={false}
+              sx={{ p: 2, minWidth: 0 }}
+              className="space-y-3 text-xs"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
+                <span>
+                  Pengirim:{" "}
+                  <strong className="text-[var(--text-main)]">
+                    no-reply@sapa-yanfaskes.bpjs-kesehatan.go.id
+                  </strong>
+                </span>
+                <span className="px-2 py-0.5 rounded bg-[var(--panel-bg)] text-[var(--text-main)] font-bold text-[10px]">
+                  Official Mail
+                </span>
               </div>
 
-              <div className="text-[#2b4390] dark:text-white font-bold">
-                Subjek: [SAPA YANFASKES] Verifikasi Alamat Email Akun Administrator
+              <div className="text-[var(--text-main)] font-bold">
+                Subjek: [SAPA YANFASKES] Verifikasi Alamat Email Akun
+                Administrator
               </div>
 
-              <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-[#afbade]/20 text-[11.5px] text-[#2b4390] dark:text-slate-200 leading-relaxed space-y-3 font-normal">
+              <MainCard
+                content={false}
+                sx={{ p: 1.5, minWidth: 0 }}
+                className="text-[11.5px] text-[var(--text-main)] leading-relaxed space-y-3 font-normal"
+              >
+                <p>Halo Administrator SAPA YANFASKES,</p>
                 <p>
-                  Halo Administrator SAPA YANFASKES,
+                  Harap verifikasi email Anda untuk menikmati semua fitur yang
+                  ada di aplikasi SAPA YANFASKES melalui link berikut:
                 </p>
-                <p>
-                  Harap verifikasi email Anda untuk menikmati semua fitur yang ada di aplikasi SAPA YANFASKES melalui link berikut:
-                </p>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-[#afbade]/30 dark:border-slate-700">
-                  <div className="text-[10.5px] font-mono text-sky-700 dark:text-sky-300 break-all select-all flex-1">
+                <MainCard
+                  content={false}
+                  sx={{ p: 1, minWidth: 0 }}
+                  className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+                >
+                  <div className="text-[10.5px] font-mono text-[var(--text-main)] break-all select-all flex-1">
                     {currentVerificationUrl}
                   </div>
-                  <button
+                  <AnimatedButton
                     type="button"
                     onClick={handleCopyVerificationLink}
-                    className="px-3 py-1.5 rounded-lg bg-[#2b4390] text-white hover:bg-[#2b4390]/90 text-[10px] font-bold shrink-0 transition-all cursor-pointer shadow-sm text-center"
+                    className="sapa-button sapa-button-secondary px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 transition-all cursor-pointer text-center"
                   >
-                    {copiedLink ? '✓ Tersalin!' : '📋 Salin Tautan'}
-                  </button>
-                </div>
+                    {copiedLink ? " Tersalin!" : " Salin Tautan"}
+                  </AnimatedButton>
+                </MainCard>
                 <p>atau tekan tombol di bawah ini:</p>
                 <div className="text-center pt-1">
-                  <button
+                  <AnimatedButton
                     type="button"
                     onClick={handleExecuteVerification}
-                    className="px-6 py-2.5 rounded-xl bpjs-gradient-btn text-white text-xs font-black shadow-lg shadow-[#44853b]/30 hover:scale-105 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                    className="sapa-button sapa-button-primary px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer inline-flex items-center gap-1.5"
                   >
-                    <span>✅</span>
                     <span>VERIFIKASI SEKARANG</span>
-                  </button>
+                  </AnimatedButton>
                 </div>
-              </div>
-            </div>
+              </MainCard>
+            </MainCard>
 
             {/* Tombol Aksi Menuju Email */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
@@ -1241,202 +1554,266 @@ export const AdminSettings: React.FC = () => {
                 href={getWebmailUrl(pendingEmailToVerify)}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#2b4390] text-[#2b4390] dark:border-sky-400 dark:text-sky-300 hover:bg-[#2b4390] hover:text-white text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-main)] hover:bg-[var(--panel-bg)] hover:text-[var(--text-main)] text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
               >
-                <span>📬</span>
                 <span>
-                  {pendingEmailToVerify.toLowerCase().endsWith('@bpjs-kesehatan.go.id')
-                    ? 'Buka Webmail BPJS Kesehatan'
-                    : `Buka Email (${pendingEmailToVerify.split('@')[1] || 'Webmail'})`}
+                  {pendingEmailToVerify
+                    .toLowerCase()
+                    .endsWith("@bpjs-kesehatan.go.id")
+                    ? "Buka Webmail BPJS Kesehatan"
+                    : `Buka Email (${pendingEmailToVerify.split("@")[1] || "Webmail"})`}
                 </span>
                 <span className="text-[10px] opacity-70">↗</span>
               </a>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <button
+                <AnimatedButton
                   type="button"
                   onClick={() => setShowVerifyModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#6573a1] hover:text-[#2b4390] dark:text-slate-400"
+                  className="sapa-button sapa-button-secondary px-4 py-2.5 rounded-xl text-xs font-semibold"
                 >
                   Tutup Sementara
-                </button>
-                <button
+                </AnimatedButton>
+                <AnimatedButton
                   type="button"
                   onClick={handleExecuteVerification}
-                  className="px-5 py-2.5 rounded-xl bg-[#44853b] hover:bg-[#44853b]/90 text-white text-xs font-bold transition-all shadow-md"
+                  className="sapa-button sapa-button-primary px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
                 >
                   Verifikasi Akun
-                </button>
+                </AnimatedButton>
               </div>
             </div>
-          </div>
-        </div>
+          </MainCard>
+        </AdminDialog>
       )}
 
       {/* --- POP-UP MODAL: FORM TAMBAH / EDIT USER --- */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="glass-card max-w-lg w-full rounded-3xl p-6 sm:p-7 border border-[#afbade]/40 dark:border-white/10 shadow-2xl space-y-5 bg-white/95 dark:bg-slate-900/95 relative animate-scaleUp">
-            <div className="flex items-center justify-between pb-3 border-b border-[#afbade]/30 dark:border-slate-800">
-              <h3 className="text-sm sm:text-base font-black text-[#2b4390] dark:text-white flex items-center gap-2">
-                <span>{isEditingUser ? '✏️ Edit Pengguna' : '➕ Tambah Pengguna Baru'}</span>
-              </h3>
-              <button
-                onClick={() => setShowUserModal(false)}
-                className="text-[#6573a1] hover:text-[#2b4390] text-sm p-1"
+        <AdminDialog label="Pengguna" onClose={() => setShowUserModal(false)}>
+          <MainCard
+            content={false}
+            sx={{ p: 3, minWidth: 0 }}
+            className="max-w-lg w-full space-y-5 relative animate-scaleUp"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+              <Typography
+                component="h3"
+                variant="h5"
+                className="text-sm sm:text-base font-black text-[var(--text-main)] flex items-center gap-2"
               >
-                ✕
-              </button>
+                <span>
+                  {isEditingUser ? " Edit Pengguna" : " Tambah Pengguna Baru"}
+                </span>
+              </Typography>
+              <AnimatedButton
+                onClick={() => setShowUserModal(false)}
+                className="sapa-button sapa-button-secondary text-sm p-1"
+                aria-label="Tutup dialog"
+              >
+                Tutup
+              </AnimatedButton>
             </div>
 
             <form onSubmit={handleSaveUserForm} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-[#2b4390] dark:text-slate-300">
-                  Username <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel
+                  htmlFor="adminsettings-field-7"
+                  className="font-bold text-[var(--text-main)]"
+                >
+                  Username <span className="text-[var(--text-muted)]">*</span>
+                </FormLabel>
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-field-7"
                   type="text"
                   required
                   value={userFormUsername}
                   onChange={(e) => setUserFormUsername(e.target.value)}
                   placeholder="contoh: verifikator_kc"
-                  className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-[#2b4390] dark:text-slate-300">
-                  Nama Lengkap <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel
+                  htmlFor="adminsettings-field-8"
+                  className="font-bold text-[var(--text-main)]"
+                >
+                  Nama Lengkap{" "}
+                  <span className="text-[var(--text-muted)]">*</span>
+                </FormLabel>
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-field-8"
                   type="text"
                   required
                   value={userFormName}
                   onChange={(e) => setUserFormName(e.target.value)}
                   placeholder="contoh: Ahmad Fauzi, S.Kep"
-                  className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-[#2b4390] dark:text-slate-300">
-                  Alamat Email <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel
+                  htmlFor="adminsettings-field-9"
+                  className="font-bold text-[var(--text-main)]"
+                >
+                  Alamat Email{" "}
+                  <span className="text-[var(--text-muted)]">*</span>
+                </FormLabel>
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-field-9"
                   type="email"
                   required
                   value={userFormEmail}
                   onChange={(e) => setUserFormEmail(e.target.value)}
                   placeholder="nama@bpjs-kesehatan.go.id"
-                  className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-[#2b4390] dark:text-slate-300">
-                  Kata Sandi (Password) <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel
+                  htmlFor="adminsettings-field-10"
+                  className="font-bold text-[var(--text-main)]"
+                >
+                  Kata Sandi (Password){" "}
+                  <span className="text-[var(--text-muted)]">*</span>
+                </FormLabel>
+                <TextField
+                  size="small"
+                  fullWidth
+                  id="adminsettings-field-10"
                   type="text"
                   required
                   value={userFormPassword}
                   onChange={(e) => setUserFormPassword(e.target.value)}
                   placeholder="Kombinasi huruf, angka, simbol"
-                  className="w-full glass-input rounded-xl px-3 py-2 text-xs font-mono font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+                  sx={{ minWidth: 0 }}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-[#2b4390] dark:text-slate-300">
-                    Peran (Role)
-                  </label>
-                  <select
-                    value={userFormRole}
-                    onChange={(e) => setUserFormRole(e.target.value as any)}
-                    className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+                  <FormLabel
+                    htmlFor="adminsettings-field-11"
+                    className="font-bold text-[var(--text-main)]"
                   >
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Admin">Admin</option>
-                    <option value="User">User</option>
-                    <option value="Admin KC Jember">Admin KC Jember</option>
-                    <option value="Verifikator Yanfaskes">Verifikator Yanfaskes</option>
-                    <option value="Viewer Eksekutif">Viewer Eksekutif</option>
-                  </select>
+                    Peran (Role)
+                  </FormLabel>
+                  <AdminSelect
+                    aria-label="Peran (Role)"
+                    id="adminsettings-field-11"
+                    value={userFormRole}
+                    onValueChange={(value) => setUserFormRole(value as any)}
+                    className="sapa-control w-full rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--panel-bg)] border border-[var(--border-color)]"
+                  >
+                    <FilterOption value="Super Admin">Super Admin</FilterOption>
+                    <FilterOption value="Admin">Admin</FilterOption>
+                    <FilterOption value="User">User</FilterOption>
+                    <FilterOption value="Admin KC Jember">
+                      Admin KC Jember
+                    </FilterOption>
+                    <FilterOption value="Verifikator Yanfaskes">
+                      Verifikator Yanfaskes
+                    </FilterOption>
+                    <FilterOption value="Viewer Eksekutif">
+                      Viewer Eksekutif
+                    </FilterOption>
+                  </AdminSelect>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-[#2b4390] dark:text-slate-300">
-                    Status Akun
-                  </label>
-                  <select
-                    value={userFormStatus}
-                    onChange={(e) => setUserFormStatus(e.target.value as any)}
-                    className="w-full glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+                  <FormLabel
+                    htmlFor="adminsettings-field-12"
+                    className="font-bold text-[var(--text-main)]"
                   >
-                    <option value="Aktif">Aktif</option>
-                    <option value="Nonaktif">Nonaktif</option>
-                  </select>
+                    Status Akun
+                  </FormLabel>
+                  <AdminSelect
+                    aria-label="Status Akun"
+                    id="adminsettings-field-12"
+                    value={userFormStatus}
+                    onValueChange={(value) => setUserFormStatus(value as any)}
+                    className="sapa-control w-full rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--panel-bg)] border border-[var(--border-color)]"
+                  >
+                    <FilterOption value="Aktif">Aktif</FilterOption>
+                    <FilterOption value="Nonaktif">Nonaktif</FilterOption>
+                  </AdminSelect>
                 </div>
               </div>
 
               <div className="pt-4 flex items-center justify-end gap-2.5">
-                <button
+                <AnimatedButton
                   type="button"
                   onClick={() => setShowUserModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#6573a1] hover:text-[#2b4390]"
+                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-semibold"
                 >
                   Batal
-                </button>
-                <button
+                </AnimatedButton>
+                <AnimatedButton
                   type="submit"
-                  className="px-5 py-2 rounded-xl bpjs-gradient-btn text-white text-xs font-bold shadow-md"
+                  className="sapa-button sapa-button-primary px-5 py-2 rounded-xl text-xs font-bold"
                 >
-                  {isEditingUser ? 'Simpan Perubahan' : 'Tambah Pengguna'}
-                </button>
+                  {isEditingUser ? "Simpan Perubahan" : "Tambah Pengguna"}
+                </AnimatedButton>
               </div>
             </form>
-          </div>
-        </div>
+          </MainCard>
+        </AdminDialog>
       )}
 
       {/* --- POP-UP MODAL: KONFIRMASI HAPUS USER --- */}
       {showDeleteModal && userToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="glass-card max-w-md w-full rounded-3xl p-6 border border-rose-500/40 shadow-2xl space-y-4 bg-white/95 dark:bg-slate-900/95 relative animate-scaleUp text-xs">
-            <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-black text-sm">
-              <span className="text-xl">⚠️</span>
+        <AdminDialog
+          label="Konfirmasi hapus pengguna"
+          onClose={() => setShowDeleteModal(false)}
+        >
+          <MainCard
+            content={false}
+            sx={{ p: 3, minWidth: 0 }}
+            className="max-w-md w-full space-y-4 relative animate-scaleUp text-xs"
+          >
+            <div className="flex items-center gap-2.5 text-[var(--text-main)] font-black text-sm">
               <span>Konfirmasi Hapus Pengguna</span>
             </div>
 
-            <p className="text-[#2b4390] dark:text-slate-300 leading-relaxed">
-              Apakah Anda yakin ingin menghapus akun pengguna{' '}
-              <strong className="text-rose-600 dark:text-rose-400">@{userToDelete.username}</strong> ({userToDelete.name})?
-              Pengguna ini tidak akan dapat login lagi ke sistem SAPA YANFASKES.
+            <p className="text-[var(--text-main)] leading-relaxed">
+              Apakah Anda yakin ingin menghapus akun pengguna{" "}
+              <strong className="text-[var(--text-main)]">
+                @{userToDelete.username}
+              </strong>{" "}
+              ({userToDelete.name})? Pengguna ini tidak akan dapat login lagi ke
+              sistem SAPA YANFASKES.
             </p>
 
             <div className="pt-3 flex items-center justify-end gap-2.5">
-              <button
+              <AnimatedButton
                 type="button"
                 onClick={() => {
                   setShowDeleteModal(false);
                   setUserToDelete(null);
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#6573a1] hover:text-[#2b4390]"
+                className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-semibold"
               >
                 Batal
-              </button>
-              <button
+              </AnimatedButton>
+              <AnimatedButton
                 type="button"
                 onClick={handleConfirmDeleteUser}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md"
+                className="sapa-button sapa-button-danger px-4 py-2 rounded-xl text-xs font-bold"
               >
                 Hapus Pengguna
-              </button>
+              </AnimatedButton>
             </div>
-          </div>
-        </div>
+          </MainCard>
+        </AdminDialog>
       )}
-    </div>
+    </Stack>
   );
 };

@@ -1,3 +1,8 @@
+import { Typography } from '@mui/material';
+import MainCard from '../berry/MainCard';
+import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import '../berry/berry-dashboards.css';
+import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 
@@ -303,39 +308,55 @@ export const DisplayTtComplianceTab: React.FC = () => {
     return rawTableData.length - totalTercapai;
   }, [rawTableData, totalTercapai]);
 
+  if (!apiData) {
+    return (
+      <MainCard content={false} className="berry-dashboard-card p-5 sm:p-6" aria-busy={loading} aria-live="polite">
+        <p className="sapa-eyebrow">Data kepatuhan FKRTL</p>
+        <Typography component="h2" variant="h4" className="sapa-section-heading text-lg font-semibold text-[var(--text-main)] mt-2">{loading ? 'Memuat data kepatuhan' : 'Data belum tersedia'}</Typography>
+        <p className="text-sm text-[var(--text-muted)] mt-2">{loading ? 'Mengambil data sesuai filter yang dipilih.' : error || 'Belum ada data untuk ditampilkan.'}</p>
+        {!loading && <button type="button" onClick={fetchData} className="sapa-button sapa-button-primary mt-4">Coba lagi</button>}
+      </MainCard>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="sapa-dashboard-body space-y-6">
+      <p className="sapa-filter-summary sapa-status flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]" aria-live="polite">
+        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{selectedBulan}</span><span>{selectedTipeFaskes}</span>
+        <span>{statusFilter === 'ALL' ? 'Semua status' : statusFilter === 'TERCAPAI' ? 'Target tercapai' : 'Belum mencapai target'}</span>
+        {searchQuery && <span>Pencarian: {searchQuery}</span>}
+      </p>
       {/* Alert Error State if any */}
       {error && (
-        <div className="glass-card rounded-2xl p-4 border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 flex items-center justify-between gap-3 text-xs">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-4 border border-amber-500/40 bg-amber-500/10 text-amber-800 flex items-center justify-between gap-3 text-xs min-w-0">
           <div className="flex items-center gap-2">
-            <span>⚠️</span>
+            <span></span>
             <span>{error}</span>
           </div>
           <button
             onClick={fetchData}
-            className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-200 font-bold transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 font-bold transition-colors cursor-pointer"
           >
             Coba Lagi
           </button>
-        </div>
+        </MainCard>
       )}
 
       {/* 1. FILTER BAR 4-DIMENSI DENGAN GLASSMORPHISM UI */}
-      <div className="glass-card rounded-2xl p-5 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-[#44853b]/10 via-[#2b4390]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden min-w-0">
+
 
         <div className="relative z-10 flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
             <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2b4390] to-[#44853b] text-white flex items-center justify-center text-sm shadow-md shadow-[#2b4390]/20">
-                🔍
+              <span className="w-8 h-8 rounded-xl text-[var(--text-main)] flex items-center justify-center text-sm">
+
               </span>
               <div>
-                <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider">
+                <Typography component="h3" variant="h5" className="sapa-section-heading text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">
                   Filter Pembaruan Data Ketersediaan Tempat Tidur
-                </h3>
-                <p className="text-[11px] text-[#6573a1] dark:text-[#afbade] mt-0.5">
+                </Typography>
+                <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                   Filter interaktif 4-dimensi tersinkronisasi langsung dengan Google Spreadsheet Display TT
                 </p>
               </div>
@@ -344,18 +365,18 @@ export const DisplayTtComplianceTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleResetFilters}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[#6573a1] dark:text-slate-300 hover:text-[#2b4390] hover:bg-[#d4ecd1]/40 dark:hover:bg-slate-800 border border-[#afbade]/30 dark:border-white/10 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-accent)]/40 border border-[var(--border-color)] transition-colors flex items-center gap-1.5"
               >
-                <span>🔄</span>
+                <span></span>
                 <span>Reset Filter</span>
               </button>
 
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#2b4390] text-white hover:bg-[#2b4390]/90 transition-all flex items-center gap-1.5 shadow-sm shadow-[#2b4390]/20"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--bpjs-navy)] text-[var(--on-primary)] hover:bg-[var(--bpjs-navy)]/90 transition-all flex items-center gap-1.5"
               >
-                <span>{loading ? '⏳' : '⚡'}</span>
+                <span>{loading ? '' : ''}</span>
                 <span>{loading ? 'Memuat...' : 'Segarkan Data'}</span>
               </button>
             </div>
@@ -365,229 +386,229 @@ export const DisplayTtComplianceTab: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Filter Kabupaten */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>📍 Kabupaten</span>
+              <label htmlFor="DisplayTtComplianceTab-filter-1" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Kabupaten</span>
               </label>
-              <select
+              <FilterSelect aria-label="Kabupaten" id="DisplayTtComplianceTab-filter-1"
                 value={selectedKabupaten}
                 onChange={(e) => handleKabupatenChange(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.kabupaten.map((kab) => (
-                  <option key={kab} value={kab} className="bg-slate-900 text-white">
+                  <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {kab}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter Nama Faskes */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>🏥 Nama Faskes (FKRTL)</span>
+              <label htmlFor="DisplayTtComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Nama Faskes (FKRTL)</span>
               </label>
-              <select
+              <FilterSelect aria-label="Fasilitas kesehatan" id="DisplayTtComplianceTab-filter-2"
                 value={selectedNamaPpk}
                 onChange={(e) => {
                   setSelectedNamaPpk(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.nama_ppk.map((faskes) => (
-                  <option key={faskes} value={faskes} className="bg-slate-900 text-white">
+                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {faskes}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter Bulan */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>📅 Bulan Penilaian</span>
+              <label htmlFor="DisplayTtComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Bulan Penilaian</span>
               </label>
-              <select
+              <FilterSelect aria-label="Bulan" id="DisplayTtComplianceTab-filter-3"
                 value={selectedBulan}
                 onChange={(e) => setSelectedBulan(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.bulan.map((bln) => (
-                  <option key={bln} value={bln} className="bg-slate-900 text-white">
+                  <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {bln}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
 
             {/* Filter Tipe Faskes */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[#2b4390] dark:text-slate-300 flex items-center gap-1">
-                <span>🏷️ Tipe Faskes</span>
+              <label htmlFor="DisplayTtComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Tipe Faskes</span>
               </label>
-              <select
+              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="DisplayTtComplianceTab-filter-4"
                 value={selectedTipeFaskes}
                 onChange={(e) => handleTipeFaskesChange(e.target.value)}
-                className="glass-input rounded-xl px-3 py-2 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/90 dark:bg-slate-900/90 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer shadow-sm"
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
               >
                 {filterOptions.tipe_faskes.map((tipe) => (
-                  <option key={tipe} value={tipe} className="bg-slate-900 text-white">
+                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                     {tipe}
-                  </option>
+                  </FilterOption>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
           </div>
         </div>
-      </div>
+      </MainCard>
 
       {/* 2. KARTU KPI UTAMA (JUMLAH UPDATE, CAPAIAN BOBOT 10%, TOTAL FASKES, STATUS PATUH) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="sapa-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: RATA-RATA JUMLAH UPDATE */}
-        <div className="glass-card rounded-2xl p-5 border border-[#83a67e]/40 dark:border-emerald-500/20 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="sapa-kpi-lead berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Rata-rata Hari Pembaruan
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)]">
               Target &ge; 25 hari
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#2b4390] dark:text-[#f7fcfa] font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--text-main)] font-mono tracking-tight">
               {kpi.avg_jumlah_update.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+            <span className="text-xs text-[var(--text-muted)] font-semibold">
               hari / bulan
             </span>
             <span
               className={`text-xs font-bold px-2 py-0.5 rounded-full ml-auto ${
                 kpi.avg_jumlah_update >= 25
-                  ? 'bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300'
-                  : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300'
+                  ? 'bg-[var(--surface-accent)] text-[var(--accent-text)] border border-[var(--border-color)]/40  '
+                  : 'bg-amber-100 text-amber-800 border border-amber-300  '
               }`}
             >
               {kpi.avg_jumlah_update >= 25 ? 'Tercapai' : 'Perlu Peningkatan'}
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Total Akumulasi Pembaruan</span>
-            <span className="font-bold font-mono text-[#2b4390] dark:text-white">
+            <span className="font-bold font-mono text-[var(--text-main)]">
               {formatNumberID(kpi.total_update)} hari update
             </span>
           </div>
-        </div>
+        </MainCard>
 
         {/* KPI 2: CAPAIAN (BOBOT 10%) */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Rata-rata Capaian (Poin)
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/30 text-[#2b4390] dark:bg-slate-800 dark:text-sky-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--border-color)]/30 text-[var(--text-main)]">
               Bobot 10%
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#44853b] dark:text-emerald-400 font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--bpjs-green)] font-mono tracking-tight">
               {kpi.avg_capaian.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+            <span className="text-xs text-[var(--text-muted)] font-semibold">
               dari 100 poin
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Kontribusi Nilai Mutu</span>
-            <span className="font-bold font-mono text-[#44853b] dark:text-emerald-300">
+            <span className="font-bold font-mono text-[var(--bpjs-green)]">
               +{formatPercentID(kpi.kontribusi_capaian)}
             </span>
           </div>
-        </div>
+        </MainCard>
 
         {/* KPI 3: TOTAL RUMAH SAKIT */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Total Faskes Terdata
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#d4ecd1]/60 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--surface-accent)]/60 text-[var(--text-main)]">
               FKRTL Aktif
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#2b4390] dark:text-sky-300 font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--text-main)] font-mono tracking-tight">
               {kpi.total_faskes}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+            <span className="text-xs text-[var(--text-muted)] font-semibold">
               Rumah Sakit
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Rata-rata per Faskes</span>
-            <span className="font-bold font-mono text-[#2b4390] dark:text-white">
+            <span className="font-bold font-mono text-[var(--text-main)]">
               {kpi.avg_jumlah_update.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} hari / bln
             </span>
           </div>
-        </div>
+        </MainCard>
 
         {/* KPI 4: STATUS TERCAPAI RS */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/40 dark:border-white/10 shadow-md relative overflow-hidden group">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Status Kepatuhan RS
             </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#afbade]/20 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--border-color)]/20 text-[var(--text-main)]">
               &ge; 25 hari = Patuh
             </span>
           </div>
 
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl sm:text-4xl font-black text-[#44853b] dark:text-emerald-400 font-mono tracking-tight">
+            <span className="text-3xl sm:text-4xl font-semibold text-[var(--bpjs-green)] font-mono tracking-tight">
               {totalTercapai}
             </span>
-            <span className="text-xs text-[#44853b] dark:text-emerald-400 font-semibold">
+            <span className="text-xs text-[var(--bpjs-green)] font-semibold">
               RS Patuh ({kpi.total_faskes ? Math.round((totalTercapai / kpi.total_faskes) * 100) : 0}%)
             </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between text-[11px] text-[#6573a1] dark:text-[#afbade]">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
             <span>Belum Memenuhi (&lt; 25 hari)</span>
-            <span className="font-bold font-mono text-amber-600 dark:text-amber-400">
+            <span className="font-bold font-mono text-[var(--warning-text)]">
               {totalBelumTercapai} RS
             </span>
           </div>
-        </div>
+        </MainCard>
       </div>
 
       {/* 3. DUA LINE CHART BULANAN TERPISAH (KANAN DAN KIRI) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LINE CHART KIRI: JUMLAH UPDATE (BIRU BPJS #2b4390) */}
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-xl relative overflow-hidden flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+        {/* LINE CHART KIRI: JUMLAH UPDATE (BIRU BPJS var(--bpjs-navy)) */}
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#2b4390] shadow-sm shadow-[#2b4390]/50" />
+              <Typography component="h3" variant="h5" className="sapa-section-heading text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-navy)]" />
                 Grafik Bulanan: Jumlah Update (Hari)
-              </h3>
-              <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
+              </Typography>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Tren rata-rata hari pembaruan ketersediaan tempat tidur secara harian dalam 1 bulan
               </p>
             </div>
 
             <div className="flex items-center gap-3 text-xs font-semibold">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#2b4390] border-2 border-white shadow-sm" />
-                <span className="text-[#2b4390] dark:text-[#afbade]">Rata-rata Hari</span>
+                <span className="w-3 h-3 rounded-full bg-[var(--bpjs-navy)] border-2 border-white" />
+                <span className="text-[var(--text-main)]">Rata-rata Hari</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-0.5 bg-amber-500 border-t border-dashed border-amber-500" />
-                <span className="text-amber-600 dark:text-amber-400 text-[11px]">Target &ge; 25 hari</span>
+                <span className="text-[var(--warning-text)] text-[11px]">Target &ge; 25 hari</span>
               </div>
             </div>
           </div>
@@ -595,7 +616,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
           {/* SVG Left Chart */}
           <div className="relative w-full h-64 select-none">
             {monthlyChart.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-xs text-[#6573a1] dark:text-slate-400 italic">
+              <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)] italic">
                 Tidak ada data bulanan.
               </div>
             ) : (
@@ -622,14 +643,14 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 const targetY = getY(25);
 
                 const points = monthlyChart.map((d, i) => `${getX(i)},${getY(d.avg_jumlah_update)}`).join(' ');
-                const areaPath = `${points} L ${getX(monthlyChart.length - 1)},${padding.top + innerHeight} L ${getX(0)},${padding.top + innerHeight} Z`;
+                const areaPath = `${points} ${getX(monthlyChart.length - 1)},${padding.top + innerHeight} ${getX(0)},${padding.top + innerHeight}`;
 
                 return (
                   <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="blueGradientDisplayTt" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2b4390" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#2b4390" stopOpacity="0.02" />
+                        <stop offset="0%" stopColor="var(--bpjs-navy)" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="var(--bpjs-navy)" stopOpacity="0.02" />
                       </linearGradient>
                     </defs>
 
@@ -644,7 +665,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             x2={width - padding.right}
                             y2={y}
                             stroke="currentColor"
-                            className="text-[#afbade]/20 dark:text-white/5"
+                            className="text-[var(--border-color)]/20"
                             strokeWidth="1"
                           />
                           <text
@@ -653,7 +674,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             textAnchor="end"
                             fontSize="9"
                             fill="currentColor"
-                            className="text-[#6573a1] dark:text-slate-400 font-mono"
+                            className="text-[var(--text-muted)] font-mono"
                           >
                             {tick} hr
                           </text>
@@ -667,7 +688,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                       y1={targetY}
                       x2={width - padding.right}
                       y2={targetY}
-                      stroke="#f59e0b"
+                      stroke="var(--warning)"
                       strokeWidth="1.5"
                       strokeDasharray="4 3"
                     />
@@ -678,7 +699,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                     {/* Line Path */}
                     <polyline
                       fill="none"
-                      stroke="#2b4390"
+                      stroke="var(--bpjs-navy)"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -696,8 +717,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             cx={cx}
                             cy={cy}
                             r={isHovered ? 6 : 4}
-                            fill="#2b4390"
-                            stroke="#ffffff"
+                            fill="var(--bpjs-navy)"
+                            stroke="var(--surface)"
                             strokeWidth="2"
                             className="cursor-pointer transition-all duration-200"
                             onMouseEnter={() => setHoveredMonthUpdate(d)}
@@ -712,8 +733,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             fill="currentColor"
                             className={`font-semibold transition-colors ${
                               isHovered
-                                ? 'text-[#2b4390] dark:text-sky-300 font-bold'
-                                : 'text-[#6573a1] dark:text-slate-400'
+                                ? 'text-[var(--bpjs-navy)]  font-bold'
+                                : 'text-[var(--text-muted)] '
                             }`}
                           >
                             {d.short_name}
@@ -726,7 +747,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             textAnchor="middle"
                             fontSize="9"
                             fill="currentColor"
-                            className="font-mono font-bold text-[#2b4390] dark:text-slate-200"
+                            className="font-mono font-bold text-[var(--text-main)]"
                           >
                             {d.avg_jumlah_update.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                           </text>
@@ -740,18 +761,18 @@ export const DisplayTtComplianceTab: React.FC = () => {
 
             {/* Hover Tooltip Kiri */}
             {hoveredMonthUpdate && (
-              <div className="absolute top-2 right-4 bg-slate-900/95 text-white text-[11px] p-2.5 rounded-xl shadow-xl border border-white/10 z-20 pointer-events-none backdrop-blur-md animate-fadeIn">
-                <div className="font-bold text-sky-300 pb-1 mb-1 border-b border-white/10">
+              <div className="absolute top-2 right-4 bg-[var(--surface-subtle)] text-[var(--text-main)] text-[11px] p-2.5 rounded-xl border border-white/10 z-20 pointer-events-none">
+                <div className="font-bold text-[var(--bpjs-navy)] pb-1 mb-1 border-b border-white/10">
                   {hoveredMonthUpdate.bulan_indo}
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-400">Rata-rata Hari:</span>
-                  <span className="font-mono font-bold text-white">
+                  <span className="text-[var(--text-muted)]">Rata-rata Hari:</span>
+                  <span className="font-mono font-bold text-[var(--text-main)]">
                     {hoveredMonthUpdate.avg_jumlah_update.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} hari
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-400">Faskes Patuh (&ge; 25 hr):</span>
+                  <span className="text-[var(--text-muted)]">Faskes Patuh (&ge; 25 hr):</span>
                   <span className="font-mono text-emerald-300">
                     {hoveredMonthUpdate.met_count} / {hoveredMonthUpdate.faskes_count} RS
                   </span>
@@ -760,33 +781,33 @@ export const DisplayTtComplianceTab: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 text-[11px] text-[#6573a1] dark:text-slate-400 flex items-center justify-between">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] text-[11px] text-[var(--text-muted)] flex items-center justify-between">
             <span>Standar Nasional: Minimal 25 hari pembaruan harian dalam 1 bulan</span>
-            <span className="font-bold text-[#2b4390] dark:text-sky-300">Target &ge; 25 hari</span>
+            <span className="font-bold text-[var(--text-main)]">Target &ge; 25 hari</span>
           </div>
-        </div>
+        </MainCard>
 
-        {/* LINE CHART KANAN: CAPAIAN (HIJAU BPJS #44853b) */}
-        <div className="glass-card rounded-2xl p-5 border border-[#83a67e]/40 dark:border-emerald-500/20 shadow-xl relative overflow-hidden flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+        {/* LINE CHART KANAN: CAPAIAN (HIJAU BPJS var(--bpjs-green)) */}
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden flex flex-col justify-between min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-[#44853b] dark:text-emerald-300 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#44853b] shadow-sm shadow-[#44853b]/50" />
+              <Typography component="h3" variant="h5" className="sapa-section-heading text-xs sm:text-sm font-bold text-[var(--bpjs-green)] uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
                 Grafik Bulanan: Capaian (Poin)
-              </h3>
-              <p className="text-[11px] text-[#6573a1] dark:text-slate-400 mt-0.5">
+              </Typography>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Tren rata-rata skor capaian pembaruan ketersediaan tempat tidur (Bobot 10%)
               </p>
             </div>
 
             <div className="flex items-center gap-3 text-xs font-semibold">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#44853b] border-2 border-white shadow-sm" />
-                <span className="text-[#44853b] dark:text-emerald-300">Capaian Poin</span>
+                <span className="w-3 h-3 rounded-full bg-[var(--bpjs-green)] border-2 border-white" />
+                <span className="text-[var(--bpjs-green)]">Capaian Poin</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-4 h-0.5 bg-[#44853b] border-t border-dashed border-[#44853b]" />
-                <span className="text-[#44853b] dark:text-emerald-400 text-[11px]">Target 100 Poin</span>
+                <span className="w-4 h-0.5 bg-[var(--bpjs-green)] border-t border-dashed border-[var(--border-color)]" />
+                <span className="text-[var(--bpjs-green)] text-[11px]">Target 100 Poin</span>
               </div>
             </div>
           </div>
@@ -794,7 +815,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
           {/* SVG Right Chart */}
           <div className="relative w-full h-64 select-none">
             {monthlyChart.length === 0 ? (
-              <div className="w-full h-full flex items-center justify-center text-xs text-[#6573a1] dark:text-slate-400 italic">
+              <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)] italic">
                 Tidak ada data bulanan.
               </div>
             ) : (
@@ -820,14 +841,14 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 const targetY = getY(100);
 
                 const points = monthlyChart.map((d, i) => `${getX(i)},${getY(d.avg_capaian)}`).join(' ');
-                const areaPath = `${points} L ${getX(monthlyChart.length - 1)},${padding.top + innerHeight} L ${getX(0)},${padding.top + innerHeight} Z`;
+                const areaPath = `${points} ${getX(monthlyChart.length - 1)},${padding.top + innerHeight} ${getX(0)},${padding.top + innerHeight}`;
 
                 return (
                   <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                     <defs>
                       <linearGradient id="greenGradientDisplayTt" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#44853b" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#44853b" stopOpacity="0.02" />
+                        <stop offset="0%" stopColor="var(--bpjs-green)" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="var(--bpjs-green)" stopOpacity="0.02" />
                       </linearGradient>
                     </defs>
 
@@ -842,7 +863,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             x2={width - padding.right}
                             y2={y}
                             stroke="currentColor"
-                            className="text-[#afbade]/20 dark:text-white/5"
+                            className="text-[var(--border-color)]/20"
                             strokeWidth="1"
                           />
                           <text
@@ -851,7 +872,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             textAnchor="end"
                             fontSize="9"
                             fill="currentColor"
-                            className="text-[#6573a1] dark:text-slate-400 font-mono"
+                            className="text-[var(--text-muted)] font-mono"
                           >
                             {tick}
                           </text>
@@ -865,7 +886,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                       y1={targetY}
                       x2={width - padding.right}
                       y2={targetY}
-                      stroke="#44853b"
+                      stroke="var(--bpjs-green)"
                       strokeWidth="1.5"
                       strokeDasharray="4 3"
                     />
@@ -876,7 +897,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                     {/* Line Path */}
                     <polyline
                       fill="none"
-                      stroke="#44853b"
+                      stroke="var(--bpjs-green)"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -894,8 +915,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             cx={cx}
                             cy={cy}
                             r={isHovered ? 6 : 4}
-                            fill="#44853b"
-                            stroke="#ffffff"
+                            fill="var(--bpjs-green)"
+                            stroke="var(--surface)"
                             strokeWidth="2"
                             className="cursor-pointer transition-all duration-200"
                             onMouseEnter={() => setHoveredMonthCapaian(d)}
@@ -910,8 +931,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             fill="currentColor"
                             className={`font-semibold transition-colors ${
                               isHovered
-                                ? 'text-[#44853b] dark:text-emerald-300 font-bold'
-                                : 'text-[#6573a1] dark:text-slate-400'
+                                ? 'text-[var(--accent-text)]  font-bold'
+                                : 'text-[var(--text-muted)] '
                             }`}
                           >
                             {d.short_name}
@@ -924,7 +945,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                             textAnchor="middle"
                             fontSize="9"
                             fill="currentColor"
-                            className="font-mono font-bold text-[#44853b] dark:text-emerald-300"
+                            className="font-mono font-bold text-[var(--bpjs-green)]"
                           >
                             {d.avg_capaian.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                           </text>
@@ -938,18 +959,18 @@ export const DisplayTtComplianceTab: React.FC = () => {
 
             {/* Hover Tooltip Kanan */}
             {hoveredMonthCapaian && (
-              <div className="absolute top-2 right-4 bg-slate-900/95 text-white text-[11px] p-2.5 rounded-xl shadow-xl border border-white/10 z-20 pointer-events-none backdrop-blur-md animate-fadeIn">
+              <div className="absolute top-2 right-4 bg-[var(--surface-subtle)] text-[var(--text-main)] text-[11px] p-2.5 rounded-xl border border-white/10 z-20 pointer-events-none">
                 <div className="font-bold text-emerald-300 pb-1 mb-1 border-b border-white/10">
                   {hoveredMonthCapaian.bulan_indo}
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-400">Rata-rata Capaian:</span>
-                  <span className="font-mono font-bold text-white">
+                  <span className="text-[var(--text-muted)]">Rata-rata Capaian:</span>
+                  <span className="font-mono font-bold text-[var(--text-main)]">
                     {hoveredMonthCapaian.avg_capaian.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} poin
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-400">Kontribusi Mutu (10%):</span>
+                  <span className="text-[var(--text-muted)]">Kontribusi Mutu (10%):</span>
                   <span className="font-mono text-emerald-300">
                     +{formatPercentID(hoveredMonthCapaian.avg_capaian * 0.1)}
                   </span>
@@ -958,22 +979,22 @@ export const DisplayTtComplianceTab: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-[#afbade]/20 dark:border-slate-800 text-[11px] text-[#6573a1] dark:text-slate-400 flex items-center justify-between">
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)] text-[11px] text-[var(--text-muted)] flex items-center justify-between">
             <span>Pedoman Penilaian: &ge; 25 hari = 100, 15-24 hari = 50, 10-14 hari = 25, &lt; 10 hari = 0</span>
-            <span className="font-bold text-[#44853b] dark:text-emerald-400">Target 100 Poin</span>
+            <span className="font-bold text-[var(--bpjs-green)]">Target 100 Poin</span>
           </div>
-        </div>
+        </MainCard>
       </div>
 
       {/* 4. TABEL MATRIKS KEPATUHAN FASKES (DEDUPLIKASI / TANPA DUPLIKAT) */}
-      <div className="glass-card rounded-2xl border border-[#afbade]/30 dark:border-white/10 shadow-xl overflow-hidden">
+      <MainCard content={false} className="berry-dashboard-card rounded-lg border border-[var(--border-color)] overflow-hidden min-w-0">
         {/* Table Header Controls */}
-        <div className="p-4 sm:p-5 border-b border-[#afbade]/20 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 border-b border-[var(--border-color)] flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <span>📋 Matriks Kepatuhan: Pembaruan (Update) Data Ketersediaan Tempat Tidur</span>
-            </h3>
-            <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+            <Typography component="h3" variant="h5" className="sapa-section-heading text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+              <span> Matriks Kepatuhan: Pembaruan (Update) Data Ketersediaan Tempat Tidur</span>
+            </Typography>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Menampilkan {filteredTableData.length} fasilitas kesehatan rujukan (FKRTL) terintegrasi
             </p>
           </div>
@@ -981,7 +1002,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Search Input */}
             <div className="relative">
-              <input
+              <input aria-label="Cari faskes, kode PPK, atau kab..."
                 type="text"
                 placeholder="Cari faskes, kode PPK, atau kab..."
                 value={searchQuery}
@@ -989,13 +1010,13 @@ export const DisplayTtComplianceTab: React.FC = () => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="glass-input rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#2b4390] dark:text-white placeholder-[#6573a1] dark:placeholder-slate-400 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] w-56 sm:w-64"
+                className="sapa-control rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] w-56 sm:w-64"
               />
-              <span className="absolute left-2.5 top-2 text-xs text-[#6573a1] dark:text-slate-400">🔍</span>
+              <span className="absolute left-2.5 top-2 text-xs text-[var(--text-muted)]"></span>
             </div>
 
             {/* Status Filter Tabs */}
-            <div className="flex items-center bg-[#afbade]/20 dark:bg-slate-800/80 p-0.5 rounded-xl border border-[#afbade]/30 dark:border-white/10 text-xs">
+            <div className="flex items-center bg-[var(--border-color)]/20 p-0.5 rounded-xl border border-[var(--border-color)] text-xs">
               <button
                 onClick={() => {
                   setStatusFilter('ALL');
@@ -1003,8 +1024,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 }}
                 className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
                   statusFilter === 'ALL'
-                    ? 'bg-[#2b4390] text-white shadow-sm'
-                    : 'text-[#6573a1] dark:text-slate-300 hover:text-[#2b4390]'
+                    ? 'bg-[var(--bpjs-navy)] text-[var(--on-primary)] shadow-sm'
+                    : 'text-[var(--text-muted)]  hover:text-[var(--bpjs-navy)]'
                 }`}
               >
                 Semua ({rawTableData.length})
@@ -1016,8 +1037,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 }}
                 className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
                   statusFilter === 'TERCAPAI'
-                    ? 'bg-[#44853b] text-white shadow-sm'
-                    : 'text-[#6573a1] dark:text-slate-300 hover:text-[#44853b]'
+                    ? 'bg-[var(--bpjs-green)] text-[var(--on-primary)] shadow-sm'
+                    : 'text-[var(--text-muted)]  hover:text-[var(--accent-text)]'
                 }`}
               >
                 Patuh ({totalTercapai})
@@ -1029,8 +1050,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 }}
                 className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
                   statusFilter === 'BELUM_TERCAPAI'
-                    ? 'bg-amber-600 text-white shadow-sm'
-                    : 'text-[#6573a1] dark:text-slate-300 hover:text-amber-600'
+                    ? 'bg-amber-600 text-[var(--text-main)] shadow-sm'
+                    : 'text-[var(--text-muted)]  hover:text-[var(--warning-text)]'
                 }`}
               >
                 Belum ({totalBelumTercapai})
@@ -1040,173 +1061,174 @@ export const DisplayTtComplianceTab: React.FC = () => {
             {/* Export CSV Button */}
             <button
               onClick={handleExportCSV}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[#44853b] hover:text-white hover:bg-[#44853b] border border-[#83a67e]/40 dark:border-emerald-500/30 transition-all flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--bpjs-green)] hover:text-[var(--text-main)] hover:bg-[var(--bpjs-green)] border border-[var(--border-color)] transition-all flex items-center gap-1.5"
             >
-              <span>📥</span>
+              <span></span>
               <span>Ekspor CSV</span>
             </button>
           </div>
         </div>
 
         {/* Table Content */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#e6f2ed] dark:bg-slate-900/80 text-[#2b4390] dark:text-[#afbade] uppercase text-[10px] font-bold tracking-wider border-b border-[#afbade]/30 dark:border-slate-800">
-              <tr>
-                <th className="py-3 px-4">No</th>
-                <th
+        <div aria-label="Area data yang dapat digulir" role="region" tabIndex={0} className="overflow-x-auto">
+          <Table size="small" className="sapa-data-table sapa-table w-full text-left text-xs">
+              <caption className="sr-only">Rincian kepatuhan fasilitas kesehatan sesuai filter dan periode yang dipilih</caption>
+            <TableHead className="bg-[var(--surface-subtle)] text-[var(--text-main)] uppercase text-[10px] font-bold tracking-wider border-b border-[var(--border-color)]">
+              <TableRow>
+                <TableCell className="py-3 px-4">No</TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => handleSort('nama_ppk')}
-                  className="py-3 px-4 cursor-pointer hover:text-[#44853b] transition-colors"
+                  className="py-3 px-4 cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                 >
                   <div className="flex items-center gap-1">
                     <span>Nama Fasilitas Kesehatan (FKRTL)</span>
                     {sortField === 'nama_ppk' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => handleSort('kabupaten')}
-                  className="py-3 px-4 cursor-pointer hover:text-[#44853b] transition-colors"
+                  className="py-3 px-4 cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                 >
                   <div className="flex items-center gap-1">
                     <span>Kabupaten</span>
                     {sortField === 'kabupaten' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => handleSort('tipe_faskes')}
-                  className="py-3 px-4 cursor-pointer hover:text-[#44853b] transition-colors"
+                  className="py-3 px-4 cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                 >
                   <div className="flex items-center gap-1">
                     <span>Tipe Faskes</span>
                     {sortField === 'tipe_faskes' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => handleSort('jumlah_update')}
-                  className="py-3 px-4 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                  className="py-3 px-4 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Jumlah Update (Hari)</span>
                     {sortField === 'jumlah_update' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th
+                </TableCell>
+                <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                   onClick={() => handleSort('capaian')}
-                  className="py-3 px-4 text-center cursor-pointer hover:text-[#44853b] transition-colors"
+                  className="py-3 px-4 text-center cursor-pointer hover:text-[var(--bpjs-green)] transition-colors"
                 >
                   <div className="flex items-center justify-center gap-1">
                     <span>Capaian (Poin)</span>
                     {sortField === 'capaian' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </div>
-                </th>
-                <th className="py-3 px-4 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#afbade]/20 dark:divide-slate-800/60 font-medium">
+                </TableCell>
+                <TableCell className="py-3 px-4 text-center">Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody className="divide-y divide-[var(--border-color)]/20 font-medium">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#6573a1] dark:text-slate-400 italic">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-12 text-center text-[var(--text-muted)] italic">
                     Memuat data pembaruan display tempat tidur...
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : paginatedTableData.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#6573a1] dark:text-slate-400 italic">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-12 text-center text-[var(--text-muted)] italic">
                     Tidak ada faskes yang sesuai dengan filter pencarian.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 paginatedTableData.map((row, idx) => {
                   const isMet = row.is_met;
                   return (
-                    <tr
+                    <TableRow
                       key={row.kode_ppk}
-                      className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
+                      className="hover:bg-[var(--surface-accent)]/20 transition-colors group"
                     >
-                      <td className="py-3.5 px-4 text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">
+                      <TableCell className="py-3.5 px-4 text-[var(--text-muted)] font-mono text-[11px]">
                         {(currentPage - 1) * itemsPerPage + idx + 1}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-[#2b4390] dark:text-white group-hover:text-[#44853b] dark:group-hover:text-emerald-300 transition-colors">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 font-bold text-[var(--text-main)] group-hover:text-[var(--bpjs-green)] transition-colors">
                         <div className="flex flex-col">
                           <span>{row.nama_ppk}</span>
-                          <span className="text-[10px] font-mono text-[#6573a1] dark:text-slate-400 font-normal">
+                          <span className="text-[10px] font-mono text-[var(--text-muted)] font-normal">
                             Kode PPK: {row.kode_ppk}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-[#2b4390] dark:text-slate-300">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 text-[var(--text-main)]">
                         {row.kabupaten}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[#d4ecd1]/50 text-[#2b4390] dark:bg-slate-800 dark:text-slate-300 border border-[#afbade]/30 dark:border-white/5">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4">
+                        <span className="px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-[var(--surface-accent)]/50 text-[var(--text-main)] border border-[var(--border-color)]">
                           {row.tipe_faskes || '-'}
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-[#2b4390] dark:text-white">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 text-center font-mono font-bold text-[var(--text-main)]">
                         <div className="flex items-center justify-center gap-1.5">
                           <span className="text-sm">
                             {row.jumlah_update.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
                           </span>
-                          <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-normal">
+                          <span className="text-[10px] text-[var(--text-muted)] font-normal">
                             hari
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <div className="w-16 bg-[#afbade]/20 dark:bg-slate-800 rounded-full h-2 overflow-hidden border border-[#afbade]/30 dark:border-white/5">
+                          <div className="w-16 bg-[var(--border-color)]/20 rounded-full h-2 overflow-hidden border border-[var(--border-color)]">
                             <div
                               style={{ width: `${Math.min(row.capaian, 100)}%` }}
                               className={`h-full rounded-full transition-all duration-500 ${
                                 isMet
-                                  ? 'bg-gradient-to-r from-[#44853b] to-[#83a67e]'
-                                  : 'bg-gradient-to-r from-amber-500 to-rose-400'
+                                  ? 'bg-[var(--bpjs-green)]'
+                                  : 'bg-amber-500'
                               }`}
                             />
                           </div>
-                          <span className="font-mono font-bold text-[#2b4390] dark:text-white text-[11px]">
+                          <span className="font-mono font-bold text-[var(--text-main)] text-[11px]">
                             {row.capaian.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
                           </span>
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-4 text-center">
                         {isMet ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
-                            ✓ Patuh (&ge; 25 hr)
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]">
+                             Patuh (&ge; 25 hr)
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
-                            ⚠ Belum Patuh (&lt; 25 hr)
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                             Belum Patuh (&lt; 25 hr)
                           </span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-4 border-t border-[#afbade]/20 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#6573a1] dark:text-slate-400">
+        <div className="p-4 border-t border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
           <div className="flex items-center gap-2">
             <span>Baris per halaman:</span>
-            <select
+            <FilterSelect aria-label="Jumlah baris per halaman"
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-lg px-2 py-1 text-xs text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900 border border-[#afbade]/40 dark:border-white/10"
+              className="sapa-control rounded-lg px-2 py-1 text-xs text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)]"
             >
-              <option value={10}>10</option>
-              <option value={15}>15</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
+              <FilterOption value={10}>10</FilterOption>
+              <FilterOption value={15}>15</FilterOption>
+              <FilterOption value={25}>25</FilterOption>
+              <FilterOption value={50}>50</FilterOption>
+            </FilterSelect>
             <span>
-              Menampilkan {sortedTableData.length ? (currentPage - 1) * itemsPerPage + 1 : 0} –{' '}
+              Menampilkan {sortedTableData.length ? (currentPage - 1) * itemsPerPage + 1 : 0} -{' '}
               {Math.min(currentPage * itemsPerPage, sortedTableData.length)} dari {sortedTableData.length} faskes
             </span>
           </div>
@@ -1215,23 +1237,23 @@ export const DisplayTtComplianceTab: React.FC = () => {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
-              className="px-3 py-1 rounded-lg border border-[#afbade]/30 dark:border-white/10 disabled:opacity-40 hover:bg-[#d4ecd1]/30 transition-colors"
+              className="px-3 py-1 rounded-lg border border-[var(--border-color)] disabled:opacity-40 hover:bg-[var(--surface-accent)]/30 transition-colors"
             >
               Sebelumnya
             </button>
-            <span className="px-2 font-mono font-bold text-[#2b4390] dark:text-white">
+            <span className="px-2 font-mono font-bold text-[var(--text-main)]">
               {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
-              className="px-3 py-1 rounded-lg border border-[#afbade]/30 dark:border-white/10 disabled:opacity-40 hover:bg-[#d4ecd1]/30 transition-colors"
+              className="px-3 py-1 rounded-lg border border-[var(--border-color)] disabled:opacity-40 hover:bg-[var(--surface-accent)]/30 transition-colors"
             >
               Berikutnya
             </button>
           </div>
         </div>
-      </div>
+      </MainCard>
     </div>
   );
 };
