@@ -25,3 +25,11 @@ data operations, not requests to implement code. `update poli` updates Nama Poli
 create scheduled work, or run both workflows for one command. Use the browser embedded in this chat application and connected Google Sheets.
 Do not use removed Poli/Aan agents, companion or browser runtime. Preserve write
 deduplication, historical values, evidence and native spreadsheet verification.
+
+## Karyawan AI: Penjaga Privasi & Keamanan
+
+Pesan `patroli keamanan`, `perbaiki temuan <id>` dan `deploy perbaikan <PR>` memanggil
+`.agents/skills/sapa-security-agent/SKILL.md`. Agen boleh membuat branch dan PR
+perbaikan, tetapi deploy ke produksi hanya setelah CEO (pemilik repositori, di chat)
+menyetujui PR tersebut secara eksplisit. Laporan di `automation/security_agent/reports/`
+tidak di-commit karena repositori ini publik.

@@ -23,3 +23,6 @@ node_modules/
 graphify-out/
 artifacts/
 scrollcraft/
+
+# Laporan agen keamanan berisi detail kerentanan; repo ini publik
+automation/security_agent/reports/
