@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 import requests
 
-from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import smtplib
@@ -27,6 +27,10 @@ try:
     from .per_poli import build_poli_data
 except ImportError:
     from per_poli import build_poli_data
+try:
+    from .laras_service import get_laras_data, LarasSourceUnavailable
+except ImportError:
+    from laras_service import get_laras_data, LarasSourceUnavailable
 import jwt
 import uuid
 from jwt import PyJWKClient
@@ -2833,6 +2837,22 @@ async def get_fkrtl_kepatuhan_tmo(
             status_code=500,
             detail=f"Gagal memproses data Laporan Kepatuhan Update TMO: {str(e)}"
         )
+
+
+@app.get("/api/v1/monitoring-laras")
+def get_monitoring_laras(
+    bulan: str = Query(default="", pattern=r"^(?:\d{4}-(?:0[1-9]|1[0-2]))?$"),
+    faskes: str = Query(default="", max_length=100),
+    poli: str = Query(default="", max_length=200),
+    jenis_kunjungan: str = Query(default="", max_length=100),
+    refresh: bool = False,
+    user=Depends(require_auth),
+):
+    try:
+        return get_laras_data(bulan=bulan, faskes=faskes, poli=poli, jenis_kunjungan=jenis_kunjungan, refresh=refresh)
+    except LarasSourceUnavailable as exc:
+        logger.warning("LARAS source unavailable")
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/fkrtl-kepatuhan/antrean-wtl")
