@@ -25,7 +25,9 @@ export interface FkrtlAntrolStats {
     latest_timestamp?: string;
   }>;
   top_faskes: Array<{ faskes: string; avg_capaian: number }>;
-  top_poli: Array<{ poli: string; avg_capaian: number }>;
+  top_poli: Array<{ poli: string; kode_poli?: string; avg_capaian: number }>;
+  poli_message?: string;
+  poli_sources?: string[];
   filter_options: {
     tahun: string[];
     bulan: string[];
@@ -79,26 +81,9 @@ const FALLBACK_FKRTL_DATA: FkrtlAntrolStats = {
     { faskes: 'RSU Unmuh Jember', avg_capaian: 63.8 },
     { faskes: 'RS Utama Husada', avg_capaian: 61.2 },
   ],
-  top_poli: [
-    { poli: 'PENYAKIT DALAM (INT)', avg_capaian: 88.5 },
-    { poli: 'OBGYN (OBG)', avg_capaian: 85.2 },
-    { poli: 'ANAK (ANA)', avg_capaian: 83.1 },
-    { poli: 'BEDAH (BED)', avg_capaian: 81.4 },
-    { poli: 'MATA (MAT)', avg_capaian: 79.6 },
-    { poli: 'SARAF (SAR)', avg_capaian: 78.3 },
-    { poli: 'JANTUNG (JAN)', avg_capaian: 77.0 },
-    { poli: 'THT-KL (THT)', avg_capaian: 75.8 },
-    { poli: 'KULIT & KELAMIN (KUL)', avg_capaian: 74.2 },
-    { poli: 'GIGI & MULUT (GIG)', avg_capaian: 72.5 },
-    { poli: 'PARU (PAR)', avg_capaian: 71.1 },
-    { poli: 'ORTHOPEDI (ORT)', avg_capaian: 69.4 },
-    { poli: 'REHAB MEDIK (IRM)', avg_capaian: 68.0 },
-    { poli: 'JIWA (JIW)', avg_capaian: 66.5 },
-    { poli: 'UROLOGI (URO)', avg_capaian: 65.2 },
-    { poli: 'BEDAH SARAF (BSN)', avg_capaian: 63.7 },
-    { poli: 'GERIATRI (GER)', avg_capaian: 61.9 },
-    { poli: 'KONSULTASI GIZI (GIZ)', avg_capaian: 60.1 },
-  ],
+  top_poli: [],
+  poli_message: 'Data poli belum dapat dimuat dari spreadsheet. Silakan coba sinkronkan kembali.',
+  poli_sources: [],
   filter_options: {
     tahun: ['(All)', '2026'],
     bulan: ['(All)', 'September 2026', 'Agustus 2026', 'Juli 2026', 'Juni 2026', 'Mei 2026', 'April 2026', 'Maret 2026', 'Februari 2026', 'Januari 2026'],
@@ -130,11 +115,11 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
           return {
             ...FALLBACK_FKRTL_DATA,
             ...response.data,
-            trend_per_bulan: Array.isArray(response.data.trend_per_bulan) && response.data.trend_per_bulan.length > 0
-              ? response.data.trend_per_bulan
-              : FALLBACK_FKRTL_DATA.trend_per_bulan,
+            trend_per_bulan: Array.isArray(response.data.trend_per_bulan) ? response.data.trend_per_bulan : [],
             top_faskes: Array.isArray(response.data.top_faskes) ? response.data.top_faskes : FALLBACK_FKRTL_DATA.top_faskes,
-            top_poli: Array.isArray(response.data.top_poli) ? response.data.top_poli : FALLBACK_FKRTL_DATA.top_poli,
+            top_poli: Array.isArray(response.data.top_poli) ? response.data.top_poli : [],
+            poli_message: response.data.poli_message || (response.data.top_poli?.length ? undefined : FALLBACK_FKRTL_DATA.poli_message),
+            poli_sources: response.data.poli_sources || [],
             filter_options: response.data.filter_options || FALLBACK_FKRTL_DATA.filter_options,
           };
         }

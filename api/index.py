@@ -23,6 +23,10 @@ try:
 except Exception:
     pl = None
     HAS_POLARS = False
+try:
+    from .per_poli import build_poli_data
+except ImportError:
+    from per_poli import build_poli_data
 import jwt
 import uuid
 from jwt import PyJWKClient
@@ -546,8 +550,7 @@ def generate_mock_multi_sheets():
 SHEET_GIDS = {
     "DB_FASKES": "0",
     "DB_LAP_ANTROL_FKRTL": "861718582",
-    "antrol_by_poli": "565078682",
-    "ref_poli": "1213587497"
+    "per_poli": "218599645"
 }
 
 _SHEETS_CACHE: Dict[str, Tuple[float, Any]] = {}
@@ -619,7 +622,7 @@ def fetch_live_google_sheets(spreadsheet_id: str, force_refresh: bool = False) -
             ]
             results = dict([f.result() for f in futures])
             
-        if results.get("DB_LAP_ANTROL_FKRTL") is not None and not results["DB_LAP_ANTROL_FKRTL"].is_empty():
+        if any(results.get(name) is not None and not results[name].is_empty() for name in ("DB_LAP_ANTROL_FKRTL", "per_poli")):
             return results
     except Exception as e:
         logger.error(f"Error in parallel live fetch of Google Sheets: {e}")
@@ -632,7 +635,7 @@ def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_ref
 
     # 1. First priority: Live public Google Sheets CSV export (100% free, real live data, sub-second)
     live_dfs = fetch_live_google_sheets(spreadsheet_id, force_refresh=force_refresh)
-    if live_dfs.get("DB_LAP_ANTROL_FKRTL") is not None and not live_dfs["DB_LAP_ANTROL_FKRTL"].is_empty():
+    if any(live_dfs.get(name) is not None and not live_dfs[name].is_empty() for name in ("DB_LAP_ANTROL_FKRTL", "per_poli")):
         return live_dfs
 
     # 2. Second priority: Google Sheets API with service account if available
@@ -705,19 +708,21 @@ async def get_fkrtl_antrol_stats(
         role = user.get("role", "viewer") if isinstance(user, dict) else "viewer"
         logger.info(f"Accessing fkrtl-antrol-stats - role: {role}, refresh: {refresh}")
 
-        # 2. Batch retrieve the 4 relational sheets
+        # 2. Retrieve the live hospital, summary, and per-poli sheets
         ranges = [
             "DB_FASKES!A:Z",
             "DB_LAP_ANTROL_FKRTL!A:Z",
-            "antrol_by_poli!A:Z",
-            "ref_poli!A:Z"
+            "per_poli!A:R"
         ]
         sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges, force_refresh=bool(refresh))
         
         df_faskes = sheets_data.get("DB_FASKES", pl.DataFrame())
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
-        df_poli = sheets_data.get("antrol_by_poli", pl.DataFrame())
-        df_ref_poli = sheets_data.get("ref_poli", pl.DataFrame())
+        df_poli = sheets_data.get("per_poli", pl.DataFrame())
+        poli_result = build_poli_data(
+            df_poli, df_faskes, tahun=tahun, bulan=bulan, kabupaten=kabupaten,
+            nama_rs=nama_rs, kelas_rs=kelas_rs, sumber=sumber,
+        )
 
         if df_antrol.is_empty():
             return {
@@ -728,7 +733,9 @@ async def get_fkrtl_antrol_stats(
                 "kpi_capaian": 0.0,
                 "trend_per_bulan": [],
                 "top_faskes": [],
-                "top_poli": [],
+                "top_poli": poli_result["top_poli"],
+                "poli_message": poli_result["poli_message"],
+                "poli_sources": poli_result["poli_sources"],
                 "filter_options": {"tahun": [], "bulan": [], "kabupaten": [], "kelas_rs": [], "sumber": []}
             }
 
@@ -768,19 +775,6 @@ async def get_fkrtl_antrol_stats(
                 "Kelas_RS": pl.Series(dtype=pl.Utf8),
                 "Nama_RS": pl.Series(dtype=pl.Utf8)
             })
-
-        # Build comprehensive Poli Code -> Poli Name reference map
-        poli_dict = dict(DEFAULT_REF_POLI)
-        if not df_ref_poli.is_empty():
-            p_code_col = find_column_name(df_ref_poli, ["politujuan", "kd_poli", "kode_poli", "kdpoli", "kode"]) or df_ref_poli.columns[0]
-            p_name_col = find_column_name(df_ref_poli, ["nmpoli", "nama_poli", "nama poli", "poli", "nama", "keterangan"]) or (df_ref_poli.columns[1] if len(df_ref_poli.columns) > 1 else p_code_col)
-            for row in df_ref_poli.iter_rows(named=True):
-                c_val = str(row.get(p_code_col, "") or "").strip()
-                n_val = str(row.get(p_name_col, "") or "").strip()
-                if c_val and n_val:
-                    poli_dict[c_val.upper()] = n_val
-                    if c_val.isdigit():
-                        poli_dict[str(int(c_val))] = n_val
 
         # 4. Standardise & compute Capaian for DB_LAP_ANTROL_FKRTL
         antrol_antrian_col = find_column_name(df_antrol, ["jumlah antrian by sumber", "jumlah antrean by sumber", "jumlah antrian", "jumlah antrean", "antrian", "antrean"])
@@ -868,7 +862,9 @@ async def get_fkrtl_antrol_stats(
                 "kpi_capaian": 0.0,
                 "trend_per_bulan": [],
                 "top_faskes": [],
-                "top_poli": [],
+                "top_poli": poli_result["top_poli"],
+                "poli_message": poli_result["poli_message"],
+                "poli_sources": poli_result["poli_sources"],
                 "filter_options": {"tahun": [], "bulan": [], "kabupaten": [], "kelas_rs": [], "sumber": []}
             }
 
@@ -915,113 +911,6 @@ async def get_fkrtl_antrol_stats(
             pl.col("Sumber").fill_null("Semua Sumber")
         ])
 
-        # 9. Prepare antrol_by_poli relational joins, Politujuan mapping, and Timestamp
-        if not df_poli.is_empty():
-            # Identify the specific columns for PoliCapaian calculation
-            flag_mjkn_col = find_column_name(df_poli, ["mobile jkn flag", "flag mobile jkn", "flag_mobile_jkn", "flag mjkn", "mobile jkn"])
-            flag_bridging_col = find_column_name(df_poli, ["flag bridging antrean", "flag_bridging_antrean", "flag bridging", "bridging antrean", "bridging"])
-            total_sep_col = find_column_name(df_poli, ["total sep", "total_sep", "jumlah sep", "sep"])
-
-            if flag_mjkn_col:
-                df_poli = df_poli.with_columns(
-                    pl.col(flag_mjkn_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_mjkn")
-                )
-            else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_mjkn"))
-
-            if flag_bridging_col:
-                df_poli = df_poli.with_columns(
-                    pl.col(flag_bridging_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_bridging")
-                )
-            else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_bridging"))
-
-            if total_sep_col:
-                df_poli = df_poli.with_columns(
-                    pl.col(total_sep_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_total_sep")
-                )
-            else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_total_sep"))
-
-            # Compute PoliCapaian based on Sumber filter:
-            if sumber and sumber == "Mobile JKN":
-                df_poli = df_poli.with_columns(
-                    pl.when(pl.col("_total_sep") > 0)
-                    .then((pl.col("_flag_mjkn") / pl.col("_total_sep")) * 100.0)
-                    .otherwise(0.0)
-                    .alias("PoliCapaian")
-                )
-            else:
-                # "All Sumber" or default
-                df_poli = df_poli.with_columns(
-                    pl.when(pl.col("_total_sep") > 0)
-                    .then((pl.col("_flag_bridging") / pl.col("_total_sep")) * 100.0)
-                    .otherwise(0.0)
-                    .alias("PoliCapaian")
-                )
-            
-            # Link antrol_by_poli with DB_FASKES on Kdppk
-            if not df_faskes_clean.is_empty() and "Kdppk" in df_poli.columns:
-                df_poli = df_poli.join(df_faskes_clean, on="Kdppk", how="left", suffix="_fk")
-                # Drop duplicate _fk suffix columns from the join
-                for c in df_poli.columns:
-                    if c.endswith("_fk"):
-                        df_poli = df_poli.drop(c)
-            else:
-                if "Kabupaten" not in df_poli.columns:
-                    df_poli = df_poli.with_columns(pl.lit("KAB. JEMBER").alias("Kabupaten"))
-                if "Kelas_RS" not in df_poli.columns:
-                    df_poli = df_poli.with_columns(pl.lit("Kelas C").alias("Kelas_RS"))
-
-            if "Kabupaten" not in df_poli.columns:
-                df_poli = df_poli.with_columns(pl.lit("(All)").alias("Kabupaten"))
-            if "Kelas_RS" not in df_poli.columns:
-                df_poli = df_poli.with_columns(pl.lit("(All)").alias("Kelas_RS"))
-            if "Nama_RS" not in df_poli.columns:
-                df_poli = df_poli.with_columns(pl.lit("(All)").alias("Nama_RS"))
-
-            df_poli = df_poli.with_columns([
-                pl.col("Kabupaten").fill_null("(All)"),
-                pl.col("Kelas_RS").fill_null("(All)"),
-                pl.col("Nama_RS").fill_null("(All)")
-            ])
-                    
-            # Map Politujuan using poli_dict
-            p_code_col = find_column_name(df_poli, ["politujuan", "kd_poli", "kode_poli", "kdpoli", "kode"]) or "Politujuan"
-            
-            def map_poli_name(code_val: Any) -> str:
-                if code_val is None:
-                    return "Lainnya"
-                s = str(code_val).strip()
-                if not s:
-                    return "Lainnya"
-                if s.upper() in poli_dict:
-                    return poli_dict[s.upper()]
-                if s.isdigit() and str(int(s)) in poli_dict:
-                    return poli_dict[str(int(s))]
-                return s
-
-            poli_codes = df_poli[p_code_col].to_list() if p_code_col in df_poli.columns else []
-            poli_names = [map_poli_name(c) for c in poli_codes]
-            df_poli = df_poli.with_columns(pl.Series("Nama_Poli", poli_names, dtype=pl.Utf8))
-                    
-            # Parse Timestamp in df_poli
-            ts_col_poli = find_column_name(df_poli, ["timestamp", "waktu", "tanggal", "time"])
-            if ts_col_poli:
-                poli_raw_ts_list = [str(t).strip() if t is not None else "" for t in df_poli[ts_col_poli].to_list()]
-            else:
-                poli_raw_ts_list = [""] * df_poli.height
-                
-            parsed_poli_ts = [parse_date_info(ts) for ts in poli_raw_ts_list]
-            
-            df_poli = df_poli.with_columns([
-                pl.Series("Tahun", [p[0] for p in parsed_poli_ts], dtype=pl.Utf8),
-                pl.Series("BulanTahun", [p[1] for p in parsed_poli_ts], dtype=pl.Utf8),
-                pl.Series("BulanTahunShort", [p[2] for p in parsed_poli_ts], dtype=pl.Utf8),
-                pl.Series("SortKey", [p[3] for p in parsed_poli_ts], dtype=pl.Utf8),
-                pl.Series("RawTimestamp", poli_raw_ts_list, dtype=pl.Utf8)
-            ])
-
         # 10. Extract Dynamic Filter Options
         available_years = sorted(list(set([str(y) for y in df_antrol.select("Tahun").unique().to_series().to_list() if y])), reverse=True)
         
@@ -1043,14 +932,10 @@ async def get_fkrtl_antrol_stats(
 
         # 11. Apply Filters with Latest-Timestamp Matching
         filtered_antrol = df_antrol
-        filtered_poli = df_poli
 
         # Filter by Tahun
         if tahun and tahun != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Tahun") == tahun)
-            if not filtered_poli.is_empty() and "Tahun" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Tahun") == tahun)
-
         # Filter by Bulan linked robustly
         if bulan and bulan != "(All)":
             target_ts = latest_ts_by_month.get(bulan)
@@ -1059,56 +944,20 @@ async def get_fkrtl_antrol_stats(
             else:
                 filtered_antrol = filtered_antrol.filter(pl.col("BulanTahun") == bulan)
                 
-            if not filtered_poli.is_empty() and "BulanTahun" in filtered_poli.columns:
-                has_exact = False
-                if "RawTimestamp" in filtered_poli.columns and target_ts:
-                    has_exact = filtered_poli.filter(pl.col("RawTimestamp") == target_ts).height > 0
-                    
-                if has_exact:
-                    filtered_poli = filtered_poli.filter(pl.col("RawTimestamp") == target_ts)
-                else:
-                    month_poli = filtered_poli.filter(pl.col("BulanTahun") == bulan)
-                    if not month_poli.is_empty() and "RawTimestamp" in month_poli.columns:
-                        latest_poli_ts = month_poli.select(pl.col("RawTimestamp").max()).item()
-                        filtered_poli = month_poli.filter(pl.col("RawTimestamp") == latest_poli_ts)
-                    else:
-                        filtered_poli = month_poli
         else:
             # If "(All)" is selected, use the latest snapshot timestamp of each month
             if all_latest_ts:
                 filtered_antrol = filtered_antrol.filter(pl.col("RawTimestamp").is_in(all_latest_ts))
-                if not filtered_poli.is_empty() and "BulanTahun" in filtered_poli.columns:
-                    # Group by BulanTahun and take the max RawTimestamp for each month in poli
-                    latest_poli_ts_list = (
-                        filtered_poli
-                        .group_by("BulanTahun")
-                        .agg(pl.col("RawTimestamp").max())
-                        .select("RawTimestamp")
-                        .to_series()
-                        .to_list()
-                    )
-                    filtered_poli = filtered_poli.filter(pl.col("RawTimestamp").is_in(latest_poli_ts_list))
-
         # Filter by Kabupaten
         if kabupaten and kabupaten != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Kabupaten") == kabupaten)
-            if not filtered_poli.is_empty() and "Kabupaten" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Kabupaten") == kabupaten)
-
         # Filter by Kelas_RS
         if kelas_rs and kelas_rs != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Kelas_RS") == kelas_rs)
-            if not filtered_poli.is_empty() and "Kelas_RS" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Kelas_RS") == kelas_rs)
-
         # Filter by Nama_RS
         if nama_rs and nama_rs != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Nama_RS") == nama_rs)
-            if not filtered_poli.is_empty() and "Nama_RS" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Nama_RS") == nama_rs)
-
-        # Filter by Sumber (only applies to df_antrol; df_poli's PoliCapaian
-        # is already computed with the correct formula based on the sumber parameter)
+        # Summary source filter; per_poli is filtered independently by the adapter.
         if sumber and sumber != "(All)":
             if sumber in ("Semua Sumber", "All Sumber"):
                 filtered_antrol = filtered_antrol.filter(pl.col("Sumber").is_in(["Semua Sumber", "All Sumber"]))
@@ -1125,7 +974,9 @@ async def get_fkrtl_antrol_stats(
                 "kpi_capaian": 0.0,
                 "trend_per_bulan": [],
                 "top_faskes": [],
-                "top_poli": [],
+                "top_poli": poli_result["top_poli"],
+                "poli_message": poli_result["poli_message"],
+                "poli_sources": poli_result["poli_sources"],
                 "filter_options": {
                     "tahun": available_years,
                     "bulan": available_months,
@@ -1214,33 +1065,7 @@ async def get_fkrtl_antrol_stats(
             for r in faskes_query.to_dicts()
         ]
 
-        # Top Poli Tujuan Ranking (Horizontal Bar Chart)
-        top_poli = []
-        if not filtered_poli.is_empty() and "Nama_Poli" in filtered_poli.columns:
-            poli_num_col = "_flag_mjkn" if (sumber == "Mobile JKN") else "_flag_bridging"
-            poli_den_col = "_total_sep"
-
-            poli_query = (
-                filtered_poli
-                .filter(pl.col("Nama_Poli").is_not_null() & (pl.col("Nama_Poli") != ""))
-                .group_by("Nama_Poli")
-                .agg([
-                    pl.col(poli_num_col).sum().alias("sum_num"),
-                    pl.col(poli_den_col).sum().alias("sum_den")
-                ])
-                .with_columns(
-                    pl.when(pl.col("sum_den") > 0)
-                    .then((pl.col("sum_num") / pl.col("sum_den")) * 100.0)
-                    .otherwise(0.0)
-                    .alias("avg_capaian")
-                )
-                .sort("avg_capaian", descending=True)
-                .limit(18)
-            )
-            top_poli = [
-                {"poli": r["Nama_Poli"], "avg_capaian": round(r["avg_capaian"], 2)}
-                for r in poli_query.to_dicts()
-            ]
+        top_poli = poli_result["top_poli"]
 
         # Period Label for KPI Card
         if bulan and bulan != "(All)":
@@ -1257,6 +1082,8 @@ async def get_fkrtl_antrol_stats(
             "trend_per_bulan": trend_per_bulan,
             "top_faskes": top_faskes,
             "top_poli": top_poli,
+            "poli_message": poli_result["poli_message"],
+            "poli_sources": poli_result["poli_sources"],
             "filter_options": {
                 "tahun": available_years,
                 "bulan": available_months,
@@ -1300,8 +1127,7 @@ async def sync_fkrtl_antrol(
         ranges = [
             "DB_FASKES!A:Z",
             "DB_LAP_ANTROL_FKRTL!A:Z",
-            "antrol_by_poli!A:Z",
-            "ref_poli!A:Z"
+            "per_poli!A:R"
         ]
         sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges, force_refresh=True)
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
@@ -1331,6 +1157,7 @@ async def export_fkrtl_data(
     kabupaten: str = None,
     kelas_rs: str = None,
     nama_rs: str = None,
+    sumber: str = None,
     user=Depends(require_auth)
 ):
 
@@ -1338,14 +1165,20 @@ async def export_fkrtl_data(
         ranges = [
             "DB_FASKES!A:Z",
             "DB_LAP_ANTROL_FKRTL!A:Z",
-            "antrol_by_poli!A:Z",
-            "ref_poli!A:Z"
+            "per_poli!A:R"
         ]
         sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges)
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
-        df_poli = sheets_data.get("antrol_by_poli", pl.DataFrame())
+        df_poli = sheets_data.get("per_poli", pl.DataFrame())
         df_faskes = sheets_data.get("DB_FASKES", pl.DataFrame())
-        df_ref_poli = sheets_data.get("ref_poli", pl.DataFrame())
+
+        if type == "poli":
+            result = build_poli_data(
+                df_poli, df_faskes, tahun=tahun, bulan=bulan, kabupaten=kabupaten,
+                nama_rs=nama_rs, kelas_rs=kelas_rs, sumber=sumber,
+            )
+            return {"status": "success", "data": result["data"],
+                    "message": result["poli_message"]}
 
         if df_antrol.is_empty():
             return {"status": "no_data", "data": []}
@@ -1419,53 +1252,6 @@ async def export_fkrtl_data(
             pl.Series("RawTimestamp", raw_ts_list, dtype=pl.Utf8)
         ])
 
-        # 3. Add Faskes attributes to df_poli
-        if "Kdppk" in df_poli.columns and not df_poli.is_empty():
-            df_poli = df_poli.join(df_faskes_clean, on="Kdppk", how="left")
-            df_poli = df_poli.with_columns(
-                pl.col("Kabupaten").fill_null(pl.lit("Semua Kabupaten")),
-                pl.col("Kelas_RS").fill_null(pl.lit("Semua Kelas")),
-                pl.col("Nama_RS").fill_null(pl.col("Faskes") if "Faskes" in df_poli.columns else pl.lit("(All)"))
-            )
-
-        # Parse Numerator and Denominator for Poli
-        if not df_poli.is_empty():
-            flag_mjkn_col = find_column_name(df_poli, ["mobile jkn flag", "flag mobile jkn", "flag_mobile_jkn", "flag mjkn", "mobile jkn"])
-            flag_bridging_col = find_column_name(df_poli, ["flag bridging antrean", "flag_bridging_antrean", "flag bridging", "bridging antrean", "bridging"])
-            total_sep_col = find_column_name(df_poli, ["total sep", "total_sep", "jumlah sep", "sep"])
-
-            if flag_mjkn_col:
-                df_poli = df_poli.with_columns(pl.col(flag_mjkn_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_mjkn"))
-            else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_mjkn"))
-
-            if flag_bridging_col:
-                df_poli = df_poli.with_columns(pl.col(flag_bridging_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_flag_bridging"))
-            else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_flag_bridging"))
-
-            if total_sep_col:
-                df_poli = df_poli.with_columns(pl.col(total_sep_col).cast(pl.Utf8).str.replace_all(",", "").cast(pl.Float64, strict=False).fill_null(0.0).alias("_total_sep"))
-            else:
-                df_poli = df_poli.with_columns(pl.lit(0.0).alias("_total_sep"))
-
-        # 4. Standardize Poli name
-        if not df_poli.is_empty():
-            df_ref_poli = datasets.get("DB_POLI", pl.DataFrame())
-            poli_dict = dict(DEFAULT_REF_POLI)
-            if not df_ref_poli.is_empty():
-                from api.index import find_column_name
-                p_code_col = find_column_name(df_ref_poli, ["politujuan", "kd_poli", "kode_poli", "kdpoli", "kode"]) or df_ref_poli.columns[0]
-                p_name_col = find_column_name(df_ref_poli, ["nmpoli", "nama_poli", "nama poli", "poli", "nama", "keterangan"]) or (df_ref_poli.columns[1] if len(df_ref_poli.columns) > 1 else p_code_col)
-                ref_map = dict(zip(df_ref_poli[p_code_col].to_list(), df_ref_poli[p_name_col].to_list()))
-                poli_dict.update(ref_map)
-                
-            poli_code_col = find_column_name(df_poli, ["kdpoli", "kode_poli", "poli", "politujuan"]) or "Kdpoli"
-            if poli_code_col in df_poli.columns:
-                df_poli = df_poli.with_columns(
-                    pl.col(poli_code_col).map_elements(lambda x: poli_dict.get(x, x), return_dtype=pl.Utf8).alias("Nama_Poli")
-                )
-
         # 5. Extract Timestamps (keep latest per month)
         # Antrol
         latest_ts_by_month = {}
@@ -1476,55 +1262,26 @@ async def export_fkrtl_data(
                 latest_ts_by_month[bt] = raw_ts
         all_latest_ts = list(latest_ts_by_month.values())
 
-        # Poli
-        latest_poli_ts = {}
-        if not df_poli.is_empty() and "BulanTahun" in df_poli.columns:
-            for row in df_poli.iter_rows(named=True):
-                bt = row.get("BulanTahun")
-                raw_ts = row.get("RawTimestamp")
-                if bt and raw_ts:
-                    latest_poli_ts[bt] = raw_ts
-        all_poli_latest_ts = list(latest_poli_ts.values())
-
         # 6. Apply standard filters (excluding Sumber, as export needs all)
         filtered_antrol = df_antrol
-        filtered_poli = df_poli
 
         if tahun and tahun != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Tahun") == tahun)
-            if not filtered_poli.is_empty() and "Tahun" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Tahun") == tahun)
-
         if bulan and bulan != "(All)":
             # Apply month timestamp filter
             target_ts = latest_ts_by_month.get(bulan)
             if target_ts:
                 filtered_antrol = filtered_antrol.filter(pl.col("RawTimestamp") == target_ts)
-            if not filtered_poli.is_empty() and target_ts:
-                # Fallback or strict match depending on poli data
-                filtered_poli = filtered_poli.filter(pl.col("RawTimestamp") == latest_poli_ts.get(bulan))
         else:
             # All months: filter to only latest ts for each month
             if all_latest_ts:
                 filtered_antrol = filtered_antrol.filter(pl.col("RawTimestamp").is_in(all_latest_ts))
-            if not filtered_poli.is_empty() and all_poli_latest_ts:
-                filtered_poli = filtered_poli.filter(pl.col("RawTimestamp").is_in(all_poli_latest_ts))
-
         if kabupaten and kabupaten != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Kabupaten") == kabupaten)
-            if not filtered_poli.is_empty() and "Kabupaten" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Kabupaten") == kabupaten)
-
         if kelas_rs and kelas_rs != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Kelas_RS") == kelas_rs)
-            if not filtered_poli.is_empty() and "Kelas_RS" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Kelas_RS") == kelas_rs)
-
         if nama_rs and nama_rs != "(All)":
             filtered_antrol = filtered_antrol.filter(pl.col("Nama_RS") == nama_rs)
-            if not filtered_poli.is_empty() and "Nama_RS" in filtered_poli.columns:
-                filtered_poli = filtered_poli.filter(pl.col("Nama_RS") == nama_rs)
-
         if type == "faskes":
             if filtered_antrol.is_empty():
                 return {"status": "success", "data": []}
@@ -1546,29 +1303,6 @@ async def export_fkrtl_data(
                 .sort("all_sumber_pct", descending=True)
             )
             return {"status": "success", "data": faskes_query.to_dicts()}
-
-        elif type == "poli":
-            if filtered_poli.is_empty():
-                return {"status": "success", "data": []}
-
-            # Columns: Kabupaten, Nmppk (Nama_RS), Nama Poli, Flag Bridging Antrean, % Antrol All Sumber, Flag Mobile JKN, % Antrol MJKN, Flag Tidak Antrol, Total SEP
-            poli_query = (
-                filtered_poli
-                .filter(pl.col("Nama_Poli").is_not_null() & (pl.col("Nama_Poli") != ""))
-                .group_by(["Kabupaten", "Nama_RS", "Nama_Poli"])
-                .agg([
-                    pl.col("_flag_bridging").sum().alias("flag_bridging"),
-                    pl.col("_flag_mjkn").sum().alias("flag_mjkn"),
-                    pl.col("_total_sep").sum().alias("total_sep")
-                ])
-                .with_columns(
-                    pl.when(pl.col("total_sep") > 0).then((pl.col("flag_bridging") / pl.col("total_sep")) * 100.0).otherwise(0.0).alias("all_sumber_pct"),
-                    pl.when(pl.col("total_sep") > 0).then((pl.col("flag_mjkn") / pl.col("total_sep")) * 100.0).otherwise(0.0).alias("mjkn_pct"),
-                    (pl.col("total_sep") - pl.col("flag_bridging")).alias("flag_tidak_antrol")
-                )
-                .sort(["Kabupaten", "Nama_RS", "Nama_Poli"])
-            )
-            return {"status": "success", "data": poli_query.to_dicts()}
 
         else:
             raise HTTPException(status_code=400, detail="Invalid export type")
