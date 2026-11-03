@@ -106,7 +106,7 @@ export function SecurityOfficeView() {
             <strong>Gerbang persetujuan CEO</strong>
             <p>Agen membuat perbaikan di branch dan membuka PR. Deploy ke produksi hanya setelah CEO menulis di chat persetujuan untuk PR yang tepat, misalnya “setuju deploy PR #12”.</p>
           </div>}
-          {status === 'unavailable' && <p className="office-empty">Jalankan <code>patroli keamanan</code> lalu buka halaman ini dari <code>npm run dev</code>. Laporan tidak dipublikasikan karena repositori publik dan endpoint API masih bisa diakses tanpa login.</p>}
+          {status === 'unavailable' && <p className="office-empty">Jalankan <code>patroli keamanan</code> lalu buka halaman ini dari <code>npm run dev</code>. Laporan hanya tersedia di server dev lokal karena berisi detail kerentanan dan repositori ini publik.</p>}
           {failedChecks.length > 0 && <p className="office-warning" role="status">{failedChecks.length} pemeriksaan gagal: {failedChecks.map(c => c.name).join(', ')}.</p>}
           {report && active !== 'ceo' && (visible.length === 0 ? <p className="office-empty">Tidak ada temuan di bidang ini.</p> :
             <ol className="office-findings" aria-label="Daftar temuan">
