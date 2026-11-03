@@ -38,8 +38,8 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: 'system',
-      effectiveTheme: 'dark',
+      theme: 'light',
+      effectiveTheme: 'light',
 
       setTheme: (theme: ThemeMode) => {
         const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;

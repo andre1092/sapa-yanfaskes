@@ -14,3 +14,12 @@ api-sapa-yanfaskes-*.json
 # Local recordings & temporary bug reproductions
 bugs/
 *.mp4
+.vercel
+.env*
+
+# Local tooling output & dependencies
+node_modules/
+.playwright-mcp/
+graphify-out/
+artifacts/
+scrollcraft/

@@ -1,30 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { AppBar, Avatar, Box, Button, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, TextField, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { IconMenu2, IconSearch, IconSun, IconMoon, IconX } from '@tabler/icons-react';
 import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
 import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
+import { MonitoringLarasDashboard } from './MonitoringLarasDashboard';
 import { UserManagementView } from './UserManagementView';
 import { LogsView } from './LogsView';
 import { DataIntegrationView } from './DataIntegrationView';
 import { AdminSettings } from './AdminSettings';
+import { AdminDialog } from './AdminDialog';
+import { AnimatedButton } from './ui/AnimatedButton';
+import { FloatingSidebar } from './ui/FloatingSidebar';
+import { HeroUIAssistant } from './HeroUIAssistant';
+import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
-import { useLogStore } from '../store/logStore';
+import { useLogStore, type LogRole } from '../store/logStore';
 
-// Pemetaan Rute URL ke Menu Dashboard
 const ROUTE_MAP: Record<string, string> = {
+  '/monitoring-laras': 'Monitoring LARAS',
+  '/laras': 'Monitoring LARAS',
   '/kepatuhanfkrtl': 'Capaian Kepatuhan FKRTL',
   '/kepatuhan-fkrtl': 'Capaian Kepatuhan FKRTL',
   '/antrolfkrtl': 'Pemanfaatan Antrol FKRTL',
   '/antrol-fkrtl': 'Pemanfaatan Antrol FKRTL',
   '/kepatuhanfktp': 'Capaian Kepatuhan FKTP',
   '/kepatuhan-fktp': 'Capaian Kepatuhan FKTP',
+  '/activity': 'Activity',
+  '/touchpoints': 'Touchpoints',
+  '/installs-&-uninstalls': 'Installs & Uninstalls',
+  '/agency': 'Agency',
+  '/fraud': 'Fraud',
+  '/smart-banners': 'Smart Banners',
+  '/events': 'Events',
   '/user': 'User',
   '/logs': 'Logs',
   '/integration': 'Integration',
   '/validation-rules': 'Validation Rules',
   '/home': 'Home',
+  '/': 'Capaian Kepatuhan FKRTL',
 };
 
 const MENU_TO_ROUTE: Record<string, string> = {
+  'Monitoring LARAS': '/monitoring-laras',
   'Capaian Kepatuhan FKRTL': '/kepatuhanfkrtl',
   'Pemanfaatan Antrol FKRTL': '/antrolfkrtl',
   'Capaian Kepatuhan FKTP': '/kepatuhanfktp',
@@ -32,7 +50,7 @@ const MENU_TO_ROUTE: Record<string, string> = {
   'Logs': '/logs',
   'Integration': '/integration',
   'Validation Rules': '/validation-rules',
-  'Home': '/',
+  'Home': '/home',
 };
 
 const getMenuFromCurrentPath = (): string => {
@@ -44,105 +62,77 @@ const getMenuFromCurrentPath = (): string => {
   return ROUTE_MAP[path] || 'Capaian Kepatuhan FKRTL';
 };
 
-// Sub-komponen SVG World Map untuk Geographical Distribution
-const WorldMapSvg: React.FC<{ activeMetric: string }> = ({ activeMetric }) => {
-  return (
-    <div className="relative w-full h-[260px] bg-[#F8F9FD] rounded-xl flex items-center justify-center overflow-hidden border border-[#ECECF3]">
-      <svg
-        viewBox="0 0 1000 500"
-        className="w-full h-full text-[#CBD5E1] fill-current opacity-70"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {/* Kontur Benua Amerika Utara */}
-        <path d="M120,80 Q200,60 280,110 Q320,160 260,220 Q200,260 170,200 Q110,160 120,80 Z" />
-        {/* Amerika Selatan */}
-        <path d="M260,250 Q310,270 330,340 Q310,430 260,420 Q220,340 260,250 Z" />
-        {/* Greenland */}
-        <path d="M380,40 Q430,30 440,70 Q410,100 370,80 Z" fill="#94A3B8" />
-        {/* Eropa & UK */}
-        <path d="M470,100 Q485,80 495,100 Q485,120 470,100 Z" />
-        <path d="M510,90 Q580,80 600,130 Q560,170 500,150 Z" />
-        {/* Afrika */}
-        <path d="M500,180 Q570,190 590,260 Q560,370 510,360 Q460,260 500,180 Z" />
-        {/* Asia & India */}
-        <path d="M620,80 Q780,70 850,150 Q800,240 680,220 Q610,180 620,80 Z" />
-        <path d="M680,210 Q710,210 700,260 Q670,250 680,210 Z" fill="#94A3B8" />
-        {/* Australia */}
-        <path d="M780,310 Q860,300 870,370 Q810,400 760,370 Z" />
-      </svg>
 
-      {/* Hotspot Markers (Sesuai 5 Negara Referensi) */}
-      {/* 1. India (Terbesar: 50.61%) */}
-      <div className="absolute left-[69%] top-[45%] flex items-center justify-center group cursor-pointer">
-        <span className="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-[#6C5DD3] opacity-40"></span>
-        <span className="relative inline-flex rounded-full h-4 w-4 bg-[#6C5DD3] border-2 border-white shadow-md"></span>
-        <div className="absolute -top-7 px-2 py-0.5 bg-[#1E1F31] text-white text-[10px] rounded font-semibold whitespace-nowrap shadow-sm opacity-90">
-          India: 14,230 (50.6%)
-        </div>
-      </div>
+const sections = [
+  { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Monitoring LARAS', 'Monitoring LARAS']] },
+  { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL'], ['Capaian Kepatuhan FKTP', 'Kepatuhan FKTP']] },
+  { label: 'Administrasi', items: [['User', 'Pengguna'], ['Logs', 'Log aktivitas'], ['Integration', 'Integrasi data'], ['Validation Rules', 'Aturan validasi']] },
+];
+const extraItems = [['Activity', 'Aktivitas'], ['Touchpoints', 'Titik interaksi'], ['Installs & Uninstalls', 'Pemasangan aplikasi'], ['Agency', 'Agensi'], ['Fraud', 'Deteksi kecurangan'], ['Smart Banners', 'Banner'], ['Events', 'Agenda']];
+const labelFor = (menu: string) => [...sections.flatMap(section => section.items), ...extraItems].find(([key]) => key === menu)?.[1] || menu;
 
-      {/* 2. United States (26.21%) */}
-      <div className="absolute left-[22%] top-[30%] flex items-center justify-center group cursor-pointer">
-        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#3F8CFF] border-2 border-white shadow-md"></span>
-        <div className="absolute -top-7 px-2 py-0.5 bg-[#1E1F31] text-white text-[10px] rounded font-semibold whitespace-nowrap shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-          USA: 8,210 (26.2%)
-        </div>
-      </div>
-
-      {/* 3. United Kingdom (12.44%) */}
-      <div className="absolute left-[48%] top-[22%] flex items-center justify-center group cursor-pointer">
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#3F8CFF] border-2 border-white shadow-md"></span>
-      </div>
-
-      {/* 4. Greenland (6.61%) */}
-      <div className="absolute left-[40%] top-[14%] flex items-center justify-center group cursor-pointer">
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8E8FA3] border-2 border-white shadow-md"></span>
-      </div>
-
-      {/* 5. Australia (4.61%) */}
-      <div className="absolute left-[81%] top-[72%] flex items-center justify-center group cursor-pointer">
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8E8FA3] border-2 border-white shadow-md"></span>
-      </div>
-
-      {/* Badge Metric Aktif */}
-      <div className="absolute top-3 left-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm border border-[#E8E8EE] rounded-lg text-xs font-semibold text-[#1E1F31] shadow-xs">
-        Metric: {activeMetric}
-      </div>
-    </div>
-  );
+const navPaths: Record<string, string> = {
+  'Monitoring LARAS': 'M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+  Home: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z',
+  'Pemanfaatan Antrol FKRTL': 'M4 6h16M4 12h10M4 18h6m7-4 4 4-4 4',
+  'Capaian Kepatuhan FKRTL': 'M4 21V7h16v14M9 7V3h6v4M9 12h6m-3-3v6M8 21v-3h8v3',
+  'Capaian Kepatuhan FKTP': 'M4 20h16M7 16v-5m5 5V4m5 12V8',
+  User: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m14-17a4 4 0 0 1 0 8m6 9v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+  Logs: 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7M3 3v5h5',
+  Integration: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2m3 6a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
+  'Validation Rules': 'M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7Zm-4 9 3 3 5-6',
 };
+const NavIcon = ({ name }: { name: string }) => <svg className="sapa-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={navPaths[name] || navPaths.Home} /></svg>;
 
 export const InsightTracerDashboard: React.FC = () => {
   const { user, logoutUser } = useAuthStore();
+  const { effectiveTheme, setTheme } = useThemeStore();
   const { addLog } = useLogStore();
-  const [geoTab, setGeoTab] = useState<'Clicks' | 'Organic Installs' | 'Non-Organic Installs'>('Clicks');
-  const [activeMenu, setActiveMenu] = useState<string>(getMenuFromCurrentPath);
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(getMenuFromCurrentPath);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuQuery, setMenuQuery] = useState('');
+  const menuResults = sections.flatMap(section => section.items.map(([key, label]) => ({ key, label, group: section.label }))).filter(item => `${item.label} ${item.group}`.toLocaleLowerCase('id').includes(menuQuery.trim().toLocaleLowerCase('id')));
+  const theme = useTheme();
+  const desktop = useMediaQuery(theme.breakpoints.up('lg'));
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const mainRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const handlePopState = () => {
-      setActiveMenu(getMenuFromCurrentPath());
-    };
+    const handlePopState = () => { setActiveMenu(getMenuFromCurrentPath()); setMobileMenuOpen(false); };
     window.addEventListener('popstate', handlePopState);
-
-    // Sinkronisasi rute URL awal jika membuka /kepatuhanfkrtl
-    const initial = getMenuFromCurrentPath();
-    setActiveMenu(initial);
-    if (typeof window !== 'undefined') {
-      const currentPath = window.location.pathname.toLowerCase();
-      if (initial === 'Capaian Kepatuhan FKRTL' && (currentPath === '/kepatuhanfkrtl' || currentPath === '/kepatuhan-fkrtl')) {
-        if (window.location.pathname !== '/kepatuhanfkrtl') {
-          window.history.replaceState({ menu: 'Capaian Kepatuhan FKRTL' }, '', '/kepatuhanfkrtl');
-        }
-      }
-    }
-
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
+  useEffect(() => {
+    const query = window.matchMedia(theme.breakpoints.up('lg').replace('@media ', ''));
+    const closeMobileDrawer = () => { if (query.matches) setMobileMenuOpen(false); };
+    query.addEventListener('change', closeMobileDrawer);
+    return () => query.removeEventListener('change', closeMobileDrawer);
+  }, [theme]);
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !mobileMenuOpen && !showLogoutModal) { event.preventDefault(); setSearchOpen(open => !open); }
+    };
+    document.addEventListener('keydown', onShortcut);
+    return () => document.removeEventListener('keydown', onShortcut);
+  }, [mobileMenuOpen, showLogoutModal]);
+  useEffect(() => {
+    if (!searchOpen) return;
+    const frame = requestAnimationFrame(() => document.getElementById('menu-search')?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [searchOpen]);
+  const previousMenu = useRef(activeMenu);
+  useEffect(() => {
+    if (previousMenu.current === activeMenu) return;
+    previousMenu.current = activeMenu;
+    const frame = requestAnimationFrame(() => document.getElementById('workspace-content')?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [activeMenu]);
   const handleMenuSelect = (menuName: string) => {
     setActiveMenu(menuName);
+    setSearchOpen(false);
+    setMenuQuery('');
+    setMobileMenuOpen(false);
     if (typeof window !== 'undefined') {
       const targetPath = MENU_TO_ROUTE[menuName] || `/${menuName.toLowerCase().replace(/\s+/g, '-')}`;
       if (window.location.pathname !== targetPath) {
@@ -153,7 +143,7 @@ export const InsightTracerDashboard: React.FC = () => {
       addLog({
         userId: user.id || 'usr_001',
         userName: user.name || user.username || 'Pengguna',
-        userRole: (user.role as any) || 'User',
+        userRole: (user.role as LogRole) || 'User',
         action: 'VIEW',
         module: menuName,
         status: 'SUCCESS',
@@ -164,189 +154,57 @@ export const InsightTracerDashboard: React.FC = () => {
     }
   };
 
-  const menuSections = [
-    {
-      category: 'ACTION CENTRE',
-      items: [{ name: 'Home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' }],
-    },
-    {
-      category: 'DASHBOARD',
-      items: [
-        { name: 'Capaian Kepatuhan FKRTL', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-        { name: 'Pemanfaatan Antrol FKRTL', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
-        { name: 'Capaian Kepatuhan FKTP', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2' },
-      ],
-    },
-    {
-      category: 'ENGAGEMENTS',
-      items: [
-        { name: 'Activity', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
-        { name: 'Touchpoints', icon: 'M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5' },
-        { name: 'Installs & Uninstalls', icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4' },
-        { name: 'Agency', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-        { name: 'Fraud', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-      ],
-    },
-    {
-      category: 'MANAGE',
-      items: [
-        { name: 'User', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-        { name: 'Logs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-        { name: 'Smart Banners', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
-        { name: 'Events', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-        { name: 'Validation Rules', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
-        { name: 'Integration', icon: 'M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z' },
-      ],
-    },
-  ];
 
-  return (
-    <div className="flex h-screen bg-[#F1F1F4] text-[#1E1F31] font-sans antialiased overflow-hidden">
-      {/* ------------------------------------------------------------- */}
-      {/* 1. SIDEBAR NAVIGASI GELAP (#1E1F31) — AUTO-HIDE / HOVER-EXPAND */}
-      {/* ------------------------------------------------------------- */}
-      <aside
-        onMouseEnter={() => setIsSidebarHovered(true)}
-        onMouseLeave={() => setIsSidebarHovered(false)}
-        className={`${
-          isSidebarHovered ? 'w-[302px] shadow-2xl' : 'w-[72px]'
-        } bg-[#1E1F31] text-white flex flex-col flex-shrink-0 h-full select-none z-20 transition-all duration-300 ease-in-out`}
-      >
-        {/* Brand Logo & Name */}
-        <div className={`h-[88px] flex items-center border-b border-[#2A2B3F] transition-all duration-300 ${
-          isSidebarHovered ? 'justify-between px-7' : 'justify-center px-0'
-        }`}>
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-10 h-10 shrink-0 rounded-xl bg-white/10 p-1 flex items-center justify-center shadow-md border border-white/15 overflow-hidden">
-              <img
-                src="/logo-sapa-yanfaskes.png"
-                alt="Logo SAPA Yanfaskes"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {isSidebarHovered && (
-              <span className="font-bold text-lg tracking-tight text-white truncate transition-opacity duration-200">
-                SAPA Yanfaskes
-              </span>
-            )}
-          </div>
-          {isSidebarHovered && (
-            <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#E4F8DD]/20 text-[#27AE60] border border-[#27AE60]/40 uppercase tracking-wide shrink-0 transition-opacity duration-200">
-              LIVE
-            </span>
-          )}
-        </div>
+  const navigation = <FloatingSidebar
+    sections={sections} extraItems={extraItems} routes={MENU_TO_ROUTE}
+    activeMenu={activeMenu} onNavigate={handleMenuSelect}
+    userName={user?.name || user?.username || 'Pengguna'} userRole={user?.role || 'User'}
+    dark={effectiveTheme === 'dark'} onToggleTheme={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
+    onLogout={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }}
+    onSearch={() => { setMobileMenuOpen(false); setSearchOpen(true); }}
+    mobile={!desktop} onClose={() => setMobileMenuOpen(false)}
+    pinned={sidebarPinned} onTogglePin={() => setSidebarPinned(value => !value)} renderIcon={name => <NavIcon name={name} />}
+  />;
 
-        {/* Scrollable Navigation Items */}
-        <div className={`flex-1 overflow-y-auto py-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-700 transition-all duration-300 ${
-          isSidebarHovered ? 'px-5' : 'px-2'
-        }`}>
-          {menuSections.map((sec, idx) => (
-            <div key={idx} className="space-y-1.5">
-              {isSidebarHovered && (
-                <div className="px-3 text-[11px] font-semibold tracking-wider text-[#8E8FA3] uppercase transition-opacity duration-200">
-                  {sec.category}
-                </div>
-              )}
-              <div className="mt-1 space-y-1">
-                {sec.items.map((item) => {
-                  const isActive = activeMenu === item.name;
-                  return (
-                    <button
-                      key={item.name}
-                      onClick={() => handleMenuSelect(item.name)}
-                      title={!isSidebarHovered ? item.name : undefined}
-                      className={`w-full flex items-center rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
-                        isSidebarHovered
-                          ? 'gap-3.5 px-3.5 py-2.5 justify-start text-left'
-                          : 'justify-center p-2.5'
-                      } ${
-                        isActive
-                          ? 'bg-[#2E2F45] text-white shadow-xs'
-                          : 'text-[#8E8FA3] hover:text-white hover:bg-[#25263A]'
-                      }`}
-                    >
-                      <svg
-                        className={`w-4 h-4 flex-shrink-0 transition-colors ${isActive ? 'text-[#6C5DD3]' : 'text-[#8E8FA3]'}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={item.icon} />
-                      </svg>
-                      {isSidebarHovered && (
-                        <span className="truncate">{item.name}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+  return <Box className="berry-shell sapa-reference-shell" data-sidebar-pinned={sidebarPinned} sx={{ display: 'flex', minHeight: '100dvh', bgcolor: 'background.paper' }}>
+    <a href="#workspace-content" className="skip-link">Langsung ke konten</a>
+    <AppBar enableColorOnDark position="fixed" color="inherit" elevation={0} sx={{ bgcolor: 'background.paper', zIndex: theme.zIndex.appBar, left: { xs: 0, lg: sidebarPinned ? 312 : 132 }, width: { xs: '100%', lg: `calc(100% - ${sidebarPinned ? 312 : 132}px)` }, transition: 'left 220ms ease, width 220ms ease' }}>
+      <Toolbar sx={{ minHeight: { xs: 72, lg: 88 }, gap: 2, px: { xs: 2, lg: 3 } }}>
+        <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1.5, flexShrink: 0 }}><Box component="img" src="/logo-sapa-yanfaskes.png" alt="" sx={{ width: 42, height: 42 }} /><Box><Typography variant="h4" component="p">SAPA Yanfaskes</Typography><Typography variant="caption" color="text.secondary">BPJS Kesehatan</Typography></Box></Box>
+        <IconButton aria-label="Buka navigasi" aria-expanded={mobileMenuOpen} aria-controls="workspace-navigation" onClick={() => setMobileMenuOpen(true)} sx={{ display: { lg: 'none' }, bgcolor: 'secondary.light', color: 'secondary.main', borderRadius: 2 }}><IconMenu2 size={20} /></IconButton>
+        <Button aria-label="Cari menu" onClick={() => setSearchOpen(true)} startIcon={<IconSearch size={20} />} color="inherit" sx={{ bgcolor: 'background.default', color: 'text.secondary', border: 1, borderColor: 'divider', minWidth: { xs: 0, sm: 200 }, justifyContent: 'flex-start', display: { xs: 'none', sm: 'inline-flex' } }}>Cari menu<Typography component="kbd" variant="caption" sx={{ ml: 'auto' }}>⌘ K</Typography></Button>
+        <Box sx={{ flexGrow: 1 }} />
+        <IconButton aria-label="Cari menu" onClick={() => setSearchOpen(true)} sx={{ display: { sm: 'none' } }}><IconSearch size={20} /></IconButton>
+        <IconButton aria-label={effectiveTheme === 'dark' ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')} sx={{ color: 'secondary.main', bgcolor: 'secondary.light', borderRadius: 2 }}>{effectiveTheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}</IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'background.default', borderRadius: 6, py: 0.5, pl: 0.5, pr: { xs: 0.5, sm: 2 } }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main' }}>{(user?.name || user?.username || 'S').slice(0, 1).toUpperCase()}</Avatar><Box sx={{ display: { xs: 'none', md: 'block' } }}><Typography variant="subtitle2">{user?.name || user?.username || 'Pengguna'}</Typography><Typography variant="caption" color="text.secondary">{user?.role || 'User'}</Typography></Box></Box>
+      </Toolbar>
+    </AppBar>
+    {desktop ? navigation : <Drawer variant="temporary" open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} slotProps={{ paper: { sx: { width: 'min(264px, 100vw)', border: 0, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } } }}>{navigation}</Drawer>}
+    <Box ref={mainRef} className="berry-workspace" sx={{ flex: 1, minWidth: 0, mt: { xs: 9, lg: 11 }, mr: { xs: 1, sm: 2.5 }, ml: { xs: 1, lg: sidebarPinned ? '312px' : '132px' }, transition: 'margin-left 220ms ease', mb: 0, bgcolor: 'background.default', borderRadius: 'var(--radius-panel, 12px) var(--radius-panel, 12px) 0 0', p: { xs: 2, sm: 2.5 } }}>
+      <Box sx={{ mb: 2.5 }}><Typography variant="caption" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'}</Typography><Typography variant="h4" component="p" sx={{ mt: 0.5 }}>{labelFor(activeMenu)}</Typography></Box>
+      <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
+        {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'User' ? <UserManagementView /> : activeMenu === 'Logs' ? <LogsView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
+          <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
+            <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
+            <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch' }}>Selamat datang, {user?.name?.split(' ')[0] || user?.username || 'Pengguna'}</Typography>
+            <Typography sx={{ maxWidth: '65ch', mb: 3 }}>Telusuri capaian fasilitas kesehatan dan temukan hal yang perlu mendapat perhatian.</Typography>
+            <Button variant="contained" color="inherit" href="/kepatuhanfkrtl" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect('Capaian Kepatuhan FKRTL'); } }} sx={{ bgcolor: 'background.paper', color: 'text.primary', boxShadow: 'none', '&:hover': { bgcolor: 'background.default' } }}>Buka kepatuhan FKRTL</Button>
+          </Paper>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
+            {[['Pemanfaatan Antrol FKRTL','Antrean online FKRTL','Pahami pemanfaatan antrean rumah sakit, dari fasilitas hingga poliklinik.'],['Capaian Kepatuhan FKTP','Kepatuhan FKTP','Tinjau pemanfaatan antrean dan capaian fasilitas kesehatan tingkat pertama.']].map(([key,label,description]) => <Paper key={key} elevation={0} sx={{ p: 3, borderRadius: 3 }}><Avatar variant="rounded" sx={{ bgcolor: 'primary.light', color: 'primary.dark', mb: 2 }}><NavIcon name={key} /></Avatar><Typography variant="h3" component="h2" sx={{ mb: 1 }}>{label}</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>{description}</Typography><Button href={MENU_TO_ROUTE[key]} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect(key); } }}>Buka laporan</Button></Paper>)}
+          </Box>
+          <Paper component="section" elevation={0} aria-label="Panduan membaca laporan" sx={{ p: 3, borderRadius: 3 }}><Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alur pemantauan</Typography><Stack spacing={3} direction={{ xs: 'column', md: 'row' }}>{[['Pilih konteks','Tentukan periode dan fasilitas melalui filter laporan.'],['Telusuri capaian','Baca indikator bersama grafik dan rincian sumbernya.'],['Siapkan tindak lanjut','Gunakan hasil ekspor yang tersedia untuk pembahasan berikutnya.']].map(([title,description],index) => <Box key={title} sx={{ flex: 1 }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main', mb: 1.5 }}>{index + 1}</Avatar><Typography component="h3" variant="h4" sx={{ mb: 1 }}>{title}</Typography><Typography color="text.secondary" variant="body2">{description}</Typography></Box>)}</Stack></Paper>
+        </Box> : <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography variant="h4" component="h2" sx={{ mb: 1 }}>Modul belum tersedia</Typography><Typography color="text.secondary" sx={{ mb: 3 }}>Modul ini belum memiliki data atau fungsi yang dapat digunakan.</Typography><Button variant="contained" onClick={() => handleMenuSelect('Home')}>Kembali ke beranda</Button></Paper>}
 
-        {/* Bottom Section: Log Out Action */}
-        <div className={`p-3 border-t border-[#2A2B3F] transition-all duration-300 ${
-          isSidebarHovered ? 'px-4' : 'px-2 flex justify-center'
-        }`}>
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            title={!isSidebarHovered ? 'Log Out' : undefined}
-            className={`w-full flex items-center rounded-xl text-xs font-bold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-600 transition-all duration-200 cursor-pointer ${
-              isSidebarHovered
-                ? 'gap-3 px-3.5 py-2.5 justify-start text-left'
-                : 'justify-center p-2.5'
-            }`}
-          >
-            <svg
-              className="w-4 h-4 flex-shrink-0 text-rose-500 hover:text-white transition-colors"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            {isSidebarHovered && (
-              <span className="truncate">Keluar Sesi (Log Out)</span>
-            )}
-          </button>
-        </div>
-      </aside>
-
-      {/* Modal Dialog Konfirmasi Log Out */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-sm rounded-3xl p-6 bg-[#1E1F31] border border-rose-500/30 shadow-2xl text-center space-y-4 text-white animate-scaleUp">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-extrabold text-base tracking-tight">Konfirmasi Keluar Sesi</h3>
-              <p className="text-xs text-[#8E8FA3] mt-1.5 leading-relaxed">
-                Apakah Anda yakin ingin mengakhiri sesi kerja aktif di sistem SAPA Yanfaskes dan kembali ke Halaman Login?
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => {
+      </main>
+    </Box>
+    {searchOpen && <AdminDialog label="Cari menu" onClose={() => { setSearchOpen(false); setMenuQuery(''); }}><Box sx={{ p: { xs: 2, sm: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}><Typography component="h2" variant="h3">Cari menu</Typography><IconButton aria-label="Tutup pencarian" onClick={() => setSearchOpen(false)}><IconX size={20} /></IconButton></Stack><TextField fullWidth id="menu-search" label="Nama menu" type="search" value={menuQuery} onChange={event => setMenuQuery(event.target.value)} placeholder="Kepatuhan, antrean, integrasi…" autoComplete="off" /><Typography role="status" variant="caption" color="text.secondary" sx={{ display: 'block', my: 2 }}>{menuResults.length} menu ditemukan</Typography><List component="nav" aria-label="Hasil pencarian menu">{menuResults.map(item => <ListItemButton component="a" key={item.key} href={MENU_TO_ROUTE[item.key]} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect(item.key); } }} sx={{ borderRadius: 2 }}><ListItemIcon><NavIcon name={item.key} /></ListItemIcon><ListItemText primary={item.label} secondary={item.group} /></ListItemButton>)}</List>{menuResults.length === 0 && <Typography color="text.secondary">Tidak ada menu yang cocok. Coba kata lain, seperti “kepatuhan”.</Typography>}</Box></AdminDialog>}
+    {showLogoutModal && <AdminDialog label="Keluar dari SAPA?" onClose={() => setShowLogoutModal(false)}><div className="sapa-dialog"><p className="sapa-eyebrow">AKUN PENGGUNA</p><h2 id="logout-title">Keluar dari SAPA?</h2><p id="logout-description" className="sapa-description">Sesi kerja Anda akan berakhir. Masuk kembali untuk melanjutkan pemantauan layanan.</p><div className="sapa-dialog-actions"><AnimatedButton className="sapa-button sapa-button-secondary" onClick={() => setShowLogoutModal(false)}>Batal</AnimatedButton><AnimatedButton className="sapa-button sapa-button-danger" onClick={() => {
                   if (user) {
                     addLog({
                       userId: user.id || 'usr_001',
                       userName: user.name || user.username || 'Pengguna',
-                      userRole: (user.role as any) || 'User',
+                      userRole: (user.role as LogRole) || 'User',
                       action: 'LOGOUT',
                       module: 'Otentikasi Akun',
                       status: 'SUCCESS',
@@ -357,327 +215,7 @@ export const InsightTracerDashboard: React.FC = () => {
                   }
                   logoutUser();
                   setShowLogoutModal(false);
-                }}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-950/40 transition-all cursor-pointer"
-              >
-                Ya, Keluar Sesi
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* 2. AREA KONTEN UTAMA                                          */}
-      {/* ------------------------------------------------------------- */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Top Header Navbar */}
-        <header className="h-[88px] bg-white border-b border-[#E8E8EE] flex items-center justify-between px-10 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-[#1E1F31] tracking-tight">{activeMenu}</h1>
-
-          <div className="flex items-center gap-4">
-            {/* Date Range Selector Sesuai Referensi OCR */}
-            <button className="flex items-center gap-2 px-3.5 py-1.5 bg-white border border-[#E8E8EE] rounded-lg text-xs font-semibold text-[#1E1F31] shadow-2xs hover:bg-gray-50 transition-colors">
-              <svg className="w-3.5 h-3.5 text-[#8E8FA3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span>Jan 2023 - Feb 2023</span>
-              <svg className="w-3.5 h-3.5 text-[#8E8FA3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </header>
-
-        {/* Dashboard Scrollable Canvas */}
-        <main className="flex-1 overflow-y-auto p-8 space-y-6">
-          {activeMenu === 'Capaian Kepatuhan FKRTL' ? (
-            <LaporanKepatuhanDashboard />
-          ) : activeMenu === 'Pemanfaatan Antrol FKRTL' ? (
-            <PemanfaatanAntrolDashboard />
-          ) : activeMenu === 'Capaian Kepatuhan FKTP' ? (
-            <FktpAntrolDashboard />
-          ) : activeMenu === 'User' || activeMenu === 'user' ? (
-            <UserManagementView />
-          ) : activeMenu === 'Logs' || activeMenu === 'logs' ? (
-            <LogsView />
-          ) : activeMenu === 'Integration' || activeMenu === 'integration' ? (
-            <DataIntegrationView />
-          ) : activeMenu === 'Validation Rules' ? (
-            <AdminSettings />
-          ) : (
-            <>
-              {/* BARIS 1: 2 KARTU METRIK UTAMA (TOUCHPOINTS & INSTALLS) */}
-              <div className="grid grid-cols-12 gap-6">
-            {/* Kartu 1: Touchpoints */}
-            <div className="col-span-12 lg:col-span-6 bg-white rounded-2xl p-6 border border-[#E8E8EE] shadow-xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-[#1E1F31]">Touchpoints</h2>
-                    <p className="text-xs text-[#8E8FA3] mt-0.5">
-                      A touchpoint is the initialisation of a communication process.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  {/* Clicks */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">23.4k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        14%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Clicks</span>
-                  </div>
-
-                  {/* Impressions */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">6.4k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        16%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Impressions</span>
-                  </div>
-
-                  {/* Organic */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">43.2k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        11%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Organic</span>
-                  </div>
-
-                  {/* Non-Organic */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">83k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        18%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Non-Organic</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#F1F1F4] text-[11px] font-semibold text-[#8E8FA3] uppercase tracking-wider">
-                Compared To Last 30 Days
-              </div>
-            </div>
-
-            {/* Kartu 2: Installs */}
-            <div className="col-span-12 lg:col-span-6 bg-white rounded-2xl p-6 border border-[#E8E8EE] shadow-xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-[#1E1F31]">Installs</h2>
-                    <p className="text-xs text-[#8E8FA3] mt-0.5">
-                      To put in place or connect for service or use.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  {/* Organic Installs */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">45.2k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-[#8E8FA3]">
-                        0%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Organic</span>
-                  </div>
-
-                  {/* Non-Organic */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">36.4k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        12%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Non-Organic</span>
-                  </div>
-
-                  {/* 0% Organic Sub-Metric */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">0%</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        13%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Organic</span>
-                  </div>
-
-                  {/* Fraudulent */}
-                  <div className="p-4 rounded-xl bg-[#F8F9FD] border border-[#ECECF3]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#1E1F31]">14.6k</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#E4F8DD] text-[#27AE60]">
-                        16%
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8E8FA3] mt-1 block">Fraudulent</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#F1F1F4] text-[11px] font-semibold text-[#8E8FA3] uppercase tracking-wider">
-                Compared To Last 30 Days
-              </div>
-            </div>
-          </div>
-
-          {/* BARIS 2: GEOGRAPHICAL DISTRIBUTION (WORLD MAP + TOP COUNTRIES) */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E8E8EE] shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#F1F1F4] gap-4">
-              <h2 className="text-lg font-bold text-[#1E1F31]">Geographical Distribution</h2>
-
-              {/* Selector Tabs: Clicks | Organic Installs | Non-Organic Installs */}
-              <div className="inline-flex p-1 bg-[#F1F1F4] rounded-xl text-xs font-medium">
-                {(['Clicks', 'Organic Installs', 'Non-Organic Installs'] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setGeoTab(tab)}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${
-                      geoTab === tab
-                        ? 'bg-white text-[#1E1F31] font-bold shadow-xs'
-                        : 'text-[#8E8FA3] hover:text-[#1E1F31]'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-12 gap-8 mt-6">
-              {/* Sisi Kiri: Vector World Map & 3 Ringkasan Metrik */}
-              <div className="col-span-12 lg:col-span-7 flex flex-col justify-between">
-                <WorldMapSvg activeMetric={geoTab} />
-
-                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-[#F1F1F4]">
-                  <div>
-                    <span className="text-xl font-bold text-[#1E1F31]">25,344</span>
-                    <span className="text-xs font-medium text-[#8E8FA3] block mt-0.5">Viewed</span>
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold text-[#1E1F31]">21,887</span>
-                    <span className="text-xs font-medium text-[#8E8FA3] block mt-0.5">Dropouts</span>
-                  </div>
-                  <div>
-                    <span className="text-xl font-bold text-[#1E1F31]">12,834</span>
-                    <span className="text-xs font-medium text-[#8E8FA3] block mt-0.5">Responses</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sisi Kanan: Daftar 5 Negara dengan Bar Persentase */}
-              <div className="col-span-12 lg:col-span-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between pb-2 border-b border-[#F1F1F4] text-xs font-semibold text-[#8E8FA3] uppercase tracking-wider">
-                    <span>Countries</span>
-                    <span>Responses</span>
-                  </div>
-
-                  <div className="divide-y divide-[#F8F9FA] mt-1 space-y-3">
-                    {[
-                      { name: 'India', responses: '14,230', pct: 50.61, color: 'bg-[#6C5DD3]' },
-                      { name: 'United States', responses: '8,210', pct: 26.21, color: 'bg-[#3F8CFF]' },
-                      { name: 'United Kingdom', responses: '3,540', pct: 12.44, color: 'bg-[#3F8CFF]' },
-                      { name: 'Greenland', responses: '1,782', pct: 6.61, color: 'bg-[#8E8FA3]' },
-                      { name: 'Australia', responses: '1,054', pct: 4.61, color: 'bg-[#8E8FA3]' },
-                    ].map((c) => (
-                      <div key={c.name} className="pt-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-semibold text-[#1E1F31] flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-current opacity-80" />
-                            {c.name}
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-[#1E1F31]">{c.responses}</span>
-                            <span className="text-xs font-medium text-[#8E8FA3] w-12 text-right">
-                              {c.pct}%
-                            </span>
-                          </div>
-                        </div>
-                        {/* Progress Bar */}
-                        <div className="w-full h-1.5 bg-[#F1F1F4] rounded-full mt-2 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${c.color}`}
-                            style={{ width: `${c.pct}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* BARIS 3: BREAKDOWN BY MEDIA SOURCE TABLE */}
-          <div className="bg-white rounded-2xl p-6 border border-[#E8E8EE] shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-[#1E1F31]">Breakdown By Media Source</h2>
-              <button className="flex items-center gap-1.5 px-3 py-1 bg-white border border-[#E8E8EE] rounded-lg text-xs font-semibold text-[#8E8FA3] hover:text-[#1E1F31] transition-colors shadow-2xs">
-                <span>Compared To Last 30 Days</span>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-[#E8E8EE] text-[11px] font-semibold text-[#8E8FA3] uppercase tracking-wider">
-                    <th className="py-3 px-4">Media Source</th>
-                    <th className="py-3 px-4">Clicks</th>
-                    <th className="py-3 px-4">Installs</th>
-                    <th className="py-3 px-4">Impressions</th>
-                    <th className="py-3 px-4">Click To Install</th>
-                    <th className="py-3 px-4">Rejected Installs</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F1F1F4] text-[#1E1F31]">
-                  {[
-                    { source: 'Demo Partner', clicks: '5.41k', installs: '1.24k', impressions: '18.2k', c2i: '22.9%', rejected: '0%' },
-                    { source: 'Google Ads Search', clicks: '12.8k', installs: '3.10k', impressions: '45.0k', c2i: '24.2%', rejected: '1.2%' },
-                    { source: 'Meta Audience Network', clicks: '8.60k', installs: '1.95k', impressions: '28.4k', c2i: '22.6%', rejected: '0.8%' },
-                    { source: 'Apple Search Ads', clicks: '4.20k', installs: '1.15k', impressions: '14.1k', c2i: '27.3%', rejected: '0.1%' },
-                  ].map((row, idx) => (
-                    <tr key={idx} className="hover:bg-[#F9F9FB] transition-colors">
-                      <td className="py-3.5 px-4 font-semibold text-[#1E1F31] flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#6C5DD3]" />
-                        {row.source}
-                      </td>
-                      <td className="py-3.5 px-4 font-medium">{row.clicks}</td>
-                      <td className="py-3.5 px-4 font-medium">{row.installs}</td>
-                      <td className="py-3.5 px-4 font-medium">{row.impressions}</td>
-                      <td className="py-3.5 px-4 font-medium">{row.c2i}</td>
-                      <td className="py-3.5 px-4 font-medium">{row.rejected}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-            </>
-          )}
-        </main>
-      </div>
-    </div>
-  );
+}}>Keluar dari akun</AnimatedButton></div></div></AdminDialog>}
+    <HeroUIAssistant onNavigate={handleMenuSelect} />
+  </Box>;
 };
-export default InsightTracerDashboard;

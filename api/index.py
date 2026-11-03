@@ -1,5 +1,7 @@
 import os
 import io
+import hmac
+import html
 import time
 import json
 import re
@@ -11,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 import requests
 
-from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import smtplib
@@ -27,6 +29,10 @@ try:
     from .per_poli import build_poli_data
 except ImportError:
     from per_poli import build_poli_data
+try:
+    from .laras_service import get_laras_data, LarasSourceUnavailable
+except ImportError:
+    from laras_service import get_laras_data, LarasSourceUnavailable
 import jwt
 import uuid
 from jwt import PyJWKClient
@@ -83,6 +89,10 @@ logger = logging.getLogger("sapa-api")
 # Environment & Config
 RAW_AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN", "")
 AUTH0_API_AUDIENCE = os.environ.get("AUTH0_API_AUDIENCE", "https://api.sapa-yanfaskes.com")
+# Asal aplikasi yang dipercaya untuk CORS dan tautan verifikasi email.
+APP_ORIGINS = [o.strip().rstrip("/") for o in os.environ.get("APP_ORIGINS", "https://sapa-yanfaskes.vercel.app,http://localhost:3000").split(",") if o.strip()]
+# Hanya untuk pengembangan lokal tanpa Auth0; ditolak di deployment Vercel mana pun.
+DEV_AUTH_BYPASS = os.environ.get("SAPA_DEV_AUTH_BYPASS") == "1" and not os.environ.get("VERCEL_ENV")
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
@@ -111,8 +121,8 @@ app = FastAPI(title="SAPA YANFASKES Enterprise IAM API", version="5.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=APP_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -134,13 +144,11 @@ def verify_auth0_token(token: str):
     Verifies the RS256 JWT signature using Auth0's public keys.
     """
     if not jwk_client:
-        raise HTTPException(status_code=500, detail="Auth0 Configuration Error: AUTH0_DOMAIN environment variable is missing on the server.")
+        logger.error("AUTH0_DOMAIN is not configured; rejecting authenticated request")
+        raise HTTPException(status_code=503, detail="Layanan masuk belum dikonfigurasi")
         
     try:
         signing_key = jwk_client.get_signing_key_from_jwt(token)
-        
-        # We can extract unverified payload first to give better error diagnostics
-        unverified_payload = jwt.decode(token, options={"verify_signature": False})
         
         payload = jwt.decode(
             token,
@@ -151,46 +159,35 @@ def verify_auth0_token(token: str):
         )
         return payload
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidAudienceError as e:
-        aud = unverified_payload.get("aud", "None") if 'unverified_payload' in locals() else "Unknown"
-        raise HTTPException(status_code=403, detail=f"Invalid audience. Expected '{AUTH0_API_AUDIENCE}', but token has audience: '{aud}'. {str(e)}")
-    except jwt.InvalidIssuerError as e:
-        iss = unverified_payload.get("iss", "None") if 'unverified_payload' in locals() else "Unknown"
-        raise HTTPException(status_code=403, detail=f"Invalid issuer. Expected 'https://{AUTH0_DOMAIN}/', but token has issuer: '{iss}'. {str(e)}")
+        raise HTTPException(status_code=401, detail="Sesi berakhir, silakan masuk kembali")
+    except (jwt.InvalidAudienceError, jwt.InvalidIssuerError) as e:
+        logger.warning(f"Token rejected: {type(e).__name__}")
+        raise HTTPException(status_code=401, detail="Token tidak valid")
     except Exception as e:
-        logger.error(f"Token validation error: {e}")
-        raise HTTPException(status_code=401, detail="Invalid token")
+        logger.warning(f"Token validation error: {type(e).__name__}")
+        raise HTTPException(status_code=401, detail="Token tidak valid")
 
 def require_auth(request: Request):
-    default_user = {
-        "sub": "viewer-executive",
-        "role": "viewer",
-        "tenant_id": "00000000-0000-0000-0000-000000000001"
-    }
-    
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return default_user
-        
-    token = auth_header.split(" ")[1].strip()
-    if not token or token in ("undefined", "null", ""):
-        return default_user
-    
-    if not AUTH0_DOMAIN or not jwk_client:
-        return default_user
-        
-    try:
-        return verify_auth0_token(token)
-    except Exception as e:
-        logger.warning(f"Token validation warning: {e}. Falling back to viewer role.")
-        return default_user
+    """Kembalikan klaim token Auth0 yang sah; selain itu tolak dengan 401/503."""
+    if DEV_AUTH_BYPASS:
+        return {"sub": "local-dev", "role": "viewer", "tenant_id": "00000000-0000-0000-0000-000000000001"}
+
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
+    if not token or token in ("undefined", "null"):
+        raise HTTPException(status_code=401, detail="Silakan masuk terlebih dahulu", headers={"WWW-Authenticate": "Bearer"})
+    return verify_auth0_token(token)
 
 # --- SCIM 2.0 AUTOMATION ---
 @app.post("/api/v2/tenants/{tenant_id}/Users")
 async def scim_provision_user(tenant_id: str, req: Request, db: AsyncSession = Depends(get_db)):
     """SCIM 2.0 Endpoint for Automated Provisioning"""
-    # NOTE: Normally secured by API Gateway Key / SCIM Bearer token
+    scim_token = os.environ.get("SCIM_BEARER_TOKEN", "")
+    supplied = req.headers.get("Authorization", "")
+    if not scim_token:
+        raise HTTPException(status_code=503, detail="SCIM belum dikonfigurasi")
+    if not hmac.compare_digest(supplied.encode(), f"Bearer {scim_token}".encode()):
+        raise HTTPException(status_code=401, detail="Token SCIM tidak valid", headers={"WWW-Authenticate": "Bearer"})
     if not db:
         return {"error": "Database not configured"}
         
@@ -209,7 +206,7 @@ class VerificationEmailRequest(BaseModel):
     verification_url: Optional[str] = "https://sapa-yanfaskes.vercel.app"
 
 @app.post("/api/v1/auth/send-verification-email")
-async def send_verification_email(req: VerificationEmailRequest):
+async def send_verification_email(req: VerificationEmailRequest, user=Depends(require_auth)):
     """
     Endpoint pengiriman email verifikasi resmi SAPA YANFASKES.
     Mendukung konfigurasi SMTP Vercel (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD).
@@ -221,9 +218,15 @@ async def send_verification_email(req: VerificationEmailRequest):
     smtp_pass = os.getenv("SMTP_PASSWORD", "")
     sender_email = os.getenv("SMTP_FROM", "no-reply@sapa-yanfaskes.bpjs-kesehatan.go.id")
 
-    verification_link = req.verification_url or "https://sapa-yanfaskes.vercel.app"
-    recipient = req.to_email
-    recipient_name = req.name or "Administrator"
+    verification_link = (req.verification_url or APP_ORIGINS[0]).strip()
+    # Tautan hanya boleh menuju aplikasi SAPA sendiri, agar endpoint ini tidak jadi alat phishing.
+    if not any(verification_link == origin or verification_link.startswith(origin + "/") for origin in APP_ORIGINS):
+        raise HTTPException(status_code=400, detail="Tautan verifikasi harus menuju aplikasi SAPA")
+    recipient = req.to_email.strip()
+    if not re.fullmatch(r"[^@\s<>\"]+@[^@\s<>\"]+\.[A-Za-z]{2,}", recipient):
+        raise HTTPException(status_code=400, detail="Alamat email tidak valid")
+    recipient_name = html.escape(req.name or "Administrator")
+    verification_link = html.escape(verification_link, quote=True)
 
     html_content = f"""
     <!DOCTYPE html>
@@ -288,7 +291,7 @@ async def send_verification_email(req: VerificationEmailRequest):
             server.sendmail(sender_email, [recipient], msg.as_string())
             server.quit()
             dispatched = True
-            logger.info(f"Verification email successfully sent to {recipient} via SMTP {smtp_host}")
+            logger.info(f"Verification email sent to {recipient[:2]}***@{recipient.split('@')[-1]} via SMTP")
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Failed to send email via SMTP: {e}")
@@ -299,7 +302,7 @@ async def send_verification_email(req: VerificationEmailRequest):
         "recipient": recipient,
         "smtp_configured": bool(smtp_host and smtp_user),
         "error": error_msg,
-        "verification_url": verification_link,
+        "verification_url": html.unescape(verification_link),
         "message": f"Tautan verifikasi resmi untuk {recipient} telah diproses sistem."
     }
 
@@ -2833,6 +2836,22 @@ async def get_fkrtl_kepatuhan_tmo(
             status_code=500,
             detail=f"Gagal memproses data Laporan Kepatuhan Update TMO: {str(e)}"
         )
+
+
+@app.get("/api/v1/monitoring-laras")
+def get_monitoring_laras(
+    bulan: str = Query(default="", pattern=r"^(?:\d{4}-(?:0[1-9]|1[0-2]))?$"),
+    faskes: str = Query(default="", max_length=100),
+    poli: str = Query(default="", max_length=200),
+    jenis_kunjungan: str = Query(default="", max_length=100),
+    refresh: bool = False,
+    user=Depends(require_auth),
+):
+    try:
+        return get_laras_data(bulan=bulan, faskes=faskes, poli=poli, jenis_kunjungan=jenis_kunjungan, refresh=refresh)
+    except LarasSourceUnavailable as exc:
+        logger.warning("LARAS source unavailable")
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/fkrtl-kepatuhan/antrean-wtl")

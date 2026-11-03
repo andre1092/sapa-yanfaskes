@@ -17,6 +17,10 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      '/api/heroui-agent': {
+        target: 'http://127.0.0.1:3101',
+        changeOrigin: true,
+      },
       '/api': {
         target: process.env.VITE_API_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
@@ -29,6 +33,9 @@ export default defineConfig({
     sourcemap: false,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
+      input: {
+        app: path.resolve(__dirname, 'index.html'),
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {

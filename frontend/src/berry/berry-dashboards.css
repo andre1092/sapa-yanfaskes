@@ -1,0 +1,81 @@
+/* Dashboard structure follows Berry MainCard, typography and table anatomy. */
+.berry-dashboard,
+.berry-dashboard-card {
+  min-width: 0;
+}
+.berry-dashboard-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+  padding-block: var(--space-2, .5rem);
+}
+.berry-dashboard-heading .sapa-eyebrow {
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.berry-dashboard-heading .sapa-title,
+.berry-dashboard-heading .sapa-section-heading {
+  color: var(--text-main);
+  font-size: var(--berry-page-title-size, 1.5rem);
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.4;
+}
+.berry-dashboard-card.MuiCard-root {
+  background: var(--surface);
+  border-color: var(--border-color);
+  color: var(--text-main);
+  box-shadow: none;
+}
+.berry-dashboard-card .MuiTable-root {
+  border-collapse: collapse;
+}
+.berry-dashboard-card .MuiTableCell-root {
+  color: inherit;
+  border-color: var(--border-color);
+  font-family: var(--font-sans, inherit);
+  font-size: inherit;
+}
+.berry-dashboard-card .MuiTableHead-root {
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+.berry-dashboard-card .MuiTableHead-root .MuiTableCell-root {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.berry-dashboard-card .MuiTableCell-root:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: calc(-1 * var(--space-1, .25rem));
+}
+.berry-dashboard-card .MuiTableBody-root .MuiTableRow-root:hover {
+  background: var(--surface-subtle);
+}
+.berry-dashboard-card .MuiTypography-root {
+  font-family: var(--font-sans, inherit);
+  letter-spacing: normal;
+}
+.berry-dashboard-card .font-mono,
+.laras-score-value {
+  font-family: var(--font-sans, inherit);
+  font-variant-numeric: tabular-nums;
+}
+.berry-compliance-navigation .MuiTabs-root {
+  min-width: 0;
+}
+.berry-compliance-navigation .MuiTab-root {
+  text-transform: none;
+}
+.berry-dashboard-card .laras-chart-heading {
+  border-color: var(--border-color);
+}
+@media (min-width: 48rem) {
+  .berry-dashboard-heading {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}

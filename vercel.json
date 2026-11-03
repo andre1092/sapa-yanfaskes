@@ -6,6 +6,10 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/heroui-agent/auth-token.mjs",
+      "use": "@vercel/node"
+    },
+    {
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
@@ -15,12 +19,56 @@
   ],
   "rewrites": [
     {
+      "source": "/api/heroui-agent/auth-token",
+      "destination": "/api/heroui-agent/auth-token.mjs"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
     },
     {
       "source": "/assets/(.*)",
       "destination": "/frontend/assets/$1"
+    },
+    {
+      "source": "/apple-touch-icon.png",
+      "destination": "/frontend/apple-touch-icon.png"
+    },
+    {
+      "source": "/favicon-16x16.png",
+      "destination": "/frontend/favicon-16x16.png"
+    },
+    {
+      "source": "/favicon-32x32.png",
+      "destination": "/frontend/favicon-32x32.png"
+    },
+    {
+      "source": "/favicon-48x48.png",
+      "destination": "/frontend/favicon-48x48.png"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/frontend/favicon.ico"
+    },
+    {
+      "source": "/favicon.png",
+      "destination": "/frontend/favicon.png"
+    },
+    {
+      "source": "/favicon.svg",
+      "destination": "/frontend/favicon.svg"
+    },
+    {
+      "source": "/icons.svg",
+      "destination": "/frontend/icons.svg"
+    },
+    {
+      "source": "/logo-512.png",
+      "destination": "/frontend/logo-512.png"
+    },
+    {
+      "source": "/logo-sapa-yanfaskes.png",
+      "destination": "/frontend/logo-sapa-yanfaskes.png"
     },
     {
       "source": "/(.*)",
@@ -49,7 +97,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https: http://127.0.0.1:8000;"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://agent.heroui.pro; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https: http://127.0.0.1:8000;"
         }
       ]
     }

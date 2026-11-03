@@ -48,7 +48,8 @@ export interface DashboardStats {
 }
 
 const FALLBACK_FKRTL_DATA: FkrtlAntrolStats = {
-  status: 'success',
+  status: 'unavailable',
+  message: 'Sumber data tidak dapat dihubungi. Silakan coba kembali.',
   last_update: '09/28/2026 02:18:15',
   selected_period: 'September 2026',
   kpi_capaian: 73.04,
@@ -111,12 +112,12 @@ export const useFkrtlAntrolData = (filters: FkrtlFilterParams = {}, enabled: boo
           },
           timeout: 15000,
         });
-        if (response.data && (response.data.status === 'success' || response.data.status === 'no_data')) {
+        if (response.data && (response.data.status === 'success' || response.data.status === 'no_data') && Number.isFinite(response.data.kpi_capaian)) {
           return {
             ...FALLBACK_FKRTL_DATA,
             ...response.data,
             trend_per_bulan: Array.isArray(response.data.trend_per_bulan) ? response.data.trend_per_bulan : [],
-            top_faskes: Array.isArray(response.data.top_faskes) ? response.data.top_faskes : FALLBACK_FKRTL_DATA.top_faskes,
+            top_faskes: Array.isArray(response.data.top_faskes) ? response.data.top_faskes : [],
             top_poli: Array.isArray(response.data.top_poli) ? response.data.top_poli : [],
             poli_message: response.data.poli_message || (response.data.top_poli?.length ? undefined : FALLBACK_FKRTL_DATA.poli_message),
             poli_sources: response.data.poli_sources || [],

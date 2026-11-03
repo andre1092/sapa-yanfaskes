@@ -1,3 +1,8 @@
+import { Typography } from '@mui/material';
+import MainCard from '../berry/MainCard';
+import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
+import '../berry/berry-dashboards.css';
+import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 
@@ -71,9 +76,9 @@ export interface RmeApiResponse {
 }
 
 const fmtNum = (val: unknown, decimals: number = 1): string => {
-  if (val === null || val === undefined || val === '') return (0).toFixed(decimals);
+  if (val === null || val === undefined || val === '') return '-';
   const n = typeof val === 'number' ? val : parseFloat(String(val));
-  return isNaN(n) ? (0).toFixed(decimals) : n.toFixed(decimals);
+  return isNaN(n) ? '-' : n.toFixed(decimals);
 };
 
 export const RmeComplianceTab: React.FC = () => {
@@ -205,133 +210,159 @@ export const RmeComplianceTab: React.FC = () => {
     setCurrentPage(1);
   };
 
+  if (!apiData) {
+    return (
+      <MainCard content={false} className="berry-dashboard-card p-5 sm:p-6" aria-busy={loading} aria-live="polite">
+        <p className="sapa-eyebrow">Data kepatuhan FKRTL</p>
+        <Typography component="h2" variant="h4" className="sapa-section-heading text-lg font-semibold text-[var(--text-main)] mt-2">{loading ? 'Memuat data kepatuhan' : 'Data belum tersedia'}</Typography>
+        <p className="text-sm text-[var(--text-muted)] mt-2">{loading ? 'Mengambil data sesuai filter yang dipilih.' : error || 'Belum ada data untuk ditampilkan.'}</p>
+        {!loading && <button type="button" onClick={fetchData} className="sapa-button sapa-button-primary mt-4">Coba lagi</button>}
+      </MainCard>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="sapa-dashboard-body space-y-6">
+      <p className="sapa-filter-summary sapa-status flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]" aria-live="polite">
+        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{selectedBulan}</span><span>{selectedTipeFaskes}</span>
+        <span>{statusFilter === 'ALL' ? 'Semua status' : statusFilter === 'TERCAPAI' ? 'Target tercapai' : 'Belum mencapai target'}</span>
+        {searchQuery && <span>Pencarian: {searchQuery}</span>}
+      
+        <button type="button" className="sapa-button sapa-button-secondary" onClick={() => {
+          setSelectedKabupaten('Semua Kabupaten');
+          setSelectedNamaPpk('Semua Faskes');
+          setSelectedTipeFaskes('Semua Tipe Faskes');
+          setSelectedBulan('September 2026');
+          setStatusFilter('ALL');
+          setSearchQuery('');
+          setCurrentPage(1);
+        }}>Reset filter</button>
+      </p>
       {/* 1. Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2b4390]/90 via-[#1b2a4e]/90 to-[#44853b]/80 p-6 sm:p-8 text-white shadow-xl backdrop-blur-md border border-white/10">
+      <div className="berry-dashboard-heading min-w-0">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-sm border border-white/20 text-[#d4ecd1]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="sapa-eyebrow inline-flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
               Indikator Kepatuhan FKRTL - Bobot 5%
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <Typography component="h2" variant="h4" className="sapa-section-heading sapa-title text-xl sm:text-2xl">
               08. Integrasi Rekam Medis Elektronik (RME)
-            </h2>
-            <p className="text-sm text-slate-200 leading-relaxed">
+            </Typography>
+            <p className="text-sm text-[var(--text-muted)] leading-relaxed">
               Monitoring adopsi dan kepatuhan pengiriman data Rekam Medis Elektronik (RME) Rawat Jalan (RJTL) dan Rawat Inap (RITL) yang terkirim dalam waktu &le; 7 hari sejak tanggal pelayanan. Standar target kepatuhan nasional adalah &ge; 95.0%.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+          <MainCard content={false} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 berry-dashboard-card p-3 rounded-xl min-w-0">
             <div>
-              <span className="text-xs text-slate-300 block font-medium">Bobot Pilar</span>
-              <span className="text-2xl font-black text-amber-300 font-mono">5.0%</span>
+              <span className="text-xs text-[var(--text-muted)] block font-medium">Bobot Pilar</span>
+              <span className="text-2xl font-semibold text-[var(--bpjs-green)] font-mono">5.0%</span>
             </div>
-            <div className="h-10 w-px bg-white/20 hidden sm:block" />
+            <div className="h-10 w-px bg-[var(--surface)] hidden sm:block" />
             <div>
-              <span className="text-xs text-slate-300 block font-medium">Rata-Rata Capaian</span>
-              <span className="text-2xl font-black text-white font-mono">
+              <span className="text-xs text-[var(--text-muted)] block font-medium">Rata-Rata Capaian</span>
+              <span className="text-2xl font-semibold text-[var(--text-main)] font-mono">
                 {kpi.avg_capaian.toFixed(1)}%
               </span>
             </div>
-          </div>
+          </MainCard>
         </div>
       </div>
 
       {/* 2. Filter Bar */}
-      <div className="glass-card rounded-2xl p-4 border border-[#afbade]/30 dark:border-white/10 shadow-md flex flex-wrap items-center justify-between gap-3">
+      <MainCard content={false} className="berry-dashboard-card rounded-lg p-4 border border-[var(--border-color)] flex flex-wrap items-center justify-between gap-3 min-w-0 sapa-filterbar">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Kabupaten:</label>
-            <select
+            <label htmlFor="RmeComplianceTab-filter-1" className="text-xs font-bold text-[var(--text-main)]">Kabupaten:</label>
+            <FilterSelect aria-label="Kabupaten" id="RmeComplianceTab-filter-1"
               value={selectedKabupaten}
               onChange={(e) => {
                 setSelectedKabupaten(e.target.value);
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
+              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
             >
               {filterOptions.kabupaten.map((kab) => (
-                <option key={kab} value={kab} className="bg-slate-900 text-white">
+                <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                   {kab}
-                </option>
+                </FilterOption>
               ))}
-            </select>
+            </FilterSelect>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Faskes:</label>
-            <select
+            <label htmlFor="RmeComplianceTab-filter-2" className="text-xs font-bold text-[var(--text-main)]">Faskes:</label>
+            <FilterSelect aria-label="Fasilitas kesehatan" id="RmeComplianceTab-filter-2"
               value={selectedNamaPpk}
               onChange={(e) => {
                 setSelectedNamaPpk(e.target.value);
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer max-w-[180px] truncate"
+              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer max-w-[180px] truncate"
             >
               {filterOptions.nama_ppk.map((faskes) => (
-                <option key={faskes} value={faskes} className="bg-slate-900 text-white">
+                <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                   {faskes}
-                </option>
+                </FilterOption>
               ))}
-            </select>
+            </FilterSelect>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Tipe:</label>
-            <select
+            <label htmlFor="RmeComplianceTab-filter-3" className="text-xs font-bold text-[var(--text-main)]">Tipe:</label>
+            <FilterSelect aria-label="Jenis fasilitas kesehatan" id="RmeComplianceTab-filter-3"
               value={selectedTipeFaskes}
               onChange={(e) => {
                 setSelectedTipeFaskes(e.target.value);
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
+              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
             >
               {filterOptions.tipe_faskes.map((tipe) => (
-                <option key={tipe} value={tipe} className="bg-slate-900 text-white">
+                <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                   {tipe}
-                </option>
+                </FilterOption>
               ))}
-            </select>
+            </FilterSelect>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Bulan:</label>
-            <select
+            <label htmlFor="RmeComplianceTab-filter-4" className="text-xs font-bold text-[var(--text-main)]">Bulan:</label>
+            <FilterSelect aria-label="Bulan" id="RmeComplianceTab-filter-4"
               value={selectedBulan}
               onChange={(e) => {
                 setSelectedBulan(e.target.value);
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
+              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
             >
               {filterOptions.bulan.map((bln) => (
-                <option key={bln} value={bln} className="bg-slate-900 text-white">
+                <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
                   {bln}
-                </option>
+                </FilterOption>
               ))}
-            </select>
+            </FilterSelect>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-[#2b4390] dark:text-slate-300">Status:</label>
-            <select
+            <label htmlFor="RmeComplianceTab-filter-5" className="text-xs font-bold text-[var(--text-main)]">Status:</label>
+            <FilterSelect aria-label="Status capaian" id="RmeComplianceTab-filter-5"
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value as any);
                 setCurrentPage(1);
               }}
-              className="glass-input rounded-xl px-3 py-1.5 text-xs font-semibold text-[#2b4390] dark:text-white bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b] cursor-pointer"
+              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
             >
-              <option value="ALL" className="bg-slate-900 text-white">Semua Status</option>
-              <option value="TERCAPAI" className="bg-slate-900 text-white">Tercapai (100%)</option>
-              <option value="BELUM_TERCAPAI" className="bg-slate-900 text-white">Belum Tercapai (&lt;100%)</option>
-            </select>
+              <FilterOption value="ALL" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Semua Status</FilterOption>
+              <FilterOption value="TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Tercapai (100%)</FilterOption>
+              <FilterOption value="BELUM_TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Belum Tercapai (&lt;100%)</FilterOption>
+            </FilterSelect>
           </div>
         </div>
 
         <div className="relative w-full md:w-72">
-          <input
+          <input aria-label="Cari Rumah Sakit / Kode PPK..."
             type="text"
             placeholder="Cari Rumah Sakit / Kode PPK..."
             value={searchQuery}
@@ -339,119 +370,119 @@ export const RmeComplianceTab: React.FC = () => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="glass-input w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#2b4390] dark:text-white placeholder-[#6573a1] dark:placeholder-slate-500 bg-white/80 dark:bg-slate-900/80 border border-[#afbade]/40 dark:border-white/10 focus:outline-none focus:border-[#44853b]"
+            className="sapa-control w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)]"
           />
-          <svg className="w-3.5 h-3.5 text-[#6573a1] dark:text-slate-400 absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-      </div>
+      </MainCard>
 
       {/* 3. KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card rounded-2xl p-5 border border-[#83a67e]/30 dark:border-emerald-500/20 shadow-md">
-          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
+      <div className="sapa-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MainCard content={false} className="sapa-kpi-lead sapa-metric berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
+          <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
             Rata-Rata Capaian RME
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-black text-[#2b4390] dark:text-white font-mono">
+            <span className="text-3xl font-semibold text-[var(--text-main)] font-mono">
               {fmtNum(kpi.avg_capaian, 1)}%
             </span>
-            <span className="text-xs font-bold text-[#44853b] dark:text-emerald-400">
+            <span className="text-xs font-bold text-[var(--bpjs-green)]">
               (Kontribusi: {fmtNum(kpi.kontribusi_capaian, 2)} pt)
             </span>
           </div>
-          <span className="text-[10.5px] text-[#44853b] dark:text-emerald-400/80 mt-1 block font-semibold">
+          <span className="text-[10.5px] text-[var(--bpjs-green)] mt-1 block font-semibold">
             Standar Target: {kpi.target_persen}
           </span>
-        </div>
+        </MainCard>
 
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-md">
-          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
+          <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
             Faskes Memenuhi Target (Patuh)
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-black text-[#44853b] dark:text-emerald-400 font-mono">
+            <span className="text-3xl font-semibold text-[var(--bpjs-green)] font-mono">
               {kpi.total_tercapai}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400">
+            <span className="text-xs text-[var(--text-muted)]">
               dari {kpi.total_faskes} RS ({fmtNum(kpi.persen_kepatuhan, 1)}%)
             </span>
           </div>
-          <span className="text-[10.5px] text-[#44853b] dark:text-emerald-400/80 mt-1 block font-semibold">
+          <span className="text-[10.5px] text-[var(--bpjs-green)] mt-1 block font-semibold">
             Pengiriman Tepat Waktu (&le;7 hari)
           </span>
-        </div>
+        </MainCard>
 
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-white/10 shadow-md">
-          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
+          <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
             Faskes Belum Tercapai (&lt;95%)
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-black text-rose-500 dark:text-rose-400 font-mono">
+            <span className="text-3xl font-semibold text-[var(--danger)] font-mono">
               {kpi.total_belum_tercapai}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400">
+            <span className="text-xs text-[var(--text-muted)]">
               dari {kpi.total_faskes} RS
             </span>
           </div>
-          <span className="text-[10.5px] text-rose-500 dark:text-rose-400/80 mt-1 block font-semibold">
+          <span className="text-[10.5px] text-[var(--danger)] mt-1 block font-semibold">
             Perlu Akselerasi Bridging
           </span>
-        </div>
+        </MainCard>
 
-        <div className="glass-card rounded-2xl p-5 border border-[#afbade]/30 dark:border-blue-500/20 shadow-md">
-          <span className="text-[11px] font-bold text-[#6573a1] dark:text-slate-400 uppercase tracking-wider block">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
+          <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
             Total Faskes Terdata
           </span>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-black text-[#2b4390] dark:text-sky-400 font-mono">
+            <span className="text-3xl font-semibold text-[var(--text-main)] font-mono">
               {kpi.total_faskes}
             </span>
-            <span className="text-xs text-[#6573a1] dark:text-slate-400">FKRTL Mitra</span>
+            <span className="text-xs text-[var(--text-muted)]">FKRTL Mitra</span>
           </div>
-          <span className="text-[10.5px] text-[#6573a1] dark:text-slate-400 mt-1 block">
+          <span className="text-[10.5px] text-[var(--text-muted)] mt-1 block">
             Integrasi SatuSehat & BPJS
           </span>
-        </div>
+        </MainCard>
       </div>
 
       {/* 4. Monthly Trend Chart: SVG LINE CHART */}
       {apiData?.monthly_chart && apiData.monthly_chart.length > 0 && (
-        <div className="glass-card rounded-3xl p-5 sm:p-6 border border-[#afbade]/30 dark:border-white/10 shadow-xl relative overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#afbade]/20 dark:border-slate-800">
+        <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 sm:p-6 border border-[var(--border-color)] relative overflow-hidden min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[var(--border-color)]">
             <div>
-              <h4 className="text-xs sm:text-sm font-bold text-[#2b4390] dark:text-[#f7fcfa] flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#44853b]" />
+              <Typography component="h4" variant="h5" className="text-xs sm:text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
                 GRAFIK BULANAN: TREN CAPAIAN REKAM MEDIS ELEKTRONIK (RME) (%)
-              </h4>
-              <p className="text-[11px] text-[#6573a1] dark:text-[#afbade]">
+              </Typography>
+              <p className="text-[11px] text-[var(--text-muted)]">
                 Tren rata-rata skor kepatuhan integrasi data RME tepat waktu (&le;7 hari) per bulan di tahun 2026 • Bobot 5%
               </p>
             </div>
 
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#44853b]" />
-                <span className="text-[#6573a1] dark:text-[#afbade] font-medium text-[11px]">Capaian RME</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
+                <span className="text-[var(--text-muted)] font-medium text-[11px]">Capaian RME</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-0.5 border-t-2 border-dashed border-amber-500" />
-                <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px]">Target 100%</span>
+                <span className="text-[var(--warning-text)] font-semibold text-[11px]">Target 100%</span>
               </div>
             </div>
           </div>
 
           {/* Interactive Tooltip Snapshot Banner */}
-          <div className="h-10 mb-2 flex items-center justify-between px-3 py-1.5 rounded-xl bg-white/40 dark:bg-slate-900/40 border border-[#afbade]/20 dark:border-white/5">
+          <div className="h-10 mb-2 flex items-center justify-between px-3 py-1.5 rounded-xl bg-[var(--surface)] border border-[var(--border-color)]">
             {hoveredMonth ? (
               <div className="flex items-center gap-3 text-xs">
-                <span className="font-bold text-[#2b4390] dark:text-white">{hoveredMonth.bulan_indo || hoveredMonth.bulan}:</span>
-                <span className="font-mono font-bold text-[#44853b] dark:text-emerald-400">{fmtNum(hoveredMonth.avg_capaian, 1)}%</span>
-                <span className="text-[#6573a1] dark:text-slate-400 font-mono">({hoveredMonth.faskes_count} Faskes • {hoveredMonth.met_count} RS Patuh)</span>
+                <span className="font-bold text-[var(--text-main)]">{hoveredMonth.bulan_indo || hoveredMonth.bulan}:</span>
+                <span className="font-mono font-bold text-[var(--bpjs-green)]">{fmtNum(hoveredMonth.avg_capaian, 1)}%</span>
+                <span className="text-[var(--text-muted)] font-mono">({hoveredMonth.faskes_count} Faskes • {hoveredMonth.met_count} RS Patuh)</span>
               </div>
             ) : (
-              <span className="text-xs text-[#6573a1] dark:text-slate-400 italic">
+              <span className="text-xs text-[var(--text-muted)] italic">
                 Arahkan kursor pada titik bulan untuk melihat rincian capaian RME.
               </span>
             )}
@@ -462,8 +493,8 @@ export const RmeComplianceTab: React.FC = () => {
               <svg viewBox="0 0 900 240" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="rmeCapaianGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#44853b" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#44853b" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor="var(--bpjs-green)" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="var(--bpjs-green)" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
@@ -479,13 +510,13 @@ export const RmeComplianceTab: React.FC = () => {
                         y2={y}
                         stroke="currentColor"
                         strokeDasharray={val === 100 ? '4 4' : '2 2'}
-                        className={val === 100 ? 'text-amber-500 stroke-amber-500/80 stroke-[1.5]' : 'text-slate-300 dark:text-slate-800 stroke-[1]'}
+                        className={val === 100 ? 'text-[var(--warning-text)] stroke-amber-500/80 stroke-[1.5]' : 'text-[var(--text-muted)]  stroke-[1]'}
                       />
                       <text
                         x="38"
                         y={y + 3.5}
                         textAnchor="end"
-                        className="text-[10px] font-mono fill-[#6573a1] dark:fill-slate-400 select-none"
+                        className="text-[10px] font-mono fill-[var(--text-muted)] select-none"
                       >
                         {val}%
                       </text>
@@ -498,7 +529,7 @@ export const RmeComplianceTab: React.FC = () => {
                   x="875"
                   y={200 - (100 / 100) * 160 - 5}
                   textAnchor="end"
-                  className="text-[10px] font-bold fill-amber-700 dark:fill-amber-400 select-none"
+                  className="text-[10px] font-bold fill-amber-700 select-none"
                 >
                   Target 100%
                 </text>
@@ -530,11 +561,11 @@ export const RmeComplianceTab: React.FC = () => {
                       <path
                         d={pathD}
                         fill="none"
-                        stroke="#44853b"
+                        stroke="var(--bpjs-green)"
                         strokeWidth="3"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="drop-shadow-md"
+                        className="drop-"
                       />
 
                       {/* Interactive Markers */}
@@ -551,8 +582,8 @@ export const RmeComplianceTab: React.FC = () => {
                               cx={pt.x}
                               cy={pt.y}
                               r={isHovered ? 6 : 4}
-                              fill="#44853b"
-                              stroke="#ffffff"
+                              fill="var(--bpjs-green)"
+                              stroke="var(--surface)"
                               strokeWidth={isHovered ? 2.5 : 1.8}
                               className="transition-all duration-200"
                             />
@@ -562,7 +593,7 @@ export const RmeComplianceTab: React.FC = () => {
                               y={pt.y - 8}
                               textAnchor="middle"
                               className={`text-[9.5px] font-mono font-bold select-none ${
-                                isHovered ? 'fill-[#44853b] dark:fill-emerald-400' : 'fill-[#2b4390] dark:fill-slate-300'
+                                isHovered ? 'fill-[var(--bpjs-green)] ' : 'fill-[var(--bpjs-navy)] '
                               }`}
                             >
                               {fmtNum(pt.data.avg_capaian, 0)}%
@@ -574,8 +605,8 @@ export const RmeComplianceTab: React.FC = () => {
                               textAnchor="middle"
                               className={`text-[10px] select-none ${
                                 isHovered
-                                  ? 'font-bold fill-[#44853b] dark:fill-emerald-400'
-                                  : 'fill-[#6573a1] dark:fill-[#afbade]'
+                                  ? 'font-bold fill-[var(--bpjs-green)] '
+                                  : 'fill-[var(--text-muted)] '
                               }`}
                             >
                               {pt.data.short_name}
@@ -589,141 +620,142 @@ export const RmeComplianceTab: React.FC = () => {
               </svg>
             </div>
           </div>
-        </div>
+        </MainCard>
       )}
 
       {/* 5. Tabel Detail Kepatuhan RME */}
-      <div className="glass-card rounded-2xl shadow-xl border border-[#afbade]/30 dark:border-white/10 overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-[#afbade]/30 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#f0f7f4] dark:bg-slate-900/40">
+      <MainCard content={false} className="berry-dashboard-card rounded-lg border border-[var(--border-color)] overflow-hidden min-w-0">
+        <div className="p-4 sm:p-5 border-b border-[var(--border-color)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--surface-subtle)]">
           <div>
-            <h3 className="text-sm font-bold text-[#2b4390] dark:text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#44853b]" />
+            <Typography component="h3" variant="h5" className="sapa-section-heading text-sm font-bold text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[var(--bpjs-green)]" />
               Matriks Kepatuhan Pengiriman Data RME
-            </h3>
-            <p className="text-xs text-[#6573a1] dark:text-slate-400 mt-0.5">
+            </Typography>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
               Rincian volume data rawat jalan (RJTL) dan rawat inap (RITL) yang terkirim dalam &le; 7 hari per faskes.
             </p>
           </div>
-          <div className="text-xs text-[#6573a1] dark:text-slate-400">
-            Menampilkan <span className="font-bold text-[#2b4390] dark:text-white">{processedRows.length}</span> fasilitas
+          <div className="text-xs text-[var(--text-muted)]">
+            Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas
           </div>
         </div>
 
         {loading ? (
           <div className="py-20 text-center">
-            <div className="w-10 h-10 border-4 border-[#44853b] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs text-[#6573a1] dark:text-slate-400 font-semibold">
+            <div className="w-10 h-10 border-4 border-[var(--border-color)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-xs text-[var(--text-muted)] font-semibold">
               Memuat data kepatuhan Rekam Medis Elektronik...
             </p>
           </div>
         ) : error ? (
-          <div className="py-12 px-6 text-center text-rose-500 text-xs">
+          <div className="py-12 px-6 text-center text-[var(--danger)] text-xs">
             {error}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#e6f2ed] dark:bg-slate-900/80 text-[#2b4390] dark:text-[#afbade] uppercase text-[10px] font-bold tracking-wider border-b border-[#afbade]/30 dark:border-slate-800">
-                <tr>
-                  <th className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('no')}>No</th>
-                  <th className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kode_ppk')}>Kode PPK</th>
-                  <th className="py-3 px-3 cursor-pointer" onClick={() => handleSort('nama_ppk')}>Nama Rumah Sakit</th>
-                  <th className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kabupaten')}>Kabupaten</th>
-                  <th className="py-3 px-2 text-center" title="Rawat Jalan <= 7 Hari">RJTL &le; 7 hr</th>
-                  <th className="py-3 px-2 text-center" title="Rawat Jalan > 7 Hari">RJTL &gt; 7 hr</th>
-                  <th className="py-3 px-2 text-center" title="Rawat Inap <= 7 Hari">RITL &le; 7 hr</th>
-                  <th className="py-3 px-2 text-center" title="Rawat Inap > 7 Hari">RITL &gt; 7 hr</th>
-                  <th className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('persentase_rme')}>Persentase (%)</th>
-                  <th className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('capaian')}>Capaian</th>
-                  <th className="py-3 px-3 text-center" title="Kontribusi Nilai (Bobot 5%)">Poin (5%)</th>
-                  <th className="py-3 px-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#afbade]/20 dark:divide-slate-800/60 font-medium">
+          <div aria-label="Area data yang dapat digulir" role="region" tabIndex={0} className="overflow-x-auto">
+            <Table size="small" className="sapa-data-table sapa-table w-full text-left text-xs">
+              <caption className="sr-only">Rincian kepatuhan fasilitas kesehatan sesuai filter dan periode yang dipilih</caption>
+              <TableHead className="bg-[var(--surface-subtle)] text-[var(--text-main)] uppercase text-[10px] font-bold tracking-wider border-b border-[var(--border-color)]">
+                <TableRow>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('no')}>No</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kode_ppk')}>Kode PPK</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('nama_ppk')}>Nama Rumah Sakit</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kabupaten')}>Kabupaten</TableCell>
+                  <TableCell className="py-3 px-2 text-center" title="Rawat Jalan <= 7 Hari">RJTL &le; 7 hr</TableCell>
+                  <TableCell className="py-3 px-2 text-center" title="Rawat Jalan > 7 Hari">RJTL &gt; 7 hr</TableCell>
+                  <TableCell className="py-3 px-2 text-center" title="Rawat Inap <= 7 Hari">RITL &le; 7 hr</TableCell>
+                  <TableCell className="py-3 px-2 text-center" title="Rawat Inap > 7 Hari">RITL &gt; 7 hr</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('persentase_rme')}>Persentase (%)</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('capaian')}>Capaian</TableCell>
+                  <TableCell className="py-3 px-3 text-center" title="Kontribusi Nilai (Bobot 5%)">Poin (5%)</TableCell>
+                  <TableCell className="py-3 px-3 text-center">Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody className="divide-y divide-[var(--border-color)]/20 font-medium">
                 {paginatedRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="py-12 text-center text-[#6573a1] dark:text-slate-400 italic">
+                  <TableRow>
+                    <TableCell colSpan={12} className="py-12 text-center text-[var(--text-muted)] italic">
                       Tidak ada data yang sesuai dengan filter.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   paginatedRows.map((row, idx) => (
-                    <tr
+                    <TableRow
                       key={`${row.kode_ppk}-${row.bulan}`}
-                      className="hover:bg-[#d4ecd1]/20 dark:hover:bg-slate-800/40 transition-colors group"
+                      className="hover:bg-[var(--surface-accent)]/20 transition-colors group"
                     >
-                      <td className="py-3 px-3 text-center text-[#6573a1] dark:text-slate-500 font-mono text-[11px]">
+                      <TableCell className="py-3 px-3 text-center text-[var(--text-muted)] font-mono text-[11px]">
                         {(currentPage - 1) * itemsPerPage + idx + 1}
-                      </td>
-                      <td className="py-3 px-3 font-mono font-bold text-[#2b4390] dark:text-slate-300">
+                      </TableCell>
+                      <TableCell className="py-3 px-3 font-mono font-bold text-[var(--text-main)]">
                         {row.kode_ppk}
-                      </td>
-                      <td className="py-3 px-3 font-bold text-[#2b4390] dark:text-white group-hover:text-[#44853b] transition-colors">
+                      </TableCell>
+                      <TableCell className="py-3 px-3 font-bold text-[var(--text-main)] group-hover:text-[var(--bpjs-green)] transition-colors">
                         {row.nama_ppk}
-                      </td>
-                      <td className="py-3 px-3 text-[#2b4390] dark:text-slate-300">{row.kabupaten}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.rjtl_lt7}</td>
-                      <td className="py-3 px-2 text-center font-mono text-slate-400">{row.rjtl_gt7}</td>
-                      <td className="py-3 px-2 text-center font-mono">{row.ritl_lt7}</td>
-                      <td className="py-3 px-2 text-center font-mono text-slate-400">{row.ritl_gt7}</td>
-                      <td className="py-3 px-3 text-center font-mono font-bold">
+                      </TableCell>
+                      <TableCell className="py-3 px-3 text-[var(--text-main)]">{row.kabupaten}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono">{row.rjtl_lt7}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono text-[var(--text-muted)]">{row.rjtl_gt7}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono">{row.ritl_lt7}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono text-[var(--text-muted)]">{row.ritl_gt7}</TableCell>
+                      <TableCell className="py-3 px-3 text-center font-mono font-bold">
                         {fmtNum(row.persentase_rme, 1)}%
-                      </td>
-                      <td className="py-3 px-3 text-center">
+                      </TableCell>
+                      <TableCell className="py-3 px-3 text-center">
                         <span className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
                           row.is_met
-                            ? 'bg-[#d4ecd1] text-[#44853b] dark:bg-emerald-500/20 dark:text-emerald-300'
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300'
+                            ? 'bg-[var(--surface-accent)] text-[var(--accent-text)]  '
+                            : 'bg-amber-100 text-amber-800  '
                         }`}>
                           {fmtNum(row.capaian, 1)}%
                         </span>
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-[#44853b] dark:text-emerald-400">
+                      </TableCell>
+                      <TableCell className="py-3 px-3 text-center font-mono font-bold text-[var(--bpjs-green)]">
                         {fmtNum(row.capaian_nilai, 2)} pt
-                      </td>
-                      <td className="py-3 px-3 text-center">
+                      </TableCell>
+                      <TableCell className="py-3 px-3 text-center">
                         {row.is_met ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[#d4ecd1] text-[#44853b] border border-[#83a67e]/40 dark:bg-emerald-500/20 dark:text-emerald-300">
-                            ✓ Tercapai
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]">
+                             Tercapai
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300">
-                            ⚠ Belum Tercapai
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                             Belum Tercapai
                           </span>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
 
         {totalPages > 1 && (
-          <div className="p-4 border-t border-[#afbade]/20 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-xs text-[#6573a1] dark:text-slate-400">
+          <div className="p-4 border-t border-[var(--border-color)] flex items-center justify-between">
+            <span className="text-xs text-[var(--text-muted)]">
               Halaman {currentPage} dari {totalPages}
             </span>
             <div className="flex gap-2">
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1 rounded-lg text-xs font-bold border border-[#afbade]/30 dark:border-white/10 disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1 rounded-lg text-xs font-bold border border-[var(--border-color)] disabled:opacity-40 cursor-pointer"
               >
                 Sebelumnya
               </button>
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1 rounded-lg text-xs font-bold border border-[#afbade]/30 dark:border-white/10 disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1 rounded-lg text-xs font-bold border border-[var(--border-color)] disabled:opacity-40 cursor-pointer"
               >
                 Selanjutnya
               </button>
             </div>
           </div>
         )}
-      </div>
+      </MainCard>
     </div>
   );
 };
