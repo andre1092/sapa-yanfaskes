@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppBar, Avatar, Box, Button, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, TextField, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { IconMenu2, IconSearch, IconSun, IconMoon, IconX } from '@tabler/icons-react';
 import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
@@ -13,14 +13,11 @@ import { AdminDialog } from './AdminDialog';
 import { AnimatedButton } from './ui/AnimatedButton';
 import { FloatingSidebar } from './ui/FloatingSidebar';
 import { HeroUIAssistant } from './HeroUIAssistant';
-// three.js hanya dimuat saat kantor dibuka.
-const SecurityOfficeView = lazy(() => import('./SecurityOfficeView'));
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { useLogStore, type LogRole } from '../store/logStore';
 
 const ROUTE_MAP: Record<string, string> = {
-  '/kantor-keamanan': 'Kantor Keamanan',
   '/monitoring-laras': 'Monitoring LARAS',
   '/laras': 'Monitoring LARAS',
   '/kepatuhanfkrtl': 'Capaian Kepatuhan FKRTL',
@@ -45,7 +42,6 @@ const ROUTE_MAP: Record<string, string> = {
 };
 
 const MENU_TO_ROUTE: Record<string, string> = {
-  'Kantor Keamanan': '/kantor-keamanan',
   'Monitoring LARAS': '/monitoring-laras',
   'Capaian Kepatuhan FKRTL': '/kepatuhanfkrtl',
   'Pemanfaatan Antrol FKRTL': '/antrolfkrtl',
@@ -70,7 +66,7 @@ const getMenuFromCurrentPath = (): string => {
 const sections = [
   { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Monitoring LARAS', 'Monitoring LARAS']] },
   { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL'], ['Capaian Kepatuhan FKTP', 'Kepatuhan FKTP']] },
-  { label: 'Administrasi', items: [['User', 'Pengguna'], ['Logs', 'Log aktivitas'], ['Integration', 'Integrasi data'], ['Validation Rules', 'Aturan validasi'], ['Kantor Keamanan', 'Kantor keamanan AI']] },
+  { label: 'Administrasi', items: [['User', 'Pengguna'], ['Logs', 'Log aktivitas'], ['Integration', 'Integrasi data'], ['Validation Rules', 'Aturan validasi']] },
 ];
 const extraItems = [['Activity', 'Aktivitas'], ['Touchpoints', 'Titik interaksi'], ['Installs & Uninstalls', 'Pemasangan aplikasi'], ['Agency', 'Agensi'], ['Fraud', 'Deteksi kecurangan'], ['Smart Banners', 'Banner'], ['Events', 'Agenda']];
 const labelFor = (menu: string) => [...sections.flatMap(section => section.items), ...extraItems].find(([key]) => key === menu)?.[1] || menu;
@@ -85,7 +81,6 @@ const navPaths: Record<string, string> = {
   Logs: 'M12 8v4l3 2M3 12a9 9 0 1 0 3-6.7M3 3v5h5',
   Integration: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2m3 6a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
   'Validation Rules': 'M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7Zm-4 9 3 3 5-6',
-  'Kantor Keamanan': 'M3 21h18M5 21V9l7-5 7 5v12M9 21v-5h6v5M12 9.5l2 1v2c0 1.5-2 2.5-2 2.5s-2-1-2-2.5v-2Z',
 };
 const NavIcon = ({ name }: { name: string }) => <svg className="sapa-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={navPaths[name] || navPaths.Home} /></svg>;
 
@@ -188,7 +183,7 @@ export const InsightTracerDashboard: React.FC = () => {
     <Box ref={mainRef} className="berry-workspace" sx={{ flex: 1, minWidth: 0, mt: { xs: 9, lg: 11 }, mr: { xs: 1, sm: 2.5 }, ml: { xs: 1, lg: sidebarPinned ? '312px' : '132px' }, transition: 'margin-left 220ms ease', mb: 0, bgcolor: 'background.default', borderRadius: 'var(--radius-panel, 12px) var(--radius-panel, 12px) 0 0', p: { xs: 2, sm: 2.5 } }}>
       <Box sx={{ mb: 2.5 }}><Typography variant="caption" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'}</Typography><Typography variant="h4" component="p" sx={{ mt: 0.5 }}>{labelFor(activeMenu)}</Typography></Box>
       <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
-        {activeMenu === 'Kantor Keamanan' ? <Suspense fallback={<Typography color="text.secondary">Memuat kantor…</Typography>}><SecurityOfficeView /></Suspense> : activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'User' ? <UserManagementView /> : activeMenu === 'Logs' ? <LogsView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
+        {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'User' ? <UserManagementView /> : activeMenu === 'Logs' ? <LogsView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
             <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch' }}>Selamat datang, {user?.name?.split(' ')[0] || user?.username || 'Pengguna'}</Typography>

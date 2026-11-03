@@ -31,8 +31,6 @@ deduplication, historical values, evidence and native spreadsheet verification.
 Pesan `patroli keamanan`, `perbaiki temuan <id>` dan `deploy perbaikan <PR>` memanggil
 `.agents/skills/sapa-security-agent/SKILL.md`. Agen boleh membuat branch dan PR
 perbaikan, tetapi deploy ke produksi hanya setelah CEO (pemilik repositori) menyetujui
-PR tersebut secara eksplisit: di chat, atau lewat tombol "Setujui & deploy PR #N" di halaman
-Kantor Keamanan yang dilayani jembatan lokal (`automation/security_agent/bridge/`), yang
-terikat pada satu PR dan satu commit. Agen yang dijalankan dari halaman tidak pernah
-push, membuka PR, merge atau deploy sendiri. Laporan di `automation/security_agent/reports/`
-tidak di-commit karena repositori ini publik.
+PR tersebut secara eksplisit di chat. Halaman Kantor Keamanan di aplikasi sudah dihapus;
+jembatan lokal di `automation/security_agent/bridge/` tidak punya antarmuka lagi. Laporan di
+`automation/security_agent/reports/` tidak di-commit karena repositori ini publik.

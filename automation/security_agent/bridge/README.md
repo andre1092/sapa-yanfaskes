@@ -1,7 +1,10 @@
 # Jembatan Kantor Keamanan
 
-Server lokal yang menghubungkan halaman `/kantor-keamanan` dengan mesin pemilik repositori.
-Tanpa jembatan, halaman produksi tidak menampilkan temuan (repositori ini publik).
+> Halaman `/kantor-keamanan` sudah dihapus dari aplikasi, jadi jembatan ini tidak punya antarmuka lagi.
+> Kodenya dibiarkan sebagai arsip; hapus folder ini bersama `office:bridge` dan `test:bridge` di
+> `frontend/package.json` bila tidak dipakai.
+
+Server lokal yang dulu menghubungkan halaman `/kantor-keamanan` dengan mesin pemilik repositori.
 
 ```bash
 npm --prefix frontend run office:bridge     # mendengarkan 127.0.0.1:43125
