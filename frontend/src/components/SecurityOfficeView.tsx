@@ -33,6 +33,7 @@ export function SecurityOfficeView() {
   const [compact, setCompact] = useState(false);
   const hostRef = useRef<HTMLDivElement>(null);
   const officeRef = useRef<SecurityOffice | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +66,12 @@ export function SecurityOfficeView() {
 
   useEffect(() => { officeRef.current?.update(stationStates); }, [stationStates, effectiveTheme]);
   useEffect(() => { officeRef.current?.setActive(active); }, [active, effectiveTheme]);
+
+  // Di layar sempit panel berada di bawah kanvas; bawa ke layar agar klik meja terlihat hasilnya.
+  useEffect(() => {
+    if (!active || !window.matchMedia('(max-width: 960px)').matches) return;
+    panelRef.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, [active]);
 
   const activeStation = STATIONS.find(s => s.id === active);
   const visible = (report?.findings ?? []).filter(f => !activeStation || activeStation.checks.includes(f.check));
@@ -99,14 +106,17 @@ export function SecurityOfficeView() {
       </MainCard>
 
       <MainCard content={false} className="security-office-panel berry-dashboard-card" aria-labelledby="office-panel-title">
-        <div className="security-office-panel-inner">
+        <div className="security-office-panel-inner" ref={panelRef}>
           <Typography id="office-panel-title" component="h2" variant="h4">{activeStation ? activeStation.label : 'Semua temuan'}</Typography>
           <Typography variant="body2" color="text.secondary">{activeStation?.role ?? 'Pilih meja di kantor untuk melihat temuan per bidang.'}</Typography>
           {active === 'ceo' && <div className="office-approval" role="note">
             <strong>Gerbang persetujuan CEO</strong>
             <p>Agen membuat perbaikan di branch dan membuka PR. Deploy ke produksi hanya setelah CEO menulis di chat persetujuan untuk PR yang tepat, misalnya “setuju deploy PR #12”.</p>
           </div>}
-          {status === 'unavailable' && <p className="office-empty">Jalankan <code>patroli keamanan</code> lalu buka halaman ini dari <code>npm run dev</code>. Laporan hanya tersedia di server dev lokal karena berisi detail kerentanan dan repositori ini publik.</p>}
+          {status === 'unavailable' && <div className="office-empty" role="status">
+            <p><strong>{activeStation ? `Detail temuan ${activeStation.short} tidak ditampilkan di sini.` : 'Detail temuan tidak ditampilkan di sini.'}</strong></p>
+            <p>Laporan patroli berisi detail kerentanan dan repositori ini publik, jadi hanya dilayani server pengembangan lokal. Jalankan <code>patroli keamanan</code>, lalu buka halaman ini dari <code>npm run dev</code>.</p>
+          </div>}
           {failedChecks.length > 0 && <p className="office-warning" role="status">{failedChecks.length} pemeriksaan gagal: {failedChecks.map(c => c.name).join(', ')}.</p>}
           {report && active !== 'ceo' && (visible.length === 0 ? <p className="office-empty">Tidak ada temuan di bidang ini.</p> :
             <ol className="office-findings" aria-label="Daftar temuan">
