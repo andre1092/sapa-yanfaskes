@@ -31,6 +31,10 @@
       "destination": "/frontend/assets/$1"
     },
     {
+      "source": "/office/(.*)",
+      "destination": "/frontend/office/$1"
+    },
+    {
       "source": "/apple-touch-icon.png",
       "destination": "/frontend/apple-touch-icon.png"
     },
