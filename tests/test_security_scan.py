@@ -49,3 +49,17 @@ def test_one_failing_check_does_not_stop_the_scan():
     report.run("boom", "Gagal", lambda r: 1 / 0)
     report.run("fine", "Lancar", lambda r: None)
     assert [c["status"] for c in report.checks] == ["error", "ok"]
+
+
+def test_only_runs_the_selected_checks_and_skips_history(tmp_path):
+    out = tmp_path / "partial.json"
+    scan.main(["--offline", "--only", "secrets,privacy", "--out", str(out)])
+    data = __import__("json").loads(out.read_text())
+    assert [c["id"] for c in data["checks"]] == ["secrets", "privacy"]
+    assert list(tmp_path.glob("scan-*.json")) == []
+
+
+def test_only_rejects_unknown_check_ids(tmp_path):
+    import pytest
+    with pytest.raises(SystemExit):
+        scan.main(["--offline", "--only", "secrets,nope", "--out", str(tmp_path / "x.json")])
