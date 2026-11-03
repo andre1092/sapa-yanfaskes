@@ -16,7 +16,7 @@ di sessionStorage tab itu.
 | Aksi di halaman | Endpoint | Efek |
 | --- | --- | --- |
 | Klik meja, judul panel, atau agen | `POST /scan` | Menjalankan `scan.py --only <pemeriksaan meja>` dan menggabungkannya ke `reports/latest.json` |
-| Klik "Kerjakan" | `POST /fix` | Worktree baru dari `origin/main`, `claude -p` memperbaiki dan meng-commit, pemindaian ulang, push branch, PR bila `SAPA_GITHUB_TOKEN` ada |
+| Klik "Kerjakan" | `POST /fix` | Worktree baru dari `origin/main`, `claude -p` memperbaiki (tanpa hak git write), jembatan meng-commit, pemindaian ulang, push branch, PR bila `SAPA_GITHUB_TOKEN` ada |
 | Klik "Setujui & deploy" | `POST /approve` | Merge PR hanya jika head PR sama dengan commit agen, lalu memantau deploy dan memindai ulang produksi |
 
 Meja Log Vercel butuh `reports/vercel-logs.json` (diambil agen lewat Vercel MCP pada `patroli keamanan`).
@@ -29,7 +29,9 @@ Meja Log Vercel butuh `reports/vercel-logs.json` (diambil agen lewat Vercel MCP 
 - Agen perbaikan tidak menerima `SAPA_GITHUB_TOKEN`, tidak boleh `git push`, `gh`, `curl`, `rm`, `sudo`
   atau membaca `.env`, dan berjalan di worktree sendiri (`~/.local/share/sapa-security-agent/worktrees`).
   Teks temuan diberikan sebagai data, bukan instruksi.
-- Push, PR dan merge dilakukan jembatan, bukan agen. Setiap persetujuan dicatat di `reports/approvals.jsonl`.
+- Agen perbaikan berjalan dengan `--setting-sources project`: pengaturan pengguna (hook yang menulis ulang perintah seperti RTK, plugin, MCP) tidak ikut,
+  supaya aturan izin cocok dan sesi lebih murah. Agen hanya boleh membaca status git (`git status/diff/log/show`).
+- Commit, push, PR dan merge dilakukan jembatan, bukan agen. Sisa branch atau worktree dari percobaan gagal dibersihkan otomatis saat klik ulang. Setiap persetujuan dicatat di `reports/approvals.jsonl`.
 - `SAPA_GITHUB_TOKEN`: token GitHub fine-grained untuk repositori ini (Contents dan Pull requests: read/write).
   Tanpa token, PR dibuat lewat tautan dan merge dilakukan manual di GitHub.
 

@@ -14,8 +14,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as lib from './lib.mjs';
 
 const TERMINAL = new Set(['ready', 'failed', 'deployed', 'deploy_failed']);
-const FIX_TOOLS = ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash(git:*)', 'Bash(npm:*)', 'Bash(npx:*)', 'Bash(node:*)', 'Bash(python3:*)', 'Bash(ls:*)', 'Bash(cat:*)'];
-const FIX_DENY = ['Bash(git push:*)', 'Bash(gh:*)', 'Bash(curl:*)', 'Bash(wget:*)', 'Bash(rm:*)', 'Bash(sudo:*)', 'Read(.env*)', 'Read(**/.env*)'];
 
 function defaultRun(cmd, args, { cwd, timeout = 120_000, env, input } = {}) {
   return new Promise((resolve) => {
@@ -120,6 +118,7 @@ export function createBridge(options) {
     const { finding } = job;
     job.branch = lib.branchName(finding.id, finding.title);
     const dir = path.join(worktreeRoot, finding.id);
+    const git = (args, cwd = dir, timeout) => run('git', args, { cwd, timeout });
     const fail = (text) => emit(job, { type: 'error', state: 'failed', text });
     const cleanup = async () => {
       await run('git', ['worktree', 'remove', '--force', dir], { cwd: root });
@@ -130,16 +129,22 @@ export function createBridge(options) {
     await mkdir(worktreeRoot, { recursive: true });
     const fetched = await run('git', ['fetch', 'origin', 'main'], { cwd: root, timeout: 90_000 });
     if (fetched.code !== 0) return fail('Gagal mengambil main dari GitHub');
+    // Sisa percobaan sebelumnya (worktree atau branch security/* milik jembatan ini) dibersihkan supaya klik ulang selalu bisa jalan.
+    await run('git', ['worktree', 'remove', '--force', dir], { cwd: root });
+    await run('git', ['worktree', 'prune'], { cwd: root });
+    const remoteHas = (await run('git', ['ls-remote', '--heads', 'origin', job.branch], { cwd: root, timeout: 60_000 })).stdout.trim();
+    if (remoteHas) job.branch = `${job.branch}-${Date.now().toString(36)}`;
+    await run('git', ['branch', '-D', job.branch], { cwd: root });
     const added = await run('git', ['worktree', 'add', '-b', job.branch, dir, 'origin/main'], { cwd: root });
-    if (added.code !== 0) return fail(`Gagal membuat worktree: ${added.stderr.trim().slice(0, 160)}. Jika branch ${job.branch} sudah ada, hapus dulu.`);
+    if (added.code !== 0) return fail(`Gagal membuat worktree: ${added.stderr.trim().slice(0, 160)}`);
 
     emit(job, { type: 'status', state: 'working', text: 'Agen mulai mengerjakan' });
     const env = { ...process.env };
     delete env.SAPA_GITHUB_TOKEN; delete env.SAPA_BRIDGE_TOKEN;
     const prompt = lib.buildFixPrompt(finding, { venvPython: python });
     const result = await new Promise((resolve) => {
-      const child = spawn(claudeBin, ['-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits',
-        '--allowedTools', FIX_TOOLS.join(','), '--disallowedTools', FIX_DENY.join(',')], { cwd: dir, env, stdio: ['pipe', 'pipe', 'pipe'] });
+      const child = spawn(claudeBin, ['-p', '--setting-sources', 'project', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits',
+        '--allowedTools', lib.fixTools(python).join(','), '--disallowedTools', lib.FIX_DENY.join(',')], { cwd: dir, env, stdio: ['pipe', 'pipe', 'pipe'] });
       let buffer = ''; let final = null;
       const timer = setTimeout(() => child.kill('SIGKILL'), 25 * 60_000);
       child.stdout.on('data', (chunk) => {
@@ -157,9 +162,16 @@ export function createBridge(options) {
     });
     if (result.code !== 0 || result.final?.ok === false) { await cleanup(); return fail(`Agen berhenti dengan galat${result.final?.text ? `: ${result.final.text.slice(0, 200)}` : ''}`); }
 
-    const ahead = Number((await run('git', ['rev-list', '--count', 'origin/main..HEAD'], { cwd: dir })).stdout.trim());
-    if (!ahead) { await cleanup(); return fail('Agen selesai tanpa membuat commit, jadi tidak ada perubahan untuk di-PR'); }
-    job.headSha = (await run('git', ['rev-parse', 'HEAD'], { cwd: dir })).stdout.trim();
+    // Jembatan yang menyimpan pekerjaan agen: satu commit dari semua perubahan di worktree.
+    const changed = (await git(['status', '--porcelain'])).stdout.trim();
+    if (!changed) { await cleanup(); return fail('Agen selesai tanpa mengubah berkas, jadi tidak ada yang bisa di-PR'); }
+    emit(job, { type: 'status', text: `Menyimpan ${changed.split('\n').length} berkas yang diubah agen` });
+    const staged = await git(['add', '-A']);
+    if (staged.code !== 0) return fail(`Gagal menyiapkan commit (worktree disimpan di ${dir}): ${staged.stderr.trim().slice(0, 160)}`);
+    const identity = (await git(['config', 'user.email'])).stdout.trim() ? [] : ['-c', 'user.name=Penjaga Privasi & Keamanan', '-c', 'user.email=security-agent@users.noreply.github.com'];
+    const committed = await git([...identity, 'commit', '-q', '-m', lib.commitMessage(finding, result.final?.text)]);
+    if (committed.code !== 0) return fail(`Gagal membuat commit (worktree disimpan di ${dir}): ${(committed.stderr || committed.stdout).trim().slice(0, 160)}`);
+    job.headSha = (await git(['rev-parse', 'HEAD'])).stdout.trim();
 
     emit(job, { type: 'status', state: 'verifying', text: 'Memindai ulang di branch' });
     if (lib.REPO_CHECKS.has(finding.check)) {
@@ -207,6 +219,22 @@ export function createBridge(options) {
     return { status: 202, body: { job: publicJob(job) } };
   }
 
+  // Pindai ulang di salinan bersih origin/main (bukan di checkout jembatan, yang bisa tertinggal), lalu gabungkan ke laporan terakhir.
+  async function rescanMain(checks) {
+    const dir = path.join(os.tmpdir(), `sapa-rescan-${Date.now()}`);
+    await run('git', ['fetch', 'origin', 'main'], { cwd: root, timeout: 90_000 });
+    if ((await run('git', ['worktree', 'add', '--detach', dir, 'origin/main'], { cwd: root })).code !== 0) return null;
+    try {
+      const out = path.join(dir, '.rescan.json');
+      await run(python, [scanScript(dir), '--only', checks.join(','), '--out', out], { cwd: dir, timeout: 180_000 });
+      const partial = JSON.parse(await readFile(out, 'utf8'));
+      const merged = lib.mergeReports(await readLatest(), partial, checks);
+      await mkdir(reports, { recursive: true });
+      await writeFile(path.join(reports, 'latest.json'), JSON.stringify(merged, null, 2));
+      return merged;
+    } catch { return null; } finally { await run('git', ['worktree', 'remove', '--force', dir], { cwd: root }); }
+  }
+
   async function watchDeploy(job, repo, sha) {
     const deadline = Date.now() + (options.deployTimeoutMs ?? 10 * 60_000);
     while (Date.now() < deadline) {
@@ -214,8 +242,14 @@ export function createBridge(options) {
       const status = await github('GET', `/repos/${repo.owner}/${repo.repo}/commits/${sha}/status`);
       const state = status.ok && status.data.statuses?.length ? status.data.state : 'pending';
       if (state === 'success') {
-        const rescan = await scan('production');
-        return emit(job, { type: 'deployed', state: 'deployed', text: 'Deploy produksi selesai; pemeriksaan produksi dijalankan ulang', report: rescan.body.report });
+        // Pemeriksaan produksi dan pemeriksaan yang melahirkan temuan itu, supaya angka di halaman langsung turun.
+        const checks = [...new Set([...lib.STATION_CHECKS.production, ...(lib.REPO_CHECKS.has(job.finding.check) ? [job.finding.check] : [])])];
+        const report = await rescanMain(checks);
+        const left = report?.findings.filter((f) => f.id === job.finding.id).length;
+        const text = !report ? 'Deploy produksi selesai, tetapi pemindaian ulang gagal; klik meja untuk memeriksa ulang'
+          : left ? 'Deploy produksi selesai; temuan ini MASIH terdeteksi di main, periksa lagi'
+          : 'Deploy produksi selesai; pemindaian ulang: temuan ini sudah hilang';
+        return emit(job, { type: 'deployed', state: 'deployed', text, report: report ?? undefined });
       }
       if (state === 'failure' || state === 'error') return emit(job, { type: 'error', state: 'deploy_failed', text: 'Deploy produksi gagal di Vercel. Pertimbangkan rollback.' });
     }
