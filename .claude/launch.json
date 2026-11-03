@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "sapa-frontend", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "3000", "--strictPort"], "port": 3000 }
+    { "name": "sapa-frontend", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "3000", "--strictPort"], "port": 3000 },
+    { "name": "sapa-frontend-auth0", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--host", "127.0.0.1", "--port", "3120", "--strictPort"], "port": 3120, "url": "http://127.0.0.1:3120" }
   ]
 }
