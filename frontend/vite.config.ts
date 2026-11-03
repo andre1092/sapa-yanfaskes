@@ -32,9 +32,6 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('plotly.js') || id.includes('react-plotly.js')) {
-              return 'vendor-plotly';
-            }
             if (id.includes('react') || id.includes('react-dom') || id.includes('zustand') || id.includes('@tanstack')) {
               return 'vendor-core';
             }
