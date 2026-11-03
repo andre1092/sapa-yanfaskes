@@ -22,11 +22,12 @@ const MODELS = ['room', 'agent', ...(Object.keys(LAYOUT) as StationId[]).map(id 
 export interface SecurityOffice {
   update(states: StationState[]): void;
   setActive(id: StationId | null): void;
+  setBusy(busy: boolean): void;
   dispose(): void;
 }
 
 export function createSecurityOffice(host: HTMLElement, options: {
-  dark: boolean; reducedMotion: boolean; onSelect(id: StationId): void; onLabels(labels: { id: StationId; x: number; y: number }[]): void;
+  dark: boolean; reducedMotion: boolean; onSelect(id: StationId): void; onAgent(): void; onLabels(labels: { id: StationId; x: number; y: number }[]): void;
 }): SecurityOffice {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -70,6 +71,7 @@ export function createSecurityOffice(host: HTMLElement, options: {
   const body = new THREE.Group();
   agent.add(body);
   scene.add(agent);
+  pickables.push(agent);
   const standPoint = (id: StationId) => {
     const [x, z, facing] = LAYOUT[id];
     return new THREE.Vector3(x + Math.sin(facing) * 1.25, 0, z + Math.cos(facing) * 1.25);
@@ -110,13 +112,14 @@ export function createSecurityOffice(host: HTMLElement, options: {
         child.castShadow = child.receiveShadow = child !== station.ring;
         if (child.material.name === 'Screen') { child.material = child.material.clone(); station.screens.push(child.material); }
       });
-      agentModel.traverse(child => { if (child instanceof THREE.Mesh) child.castShadow = true; });
+      agentModel.traverse(child => { child.userData.agent = true; if (child instanceof THREE.Mesh) child.castShadow = true; });
       body.add(agentModel);
       applyStates();
     })
     .catch(error => console.error('Model kantor keamanan gagal dimuat', error));
 
   let active: StationId | null = null;
+  let busy = false;
   let target = 0;
   let pause = 0;
   let frame = 0;
@@ -160,7 +163,8 @@ export function createSecurityOffice(host: HTMLElement, options: {
         body.position.y = Math.abs(Math.sin(t * 9)) * 0.06;
       } else {
         agent.rotation.y = agentFacing(station);
-        body.position.y = 0;
+        // Sibuk memeriksa atau memperbaiki: badan bergetar kecil seperti mengetik di meja.
+        body.position.y = busy ? 0.02 + Math.abs(Math.sin(t * 18)) * 0.03 : 0;
         pause += dt;
         if (!active && pause > 1.8) { pause = 0; target = (target + 1) % PATROL.length; }
       }
@@ -176,7 +180,8 @@ export function createSecurityOffice(host: HTMLElement, options: {
     const rect = renderer.domElement.getBoundingClientRect();
     raycaster.setFromCamera(new THREE.Vector2((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1), camera);
     const hit = raycaster.intersectObjects(pickables, true)[0];
-    if (hit?.object.userData.station) options.onSelect(hit.object.userData.station);
+    if (hit?.object.userData.agent) options.onAgent();
+    else if (hit?.object.userData.station) options.onSelect(hit.object.userData.station);
   };
   renderer.domElement.addEventListener('click', onClick);
 
@@ -191,6 +196,10 @@ export function createSecurityOffice(host: HTMLElement, options: {
         agent.position.copy(standPoint(id ?? 'production'));
         agent.rotation.y = agentFacing(id ?? 'production');
       }
+      needsRender = true;
+    },
+    setBusy(value) {
+      busy = value;
       needsRender = true;
     },
     dispose() {

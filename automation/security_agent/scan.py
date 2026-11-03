@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TARGET = "https://sapa-yanfaskes.vercel.app"
 REPORT_DIR = Path(__file__).resolve().parent / "reports"
 SEVERITIES = ("critical", "high", "medium", "low", "info")
+CHECK_IDS = ("secrets", "code", "privacy", "npm", "python", "headers", "auth_probe", "vercel_logs")
 SKIP_PARTS = ("node_modules", "/dist/", "package-lock.json", "bun.lock", ".agents/skills/", "graphify-out/", "design-reference/")
 TEXT_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".json", ".md", ".yml", ".yaml", ".toml", ".env", ".html", ".css", ".sql", ".txt", ".sh"}
 
@@ -304,26 +305,42 @@ def main(argv=None):
     parser.add_argument("--target", default=DEFAULT_TARGET)
     parser.add_argument("--offline", action="store_true", help="lewati pemeriksaan yang butuh jaringan")
     parser.add_argument("--vercel-logs", type=Path, help="JSON log runtime yang diambil agen lewat Vercel MCP")
+    parser.add_argument("--only", help="id pemeriksaan dipisah koma, mis. secrets,code; kosong berarti semua")
     parser.add_argument("--out", type=Path, default=REPORT_DIR / "latest.json")
     args = parser.parse_args(argv)
 
+    only = {item.strip() for item in args.only.split(",") if item.strip()} if args.only else None
+    if only is not None and not only <= set(CHECK_IDS):
+        parser.error(f"--only berisi id yang tidak dikenal: {', '.join(sorted(only - set(CHECK_IDS)))}")
+
+    def wanted(check_id):
+        return only is None or check_id in only
+
     report = Report(args.target)
-    report.run("secrets", "Rahasia di repositori", check_secrets)
-    report.run("code", "Pola kode rawan", check_code)
-    report.run("privacy", "Data pribadi di repositori", check_privacy_repo)
+    if wanted("secrets"):
+        report.run("secrets", "Rahasia di repositori", check_secrets)
+    if wanted("code"):
+        report.run("code", "Pola kode rawan", check_code)
+    if wanted("privacy"):
+        report.run("privacy", "Data pribadi di repositori", check_privacy_repo)
     if not args.offline:
-        report.run("npm", "Dependensi npm", check_npm)
-        report.run("python", "Dependensi Python (OSV)", check_python)
-        report.run("headers", "Header keamanan produksi", check_headers)
-        report.run("auth_probe", "Akses API tanpa login", check_auth_probe)
-    if args.vercel_logs:
+        if wanted("npm"):
+            report.run("npm", "Dependensi npm", check_npm)
+        if wanted("python"):
+            report.run("python", "Dependensi Python (OSV)", check_python)
+        if wanted("headers"):
+            report.run("headers", "Header keamanan produksi", check_headers)
+        if wanted("auth_probe"):
+            report.run("auth_probe", "Akses API tanpa login", check_auth_probe)
+    if args.vercel_logs and wanted("vercel_logs"):
         report.run("vercel_logs", "Log runtime Vercel", check_vercel_logs(args.vercel_logs))
 
     data = report.to_json()
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    stamp = data["generated_at"].replace(":", "").replace("-", "")[:15]
-    (args.out.parent / f"scan-{stamp}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    if only is None:  # riwayat hanya untuk patroli penuh; pemindaian sebagian tidak sebanding
+        stamp = data["generated_at"].replace(":", "").replace("-", "")[:15]
+        (args.out.parent / f"scan-{stamp}.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({"out": str(args.out), "summary": data["summary"],
                       "checks": {c["id"]: c["status"] for c in data["checks"]}}, ensure_ascii=False))
     return 1 if data["summary"]["critical"] else 0

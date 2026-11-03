@@ -45,3 +45,24 @@
   .security-office-stage, .security-office-canvas { min-height: 380px; }
   .office-tag { font-size: 11px; padding: 3px 8px; }
 }
+
+/* Jembatan lokal: periksa per meja, kerjakan saran, setujui deploy */
+.severity-chip.is-active { outline: 2px solid #1e5f8e; outline-offset: 1px; font-weight: 700; }
+.office-title-btn { all: unset; cursor: pointer; border-radius: 6px; }
+.office-title-btn:hover:not(:disabled) { text-decoration: underline; }
+.office-title-btn:disabled { cursor: progress; opacity: .6; }
+.office-title-btn:focus-visible, .office-fix-btn:focus-visible, .office-approve-btn:focus-visible, .office-pair button:focus-visible { outline: 3px solid #1e5f8e; outline-offset: 2px; }
+.office-pair { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; border: 1px dashed rgba(16, 24, 40, .3); font-size: 14px; }
+.office-pair div { display: flex; gap: 8px; }
+.office-pair input { flex: 1; min-width: 0; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(16, 24, 40, .25); font: inherit; background: transparent; color: inherit; }
+.office-pair button, .office-fix-btn, .office-approve-btn, .office-job-head button {
+  padding: 6px 12px; border-radius: 8px; border: 1px solid #1e5f8e; background: transparent; color: #1e5f8e; font: 600 13px/1.3 Poppins, system-ui, sans-serif; cursor: pointer; align-self: flex-start;
+}
+.office-fix-btn:hover:not(:disabled), .office-pair button:hover { background: #1e5f8e; color: #fff; }
+.office-fix-btn:disabled { opacity: .5; cursor: progress; }
+.office-approve-btn { background: #0f9d58; border-color: #0f9d58; color: #fff; padding: 10px 14px; }
+.office-approve-btn:hover { filter: brightness(.92); }
+.office-job { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; border: 1px solid rgba(30, 95, 142, .4); background: rgba(30, 95, 142, .06); font-size: 14px; }
+.office-job-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.office-job-log { margin: 0; padding-left: 18px; font-size: 13px; opacity: .85; }
+.office-job-summary { margin: 0; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
