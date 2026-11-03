@@ -593,10 +593,10 @@ def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str, force
     except Exception as e_urllib:
         logger.warning(f"urllib fetch failed for {sheet_name} (gid={gid}): {e_urllib}")
         
-    # Attempt 2: Fallback to requests with certifi/insecure if urllib failed
+    # Attempt 2: Fallback to requests (with certificate verification) if urllib failed
     if not content:
         try:
-            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8, verify=False)
+            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
             if r.status_code == 200 and r.content:
                 content = r.content
         except Exception as e_req:
@@ -1346,7 +1346,7 @@ def fetch_csv_records(spreadsheet_id: str, sheet_name: str, gid: Optional[str] =
 
     if not content:
         try:
-            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8, verify=False)
+            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
             if r.status_code == 200 and r.content:
                 content = r.content
         except Exception as e_req:
@@ -3002,7 +3002,7 @@ def fetch_fktp_antrol_dfs(force_refresh: bool = False) -> pl.DataFrame:
     except Exception as e1:
         logger.warning(f"urllib fetch failed for FKTP Capaian: {e1}")
         try:
-            r1 = requests.get(url1, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
+            r1 = requests.get(url1, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
             if r1.status_code == 200:
                 content1 = r1.content
         except Exception as e1_req:
@@ -3015,7 +3015,7 @@ def fetch_fktp_antrol_dfs(force_refresh: bool = False) -> pl.DataFrame:
     except Exception as e2:
         logger.warning(f"urllib fetch failed for FKTP Ref: {e2}")
         try:
-            r2 = requests.get(url2, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10, verify=False)
+            r2 = requests.get(url2, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
             if r2.status_code == 200:
                 content2 = r2.content
         except Exception as e2_req:
