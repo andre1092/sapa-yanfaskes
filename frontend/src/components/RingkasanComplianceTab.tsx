@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 import { AMBANG_PATUH_NILAI_AKHIR } from '../lib/kepatuhanJpeg';
+import { letakLabelTarget } from '../lib/labelTargetGrafik';
 
 export interface PilarSummaryItem {
   label: string;
@@ -557,16 +558,6 @@ export const RingkasanComplianceTab: React.FC = () => {
                   );
                 })}
 
-                {/* Label garis target */}
-                <text
-                  x="875"
-                  y={200 - (AMBANG_PATUH_NILAI_AKHIR / 100) * 160 - 5}
-                  textAnchor="end"
-                  className="text-[10px] font-bold fill-amber-700 select-none"
-                >
-                  Target &ge; {AMBANG_PATUH_NILAI_AKHIR} Poin
-                </text>
-
                 {/* SVG Curve & Area */}
                 {(() => {
                   const chartData = apiData.monthly_chart || [];
@@ -576,7 +567,24 @@ export const RingkasanComplianceTab: React.FC = () => {
                     return { x, y, data: d };
                   });
 
-                  if (points.length === 0) return null;
+                  // Tulisan target digeser bila menimpa angka titik data, dan digambar paling akhir.
+                  const letakTarget = letakLabelTarget(points, 200 - (AMBANG_PATUH_NILAI_AKHIR / 100) * 160);
+                  const labelTarget = (
+                    <text
+                      x={letakTarget.x}
+                      y={letakTarget.y}
+                      textAnchor={letakTarget.anchor}
+                      stroke="var(--surface)"
+                      strokeWidth="3"
+                      strokeLinejoin="round"
+                      paintOrder="stroke"
+                      className="text-[10px] font-bold fill-amber-700 select-none pointer-events-none"
+                    >
+                      Target &ge; {AMBANG_PATUH_NILAI_AKHIR} Poin
+                    </text>
+                  );
+
+                  if (points.length === 0) return labelTarget;
 
                   let pathD = `M ${points[0].x} ${points[0].y}`;
                   for (let i = 0; i < points.length - 1; i++) {
@@ -649,6 +657,7 @@ export const RingkasanComplianceTab: React.FC = () => {
                           </g>
                         );
                       })}
+                      {labelTarget}
                     </g>
                   );
                 })()}
