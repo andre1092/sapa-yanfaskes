@@ -5,6 +5,7 @@ import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
+import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
 export interface PengaduanKpiData {
   avg_capaian: number;
@@ -796,6 +797,10 @@ export const PengaduanComplianceTab: React.FC = () => {
               </svg>
             </div>
           </div>
+        </div>
+
+        <div className="flex justify-end px-4 pb-3">
+          <UnduhJpegKepatuhan tab="pengaduan" rows={processedTableRows} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
         </div>
 
         {/* Table Content */}

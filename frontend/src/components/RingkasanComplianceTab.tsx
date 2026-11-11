@@ -5,6 +5,7 @@ import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
+import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
 export interface PilarSummaryItem {
   label: string;
@@ -675,6 +676,7 @@ export const RingkasanComplianceTab: React.FC = () => {
             <span className="text-xs text-[var(--text-muted)]">
               Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas
             </span>
+            <UnduhJpegKepatuhan tab="ringkasan" rows={processedRows} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
           </div>
         </div>
 

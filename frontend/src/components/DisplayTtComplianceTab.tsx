@@ -5,6 +5,7 @@ import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
+import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
 export interface DisplayTtKpiData {
   avg_jumlah_update: number;
@@ -1057,6 +1058,8 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 Belum ({totalBelumTercapai})
               </button>
             </div>
+
+            <UnduhJpegKepatuhan tab="displayTt" rows={sortedTableData} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
 
             {/* Export CSV Button */}
             <button
