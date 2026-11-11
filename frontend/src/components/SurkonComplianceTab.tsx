@@ -5,6 +5,7 @@ import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
+import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
 export interface SurkonKpiData {
   avg_capaian: number;
@@ -631,8 +632,9 @@ export const SurkonComplianceTab: React.FC = () => {
               Daftar fasilitas kesehatan tingkat lanjutan beserta jumlah SEP yang terbit sesuai ketentuan bridging.
             </p>
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
-            Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas
+          <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)]">
+            <span>Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas</span>
+            <UnduhJpegKepatuhan tab="surkon" rows={processedRows} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
           </div>
         </div>
 
