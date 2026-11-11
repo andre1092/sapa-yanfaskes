@@ -1411,6 +1411,21 @@ def compute_nakes_capaian(persen: float, total_k: int) -> float:
     else:
         return 0.0
 
+
+def nakes_persen_capaian(sesuai: int, total_k: int, ada_data: bool, capaian_bi: float) -> tuple:
+    """Persen sesuai dan capaian jadwal praktik satu faskes.
+
+    Sel Total Kunjungan yang kosong di spreadsheet berarti BI belum punya data
+    faskes itu. Capaiannya mengikuti kolom Capaian dari BI, bukan aturan
+    "tidak ada kunjungan = 100" yang hanya berlaku bila datanya ada dan nol.
+    """
+    if total_k > 0:
+        persen = round((sesuai / total_k * 100.0), 1)
+        return persen, compute_nakes_capaian(persen, total_k)
+    if ada_data:
+        return 100.0, compute_nakes_capaian(100.0, 0)
+    return 0.0, capaian_bi
+
 # Helper: Logika Resmi Perhitungan Capaian Penyelesaian Pengaduan SLA
 # a) Tidak ada pengaduan secara konsisten pada 3 (tiga) bulan terakhir secara berturut-turut = 100
 # b) Tidak ada pengaduan pada bulan penilaian = 75
@@ -1585,6 +1600,7 @@ async def get_fkrtl_kepatuhan_nakes(
                 "persen_sesuai": p_val,
                 "capaian": c_val,
                 "capaian_nilai": c_nilai,
+                "ada_data": bool(r.get("Total Kunjungan", "").strip()),
             })
 
         # 4. Generate Comprehensive Filter Options (Cascading / Dependent Filters)
@@ -1662,7 +1678,11 @@ async def get_fkrtl_kepatuhan_nakes(
                     "total_kunjungan": 0,
                     "tidak_sesuai": 0,
                     "sesuai": 0,
+                    "ada_data": False,
+                    "capaian_bi": [],
                 }
+            faskes_grouped_map[k]["ada_data"] = faskes_grouped_map[k]["ada_data"] or r["ada_data"]
+            faskes_grouped_map[k]["capaian_bi"].append(r["capaian"])
             faskes_grouped_map[k]["total_kunjungan"] += r["total_kunjungan"]
             faskes_grouped_map[k]["tidak_sesuai"] += r["tidak_sesuai"]
             faskes_grouped_map[k]["sesuai"] += r["sesuai"]
@@ -1675,8 +1695,8 @@ async def get_fkrtl_kepatuhan_nakes(
             tot = v["total_kunjungan"]
             ss = v["sesuai"]
             ts = v["tidak_sesuai"]
-            p_sesuai = round((ss / tot * 100.0), 1) if tot > 0 else 100.0
-            c_val = compute_nakes_capaian(p_sesuai, tot)
+            capaian_bi = round(sum(v["capaian_bi"]) / len(v["capaian_bi"]), 2) if v["capaian_bi"] else 0.0
+            p_sesuai, c_val = nakes_persen_capaian(ss, tot, v["ada_data"], capaian_bi)
             is_tercapai = bool(c_val >= 100.0)
 
             faskes_aggregated.append({
@@ -1750,7 +1770,10 @@ async def get_fkrtl_kepatuhan_nakes(
             by_month[m]["sesuai"] += r["sesuai"]
             by_month[m]["total"] += r["total_kunjungan"]
             by_month[m]["p_sum"] += r["persen_sesuai"]
-            m_cap = compute_nakes_capaian(r["persen_sesuai"], r["total_kunjungan"])
+            if r["ada_data"]:
+                m_cap = compute_nakes_capaian(r["persen_sesuai"], r["total_kunjungan"])
+            else:
+                m_cap = r["capaian"]
             by_month[m]["c_sum"] += m_cap
             if m_cap >= 100.0:
                 by_month[m]["met_count"] += 1
