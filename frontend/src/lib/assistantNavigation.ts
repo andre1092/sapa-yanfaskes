@@ -1,7 +1,7 @@
 export const assistantReports = {
   kepatuhan_fkrtl: { menu: 'Capaian Kepatuhan FKRTL', path: '/kepatuhanfkrtl', label: 'Kepatuhan FKRTL' },
   antrol_fkrtl: { menu: 'Pemanfaatan Antrol FKRTL', path: '/antrolfkrtl', label: 'Antrean online FKRTL' },
-  kepatuhan_fktp: { menu: 'Capaian Kepatuhan FKTP', path: '/kepatuhanfktp', label: 'Kepatuhan FKTP' },
+  kepatuhan_fktp: { menu: 'Capaian Kepatuhan FKTP', path: '/kepatuhanfktp', label: 'Antrean online FKTP' },
   monitoring_laras: { menu: 'Monitoring LARAS', path: '/monitoring-laras', label: 'Monitoring LARAS' },
 } as const;
 

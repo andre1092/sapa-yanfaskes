@@ -16,6 +16,7 @@ import { HeroUIAssistant } from './HeroUIAssistant';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { useLogStore, type LogRole } from '../store/logStore';
+import { namaTampilan, peranTampilan } from '../lib/namaTampilan';
 
 const ROUTE_MAP: Record<string, string> = {
   '/monitoring-laras': 'Monitoring LARAS',
@@ -26,13 +27,6 @@ const ROUTE_MAP: Record<string, string> = {
   '/antrol-fkrtl': 'Pemanfaatan Antrol FKRTL',
   '/kepatuhanfktp': 'Capaian Kepatuhan FKTP',
   '/kepatuhan-fktp': 'Capaian Kepatuhan FKTP',
-  '/activity': 'Activity',
-  '/touchpoints': 'Touchpoints',
-  '/installs-&-uninstalls': 'Installs & Uninstalls',
-  '/agency': 'Agency',
-  '/fraud': 'Fraud',
-  '/smart-banners': 'Smart Banners',
-  '/events': 'Events',
   '/user': 'User',
   '/logs': 'Logs',
   '/integration': 'Integration',
@@ -64,12 +58,11 @@ const getMenuFromCurrentPath = (): string => {
 
 
 const sections = [
-  { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Monitoring LARAS', 'Monitoring LARAS']] },
-  { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL'], ['Capaian Kepatuhan FKTP', 'Kepatuhan FKTP']] },
-  { label: 'Administrasi', items: [['User', 'Pengguna'], ['Logs', 'Log aktivitas'], ['Integration', 'Integrasi data'], ['Validation Rules', 'Aturan validasi']] },
+  { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Capaian Kepatuhan FKTP', 'Antrean online FKTP'], ['Monitoring LARAS', 'Monitoring LARAS']] },
+  { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL']] },
+  { label: 'Administrasi', items: [['User', 'Pengguna'], ['Logs', 'Log aktivitas'], ['Integration', 'Integrasi data'], ['Validation Rules', 'Pengaturan']] },
 ];
-const extraItems = [['Activity', 'Aktivitas'], ['Touchpoints', 'Titik interaksi'], ['Installs & Uninstalls', 'Pemasangan aplikasi'], ['Agency', 'Agensi'], ['Fraud', 'Deteksi kecurangan'], ['Smart Banners', 'Banner'], ['Events', 'Agenda']];
-const labelFor = (menu: string) => [...sections.flatMap(section => section.items), ...extraItems].find(([key]) => key === menu)?.[1] || menu;
+const labelFor = (menu: string) => sections.flatMap(section => section.items).find(([key]) => key === menu)?.[1] || menu;
 
 const navPaths: Record<string, string> = {
   'Monitoring LARAS': 'M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
@@ -88,6 +81,8 @@ export const InsightTracerDashboard: React.FC = () => {
   const { user, logoutUser } = useAuthStore();
   const { effectiveTheme, setTheme } = useThemeStore();
   const { addLog } = useLogStore();
+  const nama = namaTampilan(user);
+  const peran = peranTampilan(user?.role);
   const [activeMenu, setActiveMenu] = useState(getMenuFromCurrentPath);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -156,9 +151,9 @@ export const InsightTracerDashboard: React.FC = () => {
 
 
   const navigation = <FloatingSidebar
-    sections={sections} extraItems={extraItems} routes={MENU_TO_ROUTE}
+    sections={sections} routes={MENU_TO_ROUTE}
     activeMenu={activeMenu} onNavigate={handleMenuSelect}
-    userName={user?.name || user?.username || 'Pengguna'} userRole={user?.role || 'User'}
+    userName={nama} userRole={peran}
     dark={effectiveTheme === 'dark'} onToggleTheme={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
     onLogout={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }}
     onSearch={() => { setMobileMenuOpen(false); setSearchOpen(true); }}
@@ -176,7 +171,7 @@ export const InsightTracerDashboard: React.FC = () => {
         <Box sx={{ flexGrow: 1 }} />
         <IconButton aria-label="Cari menu" onClick={() => setSearchOpen(true)} sx={{ display: { sm: 'none' } }}><IconSearch size={20} /></IconButton>
         <IconButton aria-label={effectiveTheme === 'dark' ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')} sx={{ color: 'secondary.main', bgcolor: 'secondary.light', borderRadius: 2 }}>{effectiveTheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}</IconButton>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'background.default', borderRadius: 6, py: 0.5, pl: 0.5, pr: { xs: 0.5, sm: 2 } }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main' }}>{(user?.name || user?.username || 'S').slice(0, 1).toUpperCase()}</Avatar><Box sx={{ display: { xs: 'none', md: 'block' } }}><Typography variant="subtitle2">{user?.name || user?.username || 'Pengguna'}</Typography><Typography variant="caption" color="text.secondary">{user?.role || 'User'}</Typography></Box></Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'background.default', borderRadius: 6, py: 0.5, pl: 0.5, pr: { xs: 0.5, sm: 2 } }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main' }}>{nama.slice(0, 1).toUpperCase()}</Avatar><Box sx={{ display: { xs: 'none', md: 'block' } }}><Typography variant="subtitle2">{nama}</Typography><Typography variant="caption" color="text.secondary">{peran}</Typography></Box></Box>
       </Toolbar>
     </AppBar>
     {desktop ? navigation : <Drawer variant="temporary" open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} slotProps={{ paper: { sx: { width: 'min(264px, 100vw)', border: 0, bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none' } } }}>{navigation}</Drawer>}
@@ -186,12 +181,12 @@ export const InsightTracerDashboard: React.FC = () => {
         {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'User' ? <UserManagementView /> : activeMenu === 'Logs' ? <LogsView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
-            <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch' }}>Selamat datang, {user?.name?.split(' ')[0] || user?.username || 'Pengguna'}</Typography>
+            <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch', overflowWrap: 'anywhere' }}>Selamat datang, {nama.split(' ')[0]}</Typography>
             <Typography sx={{ maxWidth: '65ch', mb: 3 }}>Telusuri capaian fasilitas kesehatan dan temukan hal yang perlu mendapat perhatian.</Typography>
             <Button variant="contained" color="inherit" href="/kepatuhanfkrtl" onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect('Capaian Kepatuhan FKRTL'); } }} sx={{ bgcolor: 'background.paper', color: 'text.primary', boxShadow: 'none', '&:hover': { bgcolor: 'background.default' } }}>Buka kepatuhan FKRTL</Button>
           </Paper>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 3 }}>
-            {[['Pemanfaatan Antrol FKRTL','Antrean online FKRTL','Pahami pemanfaatan antrean rumah sakit, dari fasilitas hingga poliklinik.'],['Capaian Kepatuhan FKTP','Kepatuhan FKTP','Tinjau pemanfaatan antrean dan capaian fasilitas kesehatan tingkat pertama.']].map(([key,label,description]) => <Paper key={key} elevation={0} sx={{ p: 3, borderRadius: 3 }}><Avatar variant="rounded" sx={{ bgcolor: 'primary.light', color: 'primary.dark', mb: 2 }}><NavIcon name={key} /></Avatar><Typography variant="h3" component="h2" sx={{ mb: 1 }}>{label}</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>{description}</Typography><Button href={MENU_TO_ROUTE[key]} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect(key); } }}>Buka laporan</Button></Paper>)}
+            {[['Pemanfaatan Antrol FKRTL','Antrean online FKRTL','Pahami pemanfaatan antrean rumah sakit, dari fasilitas hingga poliklinik.'],['Capaian Kepatuhan FKTP','Antrean online FKTP','Tinjau pemanfaatan antrean online fasilitas kesehatan tingkat pertama.']].map(([key,label,description]) => <Paper key={key} elevation={0} sx={{ p: 3, borderRadius: 3 }}><Avatar variant="rounded" sx={{ bgcolor: 'primary.light', color: 'primary.dark', mb: 2 }}><NavIcon name={key} /></Avatar><Typography variant="h3" component="h2" sx={{ mb: 1 }}>{label}</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>{description}</Typography><Button href={MENU_TO_ROUTE[key]} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect(key); } }}>Buka laporan</Button></Paper>)}
           </Box>
           <Paper component="section" elevation={0} aria-label="Panduan membaca laporan" sx={{ p: 3, borderRadius: 3 }}><Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alur pemantauan</Typography><Stack spacing={3} direction={{ xs: 'column', md: 'row' }}>{[['Pilih konteks','Tentukan periode dan fasilitas melalui filter laporan.'],['Telusuri capaian','Baca indikator bersama grafik dan rincian sumbernya.'],['Siapkan tindak lanjut','Gunakan hasil ekspor yang tersedia untuk pembahasan berikutnya.']].map(([title,description],index) => <Box key={title} sx={{ flex: 1 }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main', mb: 1.5 }}>{index + 1}</Avatar><Typography component="h3" variant="h4" sx={{ mb: 1 }}>{title}</Typography><Typography color="text.secondary" variant="body2">{description}</Typography></Box>)}</Stack></Paper>
         </Box> : <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography variant="h4" component="h2" sx={{ mb: 1 }}>Modul belum tersedia</Typography><Typography color="text.secondary" sx={{ mb: 3 }}>Modul ini belum memiliki data atau fungsi yang dapat digunakan.</Typography><Button variant="contained" onClick={() => handleMenuSelect('Home')}>Kembali ke beranda</Button></Paper>}
