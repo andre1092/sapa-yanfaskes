@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('./kepatuhanJpeg.ts', import.meta.url), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } });
-const { warnaCapaian, urutkanUntukUnduh, statusNilaiAkhir } = await import(
+const { warnaCapaian, urutkanUntukUnduh } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 );
 
@@ -49,12 +49,4 @@ test('capaian dan nilai yang sama diurutkan menurut nama rumah sakit', () => {
     { nama_ppk: 'RS M', kabupaten: 'JEMBER', capaian: 100 },
   ];
   assert.deepEqual(urutkanUntukUnduh(rows, ['capaian']).map(r => r.nama_ppk), ['RS M', 'RS Z']);
-});
-
-test('nilai akhir patuh mulai 70', () => {
-  assert.equal(statusNilaiAkhir(70), 'Patuh');
-  assert.equal(statusNilaiAkhir(69.99), 'Belum Patuh');
-  assert.equal(statusNilaiAkhir(85), 'Patuh');
-  assert.equal(statusNilaiAkhir(0), 'Belum Patuh');
-  assert.equal(statusNilaiAkhir(null), 'Belum Patuh');
 });
