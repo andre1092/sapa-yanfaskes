@@ -16,6 +16,9 @@ SURKON_SPREADSHEET_ID = "1zgkvAL2qu2pcUtphUNJtcqDsFZFWFmxm91Jivwp3PCM"
 RME_SPREADSHEET_ID = "1pFTad-Hwl8PqVxgf5xiJn0lE63ssI9ZeI4VLpLwtl7c"
 REF_FASKES_SPREADSHEET_ID = "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs"
 
+# Nilai akhir kepatuhan FKRTL dihitung Patuh mulai dari angka ini.
+AMBANG_PATUH_NILAI_AKHIR = 70.0
+
 MONTH_ORDER = [
     "January 2026", "February 2026", "March 2026",
     "April 2026", "May 2026", "June 2026",
@@ -179,8 +182,8 @@ def process_ringkasan_kepatuhan(
             "nilai_surkon": surkon_pct,
             "rme_pct": rme_pct,
             "nilai_rme": rme_pct,
-            "is_met": nilai_all >= 85.0,
-            "status": "Patuh" if nilai_all >= 85.0 else "Belum Patuh"
+            "is_met": nilai_all >= AMBANG_PATUH_NILAI_AKHIR,
+            "status": "Patuh" if nilai_all >= AMBANG_PATUH_NILAI_AKHIR else "Belum Patuh"
         })
 
     # Filter Cascading & Normalisasi Bulan Kronologis
@@ -208,7 +211,7 @@ def process_ringkasan_kepatuhan(
         b_rows = [r for r in chart_pool if r["bulan"] == b]
         b_total = len(b_rows)
         b_avg = round(sum(r["nilai_akhir_all"] for r in b_rows) / b_total, 2) if b_total else 0.0
-        b_met = sum(1 for r in b_rows if r["nilai_akhir_all"] >= 85.0)
+        b_met = sum(1 for r in b_rows if r["nilai_akhir_all"] >= AMBANG_PATUH_NILAI_AKHIR)
 
         parts = b.split()
         short_m = parts[0][:3] if parts else b
@@ -246,7 +249,7 @@ def process_ringkasan_kepatuhan(
 
     total_faskes = len(filtered)
     avg_all = round(sum(r["nilai_akhir_all"] for r in filtered) / total_faskes, 2) if total_faskes else 0.0
-    patuh_count = sum(1 for r in filtered if r["nilai_akhir_all"] >= 85.0)
+    patuh_count = sum(1 for r in filtered if r["nilai_akhir_all"] >= AMBANG_PATUH_NILAI_AKHIR)
 
     pilar_keys = [
         ("Jadwal Dokter (25%)", "nilai_jadwal_dokter"),
@@ -272,7 +275,7 @@ def process_ringkasan_kepatuhan(
         "selected_period": target_bulan,
         "kpi": {
             "avg_nilai_akhir": avg_all,
-            "target_nasional": 85.0,
+            "target_nasional": AMBANG_PATUH_NILAI_AKHIR,
             "total_faskes": total_faskes,
             "total_patuh": patuh_count,
             "total_belum_patuh": total_faskes - patuh_count,

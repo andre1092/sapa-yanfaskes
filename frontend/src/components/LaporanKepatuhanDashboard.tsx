@@ -3,6 +3,7 @@ import '../berry/berry-dashboards.css';
 import { Box, Chip, Stack, Tab, Tabs, Typography } from '@mui/material';
 import React, { useState, useMemo } from 'react';
 import { RingkasanComplianceTab } from './RingkasanComplianceTab';
+import { AMBANG_PATUH_NILAI_AKHIR } from '../lib/kepatuhanJpeg';
 import { NakesComplianceTab } from './NakesComplianceTab';
 import { PengaduanComplianceTab } from './PengaduanComplianceTab';
 import { UmablComplianceTab } from './UmablComplianceTab';
@@ -42,8 +43,8 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     code: '00',
     name: '00. Ringkasan Nilai Akhir',
     shortName: 'Ringkasan Nilai Akhir',
-    targetPercent: 85,
-    targetLabel: '≥ 85.00 Poin',
+    targetPercent: AMBANG_PATUH_NILAI_AKHIR,
+    targetLabel: `≥ ${AMBANG_PATUH_NILAI_AKHIR.toFixed(2)} Poin`,
     badgeLabel: '100 Poin',
     description: 'Konsolidasi capaian 8 pilar standar mutu kepatuhan faskes rujukan tingkat lanjutan (FKRTL) BPJS Kesehatan',
     kpiLabel: 'Nilai Akhir Kepatuhan',

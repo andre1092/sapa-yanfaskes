@@ -4,6 +4,7 @@ import { AnimatedButton } from "./ui/AnimatedButton";
 import React, { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../lib/apiClient";
+import { AMBANG_PATUH_NILAI_AKHIR } from "../lib/kepatuhanJpeg";
 import { useSyncStore, formatCurrentTimestamp } from "../store/syncStore";
 import { useLogStore, type LogRole } from "../store/logStore";
 import { useAuthStore } from "../store/authStore";
@@ -33,7 +34,7 @@ const MODULES_REGISTRY: DataModuleMeta[] = [
     category: "FKRTL_KEPATUHAN",
     categoryLabel: "Kepatuhan FKRTL",
     icon: "DATA",
-    targetMetric: "≥ 85.00 Poin",
+    targetMetric: `≥ ${AMBANG_PATUH_NILAI_AKHIR.toFixed(2)} Poin`,
     weight: "Konsolidasi 8 Pilar",
     spreadsheetId: "1jzNWEPc4yGodIQQJ8VgVsN3V3mgQ_WaIWDxyYgjhAkM",
     sheetName: "nilai_kepatuhan_fkrtl",

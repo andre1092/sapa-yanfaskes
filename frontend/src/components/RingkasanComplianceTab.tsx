@@ -6,6 +6,7 @@ import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
+import { AMBANG_PATUH_NILAI_AKHIR } from '../lib/kepatuhanJpeg';
 
 export interface PilarSummaryItem {
   label: string;
@@ -140,7 +141,7 @@ export const RingkasanComplianceTab: React.FC = () => {
 
   const kpi = apiData?.kpi || {
     avg_nilai_akhir: 0,
-    target_nasional: 85,
+    target_nasional: AMBANG_PATUH_NILAI_AKHIR,
     total_faskes: 0,
     total_patuh: 0,
     total_belum_patuh: 0,
@@ -251,7 +252,7 @@ export const RingkasanComplianceTab: React.FC = () => {
           <MainCard content={false} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 berry-dashboard-card p-3 rounded-xl min-w-0">
             <div>
               <span className="text-xs text-[var(--text-muted)] block font-medium">Target Nasional</span>
-              <span className="text-2xl font-semibold text-[var(--bpjs-green)] font-mono">&ge; 85.00</span>
+              <span className="text-2xl font-semibold text-[var(--bpjs-green)] font-mono">&ge; {AMBANG_PATUH_NILAI_AKHIR.toFixed(2)}</span>
             </div>
             <div className="h-10 w-px bg-[var(--surface)] hidden sm:block" />
             <div>
@@ -350,8 +351,8 @@ export const RingkasanComplianceTab: React.FC = () => {
               className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
             >
               <FilterOption value="ALL" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Semua Status</FilterOption>
-              <FilterOption value="TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Patuh (&ge;85)</FilterOption>
-              <FilterOption value="BELUM_TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Belum Patuh (&lt;85)</FilterOption>
+              <FilterOption value="TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">{`Patuh (≥${AMBANG_PATUH_NILAI_AKHIR})`}</FilterOption>
+              <FilterOption value="BELUM_TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">{`Belum Patuh (<${AMBANG_PATUH_NILAI_AKHIR})`}</FilterOption>
             </FilterSelect>
           </div>
         </div>
@@ -386,13 +387,13 @@ export const RingkasanComplianceTab: React.FC = () => {
             <span className="text-xs font-bold text-[var(--text-muted)]">/ 100</span>
           </div>
           <span className="text-[10.5px] text-[var(--warning-text)] mt-1 block font-semibold">
-            Standar Target Nasional: &ge; 85.00
+            Standar Target Nasional: &ge; {AMBANG_PATUH_NILAI_AKHIR.toFixed(2)}
           </span>
         </MainCard>
 
         <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
           <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
-            Faskes Memenuhi Standar (&ge;85)
+            Faskes Memenuhi Standar (&ge;{AMBANG_PATUH_NILAI_AKHIR})
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-semibold text-[var(--bpjs-green)] font-mono">
@@ -409,7 +410,7 @@ export const RingkasanComplianceTab: React.FC = () => {
 
         <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
           <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
-            Faskes Belum Memenuhi (&lt;85)
+            Faskes Belum Memenuhi (&lt;{AMBANG_PATUH_NILAI_AKHIR})
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-semibold text-[var(--danger)] font-mono">
@@ -487,7 +488,7 @@ export const RingkasanComplianceTab: React.FC = () => {
                 GRAFIK BULANAN: TREN RATA-RATA NILAI AKHIR MUTU FKRTL (POIN)
               </Typography>
               <p className="text-[11px] text-[var(--text-muted)]">
-                Tren rata-rata skor nilai akhir mutu konsolidasi seluruh indikator FKRTL • Standar Kelulusan &ge; 85.00 Poin
+                Tren rata-rata skor nilai akhir mutu konsolidasi seluruh indikator FKRTL • Standar Kelulusan &ge; {AMBANG_PATUH_NILAI_AKHIR.toFixed(2)} Poin
               </p>
             </div>
 
@@ -498,7 +499,7 @@ export const RingkasanComplianceTab: React.FC = () => {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-0.5 border-t-2 border-dashed border-amber-500" />
-                <span className="text-[var(--warning-text)] font-semibold text-[11px]">Target &ge; 85 Poin</span>
+                <span className="text-[var(--warning-text)] font-semibold text-[11px]">Target &ge; {AMBANG_PATUH_NILAI_AKHIR} Poin</span>
               </div>
             </div>
           </div>
@@ -509,7 +510,7 @@ export const RingkasanComplianceTab: React.FC = () => {
               <div className="flex items-center gap-3 text-xs">
                 <span className="font-bold text-[var(--text-main)]">{hoveredMonth.bulan_indo || hoveredMonth.bulan}:</span>
                 <span className="font-mono font-bold text-[var(--bpjs-green)]">{fmtNum(hoveredMonth.avg_capaian, 2)} Poin</span>
-                <span className="text-[var(--text-muted)] font-mono">({hoveredMonth.faskes_count} Faskes • {hoveredMonth.met_count} RS Memenuhi Standar &ge;85)</span>
+                <span className="text-[var(--text-muted)] font-mono">({hoveredMonth.faskes_count} Faskes • {hoveredMonth.met_count} RS Memenuhi Standar &ge;{AMBANG_PATUH_NILAI_AKHIR})</span>
               </div>
             ) : (
               <span className="text-xs text-[var(--text-muted)] italic">
@@ -529,9 +530,10 @@ export const RingkasanComplianceTab: React.FC = () => {
                 </defs>
 
                 {/* Grid horizontal lines */}
-                {[0, 25, 50, 75, 85, 100].map((val) => {
+                {/* Garis kisi yang terlalu dekat dengan garis target dibuang supaya angkanya tidak bertumpuk. */}
+                {[...[0, 25, 50, 75, 100].filter((val) => Math.abs(val - AMBANG_PATUH_NILAI_AKHIR) >= 10), AMBANG_PATUH_NILAI_AKHIR].map((val) => {
                   const y = 200 - (val / 100) * 160;
-                  const isTarget = val === 85;
+                  const isTarget = val === AMBANG_PATUH_NILAI_AKHIR;
                   return (
                     <g key={val}>
                       <line
@@ -555,14 +557,14 @@ export const RingkasanComplianceTab: React.FC = () => {
                   );
                 })}
 
-                {/* Target label 85 */}
+                {/* Label garis target */}
                 <text
                   x="875"
-                  y={200 - (85 / 100) * 160 - 5}
+                  y={200 - (AMBANG_PATUH_NILAI_AKHIR / 100) * 160 - 5}
                   textAnchor="end"
                   className="text-[10px] font-bold fill-amber-700 select-none"
                 >
-                  Target &ge; 85 Poin
+                  Target &ge; {AMBANG_PATUH_NILAI_AKHIR} Poin
                 </text>
 
                 {/* SVG Curve & Area */}
