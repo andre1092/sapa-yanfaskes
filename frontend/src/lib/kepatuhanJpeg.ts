@@ -25,14 +25,8 @@ export const warnaCapaian = (nilai: unknown): WarnaCapaian => {
   return 'kuning';
 };
 
-/** Batas Patuh untuk Nilai Akhir kepatuhan di gambar JPEG (keputusan CEO 2026-11-12). */
+/** Batas Patuh untuk Nilai Akhir kepatuhan yang ditampilkan di layar. */
 export const AMBANG_PATUH_NILAI_AKHIR = 70;
-
-export const statusNilaiAkhir = (nilai: unknown): 'Patuh' | 'Belum Patuh' => {
-  const n = keAngka(nilai);
-  if (n === null) return 'Belum Patuh';
-  return Math.round(n * 100) / 100 >= AMBANG_PATUH_NILAI_AKHIR ? 'Patuh' : 'Belum Patuh';
-};
 
 type BarisUnduh = { kabupaten?: unknown; nama_ppk?: unknown };
 

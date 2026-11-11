@@ -1,5 +1,5 @@
 // Isi gambar JPEG tiap tab Kepatuhan FKRTL: judul, kolom, dan urutan baris.
-import { AMBANG_PATUH_NILAI_AKHIR, formatCapaian, statusNilaiAkhir, warnaCapaian } from '../lib/kepatuhanJpeg';
+import { formatCapaian } from '../lib/kepatuhanJpeg';
 import type { RingkasanTableRow } from './RingkasanComplianceTab';
 import type { NakesTableRow } from './NakesComplianceTab';
 import type { PengaduanTableRow } from './PengaduanComplianceTab';
@@ -70,12 +70,6 @@ const capaian = <T extends { capaian: number }>(label = 'Capaian (%)'): KolomUnd
   capaian: row => row.capaian,
 });
 
-const statusCapaian = <T extends { capaian: number }>(): KolomUnduhJpeg<T> => ({
-  label: 'Status',
-  rata: 'center',
-  teks: row => (warnaCapaian(row.capaian) === 'hijau' ? 'Tercapai' : 'Belum Tercapai'),
-});
-
 /** Sel indikator di ringkasan berisi poin berbobot; capaiannya adalah poin dibagi bobot. */
 const pilar = (label: string, kunci: keyof RingkasanTableRow, bobot: number): KolomUnduhJpeg<RingkasanTableRow> => ({
   label: `${label} (${bobot}%)`,
@@ -92,7 +86,7 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
     judul: '00. Ringkasan Nilai Akhir',
     namaBerkas: 'Ringkasan',
     kunciUrut: ['nilai_akhir'],
-    catatan: `Warna sel indikator menurut capaian terhadap bobotnya (poin ÷ bobot). Nilai Akhir: Patuh bila ≥ ${AMBANG_PATUH_NILAI_AKHIR}.`,
+    catatan: 'Warna sel indikator menurut capaian terhadap bobotnya (poin ÷ bobot).',
     kolom: [
       teks('Kode PPK', 'kode_ppk'),
       teks('Nama Rumah Sakit', 'nama_ppk'),
@@ -106,7 +100,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       pilar('Surkon', 'surkon_pct', 5),
       pilar('RME', 'rme_pct', 5),
       { label: 'Nilai Akhir', rata: 'center', teks: row => formatCapaian(row.nilai_akhir) },
-      { label: 'Status', rata: 'center', teks: row => statusNilaiAkhir(row.nilai_akhir) },
     ],
   },
   nakes: {
@@ -122,7 +115,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       jumlah('Sesuai', 'sesuai'),
       desimal('Persen Sesuai (%)', 'persen_sesuai'),
       capaian(),
-      statusCapaian(),
     ],
   },
   pengaduan: {
@@ -139,7 +131,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       jumlah('Top 10 Tahun Lalu', 'top10_thnlalu'),
       jumlah('Tidak Ditindaklanjuti', 'tidak_ditindaklanjuti'),
       capaian(),
-      statusCapaian(),
     ],
   },
   umabl: {
@@ -155,7 +146,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       jumlah('Target', 'target'),
       desimal('% Jlh Responden Target', 'persen_responden_target'),
       capaian(),
-      statusCapaian(),
     ],
   },
   displayTt: {
@@ -168,7 +158,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       teks('Tipe Faskes', 'tipe_faskes'),
       jumlah('Jumlah Update (Hari)', 'jumlah_update'),
       capaian('Capaian (Poin)'),
-      statusCapaian(),
     ],
   },
   tmo: {
@@ -184,7 +173,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       desimal('Antrol TMO (%)', 'persentase_antrol'),
       capaian(),
       desimal('Poin (5%)', 'capaian_nilai'),
-      statusCapaian(),
     ],
   },
   antreanWtl: {
@@ -203,7 +191,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       desimal('Task 4 (%)', 'persen_t4'),
       capaian(),
       desimal('Poin (20%)', 'capaian_nilai'),
-      statusCapaian(),
     ],
   },
   surkon: {
@@ -219,7 +206,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       desimal('Kesesuaian (%)', 'persentase'),
       capaian(),
       desimal('Poin (5%)', 'capaian_nilai'),
-      statusCapaian(),
     ],
   },
   rme: {
@@ -237,7 +223,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       desimal('Persentase (%)', 'persentase_rme'),
       capaian(),
       desimal('Poin (5%)', 'capaian_nilai'),
-      statusCapaian(),
     ],
   },
 };
