@@ -226,7 +226,7 @@
   - Mentransformasi menu **Integration** menjadi pusat kendali pembaruan data capaian fasilitas kesehatan yang profesional, rapi, bersih, berstruktur, dan mudah dipahami.
   - Mengadopsi palet warna institusional BPJS Kesehatan (`#2b4390`, `#44853b`, `#d4ecd1`, `#6573a1`) dengan kartu putih modern bergaris batas halus (*non-AI enterprise theme*).
 - **Cakupan 11 Modul Capaian Terverifikasi**:
-  1. **Tab 00. Ringkasan Nilai Akhir Kepatuhan FKRTL**: Konsolidasi capaian 8 pilar standar mutu rumah sakit (Target: ≥ 85.00 Poin).
+  1. **Tab 00. Ringkasan Nilai Akhir Kepatuhan FKRTL**: Konsolidasi capaian 8 pilar standar mutu rumah sakit (Target: ≥ 70.00 Poin).
   2. **Tab 01. Kesesuaian Jadwal Praktik Dokter / Nakes**: Kepatuhan jadwal praktik nakes di HFIS vs riil (Bobot 25%, Target: 100%).
   3. **Tab 02. Tindak Lanjut & Penyelesaian Pengaduan SIPP**: Waktu respon dan SLA 1-3 hari kerja penanganan keluhan peserta (Bobot 20%, Target: 100%).
   4. **Tab 03. Umpan Balik Peserta (KESSAN)**: Evaluasi indeks kepuasan peserta customer feedback per tier target responden (Bobot 10%, Target: ≥ 100%).
