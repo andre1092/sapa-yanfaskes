@@ -1,8 +1,6 @@
 import io
 import csv
 import time
-import ssl
-import urllib.request
 import logging
 from typing import Optional, List, Dict, Any
 
@@ -77,30 +75,15 @@ def fetch_sheet_csv(spreadsheet_id: str, label: str) -> List[Dict[str, str]]:
         if (now - cached_time) < _SERVICE_CACHE_TTL:
             return recs
 
-    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
     content = read_sheet_csv(spreadsheet_id, None, label)
     if content:
         records = list(csv.DictReader(io.StringIO(content.decode("utf-8", errors="ignore"))))
         _SERVICE_CACHE[cache_key] = (now, records)
         return records
-
-    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv"
-    try:
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-        with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
-            content = resp.read()
-            reader = csv.DictReader(io.StringIO(content.decode("utf-8", errors="ignore")))
-            records = list(reader)
-            _SERVICE_CACHE[cache_key] = (now, records)
-            return records
-    except Exception as e:
-        logger.error(f"Error fetching sheet {label} ({spreadsheet_id}): {e}")
-        if cache_key in _SERVICE_CACHE:
-            return _SERVICE_CACHE[cache_key][1]
-        return []
+    logger.error("Lembar %s tidak terbaca lewat akun layanan", label)
+    if cache_key in _SERVICE_CACHE:
+        return _SERVICE_CACHE[cache_key][1]
+    return []
 
 def clear_kepatuhan_cache(module: Optional[str] = None) -> Dict[str, Any]:
     global _SERVICE_CACHE

@@ -7,11 +7,9 @@ import json
 import re
 import traceback
 import logging
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
-import requests
 
 from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -459,100 +457,8 @@ def get_sheets_service():
         logger.error(f"Failed to initialize Google Sheets service: {e}")
         return None
 
-def generate_mock_multi_sheets():
-    """Generates complete mock relational sheets matching screenshot values"""
-    months = [("2026-01-15", "Jan 26", 93.51), ("2026-02-15", "Feb 26", 93.31),
-              ("2026-03-15", "Mar 26", 91.89), ("2026-04-15", "Apr 26", 92.11),
-              ("2026-05-15", "Mei 26", 90.00), ("2026-06-15", "Jun 26", 90.33),
-              ("2026-07-15", "Jul 26", 93.82), ("2026-08-25 05:28:41", "Agu 26", 93.51)]
-    
-    faskes_list = [
-        ("0114R001", "RS NAHDLATUL ULAMA", "KAB. JEMBER", "Kelas C"),
-        ("0114R002", "RS WIJAYA KUSUMA", "KAB. LUMAJANG", "Kelas C"),
-        ("0114R003", "RSD KALISAT (1329R003)", "KAB. JEMBER", "Kelas C"),
-        ("0114R004", "RS PARU JEMBER (1329R001)", "KAB. JEMBER", "Kelas B"),
-        ("0114R005", "RS GIGI DAN MULUT (1329R005)", "KAB. JEMBER", "Kelas B"),
-        ("0114R006", "RS CITRA HUSADA (1329R002)", "KAB. JEMBER", "Kelas C"),
-        ("0114R007", "RS ISLAM LUMAJANG", "KAB. LUMAJANG", "Kelas C"),
-        ("0114R008", "RS PERKEBUNAN PT JEMBER", "KAB. JEMBER", "Kelas C"),
-        ("0114R009", "RSU SRIKANDI IBI", "KAB. JEMBER", "Kelas D"),
-        ("0114R010", "RS DJATIROTO (0188R001)", "KAB. LUMAJANG", "Kelas C"),
-        ("0114R011", "RSU DR. H. KOESNADI", "KAB. BONDOWOSO", "Kelas B"),
-        ("0114R012", "RS UTAMA HUSADA", "KAB. BANYUWANGI", "Kelas D"),
-        ("0114R013", "RSU UNMUH JEMBER", "KAB. JEMBER", "Kelas C"),
-        ("0114R014", "RS BHAYANGKARA LUMAJANG", "KAB. LUMAJANG", "Kelas C"),
-    ]
-    
-    df_faskes = pl.DataFrame({
-        "Kdppk": [f[0] for f in faskes_list],
-        "Faskes": [f[1] for f in faskes_list],
-        "Kabupaten": [f[2] for f in faskes_list],
-        "Kelas_RS": [f[3] for f in faskes_list],
-    })
-    
-    antrol_rows = []
-    for f in faskes_list:
-        for m in months:
-            antrol_rows.append({
-                "Kdppk": f[0],
-                "Faskes": f[1],
-                "Timestamp": m[0],
-                "Sumber": "Semua Sumber",
-                "Jumlah Antrian by Sumber": "935",
-                "Jumlah Sep Rjtl": "1000",
-                "Jumlah Peserta Jkn": "1000"
-            })
-    df_antrol = pl.DataFrame(antrol_rows)
-    
-    polis = [
-        ("POL01", "Trauma dan Rekonstruksi (152)", 100.0),
-        ("POL02", "Spine (152)", 100.0),
-        ("POL03", "HEMATOLOGI - ONKOLOGI", 99.33),
-        ("POL04", "GIGI PENYAKIT MULUT", 98.31),
-        ("POL05", "GIGI PROSTHODONSIA", 97.78),
-        ("POL06", "KULIT KELAMIN (KK)", 96.88),
-        ("POL07", "JIWA (JIW)", 96.40),
-        ("POL08", "GIGI PEDODONSIA", 96.03),
-        ("POL09", "GIGI PERIODONSIA", 95.94),
-        ("POL10", "PARU (PAR)", 95.91),
-        ("POL11", "ANAK HEMATOLOGI", 95.39),
-        ("POL12", "SARAF (SAR)", 95.33),
-        ("POL13", "BEDAH ONKOLOGI", 95.28),
-        ("POL14", "PENYAKIT DALAM", 95.14),
-        ("POL15", "UROLOGI (URO)", 94.75),
-        ("POL16", "ORTHOPEDI (ORT)", 94.37),
-        ("POL17", "ANAK KARDIOLOGI", 94.05),
-        ("POL18", "BEDAH PLASTIK", 93.58),
-    ]
-    
-    df_ref_poli = pl.DataFrame({
-        "Politujuan": [p[0] for p in polis],
-        "Nama_Poli": [p[1] for p in polis]
-    })
-    
-    poli_rows = []
-    for f in faskes_list[:5]:
-        for p in polis:
-            for m in months[-2:]:
-                flag_mjkn = int(p[2] * 7)   # e.g. 700
-                flag_bridging = int(p[2] * 3)  # e.g. 300
-                total_sep = 1000
-                poli_rows.append({
-                    "Kdppk": f[0],
-                    "Politujuan": p[0],
-                    "Timestamp": m[0],
-                    "Mobile JKN Flag": str(flag_mjkn),
-                    "Flag Bridging Antrean": str(flag_bridging),
-                    "Total SEP": str(total_sep)
-                })
-    df_poli = pl.DataFrame(poli_rows)
-    
-    return {
-        "DB_FASKES": df_faskes,
-        "DB_LAP_ANTROL_FKRTL": df_antrol,
-        "antrol_by_poli": df_poli,
-        "ref_poli": df_ref_poli
-    }
+# Satu-satunya spreadsheet antrean FKRTL; tidak bisa diganti dari permintaan.
+FKRTL_ANTROL_SPREADSHEET_ID = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY"
 
 SHEET_GIDS = {
     "DB_FASKES": "0",
@@ -582,31 +488,7 @@ def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str, force
         if (now - cached_time) < _CACHE_TTL:
             return sheet_name, df
             
-    url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
     content = read_sheet_csv(spreadsheet_id, gid, sheet_name)
-    
-    # Attempt 1: Fast urllib with unverified SSL context to bypass container cert issues
-    if not content:
-        try:
-            import ssl
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
-                content = resp.read()
-        except Exception as e_urllib:
-            logger.warning(f"urllib fetch failed for {sheet_name} (gid={gid}): {e_urllib}")
-        
-    # Attempt 2: Fallback to requests (with certificate verification) if urllib failed
-    if not content:
-        try:
-            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
-            if r.status_code == 200 and r.content:
-                content = r.content
-        except Exception as e_req:
-            logger.error(f"requests fetch failed for {sheet_name} (gid={gid}): {e_req}")
 
     if content and pl is not None:
         try:
@@ -642,15 +524,16 @@ def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_ref
     if force_refresh:
         invalidate_sheets_cache(spreadsheet_id)
 
-    # 1. First priority: Live public Google Sheets CSV export (100% free, real live data, sub-second)
+    # 1. Sheets API lewat akun layanan (sheets_source), per tab.
     live_dfs = fetch_live_google_sheets(spreadsheet_id, force_refresh=force_refresh)
     if any(live_dfs.get(name) is not None and not live_dfs[name].is_empty() for name in ("DB_LAP_ANTROL_FKRTL", "per_poli")):
         return live_dfs
 
-    # 2. Second priority: Google Sheets API with service account if available
+    # 2. Cadangan: batchGet lewat klien Google API dengan akun layanan yang sama.
     service = get_sheets_service()
     if not service:
-        return generate_mock_multi_sheets()
+        logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
+        return {}
         
     try:
         sheet = service.spreadsheets()
@@ -694,15 +577,12 @@ def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_ref
                 
         return dfs
     except Exception as e:
-        logger.error(f"Error batch fetching sheets data: {e}")
-        # If API fails, fallback to structured mock data to avoid breaking UI during preview
-        logger.info("Falling back to structured mock data due to Google Sheets API issue.")
-        return generate_mock_multi_sheets()
+        logger.error(f"Sumber antrean FKRTL tidak terbaca ({type(e).__name__}); data kosong dikembalikan")
+        return {}
 
 # --- FKRTL PEMANFAATAN ANTROL ANALYTICS ENDPOINT ---
 @app.get("/api/v1/fkrtl-antrol-stats")
 async def get_fkrtl_antrol_stats(
-    spreadsheet_id: str = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY",
     tahun: Optional[str] = None,
     bulan: Optional[str] = None,
     kabupaten: Optional[str] = None,
@@ -723,7 +603,7 @@ async def get_fkrtl_antrol_stats(
             "DB_LAP_ANTROL_FKRTL!A:Z",
             "per_poli!A:R"
         ]
-        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges, force_refresh=bool(refresh))
+        sheets_data = fetch_multiple_sheets(FKRTL_ANTROL_SPREADSHEET_ID, ranges, force_refresh=bool(refresh))
         
         df_faskes = sheets_data.get("DB_FASKES", pl.DataFrame())
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
@@ -1118,27 +998,27 @@ async def get_fkrtl_antrol_stats(
 # Backward compatible legacy endpoint
 @app.get("/api/v1/dashboard-stats")
 async def get_dashboard_stats(
-    spreadsheet_id: str = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY", 
     user=Depends(require_auth)
 ):
-    stats = await get_fkrtl_antrol_stats(spreadsheet_id=spreadsheet_id, user=user)
+    stats = await get_fkrtl_antrol_stats(
+        tahun=None, bulan=None, kabupaten=None, nama_rs=None, kelas_rs=None, sumber=None, refresh=False, user=user
+    )
     return stats
 
 # Dedicated cache invalidation and force-sync endpoint for Antrol FKRTL
 @app.post("/api/v1/fkrtl-antrol-sync")
 @app.get("/api/v1/fkrtl-antrol-sync")
 async def sync_fkrtl_antrol(
-    spreadsheet_id: str = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY",
     user=Depends(require_auth)
 ):
     try:
-        invalidate_sheets_cache(spreadsheet_id)
+        invalidate_sheets_cache(FKRTL_ANTROL_SPREADSHEET_ID)
         ranges = [
             "DB_FASKES!A:Z",
             "DB_LAP_ANTROL_FKRTL!A:Z",
             "per_poli!A:R"
         ]
-        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges, force_refresh=True)
+        sheets_data = fetch_multiple_sheets(FKRTL_ANTROL_SPREADSHEET_ID, ranges, force_refresh=True)
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
         last_update_str = "No data available."
         if not df_antrol.is_empty():
@@ -1160,7 +1040,6 @@ async def sync_fkrtl_antrol(
 @app.get("/api/v1/fkrtl-export")
 async def export_fkrtl_data(
     type: str, # "faskes" or "poli"
-    spreadsheet_id: str = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY",
     tahun: str = None,
     bulan: str = None,
     kabupaten: str = None,
@@ -1176,7 +1055,7 @@ async def export_fkrtl_data(
             "DB_LAP_ANTROL_FKRTL!A:Z",
             "per_poli!A:R"
         ]
-        sheets_data = fetch_multiple_sheets(spreadsheet_id, ranges)
+        sheets_data = fetch_multiple_sheets(FKRTL_ANTROL_SPREADSHEET_ID, ranges)
         df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
         df_poli = sheets_data.get("per_poli", pl.DataFrame())
         df_faskes = sheets_data.get("DB_FASKES", pl.DataFrame())
@@ -1333,32 +1212,7 @@ def fetch_csv_records(spreadsheet_id: str, sheet_name: str, gid: Optional[str] =
         if (now - cached_time) < _CACHE_TTL:
             return recs
 
-    if gid is not None and str(gid).strip() != "":
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    else:
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv"
-
-    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
     content = read_sheet_csv(spreadsheet_id, gid, sheet_name)
-    if not content:
-        try:
-            import ssl
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
-                content = resp.read()
-        except Exception as e_urllib:
-            logger.warning(f"urllib fetch failed for {sheet_name} ({spreadsheet_id}): {e_urllib}")
-
-    if not content:
-        try:
-            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
-            if r.status_code == 200 and r.content:
-                content = r.content
-        except Exception as e_req:
-            logger.error(f"requests fetch failed for {sheet_name} ({spreadsheet_id}): {e_req}")
 
     if content:
         import csv
@@ -3015,45 +2869,8 @@ def fetch_fktp_antrol_dfs(force_refresh: bool = False) -> pl.DataFrame:
         if (now - cached_time) < _CACHE_TTL and df_cached is not None and not df_cached.is_empty():
             return df_cached
 
-    url1 = f"https://docs.google.com/spreadsheets/d/{FKTP_ANTROL_SPREADSHEET_ID}/export?format=csv"
-    url2 = f"https://docs.google.com/spreadsheets/d/{FKTP_REF_SPREADSHEET_ID}/export?format=csv"
-
-    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
     content1 = read_sheet_csv(FKTP_ANTROL_SPREADSHEET_ID, None, "FKTP Capaian")
     content2 = read_sheet_csv(FKTP_REF_SPREADSHEET_ID, None, "FKTP Ref")
-
-    import ssl
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
-
-    if not content1:
-        try:
-            req1 = urllib.request.Request(url1, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req1, context=ssl_ctx, timeout=10) as resp1:
-                content1 = resp1.read()
-        except Exception as e1:
-            logger.warning(f"urllib fetch failed for FKTP Capaian: {e1}")
-            try:
-                r1 = requests.get(url1, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-                if r1.status_code == 200:
-                    content1 = r1.content
-            except Exception as e1_req:
-                logger.error(f"requests fetch failed for FKTP Capaian: {e1_req}")
-
-    if not content2:
-        try:
-            req2 = urllib.request.Request(url2, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req2, context=ssl_ctx, timeout=10) as resp2:
-                content2 = resp2.read()
-        except Exception as e2:
-            logger.warning(f"urllib fetch failed for FKTP Ref: {e2}")
-            try:
-                r2 = requests.get(url2, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-                if r2.status_code == 200:
-                    content2 = r2.content
-            except Exception as e2_req:
-                logger.error(f"requests fetch failed for FKTP Ref: {e2_req}")
 
     if not content1:
         if cache_key in _SHEETS_CACHE:

@@ -12,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import Any
 
-import requests
 
 try:
     from .sheets_source import read_sheet_csv
@@ -200,15 +199,9 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
 
 
 def _read_csv(spreadsheet_id: str, gid: int | None, required: set[str]) -> list[dict]:
-    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
     content = read_sheet_csv(spreadsheet_id, gid, "LARAS")
     if not content:
-        params = {"format": "csv"}
-        if gid is not None:
-            params["gid"] = str(gid)
-        response = requests.get(f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export", params=params, timeout=(4, 15))
-        response.raise_for_status()
-        content = response.content
+        raise LarasSourceUnavailable("Sumber LARAS tidak dapat dibaca.")
     reader = csv.DictReader(io.StringIO(content.decode("utf-8-sig")))
     if not required.issubset(set(reader.fieldnames or [])):
         raise LarasSourceUnavailable("Skema sumber LARAS tidak sesuai.")

@@ -148,16 +148,81 @@ def test_api_fetchers_read_through_service_account(session, monkeypatch):
     assert seen == [api.FKTP_ANTROL_SPREADSHEET_ID, api.FKTP_REF_SPREADSHEET_ID]
 
 
-def test_legacy_path_still_serves_when_service_account_is_unavailable(monkeypatch):
+def no_outbound(monkeypatch, *modules):
+    calls = []
+
+    def record(*args, **kwargs):
+        calls.append(args[0] if args else kwargs.get("url"))
+        raise AssertionError("tidak boleh ada permintaan di luar akun layanan")
+
+    for module in modules:
+        if hasattr(module, "urllib"):
+            monkeypatch.setattr(module.urllib.request, "urlopen", record)
+        if hasattr(module, "requests"):
+            monkeypatch.setattr(module.requests, "get", record)
+    return calls
+
+
+def load_index():
+    sys.modules.pop("index", None)
+    return importlib.import_module("index")
+
+
+def test_without_service_account_nothing_is_fetched_another_way(monkeypatch):
     monkeypatch.setattr(sheets_source, "_get_session", lambda: None)
+    api = load_index()
+    api._SHEETS_CACHE.clear()
     kepatuhan_service._SERVICE_CACHE.clear()
+    calls = no_outbound(monkeypatch, api, kepatuhan_service, laras_service)
+    assert kepatuhan_service.fetch_sheet_csv(SHEET_ID, "UJI") == []
+    assert api.fetch_csv_records(SHEET_ID, "UJI") == []
+    assert api.fetch_single_sheet_csv(SHEET_ID, "UJI_DF", "0", force_refresh=True)[1].is_empty()
+    assert api.fetch_fktp_antrol_dfs(force_refresh=True).is_empty()
+    with pytest.raises(laras_service.LarasSourceUnavailable):
+        laras_service._read_csv(SHEET_ID, 0, {"kode_faskes"})
+    assert calls == []
 
-    class Legacy(io.BytesIO):
-        def __enter__(self):
-            return self
 
-        def __exit__(self, *exc):
-            return False
+def test_unreadable_source_returns_no_data_instead_of_sample_data(monkeypatch):
+    api = load_index()
+    api._SHEETS_CACHE.clear()
+    monkeypatch.setattr(api, "read_sheet_csv", lambda *a, **k: None)
+    monkeypatch.setattr(api, "get_sheets_service", lambda: None)
+    assert not hasattr(api, "generate_mock_multi_sheets")
+    data = api.fetch_multiple_sheets(api.FKRTL_ANTROL_SPREADSHEET_ID, ["DB_FASKES!A:Z"], force_refresh=True)
+    assert all(frame.is_empty() for frame in data.values())
 
-    monkeypatch.setattr(kepatuhan_service.urllib.request, "urlopen", lambda *a, **k: Legacy(b"kode,nama\r\n0114R009,RS LAMA\r\n"))
-    assert kepatuhan_service.fetch_sheet_csv(SHEET_ID, "UJI_LAMA") == [{"kode": "0114R009", "nama": "RS LAMA"}]
+
+@pytest.mark.parametrize("path", [
+    "/api/v1/fkrtl-antrol-stats",
+    "/api/v1/dashboard-stats",
+    "/api/v1/fkrtl-antrol-sync",
+    "/api/v1/fkrtl-export?type=faskes",
+])
+def test_spreadsheet_id_from_request_is_ignored(monkeypatch, path):
+    from fastapi.testclient import TestClient
+
+    api = load_index()
+    asked = []
+
+    def fake_fetch(spreadsheet_id, *args, **kwargs):
+        asked.append(spreadsheet_id)
+        return {}
+
+    monkeypatch.setattr(api, "fetch_multiple_sheets", fake_fetch)
+    api.app.dependency_overrides[api.require_auth] = lambda: {"sub": "auth0|uji"}
+    try:
+        joiner = "&" if "?" in path else "?"
+        TestClient(api.app).get(f"{path}{joiner}spreadsheet_id={SHEET_ID}")
+    finally:
+        api.app.dependency_overrides.clear()
+    assert asked and set(asked) == {api.FKRTL_ANTROL_SPREADSHEET_ID}
+
+
+def test_api_has_no_unverified_or_public_export_fetch():
+    root = Path(__file__).resolve().parents[1] / "api"
+    for name in ("index.py", "kepatuhan_service.py", "laras_service.py", "sheets_source.py"):
+        source = (root / name).read_text(encoding="utf-8")
+        assert "CERT_NONE" not in source, name
+        assert "check_hostname = False" not in source, name
+        assert "/export" not in source, name
