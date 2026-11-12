@@ -318,100 +318,7 @@ export const UmablComplianceTab: React.FC = () => {
         </MainCard>
       )}
 
-      {/* 1. FILTER PANEL CASCADING (KABUPATEN, NAMA FASKES, BULAN, TIPE FASKES) */}
-      <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--border-color)]">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-[var(--bpjs-navy)]/10 text-[var(--text-main)] text-sm">
-
-              </span>
-              <Typography component="h3" variant="h5" className="sapa-section-heading text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">
-                Filter Parameter Kepatuhan Umpan Balik Peserta
-              </Typography>
-            </div>
-            <span className="text-[11px] font-medium text-[var(--text-muted)]">
-              Otomatis tersinkronisasi dengan Master FKRTL
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Filter Kabupaten */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="UmablComplianceTab-filter-1" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Kabupaten</span>
-              </label>
-              <FilterSelect aria-label="Kabupaten" id="UmablComplianceTab-filter-1"
-                value={selectedKabupaten}
-                onChange={(e) => handleKabupatenChange(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.kabupaten.map((kab) => (
-                  <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {kab}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
-            {/* Filter Nama Faskes */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="UmablComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Nama Faskes (FKRTL)</span>
-              </label>
-              <FilterSelect aria-label="Fasilitas kesehatan" id="UmablComplianceTab-filter-2"
-                value={selectedNamaPpk}
-                onChange={(e) => setSelectedNamaPpk(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
-              >
-                {filterOptions.nama_ppk.map((faskes) => (
-                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {faskes}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
-            {/* Filter Bulan */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="UmablComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Bulan</span>
-              </label>
-              <FilterSelect aria-label="Bulan" id="UmablComplianceTab-filter-3"
-                value={selectedBulan}
-                onChange={(e) => setSelectedBulan(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.bulan.map((bln) => (
-                  <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {bln}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
-            {/* Filter Tipe Faskes */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="UmablComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Tipe Faskes</span>
-              </label>
-              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="UmablComplianceTab-filter-4"
-                value={selectedTipeFaskes}
-                onChange={(e) => handleTipeFaskesChange(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.tipe_faskes.map((tipe) => (
-                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {tipe}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-          </div>
-        </div>
-      </MainCard>
-
-      {/* 2. KARTU KPI UTAMA (PERSEN TARGET, CAPAIAN BOBOT 10%, TOTAL KUNJUNGAN & RESPONDEN, STATUS PATUH) */}
+      {/* 1. KARTU KPI UTAMA (PERSEN TARGET, CAPAIAN BOBOT 10%, TOTAL KUNJUNGAN & RESPONDEN, STATUS PATUH) */}
       <div className="sapa-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: % JLH RESPONDEN TARGET */}
         <MainCard content={false} className="sapa-kpi-lead berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] relative overflow-hidden group min-w-0">
@@ -531,6 +438,99 @@ export const UmablComplianceTab: React.FC = () => {
           </div>
         </MainCard>
       </div>
+
+      {/* 2. FILTER PANEL CASCADING (KABUPATEN, NAMA FASKES, BULAN, TIPE FASKES) */}
+      <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 border border-[var(--border-color)] min-w-0">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--border-color)]">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[var(--bpjs-navy)]/10 text-[var(--text-main)] text-sm">
+
+              </span>
+              <Typography component="h3" variant="h5" className="sapa-section-heading text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">
+                Filter Parameter Kepatuhan Umpan Balik Peserta
+              </Typography>
+            </div>
+            <span className="text-[11px] font-medium text-[var(--text-muted)]">
+              Otomatis tersinkronisasi dengan Master FKRTL
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Filter Kabupaten */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="UmablComplianceTab-filter-1" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Kabupaten</span>
+              </label>
+              <FilterSelect aria-label="Kabupaten" id="UmablComplianceTab-filter-1"
+                value={selectedKabupaten}
+                onChange={(e) => handleKabupatenChange(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.kabupaten.map((kab) => (
+                  <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {kab}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            {/* Filter Nama Faskes */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="UmablComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Nama Faskes (FKRTL)</span>
+              </label>
+              <FilterSelect aria-label="Fasilitas kesehatan" id="UmablComplianceTab-filter-2"
+                value={selectedNamaPpk}
+                onChange={(e) => setSelectedNamaPpk(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
+              >
+                {filterOptions.nama_ppk.map((faskes) => (
+                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {faskes}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            {/* Filter Bulan */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="UmablComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Bulan</span>
+              </label>
+              <FilterSelect aria-label="Bulan" id="UmablComplianceTab-filter-3"
+                value={selectedBulan}
+                onChange={(e) => setSelectedBulan(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.bulan.map((bln) => (
+                  <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {bln}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            {/* Filter Tipe Faskes */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="UmablComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Tipe Faskes</span>
+              </label>
+              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="UmablComplianceTab-filter-4"
+                value={selectedTipeFaskes}
+                onChange={(e) => handleTipeFaskesChange(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.tipe_faskes.map((tipe) => (
+                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {tipe}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+          </div>
+        </div>
+      </MainCard>
 
       {/* 3. DUA LINE CHART BULANAN TERPISAH (KANAN DAN KIRI) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

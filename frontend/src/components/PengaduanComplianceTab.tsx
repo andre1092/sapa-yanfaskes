@@ -296,115 +296,7 @@ export const PengaduanComplianceTab: React.FC = () => {
         </MainCard>
       )}
 
-      {/* 1. FILTER BAR 4-DIMENSI CASCADING */}
-      <MainCard content={false} className="berry-dashboard-card rounded-lg p-4 sm:p-5 border border-[var(--border-color)] relative overflow-hidden min-w-0">
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[var(--bpjs-navy)]/10 flex items-center justify-center text-[var(--text-main)]">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-              </div>
-              <div>
-                <Typography component="h4" variant="h5" className="text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">
-                  Filter Analisis Penyelesaian Pengaduan
-                </Typography>
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  Pilih parameter Kabupaten, Nama Faskes, Bulan, dan Tipe Faskes untuk memfilter data real-time
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={handleResetFilters}
-              className="self-start sm:self-center px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] hover:bg-[var(--surface-accent)]/40 border border-[var(--border-color)] transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Reset Semua Filter"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Reset Filter</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* Filter Kabupaten */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="PengaduanComplianceTab-filter-1" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Kabupaten</span>
-              </label>
-              <FilterSelect aria-label="Kabupaten" id="PengaduanComplianceTab-filter-1"
-                value={selectedKabupaten}
-                onChange={(e) => handleKabupatenChange(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.kabupaten.map((kab) => (
-                  <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {kab}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
-            {/* Filter Nama Faskes (Dependen) */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="PengaduanComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Nama Faskes (FKRTL)</span>
-              </label>
-              <FilterSelect aria-label="Fasilitas kesehatan" id="PengaduanComplianceTab-filter-2"
-                value={selectedNamaPpk}
-                onChange={(e) => setSelectedNamaPpk(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
-              >
-                {filterOptions.nama_ppk.map((faskes) => (
-                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {faskes}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
-            {/* Filter Bulan */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="PengaduanComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Bulan</span>
-              </label>
-              <FilterSelect aria-label="Bulan" id="PengaduanComplianceTab-filter-3"
-                value={selectedBulan}
-                onChange={(e) => setSelectedBulan(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.bulan.map((bln) => (
-                  <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {bln}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
-            {/* Filter Tipe Faskes (Dependen) */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="PengaduanComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Tipe Faskes</span>
-              </label>
-              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="PengaduanComplianceTab-filter-4"
-                value={selectedTipeFaskes}
-                onChange={(e) => handleTipeFaskesChange(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.tipe_faskes.map((tipe) => (
-                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {tipe}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-          </div>
-        </div>
-      </MainCard>
-
-      {/* 2. KARTU KPI UTAMA (CAPAIAN, KONTRIBUSI BOBOT 20%, TOTAL PENGADUAN, STATUS KEPATUHAN) */}
+      {/* 1. KARTU KPI UTAMA (CAPAIAN, KONTRIBUSI BOBOT 20%, TOTAL PENGADUAN, STATUS KEPATUHAN) */}
       <div className="sapa-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: RATA-RATA CAPAIAN */}
         <MainCard content={false} className="sapa-kpi-lead berry-dashboard-card rounded-lg p-4 sm:p-5 border border-[var(--border-color)] relative overflow-hidden flex flex-col justify-between min-w-0">
@@ -524,6 +416,114 @@ export const PengaduanComplianceTab: React.FC = () => {
           </div>
         </MainCard>
       </div>
+
+      {/* 2. FILTER BAR 4-DIMENSI CASCADING */}
+      <MainCard content={false} className="berry-dashboard-card rounded-lg p-4 sm:p-5 border border-[var(--border-color)] relative overflow-hidden min-w-0">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[var(--bpjs-navy)]/10 flex items-center justify-center text-[var(--text-main)]">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </div>
+              <div>
+                <Typography component="h4" variant="h5" className="text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">
+                  Filter Analisis Penyelesaian Pengaduan
+                </Typography>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  Pilih parameter Kabupaten, Nama Faskes, Bulan, dan Tipe Faskes untuk memfilter data real-time
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleResetFilters}
+              className="self-start sm:self-center px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] hover:bg-[var(--surface-accent)]/40 border border-[var(--border-color)] transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Reset Semua Filter"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Reset Filter</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* Filter Kabupaten */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="PengaduanComplianceTab-filter-1" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Kabupaten</span>
+              </label>
+              <FilterSelect aria-label="Kabupaten" id="PengaduanComplianceTab-filter-1"
+                value={selectedKabupaten}
+                onChange={(e) => handleKabupatenChange(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.kabupaten.map((kab) => (
+                  <FilterOption key={kab} value={kab} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {kab}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            {/* Filter Nama Faskes (Dependen) */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="PengaduanComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Nama Faskes (FKRTL)</span>
+              </label>
+              <FilterSelect aria-label="Fasilitas kesehatan" id="PengaduanComplianceTab-filter-2"
+                value={selectedNamaPpk}
+                onChange={(e) => setSelectedNamaPpk(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
+              >
+                {filterOptions.nama_ppk.map((faskes) => (
+                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {faskes}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            {/* Filter Bulan */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="PengaduanComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Bulan</span>
+              </label>
+              <FilterSelect aria-label="Bulan" id="PengaduanComplianceTab-filter-3"
+                value={selectedBulan}
+                onChange={(e) => setSelectedBulan(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.bulan.map((bln) => (
+                  <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {bln}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            {/* Filter Tipe Faskes (Dependen) */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="PengaduanComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                <span> Tipe Faskes</span>
+              </label>
+              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="PengaduanComplianceTab-filter-4"
+                value={selectedTipeFaskes}
+                onChange={(e) => handleTipeFaskesChange(e.target.value)}
+                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.tipe_faskes.map((tipe) => (
+                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {tipe}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+          </div>
+        </div>
+      </MainCard>
 
       {/* 3. GRAFIK BULANAN: LINE CHART CAPAIAN PENYELESAIAN PENGADUAN */}
       <MainCard content={false} className="berry-dashboard-card rounded-lg p-5 sm:p-6 border border-[var(--border-color)] relative overflow-hidden min-w-0">
