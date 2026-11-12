@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { tanggalDariFormatAS } from '../lib/formatTanggal';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
@@ -193,10 +194,10 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <div className="inline-flex max-w-full flex-wrap items-center gap-2 px-3 py-1 rounded-lg bg-[var(--surface-accent)] border border-[var(--border-color)] text-[var(--bpjs-green)] font-bold text-xs sm:text-sm tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-[var(--bpjs-green)]" />
-                  <span>Last Update : {lastUpdate}</span>
+                  <span>Pembaruan terakhir: {tanggalDariFormatAS(lastUpdate)}</span>
                 </div>
                 <span className="text-[11px] text-[var(--text-muted)] hidden sm:inline">
-                  (Live Data Google Sheets)
+                  (data langsung dari Google Sheets)
                 </span>
               </div>
             </div>
@@ -429,7 +430,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                       Line Chart Bulanan - Tren Capaian Antrol
                     </Typography>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-[var(--bpjs-green)]">Timestamp Terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
+                      Grafik garis tren capaian bulanan berbasis <span className="font-semibold text-[var(--bpjs-green)]">waktu data terbaru</span> per bulan (Format: MM/DD/YYYY HH:MM:SS)
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -474,7 +475,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               <svg className="w-3.5 h-3.5 text-[var(--bpjs-green)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              <span>Snapshot Timestamp: <strong className="text-[var(--bpjs-green)]">{activeItem.latest_timestamp || 'MM/DD/YYYY HH:MM:SS'}</strong></span>
+                              <span>Waktu data: <strong className="text-[var(--bpjs-green)]">{tanggalDariFormatAS(activeItem.latest_timestamp) || 'Belum tersedia'}</strong></span>
                             </div>
                           </div>
                         </div>
@@ -495,7 +496,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                           </svg>
                         </div>
                         <div>
-                          <span className="font-semibold text-[var(--text-main)]">Eksplorasi Snapshot Bulanan</span>
+                          <span className="font-semibold text-[var(--text-main)]">Eksplorasi Data Bulanan</span>
                           <span className="hidden sm:inline text-[11px] text-[var(--text-muted)] ml-1.5">- Arahkan kursor pada kurva grafik atau kartu bulan di bawah untuk rincian data.</span>
                         </div>
                       </div>
@@ -801,7 +802,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                       <svg className="w-3.5 h-3.5 text-[var(--bpjs-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      Daftar Snapshot Timestamp Terbaru per Bulan
+                      Waktu Data Terbaru per Bulan
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] font-normal">
                       Klik/Arahkan kursor pada kartu untuk menyorot titik kurva
@@ -833,7 +834,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                             <svg className="w-2.5 h-2.5 text-[var(--bpjs-green)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="min-w-0">{item.latest_timestamp || 'N/A'}</span>
+                            <span className="min-w-0">{item.latest_timestamp ? tanggalDariFormatAS(item.latest_timestamp) : 'Tidak ada'}</span>
                           </div>
                         </div>
                       );

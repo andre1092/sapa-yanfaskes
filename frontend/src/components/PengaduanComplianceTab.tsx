@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { bulanIndonesia } from '../lib/formatTanggal';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
@@ -278,7 +279,7 @@ export const PengaduanComplianceTab: React.FC = () => {
   return (
     <div className="sapa-dashboard-body space-y-6">
       <p className="sapa-filter-summary sapa-status flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]" aria-live="polite">
-        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{selectedBulan}</span><span>{selectedTipeFaskes}</span>
+        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{bulanIndonesia(selectedBulan)}</span><span>{selectedTipeFaskes}</span>
         <span>{statusFilter === 'ALL' ? 'Semua status' : statusFilter === 'TERCAPAI' ? 'Target tercapai' : 'Belum mencapai target'}</span>
         {searchQuery && <span>Pencarian: {searchQuery}</span>}
       </p>
@@ -369,7 +370,7 @@ export const PengaduanComplianceTab: React.FC = () => {
               Pengaduan Bln Penilaian
             </span>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[var(--border-color)]/20 text-[var(--text-main)]">
-              Top10: {formatNumberID(kpi.total_top10_thnlalu)}
+              10 teratas: {formatNumberID(kpi.total_top10_thnlalu)}
             </span>
           </div>
 
@@ -500,7 +501,7 @@ export const PengaduanComplianceTab: React.FC = () => {
               >
                 {filterOptions.bulan.map((bln) => (
                   <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {bln}
+                    {bulanIndonesia(bln)}
                   </FilterOption>
                 ))}
               </FilterSelect>
@@ -868,7 +869,7 @@ export const PengaduanComplianceTab: React.FC = () => {
                 >
                   <div className="flex items-center justify-end gap-1">
                     <span className="whitespace-normal break-words max-w-[110px] leading-tight">
-                      Jml Pengaduan Top 10 Tahun lalu
+                      Jml Pengaduan 10 Teratas Tahun Lalu
                     </span>
                     {sortField === 'top10_thnlalu' && (sortDirection === 'asc' ? ' ↑' : ' ↓')}
                   </div>

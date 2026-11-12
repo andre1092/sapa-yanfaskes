@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { bulanIndonesia } from '../lib/formatTanggal';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
@@ -223,7 +224,7 @@ export const RingkasanComplianceTab: React.FC = () => {
   return (
     <div className="sapa-dashboard-body space-y-6">
       <p className="sapa-filter-summary sapa-status flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]" aria-live="polite">
-        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{selectedBulan}</span><span>{selectedTipeFaskes}</span>
+        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{bulanIndonesia(selectedBulan)}</span><span>{selectedTipeFaskes}</span>
         <span>{statusFilter === 'ALL' ? 'Semua status' : statusFilter === 'TERCAPAI' ? 'Target tercapai' : 'Belum mencapai target'}</span>
         {searchQuery && <span>Pencarian: {searchQuery}</span>}
       
@@ -337,7 +338,7 @@ export const RingkasanComplianceTab: React.FC = () => {
             >
               {filterOptions.bulan.map((bln) => (
                 <FilterOption key={bln} value={bln} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                  {bln}
+                  {bulanIndonesia(bln)}
                 </FilterOption>
               ))}
             </FilterSelect>

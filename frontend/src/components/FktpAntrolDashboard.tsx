@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { tanggalDariFormatAS } from '../lib/formatTanggal';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
@@ -149,7 +150,7 @@ export const FktpAntrolDashboard: React.FC = () => {
               </div>
               <div className="text-xs font-mono font-bold text-[var(--text-main)] flex items-center gap-1.5 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-[var(--bpjs-green)]" />
-                <span>Last Update : {lastUpdateText}</span>
+                <span>Pembaruan terakhir: {tanggalDariFormatAS(lastUpdateText)}</span>
               </div>
             </div>
 
@@ -209,7 +210,7 @@ export const FktpAntrolDashboard: React.FC = () => {
           {/* Filter 1: Bulan */}
           <div>
             <label htmlFor="FktpAntrolDashboard-filter-1" className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
-              Bulan (Snapshot Timestamp)
+              Bulan data
             </label>
             <FilterSelect aria-label="Bulan" id="FktpAntrolDashboard-filter-1"
               value={filters.bulan || '(All)'}
@@ -422,7 +423,7 @@ export const FktpAntrolDashboard: React.FC = () => {
                       </span>
                     </div>
                     <div className="text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5 mt-0.5 font-mono">
-                      <span>Snapshot: <strong className="text-[var(--bpjs-green)]">{activeItem.latest_timestamp}</strong></span>
+                      <span>Waktu data: <strong className="text-[var(--bpjs-green)]">{tanggalDariFormatAS(activeItem.latest_timestamp)}</strong></span>
                       <span className="text-[var(--text-muted)]">•</span>
                       <span>CF: <strong>{formatNumberID(activeItem.total_cf)}</strong> / Transaksi: <strong>{formatNumberID(activeItem.total_transaksi_sumber)}</strong></span>
                     </div>
@@ -447,7 +448,7 @@ export const FktpAntrolDashboard: React.FC = () => {
                   </svg>
                 </div>
                 <div>
-                  <span className="font-semibold text-[var(--text-main)]">Eksplorasi Snapshot Bulanan FKTP</span>
+                  <span className="font-semibold text-[var(--text-main)]">Eksplorasi Data Bulanan FKTP</span>
                   <span className="hidden sm:inline text-[11px] text-[var(--text-muted)] ml-1.5">
                     - Arahkan kursor pada kurva grafik atau kartu bulan di bawah untuk mengunci data.
                   </span>
@@ -697,7 +698,7 @@ export const FktpAntrolDashboard: React.FC = () => {
               <svg className="w-3.5 h-3.5 text-[var(--bpjs-green)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Snapshot Timestamp Resmi per Bulan
+              Waktu Data Resmi per Bulan
             </span>
             <span className="text-[10px] text-[var(--text-muted)] font-normal">
               Arahkan mouse untuk menyorot kurva
@@ -726,7 +727,7 @@ export const FktpAntrolDashboard: React.FC = () => {
                     </span>
                   </div>
                   <div className="text-[9.5px] font-mono text-[var(--text-muted)] mt-1">
-                    {item.latest_timestamp}
+                    {tanggalDariFormatAS(item.latest_timestamp)}
                   </div>
                 </div>
               );
