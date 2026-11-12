@@ -29,11 +29,6 @@ export const UserManagementView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("Semua");
 
-  // Password Visibility State per User
-  const [visiblePasswords, setVisiblePasswords] = useState<
-    Record<string, boolean>
-  >({});
-
   // Add / Edit Modal States
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -43,10 +38,8 @@ export const UserManagementView: React.FC = () => {
   const [formUsername, setFormUsername] = useState("");
   const [formName, setFormName] = useState("");
   const [formEmail, setFormEmail] = useState("");
-  const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState<UserRole>("Admin");
   const [formStatus, setFormStatus] = useState<"Aktif" | "Nonaktif">("Aktif");
-  const [formShowPassword, setFormShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Delete Modal States
@@ -63,23 +56,14 @@ export const UserManagementView: React.FC = () => {
     }, 3500);
   };
 
-  const togglePasswordVisibility = (id: string) => {
-    setVisiblePasswords((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
   const openAddModal = () => {
     setIsEditing(false);
     setEditingId(null);
     setFormUsername("");
     setFormName("");
     setFormEmail("");
-    setFormPassword("");
     setFormRole("Admin");
     setFormStatus("Aktif");
-    setFormShowPassword(false);
     setFormError(null);
     setShowModal(true);
   };
@@ -90,10 +74,8 @@ export const UserManagementView: React.FC = () => {
     setFormUsername(u.username);
     setFormName(u.name);
     setFormEmail(u.email);
-    setFormPassword(u.password);
     setFormRole(u.role);
     setFormStatus(u.status);
-    setFormShowPassword(false);
     setFormError(null);
     setShowModal(true);
   };
@@ -105,9 +87,8 @@ export const UserManagementView: React.FC = () => {
     const cleanUsername = formUsername.trim().toLowerCase();
     const cleanName = formName.trim();
     const cleanEmail = formEmail.trim().toLowerCase();
-    const cleanPassword = formPassword.trim();
 
-    if (!cleanUsername || !cleanName || !cleanEmail || !cleanPassword) {
+    if (!cleanUsername || !cleanName || !cleanEmail) {
       setFormError("Seluruh bidang formulir wajib diisi dengan benar.");
       addLog({
         userId: profile.username || "usr_admin",
@@ -137,26 +118,6 @@ export const UserManagementView: React.FC = () => {
         module: "Manajemen Pengguna",
         status: "FAILED",
         details: `Gagal ${isEditing ? "memperbarui" : "menambahkan"} pengguna: Format email '${cleanEmail}' tidak valid.`,
-        ipAddress: "10.14.88.21 (Intranet BPJS)",
-        device:
-          typeof navigator !== "undefined" &&
-          navigator.userAgent.includes("Mac")
-            ? "Chrome / macOS"
-            : "Chrome / Windows",
-      });
-      return;
-    }
-
-    if (cleanPassword.length < 6) {
-      setFormError("Password keamanan minimal harus terdiri dari 6 karakter.");
-      addLog({
-        userId: profile.username || "usr_admin",
-        userName: profile.name || "Administrator",
-        userRole: (profile.role as any) || "Super Admin",
-        action: isEditing ? "UPDATE" : "ADD",
-        module: "Manajemen Pengguna",
-        status: "FAILED",
-        details: `Gagal ${isEditing ? "memperbarui" : "menambahkan"} pengguna: Kata sandi kurang dari 6 karakter.`,
         ipAddress: "10.14.88.21 (Intranet BPJS)",
         device:
           typeof navigator !== "undefined" &&
@@ -200,7 +161,6 @@ export const UserManagementView: React.FC = () => {
         username: cleanUsername,
         name: cleanName,
         email: cleanEmail,
-        password: cleanPassword,
         role: formRole,
         status: formStatus,
       });
@@ -225,7 +185,6 @@ export const UserManagementView: React.FC = () => {
         username: cleanUsername,
         name: cleanName,
         email: cleanEmail,
-        password: cleanPassword,
         role: formRole,
         status: formStatus,
       });
@@ -603,7 +562,6 @@ export const UserManagementView: React.FC = () => {
                 </TableCell>
                 <TableCell className="py-3.5 px-4">Nama & Username</TableCell>
                 <TableCell className="py-3.5 px-4">Email Akses</TableCell>
-                <TableCell className="py-3.5 px-4">Password Akses</TableCell>
                 <TableCell className="py-3.5 px-4">Role Akses</TableCell>
                 <TableCell className="py-3.5 px-4 text-center">
                   Status
@@ -618,7 +576,7 @@ export const UserManagementView: React.FC = () => {
               {filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="sapa-admin-empty py-8 text-center text-[var(--text-muted)]"
                   >
                     <strong className="block text-[var(--text-main)]">
@@ -647,7 +605,6 @@ export const UserManagementView: React.FC = () => {
               ) : (
                 filteredUsers.map((u, idx) => {
                   const isCurrentProfile = u.username === profile.username;
-                  const isPassVisible = Boolean(visiblePasswords[u.id]);
 
                   return (
                     <TableRow
@@ -681,63 +638,6 @@ export const UserManagementView: React.FC = () => {
                       </TableCell>
                       <TableCell className="py-3 px-4 text-[var(--text-main)]">
                         {u.email}
-                      </TableCell>
-                      <TableCell className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-[var(--text-main)] bg-[var(--panel-bg)] px-2 py-0.5 rounded border border-[var(--border-color)]">
-                            {isPassVisible ? u.password : "••••••••••••"}
-                          </span>
-                          <AnimatedButton
-                            onClick={() => togglePasswordVisibility(u.id)}
-                            className="sapa-button sapa-button-secondary p-1 transition-colors cursor-pointer"
-                            title={
-                              isPassVisible
-                                ? "Sembunyikan password"
-                                : "Tampilkan password"
-                            }
-                            aria-label={
-                              isPassVisible
-                                ? "Sembunyikan password"
-                                : "Tampilkan password"
-                            }
-                          >
-                            {isPassVisible ? (
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                />
-                              </svg>
-                            )}
-                          </AnimatedButton>
-                        </div>
                       </TableCell>
                       <TableCell className="py-3 px-4">
                         <span
@@ -1056,36 +956,6 @@ export const UserManagementView: React.FC = () => {
                   placeholder="nama.petugas@bpjs-kesehatan.go.id"
                   sx={{ minWidth: 0 }}
                 />
-              </div>
-
-              <div>
-                <FormLabel
-                  htmlFor="usermanagementview-password"
-                  className="block font-semibold text-[var(--text-main)] mb-1"
-                >
-                  Password Akses
-                </FormLabel>
-                <div className="relative">
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="usermanagementview-password"
-                    type={formShowPassword ? "text" : "password"}
-                    required
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                    placeholder="Minimal 6 karakter"
-                    sx={{ "& input": { pr: 13 }, minWidth: 0 }}
-                  />
-                  <AnimatedButton
-                    type="button"
-                    onClick={() => setFormShowPassword(!formShowPassword)}
-                    className="sapa-button sapa-button-secondary absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
-                    aria-label="Tampilkan atau sembunyikan kata sandi"
-                  >
-                    {formShowPassword ? "Sembunyikan" : "Tampilkan"}
-                  </AnimatedButton>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

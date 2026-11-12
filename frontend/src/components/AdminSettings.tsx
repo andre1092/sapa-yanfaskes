@@ -59,10 +59,6 @@ export const AdminSettings: React.FC = () => {
   const [profileName, setProfileName] = useState(profile.name);
   const [profileUsername, setProfileUsername] = useState(profile.username);
   const [profileEmail, setProfileEmail] = useState(profile.email);
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Keep form in sync when profile store is updated/migrated
@@ -89,9 +85,6 @@ export const AdminSettings: React.FC = () => {
   // User Management State
   const [searchUserQuery, setSearchUserQuery] = useState("");
   const [selectedRoleFilter, setSelectedRoleFilter] = useState("Semua");
-  const [visiblePasswords, setVisiblePasswords] = useState<
-    Record<string, boolean>
-  >({});
 
   // Add/Edit User Modal State
   const [showUserModal, setShowUserModal] = useState(false);
@@ -100,7 +93,6 @@ export const AdminSettings: React.FC = () => {
   const [userFormUsername, setUserFormUsername] = useState("");
   const [userFormName, setUserFormName] = useState("");
   const [userFormEmail, setUserFormEmail] = useState("");
-  const [userFormPassword, setUserFormPassword] = useState("");
   const [userFormRole, setUserFormRole] = useState<UserAccount["role"]>(
     "Verifikator Yanfaskes",
   );
@@ -151,12 +143,6 @@ export const AdminSettings: React.FC = () => {
     e.preventDefault();
     setIsSavingProfile(true);
 
-    if (newPassword && newPassword !== confirmPassword) {
-      setIsSavingProfile(false);
-      showToast("Konfirmasi kata sandi baru tidak cocok!");
-      return;
-    }
-
     const emailChanged =
       profileEmail.trim().toLowerCase() !== profile.email.trim().toLowerCase();
 
@@ -169,7 +155,6 @@ export const AdminSettings: React.FC = () => {
         username: profileUsername.trim(),
         unverifiedEmail: targetEmail,
         isVerified: false,
-        ...(newPassword ? { password: newPassword } : {}),
       });
       setIsSavingProfile(false);
       setShowVerifyModal(true);
@@ -218,11 +203,7 @@ export const AdminSettings: React.FC = () => {
       updateProfile({
         name: profileName.trim(),
         username: profileUsername.trim(),
-        ...(newPassword ? { password: newPassword } : {}),
       });
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
       setIsSavingProfile(false);
       showToast("Profil dan kredensial akun berhasil disimpan.");
     }
@@ -315,20 +296,12 @@ export const AdminSettings: React.FC = () => {
   };
 
   // --- TAB 4: USER SETTING LOGIC ---
-  const togglePasswordVisibility = (userId: string) => {
-    setVisiblePasswords((prev) => ({
-      ...prev,
-      [userId]: !prev[userId],
-    }));
-  };
-
   const handleOpenAddUserModal = () => {
     setIsEditingUser(false);
     setEditingUserId(null);
     setUserFormUsername("");
     setUserFormName("");
     setUserFormEmail("");
-    setUserFormPassword("");
     setUserFormRole("Verifikator Yanfaskes");
     setUserFormStatus("Aktif");
     setShowUserModal(true);
@@ -340,7 +313,6 @@ export const AdminSettings: React.FC = () => {
     setUserFormUsername(user.username);
     setUserFormName(user.name);
     setUserFormEmail(user.email);
-    setUserFormPassword(user.password);
     setUserFormRole(user.role);
     setUserFormStatus(user.status);
     setShowUserModal(true);
@@ -351,8 +323,7 @@ export const AdminSettings: React.FC = () => {
     if (
       !userFormUsername.trim() ||
       !userFormName.trim() ||
-      !userFormEmail.trim() ||
-      !userFormPassword.trim()
+      !userFormEmail.trim()
     ) {
       showToast("Harap lengkapi semua kolom isian pengguna.");
       return;
@@ -363,7 +334,6 @@ export const AdminSettings: React.FC = () => {
         username: userFormUsername.trim(),
         name: userFormName.trim(),
         email: userFormEmail.trim(),
-        password: userFormPassword.trim(),
         role: userFormRole,
         status: userFormStatus,
       });
@@ -378,7 +348,6 @@ export const AdminSettings: React.FC = () => {
           username: userFormUsername.trim(),
           name: userFormName.trim(),
           email: userFormEmail.trim(),
-          password: userFormPassword.trim(),
           role: userFormRole,
         });
       }
@@ -389,7 +358,6 @@ export const AdminSettings: React.FC = () => {
         username: userFormUsername.trim(),
         name: userFormName.trim(),
         email: userFormEmail.trim(),
-        password: userFormPassword.trim(),
         role: userFormRole,
         status: userFormStatus,
       });
@@ -592,92 +560,9 @@ export const AdminSettings: React.FC = () => {
               </div>
             </div>
 
-            {/* Bagian Ubah Password */}
-            <div className="pt-4 border-t border-[var(--border-color)] space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography
-                    component="h3"
-                    variant="h5"
-                    className="text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider"
-                  >
-                    Ubah Kata Sandi (Password)
-                  </Typography>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    Kosongkan jika Anda tidak bermaksud mengganti kata sandi.
-                  </p>
-                </div>
-
-                <AnimatedButton
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="sapa-button sapa-button-secondary text-xs font-semibold hover:underline flex items-center gap-1"
-                >
-                  <span>
-                    {showPassword ? " Sembunyikan" : " Tampilkan"} Sandi
-                  </span>
-                </AnimatedButton>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <FormLabel
-                    htmlFor="adminsettings-field-3"
-                    className="text-[11px] font-bold text-[var(--text-muted)]"
-                  >
-                    Kata Sandi Lama
-                  </FormLabel>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="adminsettings-field-3"
-                    type={showPassword ? "text" : "password"}
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder="••••••••"
-                    sx={{ minWidth: 0 }}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel
-                    htmlFor="adminsettings-field-4"
-                    className="text-[11px] font-bold text-[var(--text-muted)]"
-                  >
-                    Kata Sandi Baru
-                  </FormLabel>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="adminsettings-field-4"
-                    type={showPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    sx={{ minWidth: 0 }}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel
-                    htmlFor="adminsettings-field-5"
-                    className="text-[11px] font-bold text-[var(--text-muted)]"
-                  >
-                    Konfirmasi Sandi Baru
-                  </FormLabel>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="adminsettings-field-5"
-                    type={showPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    sx={{ minWidth: 0 }}
-                  />
-                </div>
-              </div>
-            </div>
+            <p className="pt-4 border-t border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
+              Kata sandi akun tidak diubah dari halaman ini. Gunakan layanan masuk atau hubungi administrator.
+            </p>
 
             {/* Tombol Simpan */}
             <div className="pt-4 flex items-center justify-end gap-3">
@@ -1122,7 +1007,6 @@ export const AdminSettings: React.FC = () => {
                   <TableCell className="py-3 px-4">Username</TableCell>
                   <TableCell className="py-3 px-4">Nama Lengkap</TableCell>
                   <TableCell className="py-3 px-4">Email Resmi</TableCell>
-                  <TableCell className="py-3 px-4">Password</TableCell>
                   <TableCell className="py-3 px-4">Peran (Role)</TableCell>
                   <TableCell className="py-3 px-4 text-center">
                     Status
@@ -1134,7 +1018,7 @@ export const AdminSettings: React.FC = () => {
                 {filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={7}
                       className="py-8 text-center text-[var(--text-muted)] italic"
                     >
                       Tidak ada pengguna yang sesuai dengan filter pencarian.
@@ -1142,7 +1026,6 @@ export const AdminSettings: React.FC = () => {
                   </TableRow>
                 ) : (
                   filteredUsers.map((u, idx) => {
-                    const isPassVisible = Boolean(visiblePasswords[u.id]);
                     const isCurrentActiveUser =
                       u.username.toLowerCase() ===
                       profile.username.toLowerCase();
@@ -1183,30 +1066,6 @@ export const AdminSettings: React.FC = () => {
                         </TableCell>
                         <TableCell className="py-3 px-4 text-[var(--text-muted)] font-mono text-[11px]">
                           {u.email}
-                        </TableCell>
-                        <TableCell className="py-3 px-4 font-mono text-[11px] text-[var(--text-main)]">
-                          <div className="flex items-center gap-2">
-                            <span>
-                              {isPassVisible ? u.password : "••••••••••••"}
-                            </span>
-                            <AnimatedButton
-                              type="button"
-                              onClick={() => togglePasswordVisibility(u.id)}
-                              className="sapa-button sapa-button-secondary text-xs transition-transform opacity-70 hover:opacity-100"
-                              title={
-                                isPassVisible
-                                  ? "Sembunyikan sandi"
-                                  : "Lihat sandi"
-                              }
-                              aria-label={
-                                isPassVisible
-                                  ? "Sembunyikan sandi"
-                                  : "Lihat sandi"
-                              }
-                            >
-                              {isPassVisible ? "Sembunyikan" : "Tampilkan"}
-                            </AnimatedButton>
-                          </div>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <span
@@ -1673,27 +1532,6 @@ export const AdminSettings: React.FC = () => {
                   value={userFormEmail}
                   onChange={(e) => setUserFormEmail(e.target.value)}
                   placeholder="nama@bpjs-kesehatan.go.id"
-                  sx={{ minWidth: 0 }}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <FormLabel
-                  htmlFor="adminsettings-field-10"
-                  className="font-bold text-[var(--text-main)]"
-                >
-                  Kata Sandi (Password){" "}
-                  <span className="text-[var(--text-muted)]">*</span>
-                </FormLabel>
-                <TextField
-                  size="small"
-                  fullWidth
-                  id="adminsettings-field-10"
-                  type="text"
-                  required
-                  value={userFormPassword}
-                  onChange={(e) => setUserFormPassword(e.target.value)}
-                  placeholder="Kombinasi huruf, angka, simbol"
                   sx={{ minWidth: 0 }}
                 />
               </div>
