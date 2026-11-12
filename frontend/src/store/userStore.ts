@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { buangKataSandi } from './userStorePrivacy';
 
 export interface AdminProfile {
   name: string;
   username: string;
   email: string;
-  password: string;
   role: string;
   isVerified: boolean;
   unverifiedEmail?: string | null;
@@ -24,11 +24,11 @@ export const useUserStore = create<UserStoreState>()(
         name: 'Andreas Dwi Rizko Nugroho',
         username: 'admin_jember',
         email: 'andreas.dwi@bpjs-kesehatan.go.id',
-        password: 'JemberYanfaskes2026!',
         role: 'Super Admin',
         isVerified: true,
         unverifiedEmail: null,
       },
+
       updateProfile: (updated) => {
         set((state) => ({ profile: { ...state.profile, ...updated } }));
       },
@@ -46,7 +46,7 @@ export const useUserStore = create<UserStoreState>()(
     }),
     {
       name: 'sapa-user-settings-storage',
-      version: 3,
+      version: 4,
       // Hanya profil yang disimpan di browser.
       partialize: (state) => ({ profile: state.profile }),
       migrate: (persistedState: any, version: number) => {
@@ -60,9 +60,10 @@ export const useUserStore = create<UserStoreState>()(
             role: 'Super Admin',
           };
         }
-        // Daftar akun contoh dari versi lama dibuang dari penyimpanan browser.
-        delete persistedState.users;
-        return persistedState;
+        // Kata sandi dan daftar akun contoh dari versi lama dibuang dari penyimpanan browser.
+        const bersih = buangKataSandi(persistedState);
+        delete bersih.users;
+        return bersih;
       },
     },
   ),

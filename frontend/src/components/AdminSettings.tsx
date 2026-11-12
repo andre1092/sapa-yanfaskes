@@ -45,10 +45,6 @@ export const AdminSettings: React.FC = () => {
   const [profileName, setProfileName] = useState(profile.name);
   const [profileUsername, setProfileUsername] = useState(profile.username);
   const [profileEmail, setProfileEmail] = useState(profile.email);
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Keep form in sync when profile store is updated/migrated
@@ -112,12 +108,6 @@ export const AdminSettings: React.FC = () => {
     e.preventDefault();
     setIsSavingProfile(true);
 
-    if (newPassword && newPassword !== confirmPassword) {
-      setIsSavingProfile(false);
-      showToast("Konfirmasi kata sandi baru tidak cocok!");
-      return;
-    }
-
     const emailChanged =
       profileEmail.trim().toLowerCase() !== profile.email.trim().toLowerCase();
 
@@ -130,7 +120,6 @@ export const AdminSettings: React.FC = () => {
         username: profileUsername.trim(),
         unverifiedEmail: targetEmail,
         isVerified: false,
-        ...(newPassword ? { password: newPassword } : {}),
       });
       setIsSavingProfile(false);
       setShowVerifyModal(true);
@@ -179,11 +168,7 @@ export const AdminSettings: React.FC = () => {
       updateProfile({
         name: profileName.trim(),
         username: profileUsername.trim(),
-        ...(newPassword ? { password: newPassword } : {}),
       });
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
       setIsSavingProfile(false);
       showToast("Profil dan kredensial akun berhasil disimpan.");
     }
@@ -437,92 +422,9 @@ export const AdminSettings: React.FC = () => {
               </div>
             </div>
 
-            {/* Bagian Ubah Password */}
-            <div className="pt-4 border-t border-[var(--border-color)] space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography
-                    component="h3"
-                    variant="h5"
-                    className="text-xs sm:text-sm font-bold text-[var(--text-main)] uppercase tracking-wider"
-                  >
-                    Ubah Kata Sandi (Password)
-                  </Typography>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    Kosongkan jika Anda tidak bermaksud mengganti kata sandi.
-                  </p>
-                </div>
-
-                <AnimatedButton
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="sapa-button sapa-button-secondary text-xs font-semibold hover:underline flex items-center gap-1"
-                >
-                  <span>
-                    {showPassword ? " Sembunyikan" : " Tampilkan"} Sandi
-                  </span>
-                </AnimatedButton>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <FormLabel
-                    htmlFor="adminsettings-field-3"
-                    className="text-[11px] font-bold text-[var(--text-muted)]"
-                  >
-                    Kata Sandi Lama
-                  </FormLabel>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="adminsettings-field-3"
-                    type={showPassword ? "text" : "password"}
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder="••••••••"
-                    sx={{ minWidth: 0 }}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel
-                    htmlFor="adminsettings-field-4"
-                    className="text-[11px] font-bold text-[var(--text-muted)]"
-                  >
-                    Kata Sandi Baru
-                  </FormLabel>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="adminsettings-field-4"
-                    type={showPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    sx={{ minWidth: 0 }}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <FormLabel
-                    htmlFor="adminsettings-field-5"
-                    className="text-[11px] font-bold text-[var(--text-muted)]"
-                  >
-                    Konfirmasi Sandi Baru
-                  </FormLabel>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    id="adminsettings-field-5"
-                    type={showPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    sx={{ minWidth: 0 }}
-                  />
-                </div>
-              </div>
-            </div>
+            <p className="pt-4 border-t border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
+              Kata sandi akun tidak diubah dari halaman ini. Gunakan layanan masuk atau hubungi administrator.
+            </p>
 
             {/* Tombol Simpan */}
             <div className="pt-4 flex items-center justify-end gap-3">
