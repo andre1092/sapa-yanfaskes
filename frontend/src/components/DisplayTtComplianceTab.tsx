@@ -1223,7 +1223,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="sapa-control rounded-lg px-2 py-1 text-xs text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)]"
+              className="sapa-control shrink-0 rounded-lg px-2 py-1 text-xs text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)]"
             >
               <FilterOption value={10}>10</FilterOption>
               <FilterOption value={15}>15</FilterOption>
