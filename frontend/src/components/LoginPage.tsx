@@ -16,7 +16,7 @@ export function LoginPage() {
     <Box component="main" className="berry-login" sx={{ minHeight: '100dvh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', p: { xs: 2, sm: 3 } }}>
       <Paper elevation={0} sx={{ width: '100%', maxWidth: 480, p: { xs: 3, sm: 5 }, borderRadius: 3, border: 1, borderColor: 'divider' }}>
         <Stack spacing={3} alignItems="center">
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><Box component="img" src="/logo-sapa-yanfaskes.png" alt="" sx={{ width: 48, height: 48 }} /><Box><Typography variant="h4" component="p">SAPA Yanfaskes</Typography><Typography variant="caption" color="text.secondary">BPJS Kesehatan</Typography></Box></Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><Box component="img" src="/logo-sapa-yanfaskes-128.png" alt="" sx={{ width: 48, height: 48 }} /><Box><Typography variant="h4" component="p">SAPA Yanfaskes</Typography><Typography variant="caption" color="text.secondary">BPJS Kesehatan</Typography></Box></Box>
           <Box sx={{ textAlign: 'center' }}><Typography id="login-title" component="h1" variant="h2" color="secondary.main" sx={{ mb: 1 }}>Selamat datang kembali</Typography><Typography color="text.secondary">Masuk untuk melanjutkan pemantauan pelayanan fasilitas kesehatan.</Typography></Box>
           <Box component="form" onSubmit={handleSubmit} aria-labelledby="login-title" aria-busy={isLoading} sx={{ width: '100%' }}>
             <Stack spacing={2.5}>

@@ -1,6 +1,5 @@
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
-import { toJpeg } from 'html-to-image';
+// Pustaka ekspor dimuat saat tombol unduh dipakai, bukan saat halaman dibuka
+// (audit UI/UX 2026-11-12, temuan 13).
 
 export const POLI_EXPORT_COLUMNS = [
   { header: 'Periode', key: 'Periode', width: 14 },
@@ -18,8 +17,9 @@ export const POLI_EXPORT_COLUMNS = [
 
 const csvCell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
 
-export const exportToCSV = (data: any[], type: 'faskes' | 'poli') => {
+export const exportToCSV = async (data: any[], type: 'faskes' | 'poli') => {
   if (data.length === 0) return;
+  const { saveAs } = await import('file-saver');
 
   let csvContent = '';
   if (type === 'faskes') {
@@ -43,6 +43,7 @@ export const exportToCSV = (data: any[], type: 'faskes' | 'poli') => {
 
 export const exportToExcel = async (data: any[], type: 'faskes' | 'poli') => {
   if (data.length === 0) return;
+  const [{ default: ExcelJS }, { saveAs }] = await Promise.all([import('exceljs'), import('file-saver')]);
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Export Data');
@@ -157,6 +158,7 @@ export const exportToJPEG = async (elementId: string, filename: string) => {
   element.style.left = '-9999px';
   
   try {
+    const { toJpeg } = await import('html-to-image');
     const dataUrl = await toJpeg(element, { quality: 1, backgroundColor: '#ffffff' });
     const link = document.createElement('a');
     link.download = `${filename}.jpeg`;
