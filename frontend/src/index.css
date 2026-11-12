@@ -121,7 +121,7 @@ button:disabled { cursor: not-allowed; }
 :is(input:not([type=checkbox]):not([type=radio]),select,textarea) { max-width: 100%; }
 .sapa-page, .dashboard-surface { min-width: 0; width: 100%; }
 .sapa-page-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
-.sapa-eyebrow { color: var(--accent-text); font-size: 10px; line-height: 1.6; letter-spacing: .14em; font-weight: 750; text-transform: uppercase; }
+.sapa-eyebrow { color: var(--accent-text); font-size: 0.75rem; line-height: 1.6; letter-spacing: .1em; font-weight: 750; text-transform: uppercase; }
 .sapa-page-title { color: var(--text-main); font-size: clamp(24px,2.3vw,32px); line-height: 1.25; letter-spacing: -.04em; font-weight: 750; }
 .sapa-page-description { color: var(--text-muted); font-size: 13px; line-height: 1.7; max-width: 64ch; margin-top: 8px; }
 .sapa-panel { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); box-shadow: var(--panel-shadow); min-width: 0; }
@@ -133,10 +133,10 @@ button:disabled { cursor: not-allowed; }
 .sapa-button--primary { background: var(--bpjs-navy); border-color: var(--bpjs-navy); color: white; }
 .sapa-button--secondary { background: var(--surface-subtle); }
 .sapa-button--danger { background: var(--danger-soft); color: var(--danger); border-color: currentColor; }
-.sapa-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 650; padding: 5px 9px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); }
+.sapa-status { display: inline-flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 650; padding: 5px 9px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); }
 .sapa-metric { font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
 .sapa-table, .dashboard-surface table { font-variant-numeric: tabular-nums; border-collapse: collapse; }
-.sapa-table th, .dashboard-surface th { font-size: 10px; letter-spacing: .06em; line-height: 1.6; }
+.sapa-table th, .dashboard-surface th { font-size: 0.75rem; letter-spacing: .06em; line-height: 1.6; }
 .sapa-table :is(td,th) { padding: 14px 16px; border-bottom: 1px solid var(--panel-border); }
 .sapa-table tbody tr:hover, .dashboard-surface tbody tr:hover { background: var(--surface-subtle); }
 .workspace-shell { background: var(--bg-main); color: var(--text-main); }
@@ -287,7 +287,7 @@ button:disabled { cursor: not-allowed; }
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
   --space-12: 48px; --radius-small: 8px; --radius-round: 999px;
-  --type-caption: 11px; --type-small: 12px; --type-body: 14px;
+  --type-caption: 0.75rem; --type-small: 12px; --type-body: 14px;
 }
 .sapa-sidebar { background: var(--nav-bg); width: 260px; }
 .sapa-brand { padding: var(--space-8) var(--space-6) var(--space-10); }
@@ -460,7 +460,7 @@ button:disabled { cursor: not-allowed; }
 .laras-chart-grid { display: grid; grid-template-columns: 1fr; gap: calc(var(--space-page) / 2); }
 .laras-chart-monthly { grid-column: 1 / -1; }
 .laras-chart-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 20px; }
-.laras-chart-heading > span { font-size: 11px; color: var(--text-muted); }
+.laras-chart-heading > span { font-size: 0.75rem; color: var(--text-muted); }
 .laras-bars { max-height: 420px; overflow: auto; scrollbar-gutter: stable; }
 .laras-bar-list { display: grid; gap: 18px; }
 .laras-bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
@@ -494,7 +494,7 @@ button:disabled { cursor: not-allowed; }
 @media (min-width: 900px) { .laras-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .laras-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); } }
 @media (prefers-reduced-motion: reduce) { .laras-loading { animation: none; } }
 
-.laras-filter-hint { display: block; margin-top: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+.laras-filter-hint { display: block; margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.6; }
 
 .laras-bars:focus-visible, .laras-month-scroll:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; border-radius: var(--radius-control); }
 
@@ -529,3 +529,18 @@ body { font-family: var(--font-sans); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 ::selection { background: var(--accent-soft); color: var(--accent-text); }
+
+/* Lantai keterbacaan (audit UI/UX 2026-11-12, temuan 4): teks di area konten tidak lebih
+   kecil dari 12 px. Kelas ukuran sembarang di bawah itu dinaikkan di sini, di satu tempat,
+   supaya berlaku untuk semua halaman termasuk yang ditambahkan nanti. Teks di dalam grafik
+   SVG dan markup ekspor JPEG tidak ikut. */
+.berry-canvas :is(.text-\[8px\], .text-\[9px\], .text-\[9\.5px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\]):not([id^="jpeg-export-"] *) { font-size: 0.75rem; }
+
+/* Sasaran sentuh (temuan 8): kontrol di area konten minimal 44 px di layar sentuh dan di
+   layar selebar ponsel atau tablet. Ukuran di desktop lebar dengan mouse tidak berubah. */
+:root { --sasaran-sentuh: 2.75rem; }
+@media (pointer: coarse), (max-width: 1023.98px) {
+  .berry-canvas :is(button, [role="button"], [role="tab"], a[href], summary, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"], [type="file"])) { min-height: var(--sasaran-sentuh); }
+  .berry-canvas :is(button, [role="button"], a[href]) { min-width: var(--sasaran-sentuh); }
+  .berry-canvas a[href] { display: inline-flex; align-items: center; }
+}

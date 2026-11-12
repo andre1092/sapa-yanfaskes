@@ -833,11 +833,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               {formatPercentID(item.avg_capaian)}
                             </span>
                           </div>
-                          <div className="text-[9.5px] font-mono text-[var(--text-muted)] truncate flex items-center gap-1" title={item.latest_timestamp}>
+                          <div className="text-[9.5px] font-mono text-[var(--text-muted)] flex items-center gap-1 min-w-0" title={item.latest_timestamp}>
                             <svg className="w-2.5 h-2.5 text-[var(--bpjs-green)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="truncate">{item.latest_timestamp || 'N/A'}</span>
+                            <span className="min-w-0">{item.latest_timestamp || 'N/A'}</span>
                           </div>
                         </div>
                       );
