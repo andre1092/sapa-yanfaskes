@@ -129,6 +129,10 @@ const COMPLIANCE_TABS: TabDefinition[] = [
   },
 ];
 
+// Tab ini sudah punya judul dan deskripsi sendiri di dalam komponennya, jadi judul tab di
+// dasbor tidak ditampilkan lagi supaya tidak berulang (audit UI/UX 2026-11-12, temuan 7).
+const TAB_DENGAN_JUDUL_SENDIRI = new Set<ComplianceTabId>(['00-ringkasan', '05-tmo', '06-antrean-wtl', '07-surkon', '08-rme']);
+
 export const LaporanKepatuhanDashboard: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState<ComplianceTabId>('00-ringkasan');
 
@@ -161,7 +165,7 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
         </Tabs>
       </MainCard>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2}>
-        <Box><Typography variant="h4" component="h2">{activeTabDef.shortName}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: '80ch' }}>{activeTabDef.description}</Typography></Box>
+        {!TAB_DENGAN_JUDUL_SENDIRI.has(activeTabId) && <Box><Typography variant="h4" component="h2">{activeTabDef.shortName}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: '80ch' }}>{activeTabDef.description}</Typography></Box>}
         <Chip variant="outlined" color="secondary" label={`Target ${activeTabDef.targetLabel ?? `≥ ${activeTabDef.targetPercent}%`}`} />
       </Stack>
       <div role="tabpanel" id={`compliance-panel-${activeTabId}`} aria-labelledby={`compliance-tab-${activeTabId}`}>
