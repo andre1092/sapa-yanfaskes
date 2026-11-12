@@ -19,7 +19,9 @@ def test_missing_asset_is_not_answered_with_the_app_page():
     fallback = CONFIG["rewrites"][-1]
     assert fallback["destination"] == "/frontend/index.html"
     pattern = vercel_regex(fallback["source"])
-    assert not pattern.match("/assets/tidak-ada-abc123.js")
+    # Vercel menerapkan rewrite berantai: /assets/x menjadi /frontend/assets/x, lalu dicocokkan lagi.
+    for missing in ("/assets/tidak-ada-abc123.js", "/frontend/assets/tidak-ada-abc123.js"):
+        assert not pattern.match(missing), missing
     for route in ("/", "/kepatuhanfkrtl", "/monitoring-laras", "/user"):
         assert pattern.match(route), route
 

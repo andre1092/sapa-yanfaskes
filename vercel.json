@@ -71,7 +71,7 @@
       "destination": "/frontend/logo-sapa-yanfaskes.png"
     },
     {
-      "source": "/((?!assets/).*)",
+      "source": "/((?!assets/|frontend/assets/).*)",
       "destination": "/frontend/index.html"
     }
   ],
