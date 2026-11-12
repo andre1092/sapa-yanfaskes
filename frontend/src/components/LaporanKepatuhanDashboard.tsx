@@ -96,7 +96,9 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     code: '05',
     name: '05. Update TMO',
     shortName: 'Update TMO',
-    targetPercent: 85,
+    // Sumber BI: capaian 100 bila jadwal operasi RS TMO ter-update; tidak ada target persen.
+    targetPercent: 100,
+    targetLabel: 'jadwal operasi ter-update (capaian 100)',
     description: 'Monitoring kepatuhan pencatatan dan update Tempat Pelayanan Obat (TMO) / Farmasi RS dan Telemedicine.',
     kpiLabel: 'Kepatuhan Update TMO',
   },
@@ -105,7 +107,9 @@ const COMPLIANCE_TABS: TabDefinition[] = [
     code: '06',
     name: '06. Antrean & WTL',
     shortName: 'Antrean & WTL',
-    targetPercent: 85,
+    // Sumber BI: Tercapai bila capaian 100; target nasional 30% ditampilkan di dalam tab.
+    targetPercent: 100,
+    targetLabel: 'capaian 100',
     description: 'Monitoring Waktu Tunggu Layanan (WTL) admisi, poli, dan farmasi serta kepatuhan integrasi antrean online rumah sakit.',
     kpiLabel: 'Kepatuhan Antrean & WTL',
   },
