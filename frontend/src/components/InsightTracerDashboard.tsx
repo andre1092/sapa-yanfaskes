@@ -5,8 +5,6 @@ import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
 import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
 import { FktpAntrolDashboard } from './FktpAntrolDashboard';
 import { MonitoringLarasDashboard } from './MonitoringLarasDashboard';
-import { UserManagementView } from './UserManagementView';
-import { LogsView } from './LogsView';
 import { DataIntegrationView } from './DataIntegrationView';
 import { AdminSettings } from './AdminSettings';
 import { AdminDialog } from './AdminDialog';
@@ -15,7 +13,6 @@ import { FloatingSidebar } from './ui/FloatingSidebar';
 import { HeroUIAssistant } from './HeroUIAssistant';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
-import { useLogStore, type LogRole } from '../store/logStore';
 import { namaTampilan, peranTampilan } from '../lib/namaTampilan';
 
 const ROUTE_MAP: Record<string, string> = {
@@ -27,8 +24,6 @@ const ROUTE_MAP: Record<string, string> = {
   '/antrol-fkrtl': 'Pemanfaatan Antrol FKRTL',
   '/kepatuhanfktp': 'Capaian Kepatuhan FKTP',
   '/kepatuhan-fktp': 'Capaian Kepatuhan FKTP',
-  '/user': 'User',
-  '/logs': 'Logs',
   '/integration': 'Integration',
   '/validation-rules': 'Validation Rules',
   '/home': 'Home',
@@ -40,8 +35,6 @@ const MENU_TO_ROUTE: Record<string, string> = {
   'Capaian Kepatuhan FKRTL': '/kepatuhanfkrtl',
   'Pemanfaatan Antrol FKRTL': '/antrolfkrtl',
   'Capaian Kepatuhan FKTP': '/kepatuhanfktp',
-  'User': '/user',
-  'Logs': '/logs',
   'Integration': '/integration',
   'Validation Rules': '/validation-rules',
   'Home': '/home',
@@ -60,7 +53,7 @@ const getMenuFromCurrentPath = (): string => {
 const sections = [
   { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Capaian Kepatuhan FKTP', 'Antrean online FKTP'], ['Monitoring LARAS', 'Monitoring LARAS']] },
   { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL']] },
-  { label: 'Administrasi', items: [['User', 'Pengguna'], ['Logs', 'Log aktivitas'], ['Integration', 'Integrasi data'], ['Validation Rules', 'Pengaturan']] },
+  { label: 'Administrasi', items: [['Integration', 'Integrasi data'], ['Validation Rules', 'Pengaturan']] },
 ];
 const labelFor = (menu: string) => sections.flatMap(section => section.items).find(([key]) => key === menu)?.[1] || menu;
 
@@ -80,7 +73,6 @@ const NavIcon = ({ name }: { name: string }) => <svg className="sapa-nav-icon" w
 export const InsightTracerDashboard: React.FC = () => {
   const { user, logoutUser } = useAuthStore();
   const { effectiveTheme, setTheme } = useThemeStore();
-  const { addLog } = useLogStore();
   const nama = namaTampilan(user);
   const peran = peranTampilan(user?.role);
   const [activeMenu, setActiveMenu] = useState(getMenuFromCurrentPath);
@@ -134,19 +126,6 @@ export const InsightTracerDashboard: React.FC = () => {
         window.history.pushState({ menu: menuName }, '', targetPath);
       }
     }
-    if (user) {
-      addLog({
-        userId: user.id || 'usr_001',
-        userName: user.name || user.username || 'Pengguna',
-        userRole: (user.role as LogRole) || 'User',
-        action: 'VIEW',
-        module: menuName,
-        status: 'SUCCESS',
-        details: `Pengguna membuka dan meninjau modul ${menuName}.`,
-        ipAddress: '10.14.88.21 (Intranet BPJS)',
-        device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
-      });
-    }
   };
 
 
@@ -178,7 +157,7 @@ export const InsightTracerDashboard: React.FC = () => {
     <Box ref={mainRef} className="berry-workspace" sx={{ flex: 1, minWidth: 0, mt: { xs: 9, lg: 11 }, mr: { xs: 1, sm: 2.5 }, ml: { xs: 1, lg: sidebarPinned ? '312px' : '132px' }, transition: 'margin-left 220ms ease', mb: 0, bgcolor: 'background.default', borderRadius: 'var(--radius-panel, 12px) var(--radius-panel, 12px) 0 0', p: { xs: 2, sm: 2.5 } }}>
       <Box sx={{ mb: 2.5 }}><Typography variant="caption" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'}</Typography><Typography variant="h4" component="p" sx={{ mt: 0.5 }}>{labelFor(activeMenu)}</Typography></Box>
       <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
-        {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'User' ? <UserManagementView /> : activeMenu === 'Logs' ? <LogsView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
+        {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
             <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch', overflowWrap: 'anywhere' }}>Selamat datang, {nama.split(' ')[0]}</Typography>
@@ -195,19 +174,6 @@ export const InsightTracerDashboard: React.FC = () => {
     </Box>
     {searchOpen && <AdminDialog label="Cari menu" onClose={() => { setSearchOpen(false); setMenuQuery(''); }}><Box sx={{ p: { xs: 2, sm: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}><Typography component="h2" variant="h3">Cari menu</Typography><IconButton aria-label="Tutup pencarian" onClick={() => setSearchOpen(false)}><IconX size={20} /></IconButton></Stack><TextField fullWidth id="menu-search" label="Nama menu" type="search" value={menuQuery} onChange={event => setMenuQuery(event.target.value)} placeholder="Kepatuhan, antrean, integrasi…" autoComplete="off" /><Typography role="status" variant="caption" color="text.secondary" sx={{ display: 'block', my: 2 }}>{menuResults.length} menu ditemukan</Typography><List component="nav" aria-label="Hasil pencarian menu">{menuResults.map(item => <ListItemButton component="a" key={item.key} href={MENU_TO_ROUTE[item.key]} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect(item.key); } }} sx={{ borderRadius: 2 }}><ListItemIcon><NavIcon name={item.key} /></ListItemIcon><ListItemText primary={item.label} secondary={item.group} /></ListItemButton>)}</List>{menuResults.length === 0 && <Typography color="text.secondary">Tidak ada menu yang cocok. Coba kata lain, seperti “kepatuhan”.</Typography>}</Box></AdminDialog>}
     {showLogoutModal && <AdminDialog label="Keluar dari SAPA?" onClose={() => setShowLogoutModal(false)}><div className="sapa-dialog"><p className="sapa-eyebrow">AKUN PENGGUNA</p><h2 id="logout-title">Keluar dari SAPA?</h2><p id="logout-description" className="sapa-description">Sesi kerja Anda akan berakhir. Masuk kembali untuk melanjutkan pemantauan layanan.</p><div className="sapa-dialog-actions"><AnimatedButton className="sapa-button sapa-button-secondary" onClick={() => setShowLogoutModal(false)}>Batal</AnimatedButton><AnimatedButton className="sapa-button sapa-button-danger" onClick={() => {
-                  if (user) {
-                    addLog({
-                      userId: user.id || 'usr_001',
-                      userName: user.name || user.username || 'Pengguna',
-                      userRole: (user.role as LogRole) || 'User',
-                      action: 'LOGOUT',
-                      module: 'Otentikasi Akun',
-                      status: 'SUCCESS',
-                      details: 'Pengguna mengakhiri sesi kerja (Log Out) dan kembali ke Halaman Login.',
-                      ipAddress: '10.14.88.21 (Intranet BPJS)',
-                      device: typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? 'Chrome / macOS' : 'Chrome / Windows',
-                    });
-                  }
                   logoutUser();
                   setShowLogoutModal(false);
 }}>Keluar dari akun</AnimatedButton></div></div></AdminDialog>}
