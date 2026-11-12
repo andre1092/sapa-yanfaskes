@@ -723,7 +723,7 @@ export const FktpAntrolDashboard: React.FC = () => {
                       {formatPercentID(item.avg_capaian)}
                     </span>
                   </div>
-                  <div className="text-[9.5px] font-mono text-[var(--text-muted)] mt-1 truncate">
+                  <div className="text-[9.5px] font-mono text-[var(--text-muted)] mt-1">
                     {item.latest_timestamp}
                   </div>
                 </div>
