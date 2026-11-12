@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { AppBar, Avatar, Box, Button, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, TextField, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { IconMenu2, IconSearch, IconSun, IconMoon, IconX } from '@tabler/icons-react';
-import { LaporanKepatuhanDashboard } from './LaporanKepatuhanDashboard';
-import { PemanfaatanAntrolDashboard } from './PemanfaatanAntrolDashboard';
-import { FktpAntrolDashboard } from './FktpAntrolDashboard';
-import { MonitoringLarasDashboard } from './MonitoringLarasDashboard';
-import { DataIntegrationView } from './DataIntegrationView';
-import { AdminSettings } from './AdminSettings';
+import { resilientLazy } from '../lib/resilientLazy';
+import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { AdminDialog } from './AdminDialog';
 import { AnimatedButton } from './ui/AnimatedButton';
 import { FloatingSidebar } from './ui/FloatingSidebar';
@@ -68,6 +64,14 @@ const navPaths: Record<string, string> = {
   Integration: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2m3 6a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
   'Validation Rules': 'M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7Zm-4 9 3 3 5-6',
 };
+// Halaman dimuat saat dibuka, bukan semuanya di muatan pertama (audit UI/UX 2026-11-12, temuan 13).
+const LaporanKepatuhanDashboard = resilientLazy(() => import('./LaporanKepatuhanDashboard').then(m => ({ default: m.LaporanKepatuhanDashboard })));
+const PemanfaatanAntrolDashboard = resilientLazy(() => import('./PemanfaatanAntrolDashboard').then(m => ({ default: m.PemanfaatanAntrolDashboard })));
+const FktpAntrolDashboard = resilientLazy(() => import('./FktpAntrolDashboard').then(m => ({ default: m.FktpAntrolDashboard })));
+const MonitoringLarasDashboard = resilientLazy(() => import('./MonitoringLarasDashboard').then(m => ({ default: m.MonitoringLarasDashboard })));
+const DataIntegrationView = resilientLazy(() => import('./DataIntegrationView').then(m => ({ default: m.DataIntegrationView })));
+const AdminSettings = resilientLazy(() => import('./AdminSettings').then(m => ({ default: m.AdminSettings })));
+
 const NavIcon = ({ name }: { name: string }) => <svg className="sapa-nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={navPaths[name] || navPaths.Home} /></svg>;
 
 export const InsightTracerDashboard: React.FC = () => {
@@ -144,7 +148,7 @@ export const InsightTracerDashboard: React.FC = () => {
     <a href="#workspace-content" className="skip-link">Langsung ke konten</a>
     <AppBar enableColorOnDark position="fixed" color="inherit" elevation={0} sx={{ bgcolor: 'background.paper', zIndex: theme.zIndex.appBar, left: { xs: 0, lg: sidebarPinned ? 312 : 132 }, width: { xs: '100%', lg: `calc(100% - ${sidebarPinned ? 312 : 132}px)` }, transition: 'left 220ms ease, width 220ms ease' }}>
       <Toolbar sx={{ minHeight: { xs: 72, lg: 88 }, gap: 2, px: { xs: 2, lg: 3 } }}>
-        <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1.5, flexShrink: 0 }}><Box component="img" src="/logo-sapa-yanfaskes.png" alt="" sx={{ width: 42, height: 42 }} /><Box><Typography variant="h4" component="p">SAPA Yanfaskes</Typography><Typography variant="caption" color="text.secondary">BPJS Kesehatan</Typography></Box></Box>
+        <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1.5, flexShrink: 0 }}><Box component="img" src="/logo-sapa-yanfaskes-128.png" alt="" sx={{ width: 42, height: 42 }} /><Box><Typography variant="h4" component="p">SAPA Yanfaskes</Typography><Typography variant="caption" color="text.secondary">BPJS Kesehatan</Typography></Box></Box>
         <IconButton aria-label="Buka navigasi" aria-expanded={mobileMenuOpen} aria-controls="workspace-navigation" onClick={() => setMobileMenuOpen(true)} sx={{ display: { lg: 'none' }, bgcolor: 'secondary.light', color: 'secondary.main', borderRadius: 2 }}><IconMenu2 size={20} /></IconButton>
         <Button aria-label="Cari menu" onClick={() => setSearchOpen(true)} startIcon={<IconSearch size={20} />} color="inherit" sx={{ bgcolor: 'background.default', color: 'text.secondary', border: 1, borderColor: 'divider', minWidth: { xs: 0, sm: 200 }, justifyContent: 'flex-start', display: { xs: 'none', sm: 'inline-flex' } }}>Cari menu<Typography component="kbd" variant="caption" sx={{ ml: 'auto' }}>⌘ K</Typography></Button>
         <Box sx={{ flexGrow: 1 }} />
@@ -157,6 +161,7 @@ export const InsightTracerDashboard: React.FC = () => {
     <Box ref={mainRef} className="berry-workspace" sx={{ flex: 1, minWidth: 0, mt: { xs: 9, lg: 11 }, mr: { xs: 1, sm: 2.5 }, ml: { xs: 1, lg: sidebarPinned ? '312px' : '132px' }, transition: 'margin-left 220ms ease', mb: 0, bgcolor: 'background.default', borderRadius: 'var(--radius-panel, 12px) var(--radius-panel, 12px) 0 0', p: { xs: 2, sm: 2.5 } }}>
       <Box sx={{ mb: 2.5 }}><Typography variant="caption" component="p" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'} / {labelFor(activeMenu)}</Typography></Box>
       <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
+        <Suspense fallback={<KerangkaMemuat label={`Memuat ${labelFor(activeMenu)}`} />}>
         {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
@@ -170,6 +175,7 @@ export const InsightTracerDashboard: React.FC = () => {
           <Paper component="section" elevation={0} aria-label="Panduan membaca laporan" sx={{ p: 3, borderRadius: 3 }}><Typography variant="h3" component="h2" sx={{ mb: 3 }}>Alur pemantauan</Typography><Stack spacing={3} direction={{ xs: 'column', md: 'row' }}>{[['Pilih konteks','Tentukan periode dan fasilitas melalui filter laporan.'],['Telusuri capaian','Baca indikator bersama grafik dan rincian sumbernya.'],['Siapkan tindak lanjut','Gunakan hasil ekspor yang tersedia untuk pembahasan berikutnya.']].map(([title,description],index) => <Box key={title} sx={{ flex: 1 }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main', mb: 1.5 }}>{index + 1}</Avatar><Typography component="h3" variant="h4" sx={{ mb: 1 }}>{title}</Typography><Typography color="text.secondary" variant="body2">{description}</Typography></Box>)}</Stack></Paper>
         </Box> : <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography variant="h4" component="h2" sx={{ mb: 1 }}>Modul belum tersedia</Typography><Typography color="text.secondary" sx={{ mb: 3 }}>Modul ini belum memiliki data atau fungsi yang dapat digunakan.</Typography><Button variant="contained" onClick={() => handleMenuSelect('Home')}>Kembali ke beranda</Button></Paper>}
 
+        </Suspense>
       </main>
     </Box>
     {searchOpen && <AdminDialog label="Cari menu" onClose={() => { setSearchOpen(false); setMenuQuery(''); }}><Box sx={{ p: { xs: 2, sm: 3 } }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}><Typography component="h2" variant="h3">Cari menu</Typography><IconButton aria-label="Tutup pencarian" onClick={() => setSearchOpen(false)}><IconX size={20} /></IconButton></Stack><TextField fullWidth id="menu-search" label="Nama menu" type="search" value={menuQuery} onChange={event => setMenuQuery(event.target.value)} placeholder="Kepatuhan, antrean, integrasi…" autoComplete="off" /><Typography role="status" variant="caption" color="text.secondary" sx={{ display: 'block', my: 2 }}>{menuResults.length} menu ditemukan</Typography><List component="nav" aria-label="Hasil pencarian menu">{menuResults.map(item => <ListItemButton component="a" key={item.key} href={MENU_TO_ROUTE[item.key]} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); handleMenuSelect(item.key); } }} sx={{ borderRadius: 2 }}><ListItemIcon><NavIcon name={item.key} /></ListItemIcon><ListItemText primary={item.label} secondary={item.group} /></ListItemButton>)}</List>{menuResults.length === 0 && <Typography color="text.secondary">Tidak ada menu yang cocok. Coba kata lain, seperti “kepatuhan”.</Typography>}</Box></AdminDialog>}

@@ -54,7 +54,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
       }
 
       if (format === 'csv') {
-        exportToCSV(exportData, type);
+        await exportToCSV(exportData, type);
         setDownloadingType(null);
       } else if (format === 'xlsx') {
         await exportToExcel(exportData, type);
