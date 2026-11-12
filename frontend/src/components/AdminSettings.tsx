@@ -251,7 +251,7 @@ export const AdminSettings: React.FC = () => {
       }
 
       showToast(
-        `Integrasi ${name} berhasil! Last Update diperbarui ke: ${nowTimestamp}`,
+        `Integrasi ${name} berhasil! Pembaruan terakhir diperbarui ke: ${nowTimestamp}`,
       );
     } finally {
       setTimeout(() => {
@@ -539,7 +539,7 @@ export const AdminSettings: React.FC = () => {
                 </p>
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Last Update : {lastUpdateAntrol}</span>
+                  <span>Pembaruan terakhir: {lastUpdateAntrol}</span>
                 </div>
               </div>
 
@@ -588,7 +588,7 @@ export const AdminSettings: React.FC = () => {
                 </p>
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Last Update : {lastUpdateNakes}</span>
+                  <span>Pembaruan terakhir: {lastUpdateNakes}</span>
                 </div>
               </div>
 
@@ -637,7 +637,7 @@ export const AdminSettings: React.FC = () => {
                 </p>
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Last Update : {lastUpdatePengaduan}</span>
+                  <span>Pembaruan terakhir: {lastUpdatePengaduan}</span>
                 </div>
               </div>
 
@@ -691,7 +691,7 @@ export const AdminSettings: React.FC = () => {
                 </p>
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Last Update : {lastUpdateUmabl}</span>
+                  <span>Pembaruan terakhir: {lastUpdateUmabl}</span>
                 </div>
               </div>
 
@@ -742,7 +742,7 @@ export const AdminSettings: React.FC = () => {
                 </p>
                 <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Last Update : {lastUpdateDisplayTt}</span>
+                  <span>Pembaruan terakhir: {lastUpdateDisplayTt}</span>
                 </div>
               </div>
 

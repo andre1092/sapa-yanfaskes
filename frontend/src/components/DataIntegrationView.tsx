@@ -179,7 +179,7 @@ const MODULES_REGISTRY: DataModuleMeta[] = [
     categoryLabel: "Antrean RS",
     icon: "DATA",
     targetMetric: "80% (MJKN) & 95% (All)",
-    weight: "Dashboard Pemanfaatan",
+    weight: "Dasbor Pemanfaatan",
     spreadsheetId: "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY",
     sheetName: "DB_LAP_ANTROL_FKRTL",
     folderPath: "Google Drive Publik / DB_LAP_ANTROL_FKRTL (2.052 Baris)",
