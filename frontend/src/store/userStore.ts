@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { buangKataSandi } from './userStorePrivacy';
 
 export type UserRole =
   | 'Super Admin'
@@ -14,7 +15,6 @@ export interface UserAccount {
   username: string;
   name: string;
   email: string;
-  password: string;
   role: UserRole;
   status: 'Aktif' | 'Nonaktif';
   createdAt: string;
@@ -24,7 +24,6 @@ export interface AdminProfile {
   name: string;
   username: string;
   email: string;
-  password: string;
   role: string;
   isVerified: boolean;
   unverifiedEmail?: string | null;
@@ -46,7 +45,6 @@ const DEFAULT_USERS: UserAccount[] = [
     username: 'superadmin',
     name: 'Super Administrator BPJS',
     email: 'superadmin@bpjs-kesehatan.go.id',
-    password: 'SuperAdminSAPA2026#',
     role: 'Super Admin',
     status: 'Aktif',
     createdAt: '2026-01-15 08:00:00',
@@ -56,7 +54,6 @@ const DEFAULT_USERS: UserAccount[] = [
     username: 'admin_jember',
     name: 'Andreas Dwi Rizko Nugroho',
     email: 'andreas.dwi@bpjs-kesehatan.go.id',
-    password: 'JemberYanfaskes2026!',
     role: 'Super Admin',
     status: 'Aktif',
     createdAt: '2026-01-20 09:30:00',
@@ -66,7 +63,6 @@ const DEFAULT_USERS: UserAccount[] = [
     username: 'admin_faskes',
     name: 'Admin Operasional Data',
     email: 'admin.faskes@bpjs-kesehatan.go.id',
-    password: 'AdminFaskes2026!',
     role: 'Admin',
     status: 'Aktif',
     createdAt: '2026-02-01 10:15:00',
@@ -76,7 +72,6 @@ const DEFAULT_USERS: UserAccount[] = [
     username: 'user_yanfaskes',
     name: 'User Petugas Yanfaskes',
     email: 'user.yanfaskes@bpjs-kesehatan.go.id',
-    password: 'UserYanfaskes2026#',
     role: 'User',
     status: 'Aktif',
     createdAt: '2026-02-10 14:00:00',
@@ -90,7 +85,6 @@ export const useUserStore = create<UserStoreState>()(
         name: 'Andreas Dwi Rizko Nugroho',
         username: 'admin_jember',
         email: 'andreas.dwi@bpjs-kesehatan.go.id',
-        password: 'JemberYanfaskes2026!',
         role: 'Super Admin',
         isVerified: true,
         unverifiedEmail: null,
@@ -114,7 +108,6 @@ export const useUserStore = create<UserStoreState>()(
                 username: updated.username ?? u.username,
                 email: (updated.unverifiedEmail || updated.email) ?? u.email,
                 role: (updated.role as any) ?? u.role,
-                ...(updated.password ? { password: updated.password } : {}),
               };
             }
             return u;
@@ -128,7 +121,6 @@ export const useUserStore = create<UserStoreState>()(
               username: newProfile.username,
               name: newProfile.name,
               email: newProfile.email,
-              password: newProfile.password || 'JemberYanfaskes2026!',
               role: (newProfile.role as any) || 'Super Admin',
               status: 'Aktif',
               createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -191,7 +183,6 @@ export const useUserStore = create<UserStoreState>()(
               name: editedUser.name,
               email: editedUser.email,
               role: editedUser.role,
-              ...(editedUser.password ? { password: editedUser.password } : {}),
             };
           }
           return {
@@ -215,7 +206,7 @@ export const useUserStore = create<UserStoreState>()(
     }),
     {
       name: 'sapa-user-settings-storage',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
         if (version < 2 && persistedState) {
           persistedState.profile = {
@@ -239,7 +230,8 @@ export const useUserStore = create<UserStoreState>()(
             });
           }
         }
-        return persistedState;
+        // Versi 3: data tampilan pengguna tidak lagi memuat kolom kata sandi.
+        return version < 3 ? buangKataSandi(persistedState) : persistedState;
       },
     }
   )
