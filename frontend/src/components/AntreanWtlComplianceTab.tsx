@@ -253,7 +253,7 @@ export const AntreanWtlComplianceTab: React.FC = () => {
               Monitoring pemanfaatan antrean online Mobile JKN vs Total Antrean Rumah Sakit serta waktu tunggu layanan pada Task 2 (Admisi), Task 3 (Poli Dokter), dan Task 4 (Farmasi/Obat).
             </p>
           </div>
-          <MainCard content={false} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 berry-dashboard-card p-3 rounded-xl min-w-0">
+          <MainCard content={false} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 berry-dashboard-card p-3 rounded-xl shrink-0">
             <div>
               <span className="text-xs text-[var(--text-muted)] block font-medium">Bobot Pilar</span>
               <span className="text-2xl font-semibold text-[var(--bpjs-green)] font-mono">20.0%</span>
@@ -370,9 +370,9 @@ export const AntreanWtlComplianceTab: React.FC = () => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="sapa-control w-full rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)]"
+            className="sapa-control w-full rounded-xl sapa-control--search pr-3 py-1.5 text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)]"
           />
-          <svg className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
