@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
@@ -208,6 +209,7 @@ export const SurkonComplianceTab: React.FC = () => {
   };
 
   if (!apiData) {
+    if (loading) return <KerangkaMemuat label="Memuat data kepatuhan" />;
     return (
       <MainCard content={false} className="berry-dashboard-card p-5 sm:p-6" aria-busy={loading} aria-live="polite">
         <p className="sapa-eyebrow">Data kepatuhan FKRTL</p>

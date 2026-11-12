@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
@@ -122,12 +123,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   };
 
   if (isLoading && !data) {
-    return (
-      <div className="p-6 lg:p-8 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-[var(--text-muted)]">Memuat Live Data Google Spreadsheet FKRTL...</p>
-      </div>
-    );
+    return <KerangkaMemuat label="Memuat data antrean online FKRTL" varian="halaman" />;
   }
 
   if (isError && !data) {

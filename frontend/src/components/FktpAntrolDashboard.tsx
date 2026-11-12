@@ -1,5 +1,6 @@
 import { Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
+import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
@@ -112,6 +113,7 @@ export const FktpAntrolDashboard: React.FC = () => {
   const lastUpdateText = data?.last_update || liveSyncAntrol || 'Belum tersedia';
 
   if (!data) {
+    if (isLoading) return <KerangkaMemuat label="Memuat data antrean online FKTP" varian="halaman" />;
     return <section className="sapa-page p-4 sm:p-6" aria-busy={isLoading} aria-live="polite"><MainCard content={false} className="berry-dashboard-card p-5 sm:p-6"><p className="sapa-eyebrow">Antrean online FKTP</p><Typography component="h1" variant="h3" className="sapa-title mt-2">{isLoading ? 'Memuat data FKTP' : 'Data belum tersedia'}</Typography><p className="text-sm text-[var(--text-muted)] mt-2">{isLoading ? 'Mengambil data antrean sesuai filter.' : 'Sumber data belum dapat dihubungi.'}</p>{!isLoading && <button type="button" onClick={() => refetch()} className="sapa-button sapa-button-primary mt-4">Coba lagi</button>}</MainCard></section>;
   }
 
