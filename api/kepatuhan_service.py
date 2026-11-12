@@ -356,8 +356,6 @@ def process_tmo_kepatuhan(
             "flag_target": r.get("Flagtarget", "TMO").strip(),
             "jadwal_operasi": ops,
             "jumlah_jadwal_operasi": ops,
-            "persentase_operasi": 100.0 if ops > 0 else 0.0,
-            "persentase_antrol": capaian,
             "capaian": capaian,
             "capaian_nilai": round(capaian * 0.05, 2),
             "is_met": is_met,
