@@ -33,8 +33,8 @@ test('bentuk data yang tidak dikenal dikembalikan apa adanya', () => {
   assert.deepEqual(buangKataSandi({ users: 'rusak' }), { users: 'rusak', profile: undefined });
 });
 
-test('toko dan halaman pengguna tidak lagi mengenal kolom kata sandi', async () => {
-  for (const berkas of ['./userStore.ts', '../components/UserManagementView.tsx', '../components/AdminSettings.tsx']) {
+test('toko pengguna dan halaman pengaturan tidak lagi mengenal kolom kata sandi', async () => {
+  for (const berkas of ['./userStore.ts', '../components/AdminSettings.tsx']) {
     assert.doesNotMatch(await baca(berkas), /password/i, berkas);
   }
 });

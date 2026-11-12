@@ -11,6 +11,13 @@ import App from './App.tsx'
 import { AuthSessionProvider } from './auth/AuthSessionProvider'
 import { useThemeStore } from './store/themeStore.ts'
 
+// Log aktivitas contoh dari versi lama dibuang dari penyimpanan browser.
+try {
+  localStorage.removeItem('sapa-audit-logs');
+} catch {
+  // Penyimpanan browser tidak tersedia.
+}
+
 // Inisialisasi preferensi tema (Light/Dark/System)
 useThemeStore.getState().initTheme()
 

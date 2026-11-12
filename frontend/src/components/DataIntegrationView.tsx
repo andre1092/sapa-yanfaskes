@@ -6,8 +6,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../lib/apiClient";
 import { AMBANG_PATUH_NILAI_AKHIR } from "../lib/kepatuhanJpeg";
 import { useSyncStore, formatCurrentTimestamp } from "../store/syncStore";
-import { useLogStore, type LogRole } from "../store/logStore";
-import { useAuthStore } from "../store/authStore";
 
 export interface DataModuleMeta {
   id: string;
@@ -214,8 +212,6 @@ type CategoryFilter =
 
 export const DataIntegrationView: React.FC = () => {
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuthStore();
-  const { addLog } = useLogStore();
 
   const syncState = useSyncStore();
   const {
@@ -349,17 +345,6 @@ export const DataIntegrationView: React.FC = () => {
       setSyncModule(mod.id, nowTime);
 
       // Audit Log Success
-      addLog({
-        userId: currentUser?.id || "admin_jember",
-        userName: currentUser?.name || "Administrator KC Jember",
-        userRole: (currentUser?.role as LogRole) || "Admin",
-        action: "UPDATE",
-        module: `Integration: ${mod.shortName}`,
-        status: "SUCCESS",
-        details: `Sinkronisasi live data berhasil. Stempel waktu pembaruan: ${nowTime}. Sumber: ${mod.spreadsheetId}`,
-        ipAddress: "127.0.0.1 (Lokal)",
-        device: "Web Desktop",
-      });
 
       showToast(
         `Pembaruan data "${mod.shortName}" berhasil diperbarui ke: ${nowTime}`,
@@ -369,17 +354,6 @@ export const DataIntegrationView: React.FC = () => {
       console.error(`Gagal sinkronisasi modul ${mod.id}:`, err);
 
       // Audit Log Failed
-      addLog({
-        userId: currentUser?.id || "admin_jember",
-        userName: currentUser?.name || "Administrator KC Jember",
-        userRole: (currentUser?.role as LogRole) || "Admin",
-        action: "UPDATE",
-        module: `Integration: ${mod.shortName}`,
-        status: "FAILED",
-        details: `Gagal sinkronisasi data langsung Google Sheets: ${err?.message || "Koneksi timeout / jaringan"}.`,
-        ipAddress: "127.0.0.1 (Lokal)",
-        device: "Web Desktop",
-      });
 
       showToast(
         `Terjadi kendala jaringan saat menyinkronkan "${mod.shortName}". Data terakhir tetap ditampilkan.`,
@@ -423,32 +397,10 @@ export const DataIntegrationView: React.FC = () => {
         failedCount === 0
           ? `Sukses! Seluruh 11 modul capaian berhasil disinkronkan serentak: ${nowTime}`
           : `Sinkronisasi: ${successfulModules.length} modul berhasil, ${failedCount} modul gagal. Data terakhir modul yang gagal tetap ditampilkan. Silakan coba lagi.`;
-      addLog({
-        userId: currentUser?.id || "admin_jember",
-        userName: currentUser?.name || "Administrator KC Jember",
-        userRole: (currentUser?.role as LogRole) || "Admin",
-        action: "UPDATE",
-        module: "Integration: Master Sync",
-        status: failedCount === 0 ? "SUCCESS" : "FAILED",
-        details: message,
-        ipAddress: "127.0.0.1 (Lokal)",
-        device: "Web Desktop",
-      });
       showToast(message, failedCount === 0 ? "success" : "error");
     } catch (err: any) {
       console.error("Gagal master sync:", err);
 
-      addLog({
-        userId: currentUser?.id || "admin_jember",
-        userName: currentUser?.name || "Administrator KC Jember",
-        userRole: (currentUser?.role as LogRole) || "Admin",
-        action: "UPDATE",
-        module: "Integration: Master Sync",
-        status: "FAILED",
-        details: `Gagal melakukan sinkronisasi serentak seluruh modul: ${err?.message || "Koneksi backend"}.`,
-        ipAddress: "127.0.0.1 (Lokal)",
-        device: "Web Desktop",
-      });
 
       showToast(
         "Sinkronisasi gagal. Data terakhir tetap ditampilkan. Silakan coba lagi.",
