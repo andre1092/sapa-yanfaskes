@@ -14,6 +14,11 @@ from typing import Any
 
 import requests
 
+try:
+    from .sheets_source import read_sheet_csv
+except ImportError:
+    from sheets_source import read_sheet_csv
+
 SPREADSHEET_ID = "1rKEVk54FM7pDf2FpNA35ycTvvMsG542npXsU_xjaaoE"
 SOURCE_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit"
 TASK = "Rata-Rata Waktu 3-4 dan 2-4"
@@ -195,12 +200,16 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
 
 
 def _read_csv(spreadsheet_id: str, gid: int | None, required: set[str]) -> list[dict]:
-    params = {"format": "csv"}
-    if gid is not None:
-        params["gid"] = str(gid)
-    response = requests.get(f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export", params=params, timeout=(4, 15))
-    response.raise_for_status()
-    reader = csv.DictReader(io.StringIO(response.content.decode("utf-8-sig")))
+    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
+    content = read_sheet_csv(spreadsheet_id, gid, "LARAS")
+    if not content:
+        params = {"format": "csv"}
+        if gid is not None:
+            params["gid"] = str(gid)
+        response = requests.get(f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export", params=params, timeout=(4, 15))
+        response.raise_for_status()
+        content = response.content
+    reader = csv.DictReader(io.StringIO(content.decode("utf-8-sig")))
     if not required.issubset(set(reader.fieldnames or [])):
         raise LarasSourceUnavailable("Skema sumber LARAS tidak sesuai.")
     return list(reader)

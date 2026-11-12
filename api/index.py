@@ -33,6 +33,10 @@ try:
     from .laras_service import get_laras_data, LarasSourceUnavailable
 except ImportError:
     from laras_service import get_laras_data, LarasSourceUnavailable
+try:
+    from .sheets_source import read_sheet_csv
+except ImportError:
+    from sheets_source import read_sheet_csv
 import jwt
 import uuid
 from jwt import PyJWKClient
@@ -579,19 +583,21 @@ def fetch_single_sheet_csv(spreadsheet_id: str, sheet_name: str, gid: str, force
             return sheet_name, df
             
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
-    content = None
+    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
+    content = read_sheet_csv(spreadsheet_id, gid, sheet_name)
     
     # Attempt 1: Fast urllib with unverified SSL context to bypass container cert issues
-    try:
-        import ssl
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-        with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
-            content = resp.read()
-    except Exception as e_urllib:
-        logger.warning(f"urllib fetch failed for {sheet_name} (gid={gid}): {e_urllib}")
+    if not content:
+        try:
+            import ssl
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
+                content = resp.read()
+        except Exception as e_urllib:
+            logger.warning(f"urllib fetch failed for {sheet_name} (gid={gid}): {e_urllib}")
         
     # Attempt 2: Fallback to requests (with certificate verification) if urllib failed
     if not content:
@@ -1332,17 +1338,19 @@ def fetch_csv_records(spreadsheet_id: str, sheet_name: str, gid: Optional[str] =
     else:
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv"
 
-    content = None
-    try:
-        import ssl
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-        with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
-            content = resp.read()
-    except Exception as e_urllib:
-        logger.warning(f"urllib fetch failed for {sheet_name} ({spreadsheet_id}): {e_urllib}")
+    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
+    content = read_sheet_csv(spreadsheet_id, gid, sheet_name)
+    if not content:
+        try:
+            import ssl
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
+                content = resp.read()
+        except Exception as e_urllib:
+            logger.warning(f"urllib fetch failed for {sheet_name} ({spreadsheet_id}): {e_urllib}")
 
     if not content:
         try:
@@ -3010,39 +3018,42 @@ def fetch_fktp_antrol_dfs(force_refresh: bool = False) -> pl.DataFrame:
     url1 = f"https://docs.google.com/spreadsheets/d/{FKTP_ANTROL_SPREADSHEET_ID}/export?format=csv"
     url2 = f"https://docs.google.com/spreadsheets/d/{FKTP_REF_SPREADSHEET_ID}/export?format=csv"
 
-    content1 = None
-    content2 = None
+    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
+    content1 = read_sheet_csv(FKTP_ANTROL_SPREADSHEET_ID, None, "FKTP Capaian")
+    content2 = read_sheet_csv(FKTP_REF_SPREADSHEET_ID, None, "FKTP Ref")
 
     import ssl
     ssl_ctx = ssl.create_default_context()
     ssl_ctx.check_hostname = False
     ssl_ctx.verify_mode = ssl.CERT_NONE
 
-    try:
-        req1 = urllib.request.Request(url1, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req1, context=ssl_ctx, timeout=10) as resp1:
-            content1 = resp1.read()
-    except Exception as e1:
-        logger.warning(f"urllib fetch failed for FKTP Capaian: {e1}")
+    if not content1:
         try:
-            r1 = requests.get(url1, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-            if r1.status_code == 200:
-                content1 = r1.content
-        except Exception as e1_req:
-            logger.error(f"requests fetch failed for FKTP Capaian: {e1_req}")
+            req1 = urllib.request.Request(url1, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req1, context=ssl_ctx, timeout=10) as resp1:
+                content1 = resp1.read()
+        except Exception as e1:
+            logger.warning(f"urllib fetch failed for FKTP Capaian: {e1}")
+            try:
+                r1 = requests.get(url1, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                if r1.status_code == 200:
+                    content1 = r1.content
+            except Exception as e1_req:
+                logger.error(f"requests fetch failed for FKTP Capaian: {e1_req}")
 
-    try:
-        req2 = urllib.request.Request(url2, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req2, context=ssl_ctx, timeout=10) as resp2:
-            content2 = resp2.read()
-    except Exception as e2:
-        logger.warning(f"urllib fetch failed for FKTP Ref: {e2}")
+    if not content2:
         try:
-            r2 = requests.get(url2, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-            if r2.status_code == 200:
-                content2 = r2.content
-        except Exception as e2_req:
-            logger.error(f"requests fetch failed for FKTP Ref: {e2_req}")
+            req2 = urllib.request.Request(url2, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req2, context=ssl_ctx, timeout=10) as resp2:
+                content2 = resp2.read()
+        except Exception as e2:
+            logger.warning(f"urllib fetch failed for FKTP Ref: {e2}")
+            try:
+                r2 = requests.get(url2, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                if r2.status_code == 200:
+                    content2 = r2.content
+            except Exception as e2_req:
+                logger.error(f"requests fetch failed for FKTP Ref: {e2_req}")
 
     if not content1:
         if cache_key in _SHEETS_CACHE:

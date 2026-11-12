@@ -6,6 +6,11 @@ import urllib.request
 import logging
 from typing import Optional, List, Dict, Any
 
+try:
+    from .sheets_source import read_sheet_csv
+except ImportError:
+    from sheets_source import read_sheet_csv
+
 logger = logging.getLogger("sapa-api")
 
 # Spreadsheet IDs terverifikasi langsung dari Google Drive Folder
@@ -71,6 +76,13 @@ def fetch_sheet_csv(spreadsheet_id: str, label: str) -> List[Dict[str, str]]:
         cached_time, recs = _SERVICE_CACHE[cache_key]
         if (now - cached_time) < _SERVICE_CACHE_TTL:
             return recs
+
+    # Akun layanan lebih dulu; jalur lama di bawah hanya dipakai selama masa peralihan.
+    content = read_sheet_csv(spreadsheet_id, None, label)
+    if content:
+        records = list(csv.DictReader(io.StringIO(content.decode("utf-8", errors="ignore"))))
+        _SERVICE_CACHE[cache_key] = (now, records)
+        return records
 
     url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv"
     try:
