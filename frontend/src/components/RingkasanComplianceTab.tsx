@@ -685,12 +685,12 @@ export const RingkasanComplianceTab: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[var(--bpjs-green)]/10 text-[var(--bpjs-green)] border border-[var(--border-color)]">
               <span className="w-2 h-2 rounded-full bg-[var(--bpjs-green)]" />
-              Periode: {apiData?.selected_period || selectedBulan || 'October 2026'}
+              Periode: {bulanIndonesia(apiData?.selected_period || selectedBulan) || 'Belum tersedia'}
             </span>
             <span className="text-xs text-[var(--text-muted)]">
               Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas
             </span>
-            <UnduhJpegKepatuhan tab="ringkasan" rows={processedRows} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
+            <UnduhJpegKepatuhan tab="ringkasan" rows={processedRows} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
           </div>
         </div>
 

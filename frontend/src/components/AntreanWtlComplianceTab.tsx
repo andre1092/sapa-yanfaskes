@@ -640,7 +640,7 @@ export const AntreanWtlComplianceTab: React.FC = () => {
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)]">
             <span>Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas</span>
-            <UnduhJpegKepatuhan tab="antreanWtl" rows={processedRows} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
+            <UnduhJpegKepatuhan tab="antreanWtl" rows={processedRows} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
           </div>
         </div>
 

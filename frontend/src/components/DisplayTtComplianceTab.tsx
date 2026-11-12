@@ -1062,7 +1062,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
               </button>
             </div>
 
-            <UnduhJpegKepatuhan tab="displayTt" rows={sortedTableData} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
+            <UnduhJpegKepatuhan tab="displayTt" rows={sortedTableData} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
 
             {/* Export CSV Button */}
             <button

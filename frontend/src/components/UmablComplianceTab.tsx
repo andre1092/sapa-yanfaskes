@@ -1096,7 +1096,7 @@ export const UmablComplianceTab: React.FC = () => {
         </div>
 
         <div className="flex justify-end px-4 pb-3">
-          <UnduhJpegKepatuhan tab="umabl" rows={processedTableRows} periode={selectedBulan} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
+          <UnduhJpegKepatuhan tab="umabl" rows={processedTableRows} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
         </div>
 
         {/* Table Content */}
