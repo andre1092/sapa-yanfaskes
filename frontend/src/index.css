@@ -547,3 +547,12 @@ body { font-family: var(--font-sans); }
   .berry-canvas :is(button, [role="button"], a[href]) { min-width: var(--sasaran-sentuh); }
   .berry-canvas a[href] { display: inline-flex; align-items: center; }
 }
+
+/* Kerangka memuat (audit UI/UX 2026-11-12, temuan 11). Denyut hanya bila pengguna tidak
+   meminta gerak dikurangi. */
+.sapa-kerangka-kartu { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); }
+.sapa-kerangka-garis { background: var(--panel-border); border-radius: var(--radius-control); }
+@media (prefers-reduced-motion: no-preference) {
+  .sapa-kerangka-garis { animation: sapa-kerangka-denyut 1.4s ease-in-out infinite; }
+}
+@keyframes sapa-kerangka-denyut { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
