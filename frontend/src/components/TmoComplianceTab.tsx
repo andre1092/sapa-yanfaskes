@@ -41,8 +41,6 @@ export interface TmoTableRow {
   bulan: string;
   bulan_indo: string;
   jadwal_operasi: number;
-  persentase_operasi: number;
-  persentase_antrol: number;
   capaian: number;
   capaian_nilai: number;
   is_met: boolean;
@@ -656,8 +654,6 @@ export const TmoComplianceTab: React.FC = () => {
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('nama_ppk')}>Nama Rumah Sakit</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kabupaten')}>Kabupaten</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('jadwal_operasi')}>Jadwal Operasi</TableCell>
-                  <TableCell className="py-3 px-3 text-center" title="Persentase Operasi">Update Operasi (%)</TableCell>
-                  <TableCell className="py-3 px-3 text-center" title="Persentase Antrol">Antrol TMO (%)</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('capaian')}>Capaian</TableCell>
                   <TableCell className="py-3 px-3 text-center" title="Kontribusi Nilai (Bobot 5%)">Poin (5%)</TableCell>
                   <TableCell className="py-3 px-3 text-center">Status</TableCell>
@@ -666,7 +662,7 @@ export const TmoComplianceTab: React.FC = () => {
               <TableBody className="divide-y divide-[var(--border-color)]/20 font-medium">
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-12 text-center text-[var(--text-muted)] italic">
+                    <TableCell colSpan={8} className="py-12 text-center text-[var(--text-muted)] italic">
                       Tidak ada data yang sesuai dengan filter.
                     </TableCell>
                   </TableRow>
@@ -687,8 +683,6 @@ export const TmoComplianceTab: React.FC = () => {
                       </TableCell>
                       <TableCell className="py-3 px-3 text-[var(--text-main)]">{row.kabupaten}</TableCell>
                       <TableCell className="py-3 px-3 text-center font-mono font-bold">{row.jadwal_operasi}</TableCell>
-                      <TableCell className="py-3 px-3 text-center font-mono">{fmtNum(row.persentase_operasi, 1)}%</TableCell>
-                      <TableCell className="py-3 px-3 text-center font-mono">{fmtNum(row.persentase_antrol, 1)}%</TableCell>
                       <TableCell className="py-3 px-3 text-center">
                         <span className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
                           row.is_met

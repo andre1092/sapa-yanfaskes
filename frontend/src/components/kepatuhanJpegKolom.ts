@@ -169,8 +169,6 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
       teks('Nama Rumah Sakit', 'nama_ppk'),
       teks('Kabupaten', 'kabupaten'),
       jumlah('Jadwal Operasi', 'jadwal_operasi'),
-      desimal('Update Operasi (%)', 'persentase_operasi'),
-      desimal('Antrol TMO (%)', 'persentase_antrol'),
       capaian(),
       desimal('Poin (5%)', 'capaian_nilai'),
     ],
