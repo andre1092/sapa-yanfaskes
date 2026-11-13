@@ -84,15 +84,6 @@ const fmtRibuan = (val: unknown): string => {
   return Number.isFinite(n) ? n.toLocaleString('id-ID') : '-';
 };
 
-/** Persen teks dari spreadsheet ("30.00 %" atau "30,00 %") ditulis format Indonesia: 30,00 %. */
-const fmtPersenTeks = (val: unknown): string => {
-  const t = String(val ?? '').replace('%', '').trim();
-  const n = parseFloat(t.includes(',') && !t.includes('.') ? t.replace(',', '.') : t);
-  return Number.isFinite(n)
-    ? `${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`
-    : '-';
-};
-
 const fmtNum = (val: unknown, decimals: number = 1): string => {
   if (val === null || val === undefined || val === '') return '-';
   const n = typeof val === 'number' ? val : parseFloat(String(val));
@@ -683,14 +674,13 @@ export const AntreanWtlComplianceTab: React.FC = () => {
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('waktu_task_2_4')}>Rata-rata Waktu task 2-4</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-2 text-center cursor-pointer" onClick={() => handleSort('total_mjkn')}>Kunjungan dengan MJKN</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-2 text-center cursor-pointer" onClick={() => handleSort('total_antrol')}>Kunjungan dengan Antrean Online</TableCell>
-                  <TableCell className="py-3 px-2 text-center">% Target Nasional</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('capaian')}>Capaian</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody className="divide-y divide-[var(--border-color)]/20 font-medium">
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-12 text-center text-[var(--text-muted)] italic">
+                    <TableCell colSpan={6} className="py-12 text-center text-[var(--text-muted)] italic">
                       Tidak ada data yang sesuai dengan filter.
                     </TableCell>
                   </TableRow>
@@ -707,7 +697,6 @@ export const AntreanWtlComplianceTab: React.FC = () => {
                       <TableCell className="py-3 px-3 text-center font-mono">{row.waktu_task_2_4 || '-'}</TableCell>
                       <TableCell className="py-3 px-2 text-center font-mono">{fmtRibuan(row.total_mjkn)}</TableCell>
                       <TableCell className="py-3 px-2 text-center font-mono">{fmtRibuan(row.total_antrol)}</TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono">{fmtPersenTeks(row.persen_target_nasional)}</TableCell>
                       <TableCell className="py-3 px-3 text-center">
                         <span className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
                           row.is_met
