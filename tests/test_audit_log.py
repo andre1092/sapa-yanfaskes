@@ -98,3 +98,25 @@ def test_database_failure_does_not_break_the_request(setup, monkeypatch):
     monkeypatch.setattr(audit_log, "write_entry", broken)
     client, headers = client_for(["super_admin"])
     assert client.post("/api/v1/fktp-antrol-sync", headers=headers).status_code == 200
+
+
+def test_time_range_filter_uses_whole_days_in_wib(setup, monkeypatch):
+    api, _, client_for = setup
+    seen = {}
+
+    async def capture(**filters):
+        seen.update(filters)
+        return []
+
+    monkeypatch.setattr(audit_log, "read_entries", capture)
+    client, headers = client_for(["super_admin"])
+    assert client.get("/api/v1/audit-log?since=2026-11-01&until=2026-11-13", headers=headers).status_code == 200
+    assert seen["since"].isoformat() == "2026-11-01T00:00:00+07:00"
+    assert seen["until"].isoformat() == "2026-11-14T00:00:00+07:00"
+
+
+@pytest.mark.parametrize("query", ["since=kemarin", "until=2026-13-40", "since=2026-11-13&until=2026-11-01"])
+def test_invalid_time_range_is_rejected(setup, query):
+    api, _, client_for = setup
+    client, headers = client_for(["super_admin"])
+    assert client.get(f"/api/v1/audit-log?{query}", headers=headers).status_code in (400, 422)

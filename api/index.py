@@ -8,7 +8,7 @@ import re
 import traceback
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
 
 from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks, Query
@@ -241,6 +241,7 @@ require_super_admin = require_role("super_admin")
 
 # --- RIWAYAT AKTIVITAS (audit log, hanya Super Admin yang bisa membaca) ---
 _ROLE_BY_RANK = {3: "super_admin", 2: "admin", 1: "viewer", 0: ""}
+WIB = timezone(timedelta(hours=7))
 
 
 @app.middleware("http")
@@ -266,10 +267,17 @@ async def get_audit_log(
     before_id: Optional[int] = Query(default=None, ge=1),
     actor: str = Query(default="", max_length=200),
     action: str = Query(default="", max_length=100),
+    since: Optional[date] = Query(default=None),
+    until: Optional[date] = Query(default=None),
     user=Depends(require_super_admin),
 ):
+    # Tanggal dibaca dalam WIB; 'until' mencakup seluruh hari itu.
+    if since and until and since > until:
+        raise HTTPException(status_code=400, detail="Tanggal awal tidak boleh setelah tanggal akhir.")
+    start = datetime.combine(since, datetime.min.time(), WIB) if since else None
+    end = datetime.combine(until + timedelta(days=1), datetime.min.time(), WIB) if until else None
     try:
-        entries = await audit_log.read_entries(limit=limit, before_id=before_id, actor=actor, action=action)
+        entries = await audit_log.read_entries(limit=limit, before_id=before_id, actor=actor, action=action, since=start, until=end)
     except Exception as exc:
         logger.error("Gagal membaca audit log: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="Riwayat aktivitas sedang tidak dapat dibaca.")
