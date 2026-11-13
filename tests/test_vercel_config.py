@@ -82,3 +82,10 @@ def test_jpeg_export_can_embed_google_fonts():
 
 def test_report_only_policy_is_removed_once_enforced():
     assert csp("Content-Security-Policy-Report-Only") is None
+
+
+def test_every_public_file_is_served_as_itself():
+    public = Path(__file__).resolve().parents[1] / "frontend" / "public"
+    for name in sorted(p.name for p in public.iterdir() if p.is_file()):
+        first = next(r for r in CONFIG["rewrites"] if vercel_regex(r["source"]).match("/" + name))
+        assert first["destination"] == "/frontend/" + name, name

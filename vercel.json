@@ -67,6 +67,10 @@
       "destination": "/frontend/logo-512.png"
     },
     {
+      "source": "/logo-sapa-yanfaskes-128.png",
+      "destination": "/frontend/logo-sapa-yanfaskes-128.png"
+    },
+    {
       "source": "/logo-sapa-yanfaskes.png",
       "destination": "/frontend/logo-sapa-yanfaskes.png"
     },
