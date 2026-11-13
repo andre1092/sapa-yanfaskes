@@ -9,6 +9,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
+import { cocokCari } from '../lib/cocokCari';
 export interface DisplayTtKpiData {
   avg_jumlah_update: number;
   avg_capaian: number;
@@ -221,12 +222,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
 
       // Search Query
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchNama = row.nama_ppk.toLowerCase().includes(q);
-        const matchKode = row.kode_ppk.toLowerCase().includes(q);
-        const matchKab = row.kabupaten.toLowerCase().includes(q);
-        const matchTipe = row.tipe_faskes.toLowerCase().includes(q);
-        if (!matchNama && !matchKode && !matchKab && !matchTipe) {
+        if (!cocokCari(searchQuery, row.nama_ppk, row.kode_ppk, row.kabupaten, row.tipe_faskes)) {
           return false;
         }
       }
@@ -502,6 +498,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
               <button
                 onClick={fetchData}
                 disabled={loading}
+                aria-busy={loading}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--bpjs-navy)] text-[var(--on-primary)] hover:bg-[var(--bpjs-navy)]/90 transition-all flex items-center gap-1.5"
               >
                 <span>{loading ? '' : ''}</span>

@@ -7,6 +7,7 @@ import { apiClient } from "../lib/apiClient";
 import { AMBANG_PATUH_NILAI_AKHIR } from "../lib/kepatuhanJpeg";
 import { useSyncStore, formatCurrentTimestamp } from "../store/syncStore";
 
+import { cocokCari } from "../lib/cocokCari";
 export interface DataModuleMeta {
   id: string;
   name: string;
@@ -282,13 +283,7 @@ export const DataIntegrationView: React.FC = () => {
     return MODULES_REGISTRY.filter((mod) => {
       const matchCat =
         activeCategory === "ALL" || mod.category === activeCategory;
-      const q = searchQuery.toLowerCase().trim();
-      const matchSearch =
-        !q ||
-        mod.name.toLowerCase().includes(q) ||
-        mod.shortName.toLowerCase().includes(q) ||
-        mod.spreadsheetId.toLowerCase().includes(q) ||
-        mod.coverage.toLowerCase().includes(q);
+      const matchSearch = cocokCari(searchQuery, mod.name, mod.shortName, mod.spreadsheetId, mod.coverage);
       return matchCat && matchSearch;
     });
   }, [activeCategory, searchQuery]);

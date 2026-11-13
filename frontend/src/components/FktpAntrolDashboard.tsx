@@ -15,6 +15,7 @@ import { useSyncStore } from '../store/syncStore';
 import { useAuthStore } from '../store/authStore';
 import { bolehMelakukan } from '../lib/izinPeran';
 
+import { pencocokCari } from '../lib/cocokCari';
 const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
 export const FktpAntrolDashboard: React.FC = () => {
@@ -87,14 +88,8 @@ export const FktpAntrolDashboard: React.FC = () => {
   const filteredTableData = useMemo(() => {
     const list = Array.isArray(data?.table_data) ? data.table_data : [];
     if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase();
-    return list.filter(
-      (r) =>
-        r.nama_fktp.toLowerCase().includes(q) ||
-        r.kode_fktp.toLowerCase().includes(q) ||
-        r.kabupaten.toLowerCase().includes(q) ||
-        r.jenis_fktp.toLowerCase().includes(q)
-    );
+    const cocok = pencocokCari(searchQuery);
+    return list.filter((r) => cocok(r.nama_fktp, r.kode_fktp, r.kabupaten, r.jenis_fktp));
   }, [data?.table_data, searchQuery]);
 
   // Sorted Table Data

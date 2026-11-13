@@ -11,6 +11,7 @@ import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 import { AMBANG_PATUH_NILAI_AKHIR } from '../lib/kepatuhanJpeg';
 import { letakLabelTarget } from '../lib/labelTargetGrafik';
 
+import { pencocokCari } from '../lib/cocokCari';
 export interface PilarSummaryItem {
   label: string;
   avg_nilai: number;
@@ -166,13 +167,8 @@ export const RingkasanComplianceTab: React.FC = () => {
     let rows = [...apiData.table_data];
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      rows = rows.filter(
-        (r) =>
-          r.nama_ppk.toLowerCase().includes(q) ||
-          r.kode_ppk.toLowerCase().includes(q) ||
-          r.kabupaten.toLowerCase().includes(q)
-      );
+      const cocok = pencocokCari(searchQuery);
+      rows = rows.filter((r) => cocok(r.nama_ppk, r.kode_ppk, r.kabupaten));
     }
 
     if (statusFilter === 'TERCAPAI') {

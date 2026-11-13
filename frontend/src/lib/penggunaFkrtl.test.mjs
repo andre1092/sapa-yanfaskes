@@ -3,8 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import ts from 'typescript';
 
-const source = await readFile(new URL('./penggunaFkrtl.ts', import.meta.url), 'utf8');
-const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } });
+const keDataUrl = kode => `data:text/javascript;base64,${Buffer.from(kode).toString('base64')}`;
+const terjemah = async nama => ts.transpileModule(await readFile(new URL(nama, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+const outputText = (await terjemah('./penggunaFkrtl.ts')).replace("'./cocokCari'", `'${keDataUrl(await terjemah('./cocokCari.ts'))}'`);
 const mod = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 const { ringkasPengguna, saringPengguna, statusPengguna } = mod;
 

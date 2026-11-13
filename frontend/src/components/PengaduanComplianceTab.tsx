@@ -9,6 +9,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
+import { pencocokCari } from '../lib/cocokCari';
 export interface PengaduanKpiData {
   avg_capaian: number;
   bobot_persen: number;
@@ -180,13 +181,8 @@ export const PengaduanComplianceTab: React.FC = () => {
 
     // Search query
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      rows = rows.filter(
-        (r) =>
-          r.nama_ppk.toLowerCase().includes(q) ||
-          r.tipe_faskes.toLowerCase().includes(q) ||
-          r.kabupaten.toLowerCase().includes(q)
-      );
+      const cocok = pencocokCari(searchQuery);
+      rows = rows.filter((r) => cocok(r.nama_ppk, r.tipe_faskes, r.kabupaten));
     }
 
     // Sorting
