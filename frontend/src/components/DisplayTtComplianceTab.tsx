@@ -1185,7 +1185,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
                           <div className="w-16 bg-[var(--border-color)]/20 rounded-full h-2 overflow-hidden border border-[var(--border-color)]">
                             <div
                               style={{ width: `${Math.min(row.capaian, 100)}%` }}
-                              className={`h-full rounded-full transition-all duration-500 ${
+                              className={`h-full rounded-full transition-[width] duration-300 ease-out ${
                                 isMet
                                   ? 'bg-[var(--bpjs-green)]'
                                   : 'bg-amber-500'
