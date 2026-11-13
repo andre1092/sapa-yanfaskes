@@ -67,10 +67,18 @@ def test_enforced_policy_drops_local_addresses_and_adds_basic_guards():
     assert policy["frame-ancestors"] == ["'self'"]
 
 
-def test_strict_policy_is_reported_before_it_is_enforced():
-    policy = csp("Content-Security-Policy-Report-Only")
-    assert policy is not None
+def test_strict_policy_is_enforced():
+    policy = csp("Content-Security-Policy")
     assert "'unsafe-inline'" not in policy["script-src"] and "'unsafe-eval'" not in policy["script-src"]
     assert inline_script_hash() in policy["script-src"]
     assert "https:" not in policy["connect-src"] and "https:" not in policy.get("img-src", [])
-    assert policy["object-src"] == ["'none'"] and policy["frame-ancestors"] == ["'self'"]
+    assert policy["form-action"] == ["'self'"]
+
+
+def test_jpeg_export_can_embed_google_fonts():
+    policy = csp("Content-Security-Policy")
+    assert {"https://fonts.googleapis.com", "https://fonts.gstatic.com"} <= set(policy["connect-src"])
+
+
+def test_report_only_policy_is_removed_once_enforced():
+    assert csp("Content-Security-Policy-Report-Only") is None
