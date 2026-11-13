@@ -348,7 +348,7 @@ async def send_verification_email(req: VerificationEmailRequest, user=Depends(re
         "dispatched": dispatched,
         "recipient": recipient,
         "smtp_configured": bool(smtp_host and smtp_user),
-        "error": error_msg,
+        "error": "Pengiriman email gagal; rincian dicatat di log server." if error_msg else None,
         "verification_url": html.unescape(verification_link),
         "message": f"Tautan verifikasi resmi untuk {recipient} telah diproses sistem."
     }
@@ -1037,7 +1037,7 @@ async def get_fkrtl_antrol_stats(
         logger.error(f"Error in get_fkrtl_antrol_stats: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Internal Server Error in data engine: {str(e)}"
+            detail="Gagal memproses data antrean FKRTL. Silakan coba lagi atau hubungi administrator."
         )
 
 # Backward compatible legacy endpoint
@@ -1079,7 +1079,7 @@ async def sync_fkrtl_antrol(
         }
     except Exception as e:
         logger.error(f"Error in sync_fkrtl_antrol: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Gagal melakukan sinkronisasi live Google Sheets: {str(e)}")
+        raise HTTPException(status_code=500, detail="Gagal melakukan sinkronisasi live Google Sheets. Silakan coba lagi atau hubungi administrator.")
 
 @app.get("/api/v1/fkrtl-export")
 async def export_fkrtl_data(
@@ -1243,7 +1243,7 @@ async def export_fkrtl_data(
         logger.error(f"Error in export_fkrtl_data: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Internal Server Error in data export: {str(e)}"
+            detail="Gagal mengekspor data antrean FKRTL. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -1738,7 +1738,7 @@ async def get_fkrtl_kepatuhan_nakes(
         logger.error(f"Error in get_fkrtl_kepatuhan_nakes: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Jadwal Praktek Nakes: {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Jadwal Praktek Nakes. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2076,7 +2076,7 @@ async def get_fkrtl_kepatuhan_pengaduan(
         logger.error(f"Error in get_fkrtl_kepatuhan_pengaduan: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Penyelesaian Pengaduan: {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Penyelesaian Pengaduan. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2410,7 +2410,7 @@ async def get_fkrtl_kepatuhan_umabl(
         logger.error(f"Error in get_fkrtl_kepatuhan_umabl: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Pelaksanaan Umpan Balik Peserta (KESSAN): {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Pelaksanaan Umpan Balik Peserta (KESSAN). Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2717,7 +2717,7 @@ async def get_fkrtl_kepatuhan_display_tt(
         logger.error(f"Error in get_fkrtl_kepatuhan_display_tt: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Pembaruan (Update) Data Ketersediaan Tempat Tidur: {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Pembaruan (Update) Data Ketersediaan Tempat Tidur. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2740,7 +2740,7 @@ async def get_fkrtl_kepatuhan_ringkasan(
         logger.error(f"Error in get_fkrtl_kepatuhan_ringkasan: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Ringkasan Nilai Kepatuhan FKRTL: {str(e)}"
+            detail="Gagal memproses data Ringkasan Nilai Kepatuhan FKRTL. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2763,7 +2763,7 @@ async def get_fkrtl_kepatuhan_tmo(
         logger.error(f"Error in get_fkrtl_kepatuhan_tmo: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Update TMO: {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Update TMO. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2780,7 +2780,7 @@ def get_monitoring_laras(
         return get_laras_data(bulan=bulan, faskes=faskes, poli=poli, jenis_kunjungan=jenis_kunjungan, refresh=refresh)
     except LarasSourceUnavailable as exc:
         logger.warning("LARAS source unavailable")
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        raise HTTPException(status_code=503, detail="Sumber data LARAS sedang tidak dapat dibaca.") from exc
 
 
 @app.get("/api/v1/fkrtl-kepatuhan/antrean-wtl")
@@ -2802,7 +2802,7 @@ async def get_fkrtl_kepatuhan_antrean_wtl(
         logger.error(f"Error in get_fkrtl_kepatuhan_antrean_wtl: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Antrean MJKN dan Waktu Tunggu Layanan: {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Antrean MJKN dan Waktu Tunggu Layanan. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2825,7 +2825,7 @@ async def get_fkrtl_kepatuhan_surkon(
         logger.error(f"Error in get_fkrtl_kepatuhan_surkon: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Surat Kontrol (SURKON): {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Surat Kontrol (SURKON). Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2848,7 +2848,7 @@ async def get_fkrtl_kepatuhan_rme(
         logger.error(f"Error in get_fkrtl_kepatuhan_rme: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Laporan Kepatuhan Rekam Medis Elektronik (RME): {str(e)}"
+            detail="Gagal memproses data Laporan Kepatuhan Rekam Medis Elektronik (RME). Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -2872,7 +2872,7 @@ async def sync_fkrtl_kepatuhan(
         logger.error(f"Error in sync_fkrtl_kepatuhan: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal melakukan sinkronisasi data kepatuhan FKRTL: {str(e)}"
+            detail="Gagal melakukan sinkronisasi data kepatuhan FKRTL. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -3158,7 +3158,7 @@ async def get_fktp_antrol_stats(
         logger.error(f"Error in get_fktp_antrol_stats: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail=f"Gagal memproses data Pemanfaatan Antrol FKTP: {str(e)}"
+            detail="Gagal memproses data Pemanfaatan Antrol FKTP. Silakan coba lagi atau hubungi administrator."
         )
 
 
@@ -3185,7 +3185,7 @@ async def sync_fktp_antrol(user=Depends(require_admin)):
         }
     except Exception as e:
         logger.error(f"Error in sync_fktp_antrol: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Gagal melakukan sinkronisasi live Google Sheets FKTP: {str(e)}")
+        raise HTTPException(status_code=500, detail="Gagal melakukan sinkronisasi live Google Sheets FKTP. Silakan coba lagi atau hubungi administrator.")
 
 
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)
