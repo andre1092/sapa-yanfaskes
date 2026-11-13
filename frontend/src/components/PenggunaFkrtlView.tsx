@@ -11,7 +11,7 @@ import type { FaskesRef, PenggunaFkrtl, SaringanPengguna, StatusPengguna } from 
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 
 type DataPengguna = { siap: boolean; pengguna: PenggunaFkrtl[]; faskes: FaskesRef[] };
-type SandiTampil = { judul: string; nama: string; email: string; sandi: string; userId: string };
+type SandiTampil = { judul: string; nama: string; email: string; sandi: string; userId: string; sesiLamaTerbuka?: boolean };
 type Konfirmasi = { jenis: 'atur-ulang' | 'nonaktif' | 'aktif'; pengguna: PenggunaFkrtl };
 
 const STATUS: Record<StatusPengguna, { label: string; color: 'success' | 'warning' | 'default' }> = {
@@ -64,8 +64,8 @@ export function PenggunaFkrtlView() {
     onError: error => setGalatForm(pesanGalat(error, 'Akun gagal dibuat. Coba lagi.')),
   });
   const aturUlang = useMutation({
-    mutationFn: async (p: PenggunaFkrtl) => (await apiClient.post<{ sandi_awal: string }>(`/api/v1/pengguna-fkrtl/${idAman(p.user_id)}/atur-ulang-sandi`)).data,
-    onSuccess: (hasil, p) => { setSandiTampil({ judul: 'Sandi diatur ulang', nama: p.nama, email: p.email, sandi: hasil.sandi_awal, userId: p.user_id }); void muatUlang(); },
+    mutationFn: async (p: PenggunaFkrtl) => (await apiClient.post<{ sandi_awal: string; sesi_dihapus?: boolean }>(`/api/v1/pengguna-fkrtl/${idAman(p.user_id)}/atur-ulang-sandi`)).data,
+    onSuccess: (hasil, p) => { setSandiTampil({ judul: 'Sandi diatur ulang', nama: p.nama, email: p.email, sandi: hasil.sandi_awal, userId: p.user_id, sesiLamaTerbuka: hasil.sesi_dihapus === false }); void muatUlang(); },
     onError: error => setKabar({ jenis: 'error', teks: pesanGalat(error, 'Sandi gagal diatur ulang.') }),
   });
   const ubahAktif = useMutation({
@@ -184,6 +184,7 @@ export function PenggunaFkrtlView() {
             <Typography component="code" sx={{ flex: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 18, letterSpacing: '0.04em', wordBreak: 'break-all' }}>{sandiTampil.sandi}</Typography>
             <Button size="small" startIcon={<IconCopy size={16} />} onClick={() => void salinSandi()}>{disalin ? 'Tersalin' : 'Salin'}</Button>
           </Stack>
+          {sandiTampil.sesiLamaTerbuka && <Alert severity="warning" sx={{ mt: 2 }}>Sesi lama di browser petugas belum bisa diakhiri otomatis. Bila akun diduga dibobol, nonaktifkan akun lalu aktifkan lagi.</Alert>}
           <Alert severity="info" sx={{ mt: 2 }}>Sandi ini hanya tampil sekali. Serahkan ke petugas lewat jalur yang aman. Petugas wajib menggantinya saat masuk pertama.</Alert>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -197,7 +198,7 @@ export function PenggunaFkrtlView() {
       {konfirmasi && <>
         <DialogTitle id="konfirmasi-judul">{konfirmasi.jenis === 'atur-ulang' ? 'Atur ulang sandi awal?' : konfirmasi.jenis === 'nonaktif' ? 'Nonaktifkan akun?' : 'Aktifkan kembali akun?'}</DialogTitle>
         <DialogContent><Typography variant="body2">{konfirmasi.jenis === 'atur-ulang'
-          ? `Sandi ${konfirmasi.pengguna.nama} saat ini tidak berlaku lagi. Sandi awal baru akan tampil sekali, dan petugas wajib menggantinya saat masuk.`
+          ? `Sandi ${konfirmasi.pengguna.nama} saat ini tidak berlaku lagi dan sesi yang masih terbuka diakhiri. Sandi awal baru akan tampil sekali, dan petugas wajib menggantinya saat masuk.`
           : konfirmasi.jenis === 'nonaktif' ? `${konfirmasi.pengguna.nama} tidak bisa masuk SAPA sampai akunnya diaktifkan kembali.`
           : `${konfirmasi.pengguna.nama} bisa masuk SAPA lagi dengan sandinya.`}</Typography></DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}><Button onClick={() => setKonfirmasi(null)}>Batal</Button><Button variant="contained" color={konfirmasi.jenis === 'nonaktif' ? 'error' : 'primary'} onClick={jalankanKonfirmasi}>{konfirmasi.jenis === 'atur-ulang' ? 'Atur ulang' : konfirmasi.jenis === 'nonaktif' ? 'Nonaktifkan' : 'Aktifkan'}</Button></DialogActions>
