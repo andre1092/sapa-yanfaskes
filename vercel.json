@@ -75,6 +75,18 @@
       "destination": "/frontend/logo-sapa-yanfaskes.png"
     },
     {
+      "source": "/logo-sapa-yanfaskes-v2-128.png",
+      "destination": "/frontend/logo-sapa-yanfaskes-v2-128.png"
+    },
+    {
+      "source": "/logo-sapa-yanfaskes-v2-256.png",
+      "destination": "/frontend/logo-sapa-yanfaskes-v2-256.png"
+    },
+    {
+      "source": "/logo-sapa-yanfaskes-v2-512.png",
+      "destination": "/frontend/logo-sapa-yanfaskes-v2-512.png"
+    },
+    {
       "source": "/((?!assets/|frontend/assets/).*)",
       "destination": "/frontend/index.html"
     }
