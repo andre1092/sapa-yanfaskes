@@ -159,7 +159,13 @@ export const exportToJPEG = async (elementId: string, filename: string) => {
   
   try {
     const { toJpeg } = await import('html-to-image');
-    const dataUrl = await toJpeg(element, { quality: 1, backgroundColor: '#ffffff' });
+    // Posisi di luar layar hanya untuk menyembunyikan tabel; tanpa penetral ini salinannya ikut
+    // tergeser keluar bingkai dan gambar menjadi putih polos.
+    const dataUrl = await toJpeg(element, {
+      quality: 1,
+      backgroundColor: '#ffffff',
+      style: { position: 'static', top: '0', left: '0', margin: '0' },
+    });
     const link = document.createElement('a');
     link.download = `${filename}.jpeg`;
     link.href = dataUrl;
