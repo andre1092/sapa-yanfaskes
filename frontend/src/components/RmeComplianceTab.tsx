@@ -9,6 +9,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
+import { pencocokCari } from '../lib/cocokCari';
 export interface RmeKpiData {
   avg_capaian: number;
   bobot_persen: number;
@@ -168,13 +169,8 @@ export const RmeComplianceTab: React.FC = () => {
     let rows = [...apiData.table_data];
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      rows = rows.filter(
-        (r) =>
-          r.nama_ppk.toLowerCase().includes(q) ||
-          r.kode_ppk.toLowerCase().includes(q) ||
-          r.kabupaten.toLowerCase().includes(q)
-      );
+      const cocok = pencocokCari(searchQuery);
+      rows = rows.filter((r) => cocok(r.nama_ppk, r.kode_ppk, r.kabupaten));
     }
 
     if (statusFilter === 'TERCAPAI') {

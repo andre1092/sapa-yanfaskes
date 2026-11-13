@@ -1,3 +1,4 @@
+import { pencocokCari } from './cocokCari';
 // Ringkasan dan penyaring daftar akun petugas RS di menu Pengguna FKRTL.
 export type FaskesRef = { kode_ppk: string; nama_ppk: string; kabupaten: string; kelas_ppk?: string };
 export type PenggunaFkrtl = {
@@ -21,9 +22,9 @@ export function ringkasPengguna(pengguna: readonly PenggunaFkrtl[], faskes: read
 }
 
 export function saringPengguna(pengguna: readonly PenggunaFkrtl[], saring: SaringanPengguna): PenggunaFkrtl[] {
-  const kata = saring.cari.trim().toLocaleLowerCase('id');
+  const cocok = pencocokCari(saring.cari);
   return pengguna.filter(p =>
-    (!kata || [p.nama, p.email, p.faskes.nama_ppk, p.kode_ppk].join(' ').toLocaleLowerCase('id').includes(kata))
+    cocok(p.nama, p.email, p.faskes.nama_ppk, p.kode_ppk)
     && (!saring.kabupaten || p.faskes.kabupaten === saring.kabupaten)
     && (!saring.status || statusPengguna(p) === saring.status));
 }

@@ -235,7 +235,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           <div className="relative">
             <AnimatedButton
               onClick={() => setOpenDropdown(openDropdown === 'faskes' ? null : 'faskes')}
-              disabled={downloadingType === 'faskes'}
+              loading={downloadingType === 'faskes'}
               className="sapa-button sapa-button-primary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-main)] border border-[var(--border-color)] transition-all active:scale-95 cursor-pointer"
             >
               <span>{downloadingType === 'faskes' ? 'Mengunduh...' : ' Unduh Data RS'}</span>
@@ -260,7 +260,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           <div className="relative">
             <AnimatedButton
               onClick={() => setOpenDropdown(openDropdown === 'poli' ? null : 'poli')}
-              disabled={downloadingType === 'poli'}
+              loading={downloadingType === 'poli'}
               className="sapa-button sapa-button-primary flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-main)] border border-[var(--border-color)] transition-all active:scale-95 cursor-pointer"
             >
               <span>{downloadingType === 'poli' ? 'Mengunduh...' : ' Unduh Data Poli'}</span>

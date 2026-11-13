@@ -569,6 +569,15 @@ body { font-family: var(--font-sans); }
   .berry-canvas .laras-source a[href]::after { content: ""; position: absolute; inset: -6px 0; }
 }
 
+/* Hukum Doherty (prinsip video, PR 3 dari 4): tombol yang sedang bekerja langsung tampak sibuk
+   pada klik yang sama, jauh di bawah 400 ms: labelnya berganti, kursornya progres, dan tombol
+   biasa berdenyut halus. Tombol bergerak (AnimatedButton) sudah punya pemintal sendiri. */
+.berry-canvas [aria-busy="true"] { cursor: progress; }
+@media (prefers-reduced-motion: no-preference) {
+  .berry-canvas :is(button, .sapa-button)[aria-busy="true"]:not(.motion-button) { animation: sapa-sibuk 1.2s ease-in-out infinite; }
+}
+@keyframes sapa-sibuk { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
+
 /* Kerangka memuat (audit UI/UX 2026-11-12, temuan 11). Denyut hanya bila pengguna tidak
    meminta gerak dikurangi. */
 .sapa-kerangka-kartu { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); }
