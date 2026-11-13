@@ -554,6 +554,21 @@ body { font-family: var(--font-sans); }
   .berry-canvas a[href] { display: inline-flex; align-items: center; }
 }
 
+/* Hukum Fitts (prinsip video "20 Principles of UX & Animation", PR 2 dari 4): di desktop dengan
+   mouse, tombol teks kecil di area konten (tinggi 24-30 px: tombol halaman, penyaring status,
+   Reset Filter, Ekspor CSV) mendapat area klik tak terlihat 6 px di atas dan bawahnya, jadi
+   sasaran efektif 36-42 px tanpa mengubah tampilannya. Ke samping tidak diperluas karena
+   penyaring segmen (Semua/Tercapai/Belum) saling menempel; lebarnya sudah 25 px ke atas.
+   Di layar sentuh aturan 44 px di atas sudah berlaku. */
+@media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
+  .berry-canvas :is(button, a[href]):is(.py-0\.5, .py-1, .py-1\.5, .p-1, .p-1\.5):not(.absolute, .fixed, .sticky, .MuiButtonBase-root),
+  .berry-canvas details > summary,
+  .berry-canvas .laras-source a[href] { position: relative; }
+  .berry-canvas :is(button, a[href]):is(.py-0\.5, .py-1, .py-1\.5, .p-1, .p-1\.5):not(.absolute, .fixed, .sticky, .MuiButtonBase-root)::after,
+  .berry-canvas details > summary::after,
+  .berry-canvas .laras-source a[href]::after { content: ""; position: absolute; inset: -6px 0; }
+}
+
 /* Kerangka memuat (audit UI/UX 2026-11-12, temuan 11). Denyut hanya bila pengguna tidak
    meminta gerak dikurangi. */
 .sapa-kerangka-kartu { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); }
