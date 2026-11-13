@@ -571,7 +571,7 @@ body { font-family: var(--font-sans); }
 .sapa-logo-halo::before, .sapa-logo-halo::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--logo-hijau); opacity: 0; pointer-events: none; }
 .sapa-logo-halo::after { border-color: var(--logo-biru); }
 @media (prefers-reduced-motion: no-preference) {
-  .sapa-logo--header { animation: sapa-logo-masuk 700ms cubic-bezier(.16, 1, .3, 1) backwards; transition: transform 220ms cubic-bezier(.16, 1, .3, 1); }
+  .sapa-logo--header { animation: sapa-logo-cepat 280ms cubic-bezier(.16, 1, .3, 1) backwards; transition: transform 220ms cubic-bezier(.16, 1, .3, 1); }
   .sapa-logo--header:hover { transform: rotate(-6deg) scale(1.06); }
   .sapa-logo--masuk { animation: sapa-logo-masuk 900ms cubic-bezier(.16, 1, .3, 1) backwards, sapa-logo-melayang 4.8s ease-in-out 900ms infinite; }
   .sapa-logo-halo::before { animation: sapa-logo-halo 3.2s cubic-bezier(.16, 1, .3, 1) 600ms infinite; }
@@ -580,3 +580,24 @@ body { font-family: var(--font-sans); }
 @keyframes sapa-logo-masuk { from { opacity: 0; transform: scale(.6) rotate(-12deg); } to { opacity: 1; transform: none; } }
 @keyframes sapa-logo-melayang { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes sapa-logo-halo { 0% { opacity: .55; transform: scale(.92); } 100% { opacity: 0; transform: scale(1.45); } }
+@keyframes sapa-logo-cepat { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
+
+/* Prinsip gerak dari video "20 Principles of UX & Animation" (keputusan CEO 2026-11-13).
+   Elemen yang sering dipakai bergerak singkat (< 200 ms); kartu angka hanya beranimasi saat
+   pertama dipasang, bukan setiap filter berubah. Semua mati bila gerak dikurangi. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Antisipasi dan squash: tombol sedikit mengecil saat ditekan, lalu kembali cepat. */
+  .berry-canvas :is(button, [role="button"], .sapa-button) { transition: transform 120ms cubic-bezier(.2, 0, 0, 1), background-color 150ms ease, box-shadow 150ms ease; }
+  .berry-canvas :is(button, [role="button"], .sapa-button):active:not(:disabled) { transform: scale(.97); }
+  /* Staging dan follow through: kartu angka muncul satu per satu dengan jeda pendek. */
+  .sapa-kpi-grid > * { animation: sapa-muncul 260ms cubic-bezier(.16, 1, .3, 1) backwards; }
+  .sapa-kpi-grid > :nth-child(2) { animation-delay: 40ms; }
+  .sapa-kpi-grid > :nth-child(3) { animation-delay: 80ms; }
+  .sapa-kpi-grid > :nth-child(4) { animation-delay: 120ms; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  /* Kedalaman: kartu angka sedikit terangkat saat disorot. */
+  .sapa-kpi-grid > * { transition: transform 160ms cubic-bezier(.2, 0, 0, 1), box-shadow 160ms ease; }
+  .sapa-kpi-grid > :hover { transform: translateY(-2px); box-shadow: 0 8px 24px -12px rgb(16 24 40 / 25%); }
+}
+@keyframes sapa-muncul { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

@@ -709,7 +709,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
 
                           {/* Area Gradient Under Curve */}
                           {areaD && (
-                            <path d={areaD} fill="url(#areaGradBPJS)" className="transition-all duration-700" />
+                            <path d={areaD} fill="url(#areaGradBPJS)" className="transition-[width] duration-300 ease-out" />
                           )}
 
                           {/* The Glowing Curved Line */}
@@ -722,7 +722,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               filter="url(#lineGlow)"
-                              className="transition-all duration-700"
+                              className="transition-[width] duration-300 ease-out"
                             />
                           )}
 
@@ -979,7 +979,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 {/* Filled Horizontal Bar */}
                                 <div
                                   style={{ width: `${widthPercent}%` }}
-                                  className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
+                                  className={`h-full rounded-lg transition-[width] duration-300 ease-out relative overflow-hidden ${
                                     isMet
                                       ? 'bg-[var(--bpjs-green)]'
                                       : 'bg-[var(--bpjs-navy)]'
@@ -1122,7 +1122,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
                                 {/* Filled Horizontal Bar */}
                                 <div
                                   style={{ width: `${widthPercent}%` }}
-                                  className={`h-full rounded-lg transition-all duration-700 relative overflow-hidden ${
+                                  className={`h-full rounded-lg transition-[width] duration-300 ease-out relative overflow-hidden ${
                                     isMet
                                       ? 'bg-[var(--bpjs-green)]'
                                       : 'bg-[var(--bpjs-navy)]'
