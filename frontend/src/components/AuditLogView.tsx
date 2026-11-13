@@ -16,7 +16,9 @@ const waktu = (iso: string) => new Date(iso).toLocaleString('id-ID', { dateStyle
 export function AuditLogView() {
   const [aksi, setAksi] = useState('');
   const [pelaku, setPelaku] = useState('');
-  const [saring, setSaring] = useState({ action: '', actor: '' });
+  const [dari, setDari] = useState('');
+  const [sampai, setSampai] = useState('');
+  const [saring, setSaring] = useState<Record<string, string>>({ action: '', actor: '' });
   const query = useQuery({
     queryKey: ['audit-log', saring],
     queryFn: async ({ signal }) => (await apiClient.get<Jawaban>('/api/v1/audit-log', { params: { limit: 200, ...saring }, signal })).data,
@@ -29,9 +31,11 @@ export function AuditLogView() {
         <Typography color="text.secondary" sx={{ mb: 3 }}>
           Akses yang ditolak dan tindakan admin (sinkronisasi, muat ulang, ekspor, email verifikasi). Login berhasil dan gagal tercatat di log Auth0.
         </Typography>
-        <form className="flex flex-wrap items-end gap-3 mb-4" onSubmit={(event) => { event.preventDefault(); setSaring({ action: aksi.trim(), actor: pelaku.trim() }); }}>
+        <form className="flex flex-wrap items-end gap-3 mb-4" onSubmit={(event) => { event.preventDefault(); setSaring({ action: aksi.trim(), actor: pelaku.trim(), ...(dari ? { since: dari } : {}), ...(sampai ? { until: sampai } : {}) }); }}>
           <TextField size="small" label="Tindakan" value={aksi} onChange={(e) => setAksi(e.target.value)} placeholder="mis. sync" />
           <TextField size="small" label="Pelaku (ID Auth0)" value={pelaku} onChange={(e) => setPelaku(e.target.value)} />
+          <TextField size="small" type="date" label="Dari tanggal" value={dari} onChange={(e) => setDari(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
+          <TextField size="small" type="date" label="Sampai tanggal" value={sampai} onChange={(e) => setSampai(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           <AnimatedButton type="submit" className="sapa-button sapa-button-primary">Terapkan</AnimatedButton>
         </form>
         {query.isPending ? <KerangkaMemuat label="Memuat log aktivitas" /> : query.isError ? (

@@ -7,6 +7,7 @@ Kegagalan menulis log tidak pernah menggagalkan permintaan pengguna.
 import logging
 import os
 import re
+from datetime import datetime
 from typing import Optional
 
 logger = logging.getLogger("sapa-api")
@@ -103,7 +104,8 @@ async def write_entry(entry: dict) -> None:
         await conn.close()
 
 
-async def read_entries(*, limit: int = 100, before_id: Optional[int] = None, actor: str = "", action: str = "") -> list:
+async def read_entries(*, limit: int = 100, before_id: Optional[int] = None, actor: str = "", action: str = "",
+                       since: Optional[datetime] = None, until: Optional[datetime] = None) -> list:
     conn = await _connect()
     if conn is None:
         return []
@@ -112,8 +114,9 @@ async def read_entries(*, limit: int = 100, before_id: Optional[int] = None, act
         rows = await conn.fetch(
             "SELECT id, at, actor, role, action, target, status, ip FROM audit_log "
             "WHERE ($1::bigint IS NULL OR id < $1) AND ($2 = '' OR actor = $2) AND ($3 = '' OR action ILIKE '%' || $3 || '%') "
+            "AND ($5::timestamptz IS NULL OR at >= $5) AND ($6::timestamptz IS NULL OR at < $6) "
             "ORDER BY id DESC LIMIT $4",
-            before_id, actor, action, limit,
+            before_id, actor, action, limit, since, until,
         )
         return [{**dict(r), "at": r["at"].isoformat()} for r in rows]
     finally:
