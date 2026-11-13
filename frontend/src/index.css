@@ -590,6 +590,39 @@ body { font-family: var(--font-sans); }
 .sapa-filter-lainnya__isi { display: contents; }
 .sapa-filter-lainnya__isi--tutup { display: none; }
 
+/* Video kedua Charles Liu (2026-11-13, laporan agents/kim/laporan/2026-11-13-video-2-after.md).
+   Semua mati bila pengguna meminta gerak dikurangi. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Popover, menu, dan Select tumbuh dari 0,95 dari arah pemicunya (transform-origin dihitung MUI). */
+  .MuiPopover-paper { animation: sapa-popover-masuk 200ms cubic-bezier(.16, 1, .3, 1); }
+  /* Baris tabel muncul bergiliran 30 ms; hanya 12 baris pertama supaya total di bawah 400 ms.
+     Tabel tersembunyi untuk JPEG (jpeg-export-*) dikecualikan: html-to-image menyalin gaya animasi
+     dan memotret bingkai pertama, sehingga baris bisa kosong di gambar (catatan review Clara). */
+  .berry-canvas tbody tr:nth-child(-n + 12):not([id^="jpeg-export-"] *) { animation: sapa-baris-masuk 200ms cubic-bezier(.16, 1, .3, 1) backwards; }
+  .berry-canvas tbody tr:nth-child(2) { animation-delay: 30ms; }
+  .berry-canvas tbody tr:nth-child(3) { animation-delay: 60ms; }
+  .berry-canvas tbody tr:nth-child(4) { animation-delay: 90ms; }
+  .berry-canvas tbody tr:nth-child(5) { animation-delay: 120ms; }
+  .berry-canvas tbody tr:nth-child(6) { animation-delay: 150ms; }
+  .berry-canvas tbody tr:nth-child(7) { animation-delay: 180ms; }
+  .berry-canvas tbody tr:nth-child(8) { animation-delay: 210ms; }
+  .berry-canvas tbody tr:nth-child(9) { animation-delay: 240ms; }
+  .berry-canvas tbody tr:nth-child(10) { animation-delay: 270ms; }
+  .berry-canvas tbody tr:nth-child(11) { animation-delay: 300ms; }
+  .berry-canvas tbody tr:nth-child(12) { animation-delay: 330ms; }
+  /* Isi tab yang baru masuk ketika isi lama keluar. */
+  .berry-canvas [role="tabpanel"] > * { animation: sapa-panel-masuk 180ms cubic-bezier(.16, 1, .3, 1); }
+  /* Ikon tema berganti dengan crossfade, skala, dan blur. */
+  .sapa-ikon-tukar svg { animation: sapa-ikon-masuk 200ms cubic-bezier(.16, 1, .3, 1); }
+  /* Denyut sekali untuk menandai keberhasilan. */
+  .motion-button--success { animation: sapa-denyut-sukses 480ms cubic-bezier(.16, 1, .3, 1); }
+}
+@keyframes sapa-popover-masuk { from { transform: scale(.95); } }
+@keyframes sapa-baris-masuk { from { opacity: 0; transform: translateY(4px); } }
+@keyframes sapa-panel-masuk { from { opacity: 0; transform: translateY(4px); } }
+@keyframes sapa-ikon-masuk { from { opacity: 0; transform: scale(.25); filter: blur(4px); } }
+@keyframes sapa-denyut-sukses { from { box-shadow: 0 0 0 0 rgb(0 144 80 / 45%); } to { box-shadow: 0 0 0 10px rgb(0 144 80 / 0%); } }
+
 /* Kerangka memuat (audit UI/UX 2026-11-12, temuan 11). Denyut hanya bila pengguna tidak
    meminta gerak dikurangi. */
 .sapa-kerangka-kartu { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); }

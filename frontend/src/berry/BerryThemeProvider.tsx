@@ -1,7 +1,7 @@
 // Berry Free theme architecture adapted for SAPA. MIT: LICENSE.berry.txt.
 import { useMemo, useLayoutEffect, type ReactNode } from 'react';
 import { createTheme, ThemeProvider, StyledEngineProvider, alpha } from '@mui/material/styles';
-import { CssBaseline, GlobalStyles } from '@mui/material';
+import { CssBaseline, GlobalStyles, Fade } from '@mui/material';
 import colors from './colors';
 import typography from './typography';
 import { useThemeStore } from '../store/themeStore';
@@ -35,6 +35,10 @@ export function BerryThemeProvider({ children }: { children: ReactNode }) {
         MuiInputLabel: { styleOverrides: { root: { fontSize: '0.875rem' } } },
         MuiTableCell: { styleOverrides: { root: { padding: '14px 16px', borderColor: dark ? colors.darkLevel1 : colors.grey200, fontSize: '0.8125rem' }, head: { fontWeight: 600, backgroundColor: dark ? colors.darkLevel2 : colors.grey50 } } },
         MuiDialog: { styleOverrides: { paper: { borderRadius: 12, backgroundImage: 'none' } } },
+        // Video kedua Charles Liu: menu dan popover memudar 200 ms masuk dan 160 ms keluar (20% lebih
+        // singkat). Skala 0,95 dari arah pemicu ada di index.css (sapa-popover-masuk).
+        MuiPopover: { defaultProps: { slots: { transition: Fade }, transitionDuration: { enter: 200, exit: 160 } } },
+        MuiMenu: { defaultProps: { slots: { transition: Fade }, transitionDuration: { enter: 200, exit: 160 } } },
         MuiListItemButton: { styleOverrides: { root: { borderRadius: 8, minHeight: 46, '&.Mui-selected': { backgroundColor: dark ? alpha(colors.secondary200, .16) : colors.secondaryLight, color: dark ? colors.secondary200 : colors.secondaryDark } } } },
         MuiTab: { styleOverrides: { root: { textTransform: 'none', minHeight: 48, fontWeight: 500 } } },
       },
