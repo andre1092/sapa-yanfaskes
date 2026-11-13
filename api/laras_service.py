@@ -202,6 +202,19 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
     facilities = [row for row in normalized["per_faskes"] if matches(row, "per_faskes")]
     poli_rows = [row for row in normalized["per_poli"] if matches(row, "per_poli")]
     daily = [row for row in normalized["per_hari"] if matches(row, "per_hari")]
+    # Rincian unduhan Excel: angka tiap RS untuk tiap poli, dengan kabupaten dari referensi faskes.
+    per_rs_poli = defaultdict(list)
+    for row in poli_rows:
+        if row["_seconds"] is not None:
+            per_rs_poli[(row["_code"], row["_poli"] or "Poli belum teridentifikasi")].append(row)
+    rincian_poli = sorted(
+        ({"faskes": _text(rows[0].get("nama_faskes")) or code,
+          "kabupaten": _text(ref.get(code, {}).get("kabupaten")) or "Kabupaten/kota belum terpetakan",
+          "poli": nama_poli,
+          "avg_seconds": round(sum(row["_seconds"] for row in rows) / len(rows), 3)}
+         for (code, nama_poli), rows in per_rs_poli.items()),
+        key=lambda item: (-item["avg_seconds"], item["faskes"], item["poli"]),
+    )
     basis = "Rata-rata antar fasilitas dari mark grafik sumber; tidak dibobot jumlah kunjungan."
     if not facilities:
         if poli:
@@ -245,6 +258,7 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
         "active_filters": {"bulan": bulan, "faskes": faskes, "poli": poli, "jenis_kunjungan": jenis_kunjungan},
         "kpi": {"avg_seconds": kpi_avg, "sample_count": kpi_count, "basis": basis},
         "charts": charts,
+        "rincian_poli": rincian_poli,
         "metadata": {
             "source_url": SOURCE_URL,
             "last_updated": max([_text(latest_row.get("waktu_pencatatan_wib")), *(_text(row.get("waktu_pencatatan_wib")) for row in gabungan)]) or None,

@@ -113,5 +113,21 @@ class GabunganSemuaFasilitasTests(unittest.TestCase):
         self.assertEqual(self.build(gabungan=[*GABUNGAN, lain])["kpi"]["avg_seconds"], detik("00:49:43"))
 
 
+
+class RincianPoliPerFaskesTests(unittest.TestCase):
+    def test_rincian_poli_per_faskes_dengan_kabupaten(self):
+        result = build_laras_data({**RS, "gabungan": GABUNGAN}, REF)
+        self.assertEqual(result["rincian_poli"], [
+            {"faskes": "RS B", "kabupaten": "Bondowoso", "poli": "GERIATRI", "avg_seconds": 700},
+            {"faskes": "RS A", "kabupaten": "Jember", "poli": "GERIATRI", "avg_seconds": 500},
+        ])
+
+    def test_rincian_mengikuti_filter_dan_kabupaten_kosong_ditandai(self):
+        result = build_laras_data({**RS, "gabungan": GABUNGAN}, {}, faskes="A")
+        self.assertEqual(result["rincian_poli"],
+                         [{"faskes": "RS A", "kabupaten": "Kabupaten/kota belum terpetakan", "poli": "GERIATRI", "avg_seconds": 500}])
+        self.assertEqual(build_laras_data({**RS, "gabungan": GABUNGAN}, REF, bulan="2026-10")["rincian_poli"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

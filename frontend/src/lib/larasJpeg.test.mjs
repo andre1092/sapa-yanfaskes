@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('./larasJpeg.ts', import.meta.url), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } });
-const { warnaLaras, formatDurasiLaras, urutkanTerlama, barisTabelLaras } = await import(
+const { warnaLaras, formatDurasiLaras, urutkanTerlama, barisTabelLaras, barisRincianPoli } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 );
 
@@ -57,5 +57,18 @@ test('baris tabel Excel: urut terlama, detik tercetak, waktu sebagai pecahan har
     { no: 1, label: 'RS B', detik: 3600, hariExcel: 1 / 24, teks: '00 hari 01:00:00', warna: 'merah' },
     { no: 2, label: 'RS C', detik: 3300, hariExcel: 55 / 1440, teks: '00 hari 00:55:00', warna: 'kuning' },
     { no: 3, label: 'RS A', detik: 1200, hariExcel: 1 / 72, teks: '00 hari 00:20:00', warna: 'hijau' },
+  ]);
+});
+
+test('rincian poli per faskes: urut terlama, lalu faskes dan poli A-Z, warna dari detik tercetak', () => {
+  const rows = barisRincianPoli([
+    { faskes: 'RS B', kabupaten: 'Bondowoso', poli: 'MATA', avg_seconds: 1200 },
+    { faskes: 'RS A', kabupaten: 'Jember', poli: 'ANAK', avg_seconds: 3599.5 },
+    { faskes: 'RS A', kabupaten: 'Jember', poli: 'MATA', avg_seconds: 1200 },
+  ]);
+  assert.deepEqual(rows, [
+    { no: 1, faskes: 'RS A', kabupaten: 'Jember', poli: 'ANAK', detik: 3600, hariExcel: 1 / 24, warna: 'merah' },
+    { no: 2, faskes: 'RS A', kabupaten: 'Jember', poli: 'MATA', detik: 1200, hariExcel: 1 / 72, warna: 'hijau' },
+    { no: 3, faskes: 'RS B', kabupaten: 'Bondowoso', poli: 'MATA', detik: 1200, hariExcel: 1 / 72, warna: 'hijau' },
   ]);
 });

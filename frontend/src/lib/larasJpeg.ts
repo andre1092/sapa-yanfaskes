@@ -43,3 +43,13 @@ export const barisTabelLaras = <T extends { label: string; avg_seconds: number }
     const detik = Math.max(0, Math.round(point.avg_seconds));
     return { no: indeks + 1, label: formatLabel(point.label), detik, hariExcel: detik / 86400, teks: formatDurasiLaras(detik), warna: warnaLaras(detik) };
   });
+
+export type RincianPoli = { faskes: string; kabupaten: string; poli: string; avg_seconds: number };
+export type BarisRincianPoli = { no: number; faskes: string; kabupaten: string; poli: string; detik: number; hariExcel: number; warna: WarnaLaras };
+
+/** Rincian Excel per poli per faskes: urut terlama, lalu faskes dan poli A-Z. */
+export const barisRincianPoli = (rows: readonly RincianPoli[]): BarisRincianPoli[] =>
+  rows
+    .map(row => ({ ...row, detik: Math.max(0, Math.round(row.avg_seconds)) }))
+    .sort((a, b) => b.detik - a.detik || a.faskes.localeCompare(b.faskes, 'id') || a.poli.localeCompare(b.poli, 'id'))
+    .map(({ faskes, kabupaten, poli, detik }, indeks) => ({ no: indeks + 1, faskes, kabupaten, poli, detik, hariExcel: detik / 86400, warna: warnaLaras(detik) }));
