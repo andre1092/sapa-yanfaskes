@@ -94,7 +94,9 @@ export const UnduhExcelLaras = ({ judul, kolom, points, formatLabel, keterangan,
         contoh.border = BINGKAI;
         sheet.getCell(`B${nomor}`).value = item.label;
       });
-      sheet.getCell(`A${nomor + 2}`).value = `${catatan} Urut dari waktu terlama.`;
+      sheet.getCell(`A${nomor + 2}`).value = rincianPoli
+        ? 'Angka tiap rumah sakit untuk tiap poli (bukan angka gabungan BI); kabupaten dari referensi fasilitas. Urut dari waktu terlama.'
+        : `${catatan} Urut dari waktu terlama.`;
 
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${namaBerkas}.xlsx`);
