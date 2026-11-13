@@ -31,3 +31,15 @@ export const warnaLaras = (detik: number | null | undefined): WarnaLaras => {
 /** Waktu terlama dulu, lalu label A-Z. */
 export const urutkanTerlama = <T extends { label: string; avg_seconds: number }>(rows: readonly T[]): T[] =>
   [...rows].sort((a, b) => b.avg_seconds - a.avg_seconds || a.label.localeCompare(b.label, 'id'));
+
+export type BarisTabelLaras = { no: number; label: string; detik: number; hariExcel: number; teks: string; warna: WarnaLaras };
+
+/** Isi tabel unduhan (JPEG dan Excel): urut terlama, detik dibulatkan seperti yang tercetak. */
+export const barisTabelLaras = <T extends { label: string; avg_seconds: number }>(
+  points: readonly T[],
+  formatLabel: (label: string) => string,
+): BarisTabelLaras[] =>
+  urutkanTerlama(points).map((point, indeks) => {
+    const detik = Math.max(0, Math.round(point.avg_seconds));
+    return { no: indeks + 1, label: formatLabel(point.label), detik, hariExcel: detik / 86400, teks: formatDurasiLaras(detik), warna: warnaLaras(detik) };
+  });

@@ -9,6 +9,7 @@ import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import { EMPTY_LARAS_FILTERS, useLarasData, type LarasChart, type LarasFilters } from '../hooks/useLarasData';
 import { formatDurasiLaras } from '../lib/larasJpeg';
 import { UnduhJpegLaras } from './UnduhJpegLaras';
+import { UnduhExcelLaras } from './UnduhExcelLaras';
 
 const duration = formatDurasiLaras;
 const monthLabel = (label: string) => {
@@ -22,7 +23,7 @@ function Chart({ title, chart, vertical = false, unduh }: { title: string; chart
   const points = chart.points.filter(point => Number.isFinite(point.avg_seconds) && point.avg_seconds >= 0);
   const max = Math.max(1, ...points.map(point => point.avg_seconds));
   return <MainCard content={false} className={`laras-chart berry-dashboard-card ${vertical ? 'laras-chart-monthly' : ''}`} aria-labelledby={id}>
-    <header className="laras-chart-heading"><Typography component="h2" variant="h4" id={id}>{title}</Typography><div className="laras-chart-actions"><span>Hari · jam:menit:detik</span><UnduhJpegLaras judul={title} kolom={unduh.kolom} points={points} formatLabel={vertical ? monthLabel : tanggalIso} keterangan={unduh.keterangan} catatan={unduh.catatan} namaBerkas={unduh.berkas} /></div></header>
+    <header className="laras-chart-heading"><Typography component="h2" variant="h4" id={id}>{title}</Typography><div className="laras-chart-actions"><span>Hari · jam:menit:detik</span><UnduhJpegLaras judul={title} kolom={unduh.kolom} points={points} formatLabel={vertical ? monthLabel : tanggalIso} keterangan={unduh.keterangan} catatan={unduh.catatan} namaBerkas={unduh.berkas} /><UnduhExcelLaras judul={title} kolom={unduh.kolom} points={points} formatLabel={vertical ? monthLabel : tanggalIso} keterangan={unduh.keterangan} catatan={unduh.catatan} namaBerkas={unduh.berkas} /></div></header>
     {points.length === 0 ? <p className="laras-chart-empty">{chart.message || 'Belum ada data untuk pilihan ini.'}</p> : <>
       <div className={vertical ? 'laras-month-scroll' : 'laras-bars'} tabIndex={0} role="region" aria-label={`${title}, area grafik yang dapat digulir`}>
         <div className={vertical ? 'laras-months' : 'laras-bar-list'} role="list" aria-label={`${title}, rata-rata durasi dalam hari, jam, menit, dan detik`}>

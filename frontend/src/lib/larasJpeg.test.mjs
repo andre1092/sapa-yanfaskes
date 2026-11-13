@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('./larasJpeg.ts', import.meta.url), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } });
-const { warnaLaras, formatDurasiLaras, urutkanTerlama } = await import(
+const { warnaLaras, formatDurasiLaras, urutkanTerlama, barisTabelLaras } = await import(
   `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
 );
 
@@ -46,4 +46,16 @@ test('urut waktu terlama dulu, nama A-Z bila sama', () => {
   ];
   assert.deepEqual(urutkanTerlama(rows).map(r => r.label), ['C', 'D', 'A', 'B']);
   assert.equal(rows[0].label, 'B', 'urutan asli tidak berubah');
+});
+
+test('baris tabel Excel: urut terlama, detik tercetak, waktu sebagai pecahan hari, warna sama dengan JPEG', () => {
+  const rows = barisTabelLaras(
+    [{ label: 'A', avg_seconds: 1200.4 }, { label: 'B', avg_seconds: 3599.6 }, { label: 'C', avg_seconds: 3300 }],
+    label => `RS ${label}`,
+  );
+  assert.deepEqual(rows, [
+    { no: 1, label: 'RS B', detik: 3600, hariExcel: 1 / 24, teks: '00 hari 01:00:00', warna: 'merah' },
+    { no: 2, label: 'RS C', detik: 3300, hariExcel: 55 / 1440, teks: '00 hari 00:55:00', warna: 'kuning' },
+    { no: 3, label: 'RS A', detik: 1200, hariExcel: 1 / 72, teks: '00 hari 00:20:00', warna: 'hijau' },
+  ]);
 });
