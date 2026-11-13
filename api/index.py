@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from fastapi import FastAPI, HTTPException, Response, Request, Depends, Cookie, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -35,6 +36,10 @@ try:
     from . import audit_log
 except ImportError:
     import audit_log
+try:
+    from . import pengguna_service
+except ImportError:
+    import pengguna_service
 try:
     from .sheets_source import read_sheet_csv
 except ImportError:
@@ -197,8 +202,10 @@ def require_auth(request: Request):
     return claims
 
 # --- IZIN PER PERAN (matriks disetujui CEO 2026-11-13) ---
-ROLE_RANK = {"viewer": 1, "admin": 2, "super_admin": 3}
+# Petugas RS setara viewer untuk data FKRTL, ditambah unduhan FKRTL; FKTP dan administrasi ditolak.
+ROLE_RANK = {"petugas_rs": 1, "viewer": 1, "admin": 2, "super_admin": 3}
 _ROLE_NAMES = {
+    "petugas_rs": "petugas_rs", "Petugas RS": "petugas_rs",
     "viewer": "viewer", "Viewer": "viewer",
     "admin": "admin", "Admin": "admin",
     "super_admin": "super_admin", "Super Admin": "super_admin",
@@ -212,6 +219,30 @@ def role_rank(claims) -> int:
     if not isinstance(roles, list):
         return 0
     return max((ROLE_RANK[_ROLE_NAMES[r]] for r in roles if isinstance(r, str) and r in _ROLE_NAMES), default=0)
+
+
+def petugas_rs_saja(claims) -> bool:
+    """Benar bila satu-satunya peran yang dikenal adalah Petugas RS."""
+    roles = claims.get(ROLES_CLAIM) if isinstance(claims, dict) else None
+    if not isinstance(roles, list):
+        return False
+    dikenal = {_ROLE_NAMES[r] for r in roles if isinstance(r, str) and r in _ROLE_NAMES}
+    return dikenal == {"petugas_rs"}
+
+
+def _cek_wajib_ganti_sandi(request: Request, claims) -> None:
+    """Petugas RS dengan sandi awal belum diganti tidak boleh membuka data apa pun."""
+    if not petugas_rs_saja(claims):
+        return
+    try:
+        wajib = pengguna_service.wajib_ganti_sandi(str(claims.get("sub", "")))
+    except pengguna_service.PenggunaBelumSiap:
+        raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
+    except Exception as exc:
+        logger.error("Status sandi petugas tidak dapat dicek: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Status akun belum dapat dicek. Coba lagi sebentar.")
+    if wajib:
+        raise HTTPException(status_code=403, detail=pengguna_service.PESAN_WAJIB_GANTI)
 
 
 def _forbid(request: Request, minimum: str):
@@ -229,10 +260,36 @@ def require_role(minimum: str):
         # Memuat ulang data dari sumber dihitung sebagai sinkronisasi (Admin ke atas).
         if request.query_params.get("refresh", "").lower() in ("1", "true", "yes") and role_rank(claims) < ROLE_RANK["admin"]:
             _forbid(request, "admin")
+        _cek_wajib_ganti_sandi(request, claims)
         return claims
 
     dependency.__name__ = f"require_{minimum}"
     return dependency
+
+
+def require_viewer_fktp(request: Request):
+    """Data FKTP: viewer ke atas, kecuali akun yang hanya Petugas RS."""
+    claims = require_viewer(request)
+    if petugas_rs_saja(claims):
+        _forbid(request, "viewer (bukan Petugas RS)")
+    return claims
+
+
+def require_fkrtl_export(request: Request):
+    """Unduhan data FKRTL: Admin ke atas, atau Petugas RS."""
+    claims = require_auth(request)
+    if role_rank(claims) < ROLE_RANK["admin"] and not petugas_rs_saja(claims):
+        _forbid(request, "admin atau Petugas RS")
+    _cek_wajib_ganti_sandi(request, claims)
+    return claims
+
+
+def require_signed_in(request: Request):
+    """Akun dengan peran yang dikenal, tanpa cek wajib ganti sandi (untuk halaman ganti sandi)."""
+    claims = require_auth(request)
+    if role_rank(claims) < 1:
+        _forbid(request, "viewer")
+    return claims
 
 
 require_viewer = require_role("viewer")
@@ -241,6 +298,10 @@ require_super_admin = require_role("super_admin")
 
 # --- RIWAYAT AKTIVITAS (audit log, hanya Super Admin yang bisa membaca) ---
 _ROLE_BY_RANK = {3: "super_admin", 2: "admin", 1: "viewer", 0: ""}
+
+
+def role_label(claims) -> str:
+    return "petugas_rs" if petugas_rs_saja(claims) else _ROLE_BY_RANK[role_rank(claims)]
 WIB = timezone(timedelta(hours=7))
 
 
@@ -252,7 +313,7 @@ async def audit_middleware(request: Request, call_next):
         if audit_log.should_record(request.method, path, response.status_code, query):
             claims = getattr(request.state, "audit_claims", None)
             entry = audit_log.build_entry(
-                request.method, path, response.status_code, claims, _ROLE_BY_RANK[role_rank(claims)],
+                request.method, path, response.status_code, claims, role_label(claims),
                 request.headers.get("x-forwarded-for"), request.client.host if request.client else None,
             )
             await audit_log.record(entry)
@@ -282,6 +343,158 @@ async def get_audit_log(
         logger.error("Gagal membaca audit log: %s", type(exc).__name__)
         raise HTTPException(status_code=503, detail="Riwayat aktivitas sedang tidak dapat dibaca.")
     return {"entries": entries, "next_before_id": entries[-1]["id"] if len(entries) == limit else None}
+
+
+# --- PENGGUNA FKRTL (akun petugas RS, dikelola Super Admin lewat Auth0) ---
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_USER_ID_RE = re.compile(r"^[A-Za-z0-9|_.\-]{3,128}$")
+_NO_STORE = {"Cache-Control": "no-store"}
+
+
+class PenggunaBaru(BaseModel):
+    nama: str
+    email: str
+    kode_ppk: str
+
+
+class UbahStatusPengguna(BaseModel):
+    aktif: bool
+
+
+class GantiSandi(BaseModel):
+    sandi_baru: str
+
+
+def _faskes_fkrtl() -> List[Dict[str, str]]:
+    rows = {}
+    for r in fetch_csv_records(REF_FASKES_SPREADSHEET_ID, "REF_FASKES"):
+        kode = (r.get("kode_ppk") or "").strip()
+        if kode:
+            rows[kode] = {"kode_ppk": kode, "nama_ppk": (r.get("nama_ppk") or "").strip() or kode,
+                          "kabupaten": (r.get("kabupaten") or "").strip(), "kelas_ppk": (r.get("kelas_ppk") or "").strip()}
+    return sorted(rows.values(), key=lambda f: (f["nama_ppk"].casefold(), f["kode_ppk"]))
+
+
+def _klien_pengguna():
+    client = pengguna_service.get_client()
+    if client is None:
+        raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
+    return client
+
+
+def _petugas_atau_404(client, user_id: str) -> dict:
+    if not _USER_ID_RE.fullmatch(user_id):
+        raise HTTPException(status_code=404, detail="Akun petugas tidak ditemukan.")
+    user = pengguna_service.ambil_petugas(client, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Akun petugas tidak ditemukan.")
+    return user
+
+
+def _gagal_auth0(exc: Exception):
+    if isinstance(exc, HTTPException):
+        raise exc
+    if isinstance(exc, pengguna_service.PenggunaBelumSiap):
+        raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
+    if isinstance(exc, pengguna_service.Auth0Error) and exc.status == 409:
+        raise HTTPException(status_code=409, detail="Email ini sudah terdaftar.")
+    if isinstance(exc, pengguna_service.Auth0Error) and exc.status == 400:
+        raise HTTPException(status_code=400, detail="Auth0 menolak isian ini. Periksa email dan syarat kata sandi.")
+    logger.error("Pengelolaan akun gagal: %s", type(exc).__name__)
+    raise HTTPException(status_code=502, detail="Layanan akun sedang bermasalah. Coba lagi sebentar.")
+
+
+@app.get("/api/v1/pengguna-fkrtl")
+def list_pengguna_fkrtl(user=Depends(require_super_admin)):
+    faskes = _faskes_fkrtl()
+    peta = {f["kode_ppk"]: f for f in faskes}
+    client = pengguna_service.get_client()
+    if client is None:
+        return {"siap": False, "pengguna": [], "faskes": faskes}
+    try:
+        pengguna = pengguna_service.daftar_petugas(client)
+    except Exception as exc:
+        _gagal_auth0(exc)
+    for p in pengguna:
+        f = peta.get(p["kode_ppk"])
+        p["faskes"] = {"kode_ppk": p["kode_ppk"], "nama_ppk": f["nama_ppk"] if f else "Faskes tidak ada di referensi",
+                       "kabupaten": f["kabupaten"] if f else ""}
+    pengguna.sort(key=lambda p: (p["faskes"]["nama_ppk"].casefold(), p["nama"].casefold()))
+    return {"siap": True, "pengguna": pengguna, "faskes": faskes}
+
+
+@app.post("/api/v1/pengguna-fkrtl", status_code=201)
+def create_pengguna_fkrtl(body: PenggunaBaru, user=Depends(require_super_admin)):
+    nama, email, kode = body.nama.strip(), body.email.strip().lower(), body.kode_ppk.strip()
+    if not nama or len(nama) > 100:
+        raise HTTPException(status_code=400, detail="Nama wajib diisi (maksimal 100 karakter).")
+    if not _EMAIL_RE.fullmatch(email) or len(email) > 200:
+        raise HTTPException(status_code=400, detail="Format email tidak valid.")
+    if kode not in {f["kode_ppk"] for f in _faskes_fkrtl()}:
+        raise HTTPException(status_code=400, detail="Faskes tidak ada di referensi Fasilitas Kesehatan.")
+    client = _klien_pengguna()
+    try:
+        akun, sandi = pengguna_service.buat_petugas(client, nama, email, kode)
+    except Exception as exc:
+        _gagal_auth0(exc)
+    return JSONResponse(status_code=201, headers=_NO_STORE, content={"pengguna": akun, "sandi_awal": sandi})
+
+
+@app.post("/api/v1/pengguna-fkrtl/{user_id}/atur-ulang-sandi")
+def reset_sandi_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
+    client = _klien_pengguna()
+    _petugas_atau_404(client, user_id)
+    try:
+        sandi = pengguna_service.atur_ulang_sandi(client, user_id)
+    except Exception as exc:
+        _gagal_auth0(exc)
+    return JSONResponse(headers=_NO_STORE, content={"sandi_awal": sandi})
+
+
+@app.post("/api/v1/pengguna-fkrtl/{user_id}/undangan")
+def undangan_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
+    client = _klien_pengguna()
+    akun = _petugas_atau_404(client, user_id)
+    try:
+        client.send_change_password_email(akun.get("email") or "")
+    except Exception as exc:
+        _gagal_auth0(exc)
+    return {"status": "terkirim"}
+
+
+@app.patch("/api/v1/pengguna-fkrtl/{user_id}")
+def update_pengguna_fkrtl(user_id: str, body: UbahStatusPengguna, user=Depends(require_super_admin)):
+    client = _klien_pengguna()
+    _petugas_atau_404(client, user_id)
+    try:
+        return {"pengguna": pengguna_service.set_aktif(client, user_id, body.aktif)}
+    except Exception as exc:
+        _gagal_auth0(exc)
+
+
+@app.get("/api/v1/akun/status")
+def status_akun(user=Depends(require_signed_in)):
+    if not petugas_rs_saja(user):
+        return {"wajib_ganti_sandi": False, "petugas_rs": False}
+    try:
+        return {"wajib_ganti_sandi": pengguna_service.wajib_ganti_sandi(str(user.get("sub", ""))), "petugas_rs": True}
+    except Exception as exc:
+        _gagal_auth0(exc)
+
+
+@app.post("/api/v1/akun/ganti-sandi")
+def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in)):
+    if not petugas_rs_saja(user):
+        raise HTTPException(status_code=403, detail="Ganti kata sandi akun ini lewat halaman masuk Auth0.")
+    pesan = pengguna_service.cek_sandi(body.sandi_baru)
+    if pesan:
+        raise HTTPException(status_code=400, detail=pesan)
+    client = _klien_pengguna()
+    try:
+        pengguna_service.ganti_sandi_sendiri(client, str(user.get("sub", "")), body.sandi_baru)
+    except Exception as exc:
+        _gagal_auth0(exc)
+    return JSONResponse(headers=_NO_STORE, content={"status": "berhasil"})
 
 
 # --- SCIM 2.0 AUTOMATION ---
@@ -1149,7 +1362,7 @@ async def export_fkrtl_data(
     kelas_rs: str = None,
     nama_rs: str = None,
     sumber: str = None,
-    user=Depends(require_admin)
+    user=Depends(require_fkrtl_export)
 ):
 
     try:
@@ -3027,7 +3240,7 @@ async def get_fktp_antrol_stats(
     jenis_fktp: Optional[str] = None,
     sumber_antrean: Optional[str] = None,
     refresh: Optional[bool] = False,
-    user=Depends(require_viewer)
+    user=Depends(require_viewer_fktp)
 ):
     try:
         role = user.get("role", "viewer") if isinstance(user, dict) else "viewer"

@@ -36,3 +36,22 @@ test('menu Administrasi mengikuti izin', () => {
     assert.equal(menuBoleh(menu, 'viewer'), true, menu);
   }
 });
+
+test('Petugas RS: lihat dan unduh FKRTL, tanpa FKTP dan Administrasi', () => {
+  assert.equal(bolehMelakukan('Petugas RS', 'lihat'), true);
+  assert.equal(bolehMelakukan('Petugas RS', 'ekspor'), true);
+  assert.equal(bolehMelakukan('Petugas RS', 'sinkron'), false);
+  assert.equal(bolehMelakukan('Petugas RS', 'pengaturan'), false);
+  for (const menu of ['Home', 'Pemanfaatan Antrol FKRTL', 'Monitoring LARAS', 'Capaian Kepatuhan FKRTL']) {
+    assert.equal(menuBoleh(menu, 'Petugas RS'), true, menu);
+  }
+  for (const menu of ['Capaian Kepatuhan FKTP', 'Integration', 'Logs', 'Validation Rules', 'Pengguna FKRTL']) {
+    assert.equal(menuBoleh(menu, 'Petugas RS'), false, menu);
+  }
+});
+
+test('menu Pengguna FKRTL hanya untuk Super Admin', () => {
+  assert.equal(menuBoleh('Pengguna FKRTL', 'viewer'), false);
+  assert.equal(menuBoleh('Pengguna FKRTL', 'Admin'), false);
+  assert.equal(menuBoleh('Pengguna FKRTL', 'Super Admin'), true);
+});

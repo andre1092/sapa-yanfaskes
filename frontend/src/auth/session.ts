@@ -14,7 +14,10 @@ export function mapAuth0User(user: User, rolesClaim?: string): AuthUser | null {
   const trustedClaim = rolesClaim && /^https:\/\//.test(rolesClaim) ? user[rolesClaim] : undefined;
   const roles: string[] = Array.isArray(trustedClaim) ? trustedClaim.filter((role): role is string => typeof role === 'string') : [];
   const role = roles.some(value => ['super_admin', 'Super Admin'].includes(value)) ? 'Super Admin'
-    : roles.some(value => ['admin', 'Admin'].includes(value)) ? 'Admin' : 'viewer';
+    : roles.some(value => ['admin', 'Admin'].includes(value)) ? 'Admin'
+    // Akun rumah sakit hanya mendapat peran Petugas RS bila tidak punya peran lain.
+    : roles.some(value => ['viewer', 'Viewer'].includes(value)) ? 'viewer'
+    : roles.some(value => ['petugas_rs', 'Petugas RS'].includes(value)) ? 'Petugas RS' : 'viewer';
   return {
     id: user.sub, sub: user.sub, username: user.nickname || user.email || user.sub,
     name: user.name || user.nickname || 'Pengguna SAPA', email: user.email || '', role,

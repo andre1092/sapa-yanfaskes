@@ -12,6 +12,7 @@ const LABEL_PERAN: Record<string, string> = {
   User: 'Pengguna',
   Admin: 'Admin',
   'Super Admin': 'Super Admin',
+  'Petugas RS': 'Petugas RS',
 };
 
 export function peranTampilan(role: string | null | undefined): string {
