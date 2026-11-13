@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 import math
 import re
 import threading
@@ -22,7 +23,11 @@ SPREADSHEET_ID = "1rKEVk54FM7pDf2FpNA35ycTvvMsG542npXsU_xjaaoE"
 SOURCE_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit"
 TASK = "Rata-Rata Waktu 3-4 dan 2-4"
 TABS = {"per_bulan": 0, "per_faskes": 101, "per_poli": 102, "per_hari": 103}
+# Tab `gabungan`: angka BI saat Fasilitas Kesehatan (All), dibobot jumlah kunjungan oleh BI.
+GABUNGAN_GID = 105
+GABUNGAN_GRAFIK = ("kpi", "per_bulan", "per_kabupaten", "per_hari", "per_poli")
 MONTHS = ("", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
+logger = logging.getLogger(__name__)
 _cache: tuple[float, dict, dict] | None = None
 _cache_lock = threading.Lock()
 
@@ -109,6 +114,40 @@ def _normalize(rows: list[dict], grain: str) -> list[dict]:
     return list(latest.values())
 
 
+def _normalize_gabungan(rows: list[dict]) -> list[dict]:
+    latest = {}
+    for row in rows:
+        grafik = _text(row.get("grafik")).casefold()
+        if grafik not in GABUNGAN_GRAFIK or _text(row.get("jenis_task_id")).casefold() != TASK.casefold():
+            continue
+        if any(_scope(row.get(column)) for column in ("fasilitas_filter", "poli_filter", "jenis_kunjungan_filter")):
+            continue
+        # KPI BI dicatat per pilihan Bulan; grafik lain per periode titiknya.
+        period = _period(_text(row.get("bulan_filter" if grafik == "kpi" else "periode")))
+        if not period:
+            continue
+        if grafik == "per_hari":
+            try:
+                label = date.fromisoformat(_text(row.get("tanggal"))).isoformat()
+            except ValueError:
+                continue
+        elif grafik == "per_bulan":
+            label = period
+        elif grafik == "per_poli":
+            label = _text(row.get("nama_poli")) or _text(row.get("label"))
+        else:
+            label = _text(row.get("label"))
+        if not label and grafik != "kpi":
+            continue
+        normalized = {**row, "_grafik": grafik, "_period": period, "_label": label,
+                      "_status": _text(row.get("status_filter")), "_seconds": parse_duration_seconds(row)}
+        key = (grafik, period, label, normalized["_status"])
+        previous = latest.get(key)
+        if previous is None or _text(row.get("waktu_pencatatan_wib")) >= _text(previous.get("waktu_pencatatan_wib")):
+            latest[key] = normalized
+    return list(latest.values())
+
+
 def _chart(rows: list[dict], label, *, chronological: bool = False, empty: str = "Belum tersedia data untuk pilihan filter ini.") -> dict:
     groups = defaultdict(list)
     for row in rows:
@@ -130,6 +169,15 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
     # Each extraction status is a population restriction, not an extra patient cohort to sum.
     latest_row = max(all_rows, key=lambda row: _text(row.get("waktu_pencatatan_wib")), default={})
     status_scope = _text(latest_row.get("status_filter"))
+    gabungan = _normalize_gabungan(sheets.get("gabungan", []))
+    semua_fasilitas = not faskes and not poli and not jenis_kunjungan
+
+    def gabungan_rows(grafik, *, period=True):
+        if not semua_fasilitas:
+            return []
+        return [row for row in gabungan if row["_grafik"] == grafik and row["_seconds"] is not None
+                and (not status_scope or row["_status"] == status_scope)
+                and (not period or row["_period"] == selected_period)]
 
     def matches(row, grain, *, period=True):
         if status_scope and _text(row.get("status_filter")) != status_scope:
@@ -164,6 +212,12 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
             basis = "Rata-rata antar fasilitas dari mark bulanan sumber; tidak dibobot jumlah kunjungan."
     values = [row["_seconds"] for row in facilities if row["_seconds"] is not None]
     unavailable = "Rincian periode, poli, atau jenis kunjungan ini belum tersedia pada grafik sumber."
+    kpi_avg = round(sum(values) / len(values), 3) if values else None
+    kpi_count = len(values)
+    kpi_bi = max(gabungan_rows("kpi"), key=lambda row: _text(row.get("waktu_pencatatan_wib")), default=None)
+    if kpi_bi:
+        kpi_avg, kpi_count = round(kpi_bi["_seconds"], 3), 1
+        basis = "Angka BI semua fasilitas, dibobot jumlah kunjungan."
     charts = {
         "per_bulan": _chart(monthly, lambda row: row["_period"], chronological=True, empty=unavailable),
         "per_kabupaten": _chart(facilities, lambda row: _text(ref.get(row["_code"], {}).get("kabupaten")) or "Kabupaten/kota belum terpetakan", empty=unavailable),
@@ -171,6 +225,14 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
         "per_faskes": _chart(facilities, lambda row: _text(row.get("nama_faskes")) or row["_code"], empty=unavailable),
         "per_poli": _chart(poli_rows, lambda row: row["_poli"] or "Poli belum teridentifikasi", empty=unavailable),
     }
+    # Semua fasilitas memakai angka BI; rata-rata antar fasilitas hanya cadangan bila baris BI belum ada.
+    weighted = bool(kpi_bi)
+    for grafik, period, chronological in (("per_bulan", bool(bulan), True), ("per_kabupaten", True, False),
+                                          ("per_hari", True, True), ("per_poli", True, False)):
+        rows_bi = gabungan_rows(grafik, period=period)
+        if rows_bi:
+            charts[grafik] = _chart(rows_bi, lambda row: row["_label"], chronological=chronological)
+            weighted = True
     options = {
         "bulan": [{"value": value, "label": f"{MONTHS[int(value[5:])]} {value[:4]}"} for value in periods],
         "faskes": [{"value": code, "label": name} for code, name in sorted({row["_code"]: _text(row.get("nama_faskes")) or row["_code"] for row in all_rows}.items(), key=lambda item: item[1])],
@@ -181,17 +243,23 @@ def build_laras_data(sheets: dict, ref: dict, bulan: str = "", faskes: str = "",
         "status": "success" if any(chart["points"] for chart in charts.values()) else "no_data",
         "filter_options": options,
         "active_filters": {"bulan": bulan, "faskes": faskes, "poli": poli, "jenis_kunjungan": jenis_kunjungan},
-        "kpi": {"avg_seconds": round(sum(values) / len(values), 3) if values else None, "sample_count": len(values), "basis": basis},
+        "kpi": {"avg_seconds": kpi_avg, "sample_count": kpi_count, "basis": basis},
         "charts": charts,
         "metadata": {
-            "source_url": SOURCE_URL, "last_updated": _text(latest_row.get("waktu_pencatatan_wib")) or None,
+            "source_url": SOURCE_URL,
+            "last_updated": max([_text(latest_row.get("waktu_pencatatan_wib")), *(_text(row.get("waktu_pencatatan_wib")) for row in gabungan)]) or None,
             "selected_period": selected_period,
-            "methodology": "Rata-rata aritmetika mark agregat sumber, bukan rata-rata berbobot pasien. Durasi kosong tidak dihitung; nol yang tercatat tetap dihitung. Setiap grafik memakai rincian sumbernya sendiri.",
+            "bobot_kunjungan": weighted,
+            "methodology": ("Angka semua fasilitas (scorecard, per bulan, kabupaten/kota, hari, dan poli) adalah angka BI yang dibobot jumlah kunjungan. Grafik per fasilitas menampilkan angka tiap rumah sakit. Rata-rata antar fasilitas tanpa bobot hanya dipakai sebagai cadangan bila angka BI untuk pilihan itu belum tersedia atau filter fasilitas/poli dipilih."
+                            if weighted else
+                            "Rata-rata aritmetika mark agregat sumber, bukan rata-rata berbobot pasien. Durasi kosong tidak dihitung; nol yang tercatat tetap dihitung. Setiap grafik memakai rincian sumbernya sendiri."),
             "source_scope": f"Cakupan ekstraksi sumber: {status_scope or 'tidak dicantumkan'}. Jenis task: {TASK}.",
             "limitations": [
                 "Durasi pada mark dapat melebihi 60 menit meskipun status filter ekstraksi bertuliskan Kurang dari 60 Menit. Nilai sumber dipertahankan tanpa dipotong atau disaring ulang.",
                 "Perbandingan fasilitas, kabupaten/kota, poli, harian, dan scorecard memakai bulan terpilih; pilihan semua bulan memakai periode terbaru. Grafik bulanan menampilkan seluruh periode yang tersedia bila semua bulan dipilih.",
-                "Jumlah kunjungan tidak tersedia sebagai bobot. Data yang tidak mendukung kombinasi filter ditampilkan sebagai belum tersedia, bukan nol.",
+                ("Bila fasilitas atau poli dipilih, angka gabungan dihitung sebagai rata-rata antar fasilitas tanpa bobot jumlah kunjungan. Data yang tidak mendukung kombinasi filter ditampilkan sebagai belum tersedia, bukan nol."
+                 if weighted else
+                 "Jumlah kunjungan tidak tersedia sebagai bobot. Data yang tidak mendukung kombinasi filter ditampilkan sebagai belum tersedia, bukan nol."),
                 *([] if options["jenis_kunjungan"] else ["Sumber saat ini hanya memuat semua jenis kunjungan; rincian jenis kunjungan belum tersedia."]),
             ],
         },
@@ -213,10 +281,17 @@ def get_laras_data(*, bulan: str = "", faskes: str = "", poli: str = "", jenis_k
     with _cache_lock:
         if refresh or _cache is None or time.monotonic() - _cache[0] >= 300:
             try:
-                with ThreadPoolExecutor(max_workers=5) as pool:
+                with ThreadPoolExecutor(max_workers=6) as pool:
                     futures = {name: pool.submit(_read_csv, SPREADSHEET_ID, gid, {"kode_faskes", "durasi_detik", "jenis_task_id"}) for name, gid in TABS.items()}
                     reference = pool.submit(_read_csv, "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs", None, {"kode_ppk", "kabupaten"})
+                    gabungan = pool.submit(_read_csv, SPREADSHEET_ID, GABUNGAN_GID, {"grafik", "periode", "durasi_detik", "jenis_task_id"})
                     sheets = {name: future.result() for name, future in futures.items()}
+                    try:
+                        sheets["gabungan"] = gabungan.result()
+                    except Exception:
+                        # Tanpa tab gabungan halaman tetap tampil dengan rata-rata antar fasilitas.
+                        logger.warning("LARAS gabungan tab unavailable; falling back to facility averages")
+                        sheets["gabungan"] = []
                     ref = {_text(row.get("kode_ppk")): row for row in reference.result()}
                 _cache = (time.monotonic(), sheets, ref)
             except Exception as exc:
