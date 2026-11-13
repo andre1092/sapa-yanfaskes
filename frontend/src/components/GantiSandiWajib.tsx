@@ -42,7 +42,7 @@ export function GantiSandiWajib({ nama, onSelesai, onKeluar }: GantiSandiWajibPr
   return <Box component="main" sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', bgcolor: 'background.default', p: 2 }}>
     <Paper elevation={0} sx={{ width: 'min(440px, 100%)', p: { xs: 3, sm: 4 }, borderRadius: 3, border: 1, borderColor: 'divider' }}>
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
-        <Box component="img" src="/logo-sapa-yanfaskes-128.png" alt="" sx={{ width: 40, height: 40 }} />
+        <Box component="img" src="/logo-sapa-yanfaskes-v2-128.png" alt="" sx={{ width: 40, height: 40 }} />
         <Typography variant="h4" component="p">SAPA Yanfaskes</Typography>
       </Stack>
       <Typography variant="h2" component="h1" sx={{ mb: 1 }}>Ganti kata sandi awal</Typography>
