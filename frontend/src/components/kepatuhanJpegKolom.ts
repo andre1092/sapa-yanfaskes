@@ -177,18 +177,22 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
     judul: '06. Antrean & WTL',
     namaBerkas: 'Antrean_WTL',
     kunciUrut: ['capaian', 'capaian_nilai'],
+    // Kolom sama dengan tabel "Capaian Fasilitas Kesehatan" di BI.
     kolom: [
-      teks('Kode PPK', 'kode_ppk'),
-      teks('Nama Rumah Sakit', 'nama_ppk'),
-      teks('Kabupaten', 'kabupaten'),
-      jumlah('Total Antrol', 'total_antrol'),
-      jumlah('Total MJKN', 'total_mjkn'),
-      desimal('MJKN (%)', 'persen_mjkn'),
-      desimal('Task 2 (%)', 'persen_t2'),
-      desimal('Task 3 (%)', 'persen_t3'),
-      desimal('Task 4 (%)', 'persen_t4'),
-      capaian(),
-      desimal('Poin (20%)', 'capaian_nilai'),
+      teks('Fasilitas Kesehatan', 'fasilitas_kesehatan'),
+      teks('Tipe Faskes', 'tipe_faskes'),
+      teks('Rata-rata Waktu task 2-4', 'waktu_task_2_4'),
+      jumlah('Kunjungan dengan MJKN', 'total_mjkn'),
+      jumlah('Kunjungan dengan Antrean Online', 'total_antrol'),
+      {
+        label: '% Target Nasional',
+        rata: 'right',
+        teks: row => {
+          const n = parseFloat(String(row.persen_target_nasional ?? '').replace('%', '').replace(',', '.'));
+          return Number.isFinite(n) ? `${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %` : '-';
+        },
+      },
+      capaian('Capaian'),
     ],
   },
   surkon: {
