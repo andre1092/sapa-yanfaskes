@@ -210,7 +210,7 @@ def test_spreadsheet_id_from_request_is_ignored(monkeypatch, path):
         return {}
 
     monkeypatch.setattr(api, "fetch_multiple_sheets", fake_fetch)
-    for dependency in (api.require_viewer, api.require_admin, api.require_super_admin):
+    for dependency in (api.require_viewer, api.require_admin, api.require_super_admin, api.require_viewer_fktp, api.require_fkrtl_export):
         api.app.dependency_overrides[dependency] = lambda: {"sub": "auth0|uji"}
     try:
         joiner = "&" if "?" in path else "?"
