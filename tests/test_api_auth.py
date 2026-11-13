@@ -109,7 +109,8 @@ def test_verification_email_requires_login_and_own_link(monkeypatch):
     client = TestClient(api.app)
     body = {"to_email": "admin@rs.co.id", "name": "<b>Admin</b>", "verification_url": "https://sapa-yanfaskes.vercel.app/verify?x=1"}
     assert client.post("/api/v1/auth/send-verification-email", json=body).status_code == 401
-    auth = {"Authorization": f"Bearer {token(api)}"}
+    # Matriks peran 2026-11-13: hanya Super Admin yang boleh mengirim email verifikasi.
+    auth = {"Authorization": f"Bearer {token(api, **{api.ROLES_CLAIM: ['super_admin']})}"}
     ok = client.post("/api/v1/auth/send-verification-email", json=body, headers=auth)
     assert ok.status_code == 200 and ok.json()["verification_url"] == body["verification_url"]
     for link in ("https://evil.example/verify", "https://sapa-yanfaskes.vercel.app.evil.example/x", "javascript:alert(1)"):

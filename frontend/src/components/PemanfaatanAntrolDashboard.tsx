@@ -12,9 +12,12 @@ import type { FkrtlFilterParams } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
 import { exportToCSV, exportToExcel, exportToJPEG, POLI_EXPORT_COLUMNS } from '../utils/exportUtils';
 import { useSyncStore } from '../store/syncStore';
+import { useAuthStore } from '../store/authStore';
+import { bolehMelakukan } from '../lib/izinPeran';
 
 
 export const PemanfaatanAntrolDashboard: React.FC = () => {
+  const bolehEkspor = bolehMelakukan(useAuthStore((s) => s.user?.role), 'ekspor');
   const [downloadingType, setDownloadingType] = useState<'faskes'|'poli'|null>(null);
   const [openDropdown, setOpenDropdown] = useState<'faskes'|'poli'|null>(null);
   const [jpegData, setJpegData] = useState<{data: any[], type: 'faskes'|'poli'}|null>(null);
@@ -204,8 +207,8 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Button: Download RS & Poli */}
-        <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:shrink-0">
+        {/* Action Button: Download RS & Poli (Admin ke atas) */}
+        {bolehEkspor && <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:shrink-0">
           {/* Download Faskes */}
           <div className="relative">
             <AnimatedButton
@@ -255,7 +258,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* 2. MAIN LAYOUT: Panel Filter Kiri + Area Visualisasi Kanan */}

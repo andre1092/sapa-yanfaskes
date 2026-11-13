@@ -210,10 +210,13 @@ def test_spreadsheet_id_from_request_is_ignored(monkeypatch, path):
         return {}
 
     monkeypatch.setattr(api, "fetch_multiple_sheets", fake_fetch)
-    api.app.dependency_overrides[api.require_auth] = lambda: {"sub": "auth0|uji"}
+    for dependency in (api.require_viewer, api.require_admin, api.require_super_admin):
+        api.app.dependency_overrides[dependency] = lambda: {"sub": "auth0|uji"}
     try:
         joiner = "&" if "?" in path else "?"
-        TestClient(api.app).get(f"{path}{joiner}spreadsheet_id={SHEET_ID}")
+        client = TestClient(api.app)
+        send = client.post if path.endswith("-sync") else client.get
+        send(f"{path}{joiner}spreadsheet_id={SHEET_ID}")
     finally:
         api.app.dependency_overrides.clear()
     assert asked and set(asked) == {api.FKRTL_ANTROL_SPREADSHEET_ID}
