@@ -10,6 +10,7 @@ import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
 import { pencocokCari } from '../lib/cocokCari';
+import { FilterLainnya } from './ui/FilterLainnya';
 export interface NakesKpiData {
   avg_persen_sesuai: number;
   weighted_persen_sesuai: number;
@@ -476,24 +477,6 @@ export const NakesComplianceTab: React.FC = () => {
               </FilterSelect>
             </div>
 
-            {/* Filter Nama Faskes */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="NakesComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Nama Faskes (FKRTL)</span>
-              </label>
-              <FilterSelect aria-label="Fasilitas kesehatan" id="NakesComplianceTab-filter-2"
-                value={selectedNamaPpk}
-                onChange={(e) => setSelectedNamaPpk(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
-              >
-                {filterOptions.nama_ppk.map((faskes) => (
-                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {faskes}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
-
             {/* Filter Bulan */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="NakesComplianceTab-filter-3" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
@@ -512,23 +495,43 @@ export const NakesComplianceTab: React.FC = () => {
               </FilterSelect>
             </div>
 
-            {/* Filter Tipe Faskes */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="NakesComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
-                <span> Tipe Faskes</span>
-              </label>
-              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="NakesComplianceTab-filter-4"
-                value={selectedTipeFaskes}
-                onChange={(e) => handleTipeFaskesChange(e.target.value)}
-                className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-              >
-                {filterOptions.tipe_faskes.map((tipe) => (
-                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                    {tipe}
-                  </FilterOption>
-                ))}
-              </FilterSelect>
-            </div>
+            <FilterLainnya>
+              {/* Filter Nama Faskes */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="NakesComplianceTab-filter-2" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                  <span> Nama Faskes (FKRTL)</span>
+                </label>
+                <FilterSelect aria-label="Fasilitas kesehatan" id="NakesComplianceTab-filter-2"
+                  value={selectedNamaPpk}
+                  onChange={(e) => setSelectedNamaPpk(e.target.value)}
+                  className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer truncate"
+                >
+                  {filterOptions.nama_ppk.map((faskes) => (
+                    <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                      {faskes}
+                    </FilterOption>
+                  ))}
+                </FilterSelect>
+              </div>
+
+              {/* Filter Tipe Faskes */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="NakesComplianceTab-filter-4" className="text-[11px] font-bold text-[var(--text-main)] flex items-center gap-1">
+                  <span> Tipe Faskes</span>
+                </label>
+                <FilterSelect aria-label="Jenis fasilitas kesehatan" id="NakesComplianceTab-filter-4"
+                  value={selectedTipeFaskes}
+                  onChange={(e) => handleTipeFaskesChange(e.target.value)}
+                  className="sapa-control rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+                >
+                  {filterOptions.tipe_faskes.map((tipe) => (
+                    <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                      {tipe}
+                    </FilterOption>
+                  ))}
+                </FilterSelect>
+              </div>
+            </FilterLainnya>
           </div>
         </div>
       </MainCard>

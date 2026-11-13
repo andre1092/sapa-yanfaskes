@@ -578,6 +578,18 @@ body { font-family: var(--font-sans); }
 }
 @keyframes sapa-sibuk { 0%, 100% { opacity: 1; } 50% { opacity: .6; } }
 
+/* Filter lainnya (hukum Hick dan Miller, PR 4 dari 4): filter sekunder di balik satu tombol.
+   Isinya memakai display: contents supaya saat dibuka mengalir di baris filter yang sama. */
+.sapa-filter-lainnya { display: inline-flex; align-items: center; gap: .375rem; min-height: 2rem; padding: .375rem .75rem; border: 1px solid var(--border-color); border-radius: var(--radius-control, .75rem); background: var(--surface); color: var(--text-main); font-size: .75rem; font-weight: 700; cursor: pointer; }
+.sapa-filter-lainnya:hover { background: var(--surface-subtle); }
+.sapa-filter-lainnya:focus-visible { outline: 2px solid var(--bpjs-navy); outline-offset: 2px; }
+.sapa-filter-lainnya svg { flex: none; transition: transform 160ms cubic-bezier(.2, 0, 0, 1); }
+.sapa-filter-lainnya[aria-expanded="true"] svg { transform: rotate(180deg); }
+.sapa-filter-lainnya__jumlah { padding: 0 .5rem; border-radius: 999px; background: var(--bpjs-navy); color: var(--on-primary); font-size: .75rem; line-height: 1.25rem; font-variant-numeric: tabular-nums; }
+.grid > .sapa-filter-lainnya { justify-self: start; align-self: end; min-height: 2.25rem; }
+.sapa-filter-lainnya__isi { display: contents; }
+.sapa-filter-lainnya__isi--tutup { display: none; }
+
 /* Kerangka memuat (audit UI/UX 2026-11-12, temuan 11). Denyut hanya bila pengguna tidak
    meminta gerak dikurangi. */
 .sapa-kerangka-kartu { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); }
