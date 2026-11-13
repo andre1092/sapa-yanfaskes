@@ -96,8 +96,10 @@ _client: tuple[tuple, Auth0Management] | None = None
 def get_client() -> Auth0Management | None:
     """Klien Management API, atau None bila variabel lingkungannya belum lengkap."""
     global _client
-    config = (_domain(), os.environ.get("AUTH0_MGMT_CLIENT_ID", ""), os.environ.get("AUTH0_MGMT_CLIENT_SECRET", ""),
-              os.environ.get("AUTH0_DB_CONNECTION", DEFAULT_CONNECTION), os.environ.get("AUTH0_SPA_CLIENT_ID", ""))
+    # Nilai yang ditempel di Vercel bisa membawa spasi atau baris baru; Auth0 lalu menolak dengan 401.
+    env = lambda name, default="": os.environ.get(name, default).strip()
+    config = (_domain(), env("AUTH0_MGMT_CLIENT_ID"), env("AUTH0_MGMT_CLIENT_SECRET"),
+              env("AUTH0_DB_CONNECTION", DEFAULT_CONNECTION) or DEFAULT_CONNECTION, env("AUTH0_SPA_CLIENT_ID"))
     if not all(config[:3]):
         return None
     if _client is None or _client[0] != config:

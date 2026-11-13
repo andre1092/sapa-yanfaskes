@@ -297,3 +297,17 @@ def test_atur_ulang_tetap_berhasil_bila_tenant_tidak_mendukung_hapus_sesi(api, m
     assert res.json()["sesi_dihapus"] is False
     assert api.pengguna_service.cek_sandi(res.json()["sandi_awal"]) is None
     assert api.fake.users["auth0|petugas"]["app_metadata"]["wajib_ganti_sandi"] is True
+
+
+def test_variabel_auth0_dirapikan_dari_spasi_dan_baris_baru(monkeypatch):
+    # Nilai yang ditempel di Vercel bisa membawa spasi atau baris baru; Auth0 lalu menolak (401).
+    import pengguna_service
+    monkeypatch.setattr(pengguna_service, "_client", None)
+    monkeypatch.setenv("AUTH0_DOMAIN", " sapa.test.auth0.com\n")
+    monkeypatch.setenv("AUTH0_MGMT_CLIENT_ID", "  id-uji \n")
+    monkeypatch.setenv("AUTH0_MGMT_CLIENT_SECRET", "rahasia-uji\n")
+    monkeypatch.setenv("AUTH0_SPA_CLIENT_ID", " spa-uji\t")
+    monkeypatch.setenv("AUTH0_ROLE_PETUGAS_RS_ID", " rol_uji \n")
+    client = pengguna_service.get_client()
+    assert (client.domain, client.client_id, client._secret, client.spa_client_id) == ("sapa.test.auth0.com", "id-uji", "rahasia-uji", "spa-uji")
+    assert pengguna_service.role_id() == "rol_uji"
