@@ -25,7 +25,7 @@ const ROUTE_MAP: Record<string, string> = {
   '/logs': 'Logs',
   '/validation-rules': 'Validation Rules',
   '/home': 'Home',
-  '/': 'Capaian Kepatuhan FKRTL',
+  '/': 'Home',
 };
 
 const MENU_TO_ROUTE: Record<string, string> = {
@@ -40,12 +40,13 @@ const MENU_TO_ROUTE: Record<string, string> = {
 };
 
 const getMenuFromCurrentPath = (): string => {
-  if (typeof window === 'undefined') return 'Capaian Kepatuhan FKRTL';
+  if (typeof window === 'undefined') return 'Home';
   const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
   if (path.includes('kepatuhanfkrtl') || path.includes('kepatuhan-fkrtl')) {
     return 'Capaian Kepatuhan FKRTL';
   }
-  return ROUTE_MAP[path] || 'Capaian Kepatuhan FKRTL';
+  // Alamat akar dan alamat yang tidak dikenal membuka Beranda (keputusan CEO 2026-11-13).
+  return ROUTE_MAP[path] || 'Home';
 };
 
 
@@ -85,6 +86,10 @@ export const InsightTracerDashboard: React.FC = () => {
   const nama = namaTampilan(user);
   const peran = peranTampilan(user?.role);
   const [activeMenu, setActiveMenu] = useState(getMenuFromCurrentPath);
+  useEffect(() => {
+    // Alamat di bilah browser ikut menjadi /home saat yang tampil Beranda.
+    if (activeMenu === 'Home' && window.location.pathname !== MENU_TO_ROUTE.Home) window.history.replaceState(window.history.state, '', MENU_TO_ROUTE.Home);
+  }, [activeMenu]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);

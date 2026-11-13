@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
 import { useAuthStore } from '../store/authStore';
 import { mapAuth0User, registerAuthSession, safeReturnTo } from './session';
+import { alamatSetelahMasuk } from '../lib/halamanAwal';
 
 import { Context } from './useSession';
 
@@ -36,6 +37,6 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   }, []);
   if (!domain || !clientId || !audience) return <Context.Provider value={{ ready: true, authenticated: false, configured: false, error: 'Layanan masuk belum dikonfigurasi. Hubungi administrator SAPA.', login: async () => {} }}>{children}</Context.Provider>;
   return <Auth0Provider domain={domain} clientId={clientId} cacheLocation="memory" authorizationParams={{ redirect_uri: window.location.origin, audience, scope: 'openid profile email' }} onRedirectCallback={state => {
-    window.history.replaceState({}, document.title, safeReturnTo(state?.returnTo));
+    window.history.replaceState({}, document.title, alamatSetelahMasuk(safeReturnTo(state?.returnTo)));
   }}><SessionBridge>{children}</SessionBridge></Auth0Provider>;
 }
