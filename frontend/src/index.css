@@ -559,3 +559,21 @@ body { font-family: var(--font-sans); }
   .sapa-kerangka-garis { animation: sapa-kerangka-denyut 1.4s ease-in-out infinite; }
 }
 @keyframes sapa-kerangka-denyut { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* Logo SAPA Yanfaskes (dibuat dengan Google Gemini dari unsur logo BPJS Kesehatan, 2026-11-13).
+   Animasi hanya memakai transform dan opacity, dan mati bila pengguna meminta gerak dikurangi. */
+:root { --logo-hijau: #009050; --logo-biru: #0060a0; }
+.sapa-logo { display: block; }
+.sapa-logo-halo { position: relative; display: inline-grid; place-items: center; }
+.sapa-logo-halo::before, .sapa-logo-halo::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--logo-hijau); opacity: 0; pointer-events: none; }
+.sapa-logo-halo::after { border-color: var(--logo-biru); }
+@media (prefers-reduced-motion: no-preference) {
+  .sapa-logo--header { animation: sapa-logo-masuk 700ms cubic-bezier(.16, 1, .3, 1) backwards; transition: transform 220ms cubic-bezier(.16, 1, .3, 1); }
+  .sapa-logo--header:hover { transform: rotate(-6deg) scale(1.06); }
+  .sapa-logo--masuk { animation: sapa-logo-masuk 900ms cubic-bezier(.16, 1, .3, 1) backwards, sapa-logo-melayang 4.8s ease-in-out 900ms infinite; }
+  .sapa-logo-halo::before { animation: sapa-logo-halo 3.2s cubic-bezier(.16, 1, .3, 1) 600ms infinite; }
+  .sapa-logo-halo::after { animation: sapa-logo-halo 3.2s cubic-bezier(.16, 1, .3, 1) 2.2s infinite; }
+}
+@keyframes sapa-logo-masuk { from { opacity: 0; transform: scale(.6) rotate(-12deg); } to { opacity: 1; transform: none; } }
+@keyframes sapa-logo-melayang { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes sapa-logo-halo { 0% { opacity: .55; transform: scale(.92); } 100% { opacity: 0; transform: scale(1.45); } }
