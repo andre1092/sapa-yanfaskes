@@ -454,7 +454,8 @@ def reset_sandi_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
         sandi = pengguna_service.atur_ulang_sandi(client, user_id)
     except Exception as exc:
         _gagal_auth0(exc)
-    return JSONResponse(headers=_NO_STORE, content={"sandi_awal": sandi})
+    sesi_dihapus = pengguna_service.akhiri_sesi(client, user_id)
+    return JSONResponse(headers=_NO_STORE, content={"sandi_awal": sandi, "sesi_dihapus": sesi_dihapus})
 
 
 @app.post("/api/v1/pengguna-fkrtl/{user_id}/undangan")

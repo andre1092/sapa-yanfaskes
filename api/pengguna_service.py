@@ -245,6 +245,19 @@ def atur_ulang_sandi(client, user_id: str) -> str:
     return sandi
 
 
+def akhiri_sesi(client, user_id: str) -> bool:
+    """Akhiri sesi Auth0 dan cabut refresh token petugas, supaya browser lama tidak diam-diam
+    mendapat token baru. Tidak semua paket tenant mendukungnya; kegagalan tidak membatalkan atur ulang."""
+    berhasil = True
+    for bagian in ("sessions", "refresh-tokens"):
+        try:
+            client.request("DELETE", f"/api/v2/users/{quote(user_id, safe='')}/{bagian}")
+        except Exception as exc:
+            berhasil = False
+            logger.warning("Sesi petugas tidak dapat diakhiri (%s): %s", bagian, getattr(exc, "status", type(exc).__name__))
+    return berhasil
+
+
 def ganti_sandi_sendiri(client, user_id: str, sandi: str) -> None:
     _ubah_sandi(client, user_id, sandi, wajib=False)
 

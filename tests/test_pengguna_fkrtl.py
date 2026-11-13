@@ -270,3 +270,30 @@ def test_token_lama_tidak_bisa_menetapkan_sandi_setelah_atur_ulang(api):
     baru = meta["sandi_diatur_ulang_pada"]  # terbit pada detik atur ulang atau sesudahnya
     headers_baru = {"Authorization": f"Bearer {token(api, sub='auth0|petugas', iat=baru, **{api.ROLES_CLAIM: PETUGAS})}"}
     assert client.post("/api/v1/akun/ganti-sandi", headers=headers_baru, json={"sandi_baru": "SandiBaruKuat2026"}).status_code == 200
+
+
+def test_atur_ulang_mengakhiri_sesi_lama_petugas(api):
+    # Catatan Clara setelah merge PR #51: browser lama tidak boleh diam-diam mendapat token baru.
+    res = call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"])
+    assert res.status_code == 200 and res.json()["sesi_dihapus"] is True
+    hapus = [c[1] for c in api.fake.calls if c[0] == "DELETE"]
+    assert hapus == ["/api/v2/users/auth0%7Cpetugas/sessions", "/api/v2/users/auth0%7Cpetugas/refresh-tokens"]
+    urutan = [c[0] for c in api.fake.calls if c[0] in ("PATCH", "DELETE")]
+    assert urutan == ["PATCH", "PATCH", "DELETE", "DELETE"]  # sandi baru dulu, baru sesi diakhiri
+
+
+def test_atur_ulang_tetap_berhasil_bila_tenant_tidak_mendukung_hapus_sesi(api, monkeypatch):
+    asli = api.fake.request
+
+    def tolak_delete(method, path, json=None, params=None):
+        if method == "DELETE":
+            api.fake.calls.append((method, path, None))
+            raise api.pengguna_service.Auth0Error(403)
+        return asli(method, path, json=json, params=params)
+
+    monkeypatch.setattr(api.fake, "request", tolak_delete)
+    res = call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"])
+    assert res.status_code == 200
+    assert res.json()["sesi_dihapus"] is False
+    assert api.pengguna_service.cek_sandi(res.json()["sandi_awal"]) is None
+    assert api.fake.users["auth0|petugas"]["app_metadata"]["wajib_ganti_sandi"] is True
