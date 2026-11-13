@@ -15,6 +15,8 @@ interface UnduhJpegLarasProps {
   formatLabel: (label: string) => string;
   /** Baris keterangan di bawah judul: filter aktif, periode, tanggal data. */
   keterangan: readonly string[];
+  /** Catatan cara hitung, mengikuti sumber angka yang dipakai halaman. */
+  catatan: string;
   namaBerkas: string;
 }
 
@@ -28,7 +30,7 @@ const GARIS = '1px solid #1F2937';
 const SEL: React.CSSProperties = { border: GARIS, padding: '6px 8px', whiteSpace: 'nowrap' };
 const SEL_JUDUL: React.CSSProperties = { ...SEL, backgroundColor: '#00529C', color: '#FFFFFF', fontWeight: 700, textAlign: 'center' };
 
-export const UnduhJpegLaras = ({ judul, kolom, points, formatLabel, keterangan, namaBerkas }: UnduhJpegLarasProps) => {
+export const UnduhJpegLaras = ({ judul, kolom, points, formatLabel, keterangan, catatan, namaBerkas }: UnduhJpegLarasProps) => {
   const [keadaan, setKeadaan] = useState<'diam' | 'menyiapkan' | 'gagal'>('diam');
   const kanvasRef = useRef<HTMLDivElement>(null);
   const barisUrut = useMemo(() => (keadaan === 'menyiapkan' ? urutkanTerlama(points) : []), [keadaan, points]);
@@ -122,7 +124,7 @@ export const UnduhJpegLaras = ({ judul, kolom, points, formatLabel, keterangan, 
                 </span>
               ))}
             </div>
-            <div style={{ marginTop: 6, color: '#374151' }}>Rata-rata agregat sumber tanpa pembobotan jumlah pasien. Urut dari waktu terlama.</div>
+            <div style={{ marginTop: 6, color: '#374151' }}>{catatan} Urut dari waktu terlama.</div>
           </div>
         </div>,
         document.body,
