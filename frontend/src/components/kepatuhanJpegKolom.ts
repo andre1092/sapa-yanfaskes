@@ -177,21 +177,13 @@ export const KONFIG_UNDUH_JPEG: { [K in TabUnduhJpeg]: KonfigUnduhJpeg<BarisPerT
     judul: '06. Antrean & WTL',
     namaBerkas: 'Antrean_WTL',
     kunciUrut: ['capaian', 'capaian_nilai'],
-    // Kolom sama dengan tabel "Capaian Fasilitas Kesehatan" di BI.
+    // Kolom tabel "Capaian Fasilitas Kesehatan" di BI, tanpa % Target Nasional (permintaan CEO).
     kolom: [
       teks('Fasilitas Kesehatan', 'fasilitas_kesehatan'),
       teks('Tipe Faskes', 'tipe_faskes'),
       teks('Rata-rata Waktu task 2-4', 'waktu_task_2_4'),
       jumlah('Kunjungan dengan MJKN', 'total_mjkn'),
       jumlah('Kunjungan dengan Antrean Online', 'total_antrol'),
-      {
-        label: '% Target Nasional',
-        rata: 'right',
-        teks: row => {
-          const n = parseFloat(String(row.persen_target_nasional ?? '').replace('%', '').replace(',', '.'));
-          return Number.isFinite(n) ? `${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %` : '-';
-        },
-      },
       capaian('Capaian'),
     ],
   },
