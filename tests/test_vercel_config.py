@@ -40,3 +40,37 @@ def test_app_page_is_not_cached_long():
     for source, headers in header_blocks():
         if source != "/assets/(.*)":
             assert "Cache-Control" not in headers, source
+
+
+def csp(key):
+    for block in CONFIG["headers"]:
+        for header in block["headers"]:
+            if header["key"] == key:
+                return {part.split()[0]: part.split()[1:] for part in header["value"].strip().rstrip(";").split(";") if part.strip()}
+    return None
+
+
+def inline_script_hash():
+    import base64
+    import hashlib
+
+    html = (Path(__file__).resolve().parents[1] / "frontend" / "index.html").read_text(encoding="utf-8")
+    body = re.search(r"<script>(.*?)</script>", html, re.S).group(1)
+    return "'sha256-" + base64.b64encode(hashlib.sha256(body.encode("utf-8")).digest()).decode() + "'"
+
+
+def test_enforced_policy_drops_local_addresses_and_adds_basic_guards():
+    policy = csp("Content-Security-Policy")
+    assert not any("127.0.0.1" in v or "localhost" in v for values in policy.values() for v in values)
+    assert policy["object-src"] == ["'none'"]
+    assert policy["base-uri"] == ["'self'"]
+    assert policy["frame-ancestors"] == ["'self'"]
+
+
+def test_strict_policy_is_reported_before_it_is_enforced():
+    policy = csp("Content-Security-Policy-Report-Only")
+    assert policy is not None
+    assert "'unsafe-inline'" not in policy["script-src"] and "'unsafe-eval'" not in policy["script-src"]
+    assert inline_script_hash() in policy["script-src"]
+    assert "https:" not in policy["connect-src"] and "https:" not in policy.get("img-src", [])
+    assert policy["object-src"] == ["'none'"] and policy["frame-ancestors"] == ["'self'"]
