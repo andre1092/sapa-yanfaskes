@@ -463,7 +463,10 @@ button:disabled { cursor: not-allowed; }
 .laras-chart-grid { display: grid; grid-template-columns: 1fr; gap: calc(var(--space-page) / 2); }
 .laras-chart-monthly { grid-column: 1 / -1; }
 .laras-chart-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 20px; }
-.laras-chart-heading > span { font-size: 0.75rem; color: var(--text-muted); }
+.laras-chart-actions > span:first-child { font-size: 0.75rem; color: var(--text-muted); }
+.laras-chart-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.laras-unduh { display: inline-flex; align-items: center; gap: 8px; }
+.laras-unduh-gagal { font-size: 0.75rem; color: var(--danger); }
 .laras-bars { max-height: 420px; overflow: auto; scrollbar-gutter: stable; }
 .laras-bar-list { display: grid; gap: 18px; }
 .laras-bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); }
