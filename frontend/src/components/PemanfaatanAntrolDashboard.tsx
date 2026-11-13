@@ -11,10 +11,27 @@ import { useFkrtlAntrolData } from '../hooks/useDashboardData';
 import type { FkrtlFilterParams } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
 import { exportToCSV, exportToExcel, exportToJPEG, POLI_EXPORT_COLUMNS } from '../utils/exportUtils';
+import { TARGET_MOBILE_JKN, TARGET_SEMUA_SUMBER, WARNA_SEL, targetSumber, urutkanRsAntrol, warnaAntrol } from '../lib/antrolJpeg';
+import type { WarnaCapaian } from '../lib/kepatuhanJpeg';
 import { useSyncStore } from '../store/syncStore';
 import { useAuthStore } from '../store/authStore';
 import { bolehMelakukan } from '../lib/izinPeran';
 
+
+// Gaya tabel gambar JPEG (dipotret dengan html-to-image, jadi memakai gaya sebaris).
+const SEL_JPEG: React.CSSProperties = { border: '1px solid #1F2937', padding: '6px', whiteSpace: 'nowrap' };
+const SEL_JUDUL_JPEG: React.CSSProperties = { ...SEL_JPEG, backgroundColor: '#00529C', color: 'white', fontWeight: 700, textAlign: 'center', padding: '8px' };
+const selCapaianJpeg = (nilai: unknown, target: number): React.CSSProperties => {
+  const warna = WARNA_SEL[warnaAntrol(nilai, target)];
+  return { ...SEL_JPEG, textAlign: 'right', backgroundColor: warna.latar, color: warna.teks, fontWeight: 700 };
+};
+const persenJpeg = (nilai: unknown): string => (typeof nilai === 'number' && Number.isFinite(nilai) ? `${nilai.toFixed(2)}%` : '-');
+const KETERANGAN_JPEG: { warna: WarnaCapaian; label: string }[] = [
+  { warna: 'merah', label: 'Merah: capaian 0' },
+  { warna: 'kuning', label: 'Kuning: di atas 0, belum mencapai target' },
+  { warna: 'hijau', label: 'Hijau: mencapai target' },
+];
+const LABEL_FILTER_JPEG: Record<string, string> = { kabupaten: 'Wilayah', nama_rs: 'Faskes', bulan: 'Bulan', tahun: 'Tahun', sumber: 'Kanal', kelas_rs: 'Kelas RS' };
 
 export const PemanfaatanAntrolDashboard: React.FC = () => {
   const bolehEkspor = bolehMelakukan(useAuthStore((s) => s.user?.role), 'ekspor');
@@ -97,6 +114,11 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
   // Logika Target Dinamis berdasarkan Filter Sumber
   const isMobileJKN = filters.sumber === 'Mobile JKN';
   const isAllSumber = filters.sumber === 'All Sumber' || !filters.sumber || filters.sumber === '(All)';
+  // Data RS selalu memuat kedua sumber, jadi filter kanal tidak dicetak di gambarnya.
+  const ringkasanFilterJpeg = (tipe: 'faskes' | 'poli'): string[] =>
+    Object.entries(filters)
+      .filter(([key, value]) => value && value !== '(All)' && value !== 'All Sumber' && !(tipe === 'faskes' && key === 'sumber'))
+      .map(([key, value]) => `${LABEL_FILTER_JPEG[key] ?? key}: ${value}`);
   const showTarget80 = isMobileJKN;
   const showTarget95 = isAllSumber;
 
@@ -1139,64 +1161,77 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Hidden Tables for JPEG Export */}
-      {jpegData && jpegData.type === 'faskes' && (
-        <div id="jpeg-export-faskes" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '800px', backgroundColor: 'white', padding: '20px' }}>
-          <Table size="small" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-            <TableHead>
-              <TableRow>
-                <TableCell style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Nama FKRTL</TableCell>
-                <TableCell style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>All Sumber<br/>(Target 95%)</TableCell>
-                <TableCell style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid black', padding: '8px' }}>Mobile JKN<br/>(Target 80%)</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {jpegData.data.map((row, idx) => (
-                <TableRow key={idx}>
-                  <TableCell style={{ border: '1px solid black', padding: '6px' }}>{row.Faskes}</TableCell>
-                  <TableCell style={{
-                    border: '1px solid black', padding: '6px', textAlign: 'right',
-                    backgroundColor: row.all_sumber_pct >= 95 ? '#C6EFCE' : '#FFC7CE',
-                    color: row.all_sumber_pct >= 95 ? '#006100' : '#9C0006'
-                  }}>
-                    {row.all_sumber_pct.toFixed(2)}%
-                  </TableCell>
-                  <TableCell style={{
-                    border: '1px solid black', padding: '6px', textAlign: 'right',
-                    backgroundColor: row.mjkn_pct >= 80 ? '#C6EFCE' : '#FFC7CE',
-                    color: row.mjkn_pct >= 80 ? '#006100' : '#9C0006'
-                  }}>
-                    {row.mjkn_pct.toFixed(2)}%
-                  </TableCell>
+      {/* Tabel tersembunyi untuk gambar JPEG: merah 0, kuning di bawah target, hijau mencapai target (keputusan CEO 2026-11-13). */}
+      {jpegData && (
+        <div
+          id={`jpeg-export-${jpegData.type}`}
+          style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: 'max-content', minWidth: jpegData.type === 'faskes' ? '800px' : '1200px', backgroundColor: 'white', color: '#111827', padding: '20px', fontFamily: 'Arial, sans-serif' }}
+        >
+          <div style={{ fontSize: '16px', fontWeight: 700 }}>
+            Pemanfaatan Antrean Online FKRTL — {jpegData.type === 'faskes' ? 'Data RS' : 'Data Poli'}
+          </div>
+          <div style={{ fontSize: '11px', color: '#374151', margin: '4px 0 10px' }}>
+            {[...ringkasanFilterJpeg(jpegData.type), `${jpegData.data.length} baris`].join(' · ')}
+          </div>
+          {jpegData.type === 'faskes' ? (
+            <Table size="small" style={{ borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell style={SEL_JUDUL_JPEG}>No</TableCell>
+                  <TableCell style={SEL_JUDUL_JPEG}>Nama FKRTL</TableCell>
+                  <TableCell style={SEL_JUDUL_JPEG}>Kabupaten</TableCell>
+                  <TableCell style={SEL_JUDUL_JPEG}>Semua Sumber<br/>(Target {TARGET_SEMUA_SUMBER}%)</TableCell>
+                  <TableCell style={SEL_JUDUL_JPEG}>Mobile JKN<br/>(Target {TARGET_MOBILE_JKN}%)</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {jpegData && jpegData.type === 'poli' && (
-        <div id="jpeg-export-poli" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '1200px', backgroundColor: 'white', padding: '20px' }}>
-          <Table size="small" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
-            <TableHead>
-              <TableRow>
-                {POLI_EXPORT_COLUMNS.map(column => (
-                  <TableCell key={column.key} style={{ backgroundColor: '#00529C', color: 'white', border: '1px solid #00529C', padding: '8px' }}>{column.header}</TableCell>
+              </TableHead>
+              <TableBody>
+                {urutkanRsAntrol(jpegData.data).map((row, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell style={{ ...SEL_JPEG, textAlign: 'center' }}>{idx + 1}</TableCell>
+                    <TableCell style={SEL_JPEG}>{row.Faskes}</TableCell>
+                    <TableCell style={SEL_JPEG}>{row.Kabupaten || '-'}</TableCell>
+                    <TableCell style={selCapaianJpeg(row.all_sumber_pct, TARGET_SEMUA_SUMBER)}>{persenJpeg(row.all_sumber_pct)}</TableCell>
+                    <TableCell style={selCapaianJpeg(row.mjkn_pct, TARGET_MOBILE_JKN)}>{persenJpeg(row.mjkn_pct)}</TableCell>
+                  </TableRow>
                 ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {jpegData.data.map((row, idx) => (
-                <TableRow key={idx}>
+              </TableBody>
+            </Table>
+          ) : (
+            <Table size="small" style={{ borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
+              <TableHead>
+                <TableRow>
                   {POLI_EXPORT_COLUMNS.map(column => (
-                    <TableCell key={column.key} style={{ border: '1px solid #4D94FF', padding: '6px' }}>
-                      {column.key === 'capaian_pct' ? formatPercentID(row[column.key]) : row[column.key]}
-                    </TableCell>
+                    <TableCell key={column.key} style={SEL_JUDUL_JPEG}>{column.header}</TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {jpegData.data.map((row, idx) => (
+                  <TableRow key={idx}>
+                    {POLI_EXPORT_COLUMNS.map(column => (
+                      column.key === 'capaian_pct' ? (
+                        <TableCell key={column.key} style={selCapaianJpeg(row.capaian_pct, targetSumber(row.Sumber))}>{formatPercentID(row.capaian_pct)}</TableCell>
+                      ) : (
+                        <TableCell key={column.key} style={SEL_JPEG}>{row[column.key]}</TableCell>
+                      )
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '16px', fontSize: '11px' }}>
+            <span style={{ fontWeight: 700 }}>Keterangan:</span>
+            {KETERANGAN_JPEG.map(item => (
+              <span key={item.warna} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '28px', height: '14px', border: '1px solid #1F2937', backgroundColor: WARNA_SEL[item.warna].latar }} />
+                {item.label}
+              </span>
+            ))}
+          </div>
+          <div style={{ marginTop: '6px', fontSize: '11px', color: '#374151' }}>
+            Target: Semua Sumber ≥ {TARGET_SEMUA_SUMBER}%, Mobile JKN ≥ {TARGET_MOBILE_JKN}%.
+          </div>
         </div>
       )}
     </div>
