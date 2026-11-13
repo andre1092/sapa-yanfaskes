@@ -1223,6 +1223,8 @@ async def export_fkrtl_data(
                 .filter(pl.col("Faskes").is_not_null() & (pl.col("Faskes") != ""))
                 .group_by("Faskes")
                 .agg([
+                    # Kabupaten dibawa untuk urutan dan kolom gambar JPEG Data RS.
+                    *([pl.col("Kabupaten").drop_nulls().first().alias("Kabupaten")] if "Kabupaten" in filtered_antrol.columns else []),
                     pl.when(pl.col("Sumber").is_in(["Semua Sumber", "All Sumber"])).then(pl.col("_antrol_num")).otherwise(0).sum().alias("sum_num_all"),
                     pl.when(pl.col("Sumber").is_in(["Semua Sumber", "All Sumber"])).then(pl.col("_antrol_sep")).otherwise(0).sum().alias("sum_den_all"),
                     pl.when(pl.col("Sumber") == "Mobile JKN").then(pl.col("_antrol_num")).otherwise(0).sum().alias("sum_num_mjkn"),
