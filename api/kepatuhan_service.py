@@ -447,6 +447,8 @@ def process_antrean_wtl_kepatuhan(
         ref_item = ref.get(k, {})
         kab = ref_item.get("kabupaten", "Jember").strip()
         nama_rs = ref_item.get("nama_ppk", r.get("Nama FKTP", r.get("Nama FKRTL", ""))).strip()
+        # Nama seperti di BI: kolom nama di spreadsheet adalah salinan tabel BI.
+        nama_bi = r.get("Nama FKTP", r.get("Nama FKRTL", "")).strip() or nama_rs
         tipe = r.get("Tipe Faskes", ref_item.get("kelas_ppk", "RS")).strip()
         m = normalize_month(r.get("bulan", ""))
 
@@ -474,6 +476,7 @@ def process_antrean_wtl_kepatuhan(
             "no": len(joined) + 1,
             "kode_ppk": k,
             "nama_ppk": nama_rs,
+            "fasilitas_kesehatan": f"{k} - {nama_bi}",
             "kabupaten": kab,
             "tipe_faskes": tipe,
             "kelas_ppk": ref_item.get("kelas_ppk", "RS"),
@@ -485,9 +488,6 @@ def process_antrean_wtl_kepatuhan(
             "total_mjkn": mjkn,
             "kunjungan_mjkn": mjkn,
             "persen_mjkn": persen_mjkn,
-            "persen_t2": 100.0 if waktu_task != "-" else 0.0,
-            "persen_t3": 100.0 if waktu_task != "-" else 0.0,
-            "persen_t4": 100.0 if waktu_task != "-" else 0.0,
             "persen_target_nasional": target_nas,
             "capaian": capaian,
             "capaian_nilai": round(capaian * 0.20, 2),
@@ -548,10 +548,12 @@ def process_antrean_wtl_kepatuhan(
                 "met_count": d["met"]
             })
 
-    display_rows.sort(key=lambda x: x["capaian"], reverse=True)
+    # Urutan seperti tabel BI: kode faskes naik.
+    display_rows.sort(key=lambda x: x["kode_ppk"])
 
     return {
         "status": "success",
+        "selected_period": active_b or "Semua Bulan",
         "kpi": {
             "avg_capaian": avg_c,
             "bobot_persen": 20,

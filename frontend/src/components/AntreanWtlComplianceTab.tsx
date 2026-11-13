@@ -47,9 +47,9 @@ export interface AntreanWtlTableRow {
   total_antrol: number;
   total_mjkn: number;
   persen_mjkn: number;
-  persen_t2: number;
-  persen_t3: number;
-  persen_t4: number;
+  fasilitas_kesehatan: string;
+  waktu_task_2_4: string;
+  persen_target_nasional: string;
   capaian: number;
   capaian_nilai: number;
   is_met: boolean;
@@ -78,6 +78,21 @@ export interface AntreanWtlApiResponse {
   };
 }
 
+/** Bilangan bulat dengan pemisah ribuan Indonesia (5.879). */
+const fmtRibuan = (val: unknown): string => {
+  const n = typeof val === 'number' ? val : parseFloat(String(val ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n.toLocaleString('id-ID') : '-';
+};
+
+/** Persen teks dari spreadsheet ("30.00 %" atau "30,00 %") ditulis format Indonesia: 30,00 %. */
+const fmtPersenTeks = (val: unknown): string => {
+  const t = String(val ?? '').replace('%', '').trim();
+  const n = parseFloat(t.includes(',') && !t.includes('.') ? t.replace(',', '.') : t);
+  return Number.isFinite(n)
+    ? `${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`
+    : '-';
+};
+
 const fmtNum = (val: unknown, decimals: number = 1): string => {
   if (val === null || val === undefined || val === '') return '-';
   const n = typeof val === 'number' ? val : parseFloat(String(val));
@@ -87,20 +102,22 @@ const fmtNum = (val: unknown, decimals: number = 1): string => {
 export const AntreanWtlComplianceTab: React.FC = () => {
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  // Kosong = bulan terbaru: API memilih bulan terakhir yang ada di spreadsheet (selected_period).
+  const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
-  const [sortField, setSortField] = useState<keyof AntreanWtlTableRow>('capaian');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<keyof AntreanWtlTableRow>('kode_ppk');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [apiData, setApiData] = useState<AntreanWtlApiResponse | null>(null);
   const [hoveredMonth, setHoveredMonth] = useState<AntreanWtlMonthlyChartItem | null>(null);
+  const bulanAktif = selectedBulan || apiData?.selected_period || '';
 
   const fetchData = async () => {
     setLoading(true);
@@ -227,7 +244,7 @@ export const AntreanWtlComplianceTab: React.FC = () => {
   return (
     <div className="sapa-dashboard-body space-y-6">
       <p className="sapa-filter-summary sapa-status flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]" aria-live="polite">
-        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{bulanIndonesia(selectedBulan)}</span><span>{selectedTipeFaskes}</span>
+        <span>Filter aktif:</span><span>{selectedKabupaten}</span><span>{selectedNamaPpk}</span><span>{bulanIndonesia(bulanAktif)}</span><span>{selectedTipeFaskes}</span>
         <span>{statusFilter === 'ALL' ? 'Semua status' : statusFilter === 'TERCAPAI' ? 'Target tercapai' : 'Belum mencapai target'}</span>
         {searchQuery && <span>Pencarian: {searchQuery}</span>}
       
@@ -235,7 +252,7 @@ export const AntreanWtlComplianceTab: React.FC = () => {
           setSelectedKabupaten('Semua Kabupaten');
           setSelectedNamaPpk('Semua Faskes');
           setSelectedTipeFaskes('Semua Tipe Faskes');
-          setSelectedBulan('September 2026');
+          setSelectedBulan('');
           setStatusFilter('ALL');
           setSearchQuery('');
           setCurrentPage(1);
@@ -332,7 +349,7 @@ export const AntreanWtlComplianceTab: React.FC = () => {
           <div className="flex items-center gap-2">
             <label htmlFor="AntreanWtlComplianceTab-filter-4" className="text-xs font-bold text-[var(--text-main)]">Bulan:</label>
             <FilterSelect aria-label="Bulan" id="AntreanWtlComplianceTab-filter-4"
-              value={selectedBulan}
+              value={bulanAktif}
               onChange={(e) => {
                 setSelectedBulan(e.target.value);
                 setCurrentPage(1);
@@ -640,7 +657,7 @@ export const AntreanWtlComplianceTab: React.FC = () => {
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)]">
             <span>Menampilkan <span className="font-bold text-[var(--text-main)]">{processedRows.length}</span> fasilitas</span>
-            <UnduhJpegKepatuhan tab="antreanWtl" rows={processedRows} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
+            <UnduhJpegKepatuhan tab="antreanWtl" rows={processedRows} periode={bulanIndonesia(bulanAktif)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
           </div>
         </div>
 
@@ -661,74 +678,44 @@ export const AntreanWtlComplianceTab: React.FC = () => {
               <caption className="sr-only">Rincian kepatuhan fasilitas kesehatan sesuai filter dan periode yang dipilih</caption>
               <TableHead className="bg-[var(--surface-subtle)] text-[var(--text-main)] uppercase text-[10px] font-bold tracking-wider border-b border-[var(--border-color)]">
                 <TableRow>
-                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('no')}>No</TableCell>
-                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kode_ppk')}>Kode PPK</TableCell>
-                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('nama_ppk')}>Nama Rumah Sakit</TableCell>
-                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('kabupaten')}>Kabupaten</TableCell>
-                  <TableCell className="py-3 px-2 text-center" title="Total Antrean Faskes">Total Antrol</TableCell>
-                  <TableCell className="py-3 px-2 text-center" title="Total Antrean Mobile JKN">Total MJKN</TableCell>
-                  <TableCell className="py-3 px-2 text-center" title="Persentase Mobile JKN">MJKN (%)</TableCell>
-                  <TableCell className="py-3 px-2 text-center" title="Waktu Layan Task 2">Task 2 (%)</TableCell>
-                  <TableCell className="py-3 px-2 text-center" title="Waktu Layan Task 3">Task 3 (%)</TableCell>
-                  <TableCell className="py-3 px-2 text-center" title="Waktu Layan Task 4">Task 4 (%)</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('fasilitas_kesehatan')}>Fasilitas Kesehatan</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 cursor-pointer" onClick={() => handleSort('tipe_faskes')}>Tipe Faskes</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('waktu_task_2_4')}>Rata-rata Waktu task 2-4</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-2 text-center cursor-pointer" onClick={() => handleSort('total_mjkn')}>Kunjungan dengan MJKN</TableCell>
+                  <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-2 text-center cursor-pointer" onClick={() => handleSort('total_antrol')}>Kunjungan dengan Antrean Online</TableCell>
+                  <TableCell className="py-3 px-2 text-center">% Target Nasional</TableCell>
                   <TableCell tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }} className="py-3 px-3 text-center cursor-pointer" onClick={() => handleSort('capaian')}>Capaian</TableCell>
-                  <TableCell className="py-3 px-3 text-center" title="Kontribusi Nilai (Bobot 20%)">Poin (20%)</TableCell>
-                  <TableCell className="py-3 px-3 text-center">Status</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody className="divide-y divide-[var(--border-color)]/20 font-medium">
                 {paginatedRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="py-12 text-center text-[var(--text-muted)] italic">
+                    <TableCell colSpan={7} className="py-12 text-center text-[var(--text-muted)] italic">
                       Tidak ada data yang sesuai dengan filter.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedRows.map((row, idx) => (
+                  paginatedRows.map((row) => (
                     <TableRow
                       key={`${row.kode_ppk}-${row.bulan}`}
                       className="hover:bg-[var(--surface-accent)]/20 transition-colors group"
                     >
-                      <TableCell className="py-3 px-3 text-center text-[var(--text-muted)] font-mono text-[11px]">
-                        {(currentPage - 1) * itemsPerPage + idx + 1}
-                      </TableCell>
-                      <TableCell className="py-3 px-3 font-mono font-bold text-[var(--text-main)]">
-                        {row.kode_ppk}
-                      </TableCell>
                       <TableCell className="py-3 px-3 font-bold text-[var(--text-main)] group-hover:text-[var(--bpjs-green)] transition-colors">
-                        {row.nama_ppk}
+                        {row.fasilitas_kesehatan || `${row.kode_ppk} - ${row.nama_ppk}`}
                       </TableCell>
-                      <TableCell className="py-3 px-3 text-[var(--text-main)]">{row.kabupaten}</TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono">{(row.total_antrol ?? 0).toLocaleString('id-ID')}</TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono font-bold text-[var(--bpjs-green)]">
-                        {(row.total_mjkn ?? 0).toLocaleString('id-ID')}
-                      </TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono">{fmtNum(row.persen_mjkn, 1)}%</TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono">{fmtNum(row.persen_t2, 1)}%</TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono">{fmtNum(row.persen_t3, 1)}%</TableCell>
-                      <TableCell className="py-3 px-2 text-center font-mono">{fmtNum(row.persen_t4, 1)}%</TableCell>
+                      <TableCell className="py-3 px-3 text-[var(--text-main)]">{row.tipe_faskes}</TableCell>
+                      <TableCell className="py-3 px-3 text-center font-mono">{row.waktu_task_2_4 || '-'}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono">{fmtRibuan(row.total_mjkn)}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono">{fmtRibuan(row.total_antrol)}</TableCell>
+                      <TableCell className="py-3 px-2 text-center font-mono">{fmtPersenTeks(row.persen_target_nasional)}</TableCell>
                       <TableCell className="py-3 px-3 text-center">
                         <span className={`font-mono font-black text-sm px-2 py-0.5 rounded-lg ${
                           row.is_met
                             ? 'bg-[var(--surface-accent)] text-[var(--accent-text)]  '
                             : 'bg-amber-100 text-amber-800  '
                         }`}>
-                          {fmtNum(row.capaian, 1)}%
+                          {fmtRibuan(row.capaian)}
                         </span>
-                      </TableCell>
-                      <TableCell className="py-3 px-3 text-center font-mono font-bold text-[var(--bpjs-green)]">
-                        {fmtNum(row.capaian_nilai, 2)} pt
-                      </TableCell>
-                      <TableCell className="py-3 px-3 text-center">
-                        {row.is_met ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-[var(--surface-accent)] text-[var(--bpjs-green)] border border-[var(--border-color)]">
-                             Tercapai
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                             Belum Tercapai
-                          </span>
-                        )}
                       </TableCell>
                     </TableRow>
                   ))
