@@ -24,6 +24,8 @@ DEFAULT_TARGET = "https://sapa-yanfaskes.vercel.app"
 REPORT_DIR = Path(__file__).resolve().parent / "reports"
 SEVERITIES = ("critical", "high", "medium", "low", "info")
 CHECK_IDS = ("secrets", "code", "privacy", "npm", "python", "headers", "auth_probe", "vercel_logs")
+# Dependensi FastAPI yang menandakan endpoint memeriksa login (dan peran).
+AUTH_DEPENDENCY = re.compile(r"\brequire_(?:auth|viewer|admin|super_admin|role)\b")
 SKIP_PARTS = ("node_modules", "/dist/", "package-lock.json", "bun.lock", ".agents/skills/", "graphify-out/", "design-reference/")
 TEXT_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".json", ".md", ".yml", ".yaml", ".toml", ".env", ".html", ".css", ".sql", ".txt", ".sh"}
 
@@ -163,7 +165,7 @@ def check_code(report: Report):
         # Endpoint dengan token layanan sendiri (mis. SCIM) membandingkannya di badan fungsi.
         if "compare_digest" in text[match.end():match.end() + 600]:
             continue
-        if "Depends(require_auth)" in params or "require_auth" in params or route in ("/", "/api", "/api/index.py", "/api/v1/health", "/health"):
+        if AUTH_DEPENDENCY.search(params) or route in ("/", "/api", "/api/index.py", "/api/v1/health", "/health"):
             continue
         report.add("high" if method != "get" else "medium", "auth", f"Endpoint {method.upper()} {route} tanpa pemeriksaan login",
                    f"api/index.py:{line_of(text, match.start())}", f"{method.upper()} {route}",
@@ -247,7 +249,7 @@ def check_headers(report: Report):
 def protected_routes():
     text = (ROOT / "api/index.py").read_text(encoding="utf-8")
     for match in re.finditer(r'@app\.get\("(/api/v1/[^"{]+)"\)\s*\n(?:@app\.\w+\("[^"]+"\)\s*\n)*(?:async )?def \w+\(([\s\S]*?)\)\s*(?:->[^:\n]+)?:\s*\n', text):
-        if "require_auth" in match.group(2):
+        if AUTH_DEPENDENCY.search(match.group(2)):
             yield match.group(1)
 
 

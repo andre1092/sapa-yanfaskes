@@ -96,6 +96,8 @@ APP_ORIGINS = [o.strip().rstrip("/") for o in os.environ.get("APP_ORIGINS", "htt
 # Hanya untuk pengembangan lokal tanpa Auth0; ditolak di deployment Vercel mana pun.
 DEV_AUTH_BYPASS = os.environ.get("SAPA_DEV_AUTH_BYPASS") == "1" and not os.environ.get("VERCEL_ENV")
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
+# Klaim peran yang ditambahkan Action login Auth0 ke token akses.
+ROLES_CLAIM = os.environ.get("AUTH0_ROLES_CLAIM", "https://sapa-yanfaskes.com/roles")
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
@@ -172,13 +174,56 @@ def verify_auth0_token(token: str):
 def require_auth(request: Request):
     """Kembalikan klaim token Auth0 yang sah; selain itu tolak dengan 401/503."""
     if DEV_AUTH_BYPASS:
-        return {"sub": "local-dev", "role": "viewer", "tenant_id": "00000000-0000-0000-0000-000000000001"}
+        return {"sub": "local-dev", ROLES_CLAIM: ["viewer"], "tenant_id": "00000000-0000-0000-0000-000000000001"}
 
     auth_header = request.headers.get("Authorization", "")
     token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
     if not token or token in ("undefined", "null"):
         raise HTTPException(status_code=401, detail="Silakan masuk terlebih dahulu", headers={"WWW-Authenticate": "Bearer"})
     return verify_auth0_token(token)
+
+# --- IZIN PER PERAN (matriks disetujui CEO 2026-11-13) ---
+ROLE_RANK = {"viewer": 1, "admin": 2, "super_admin": 3}
+_ROLE_NAMES = {
+    "viewer": "viewer", "Viewer": "viewer",
+    "admin": "admin", "Admin": "admin",
+    "super_admin": "super_admin", "Super Admin": "super_admin",
+}
+FORBIDDEN_DETAIL = "Akun Anda tidak memiliki izin untuk tindakan ini"
+
+
+def role_rank(claims) -> int:
+    """Peringkat peran tertinggi dari klaim peran tepercaya; 0 bila tidak ada peran yang dikenal."""
+    roles = claims.get(ROLES_CLAIM) if isinstance(claims, dict) else None
+    if not isinstance(roles, list):
+        return 0
+    return max((ROLE_RANK[_ROLE_NAMES[r]] for r in roles if isinstance(r, str) and r in _ROLE_NAMES), default=0)
+
+
+def _forbid(request: Request, minimum: str):
+    logger.warning("Akses ditolak: %s %s butuh peran %s", request.method, request.url.path, minimum)
+    raise HTTPException(status_code=403, detail=FORBIDDEN_DETAIL)
+
+
+def require_role(minimum: str):
+    needed = ROLE_RANK[minimum]
+
+    def dependency(request: Request):
+        claims = require_auth(request)
+        if role_rank(claims) < needed:
+            _forbid(request, minimum)
+        # Memuat ulang data dari sumber dihitung sebagai sinkronisasi (Admin ke atas).
+        if request.query_params.get("refresh", "").lower() in ("1", "true", "yes") and role_rank(claims) < ROLE_RANK["admin"]:
+            _forbid(request, "admin")
+        return claims
+
+    dependency.__name__ = f"require_{minimum}"
+    return dependency
+
+
+require_viewer = require_role("viewer")
+require_admin = require_role("admin")
+require_super_admin = require_role("super_admin")
 
 # --- SCIM 2.0 AUTOMATION ---
 @app.post("/api/v2/tenants/{tenant_id}/Users")
@@ -208,7 +253,7 @@ class VerificationEmailRequest(BaseModel):
     verification_url: Optional[str] = "https://sapa-yanfaskes.vercel.app"
 
 @app.post("/api/v1/auth/send-verification-email")
-async def send_verification_email(req: VerificationEmailRequest, user=Depends(require_auth)):
+async def send_verification_email(req: VerificationEmailRequest, user=Depends(require_super_admin)):
     """
     Endpoint pengiriman email verifikasi resmi SAPA YANFASKES.
     Mendukung konfigurasi SMTP Vercel (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD).
@@ -590,7 +635,7 @@ async def get_fkrtl_antrol_stats(
     kelas_rs: Optional[str] = None,
     sumber: Optional[str] = None,
     refresh: Optional[bool] = False,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         # 1. Audit logger hook
@@ -998,7 +1043,7 @@ async def get_fkrtl_antrol_stats(
 # Backward compatible legacy endpoint
 @app.get("/api/v1/dashboard-stats")
 async def get_dashboard_stats(
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     stats = await get_fkrtl_antrol_stats(
         tahun=None, bulan=None, kabupaten=None, nama_rs=None, kelas_rs=None, sumber=None, refresh=False, user=user
@@ -1007,9 +1052,8 @@ async def get_dashboard_stats(
 
 # Dedicated cache invalidation and force-sync endpoint for Antrol FKRTL
 @app.post("/api/v1/fkrtl-antrol-sync")
-@app.get("/api/v1/fkrtl-antrol-sync")
 async def sync_fkrtl_antrol(
-    user=Depends(require_auth)
+    user=Depends(require_admin)
 ):
     try:
         invalidate_sheets_cache(FKRTL_ANTROL_SPREADSHEET_ID)
@@ -1046,7 +1090,7 @@ async def export_fkrtl_data(
     kelas_rs: str = None,
     nama_rs: str = None,
     sumber: str = None,
-    user=Depends(require_auth)
+    user=Depends(require_admin)
 ):
 
     try:
@@ -1347,7 +1391,7 @@ async def get_fkrtl_kepatuhan_nakes(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         # 1. Fetch live records from Google Sheets (Parallel / Cached)
@@ -1704,7 +1748,7 @@ async def get_fkrtl_kepatuhan_pengaduan(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         # 1. Fetch live records from Google Sheets (Parallel / Cached)
@@ -2043,7 +2087,7 @@ async def get_fkrtl_kepatuhan_umabl(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         # 1. Fetch live records from Google Sheets (Parallel / Cached)
@@ -2376,7 +2420,7 @@ async def get_fkrtl_kepatuhan_display_tt(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         # 1. Fetch live records from Google Sheets (Parallel / Cached)
@@ -2683,7 +2727,7 @@ async def get_fkrtl_kepatuhan_ringkasan(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         return process_ringkasan_kepatuhan(
@@ -2706,7 +2750,7 @@ async def get_fkrtl_kepatuhan_tmo(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         return process_tmo_kepatuhan(
@@ -2730,7 +2774,7 @@ def get_monitoring_laras(
     poli: str = Query(default="", max_length=200),
     jenis_kunjungan: str = Query(default="", max_length=100),
     refresh: bool = False,
-    user=Depends(require_auth),
+    user=Depends(require_viewer),
 ):
     try:
         return get_laras_data(bulan=bulan, faskes=faskes, poli=poli, jenis_kunjungan=jenis_kunjungan, refresh=refresh)
@@ -2745,7 +2789,7 @@ async def get_fkrtl_kepatuhan_antrean_wtl(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         return process_antrean_wtl_kepatuhan(
@@ -2768,7 +2812,7 @@ async def get_fkrtl_kepatuhan_surkon(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         return process_surkon_kepatuhan(
@@ -2791,7 +2835,7 @@ async def get_fkrtl_kepatuhan_rme(
     nama_ppk: Optional[str] = None,
     bulan: Optional[str] = None,
     tipe_faskes: Optional[str] = None,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         return process_rme_kepatuhan(
@@ -2809,10 +2853,9 @@ async def get_fkrtl_kepatuhan_rme(
 
 
 @app.post("/api/v1/fkrtl-kepatuhan-sync")
-@app.get("/api/v1/fkrtl-kepatuhan-sync")
 async def sync_fkrtl_kepatuhan(
     module: Optional[str] = "all",
-    user=Depends(require_auth)
+    user=Depends(require_admin)
 ):
     try:
         res = clear_kepatuhan_cache(module)
@@ -2923,7 +2966,7 @@ async def get_fktp_antrol_stats(
     jenis_fktp: Optional[str] = None,
     sumber_antrean: Optional[str] = None,
     refresh: Optional[bool] = False,
-    user=Depends(require_auth)
+    user=Depends(require_viewer)
 ):
     try:
         role = user.get("role", "viewer") if isinstance(user, dict) else "viewer"
@@ -3120,8 +3163,7 @@ async def get_fktp_antrol_stats(
 
 
 @app.post("/api/v1/fktp-antrol-sync")
-@app.get("/api/v1/fktp-antrol-sync")
-async def sync_fktp_antrol(user=Depends(require_auth)):
+async def sync_fktp_antrol(user=Depends(require_admin)):
     try:
         cache_key = "fktp_antrol_merged_df"
         if cache_key in _SHEETS_CACHE:

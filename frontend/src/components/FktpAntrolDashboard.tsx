@@ -12,10 +12,13 @@ import { useFktpAntrolData } from '../hooks/useDashboardData';
 import type { FktpFilterParams, FktpTableRow } from '../hooks/useDashboardData';
 import { apiClient } from '../lib/apiClient';
 import { useSyncStore } from '../store/syncStore';
+import { useAuthStore } from '../store/authStore';
+import { bolehMelakukan } from '../lib/izinPeran';
 
 const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
 export const FktpAntrolDashboard: React.FC = () => {
+  const bolehSinkron = bolehMelakukan(useAuthStore((s) => s.user?.role), 'sinkron');
   const { getAccessTokenSilently } = useAuth0();
 
   // 1. Filter State (Bulan, Kabupaten, Jenis FKTP, Sumber Antrean)
@@ -154,7 +157,7 @@ export const FktpAntrolDashboard: React.FC = () => {
               </div>
             </div>
 
-            <AnimatedButton
+            {bolehSinkron && <AnimatedButton
               onClick={handleForceSync}
               aria-label={isSyncing ? 'Menyinkronkan data' : 'Sinkronkan data terbaru'}
               aria-busy={isSyncing}
@@ -176,7 +179,7 @@ export const FktpAntrolDashboard: React.FC = () => {
                 />
               </svg>
               <span className="hidden sm:inline">{isSyncing ? 'Menyinkronkan...' : 'Sinkronisasi'}</span>
-            </AnimatedButton>
+            </AnimatedButton>}
           </div>
         </div>
 

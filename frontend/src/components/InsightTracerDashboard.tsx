@@ -9,6 +9,7 @@ import { FloatingSidebar } from './ui/FloatingSidebar';
 import { HeroUIAssistant } from './HeroUIAssistant';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
+import { menuBoleh } from '../lib/izinPeran';
 import { namaTampilan, peranTampilan } from '../lib/namaTampilan';
 
 const ROUTE_MAP: Record<string, string> = {
@@ -76,6 +77,7 @@ const NavIcon = ({ name }: { name: string }) => <svg className="sapa-nav-icon" w
 
 export const InsightTracerDashboard: React.FC = () => {
   const { user, logoutUser } = useAuthStore();
+  const sectionsBoleh = sections.map(section => ({ ...section, items: section.items.filter(([key]) => menuBoleh(key, user?.role)) })).filter(section => section.items.length > 0);
   const { effectiveTheme, setTheme } = useThemeStore();
   const nama = namaTampilan(user);
   const peran = peranTampilan(user?.role);
@@ -84,7 +86,7 @@ export const InsightTracerDashboard: React.FC = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuQuery, setMenuQuery] = useState('');
-  const menuResults = sections.flatMap(section => section.items.map(([key, label]) => ({ key, label, group: section.label }))).filter(item => `${item.label} ${item.group}`.toLocaleLowerCase('id').includes(menuQuery.trim().toLocaleLowerCase('id')));
+  const menuResults = sectionsBoleh.flatMap(section => section.items.map(([key, label]) => ({ key, label, group: section.label }))).filter(item => `${item.label} ${item.group}`.toLocaleLowerCase('id').includes(menuQuery.trim().toLocaleLowerCase('id')));
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('lg'));
   const [sidebarPinned, setSidebarPinned] = useState(false);
@@ -134,7 +136,7 @@ export const InsightTracerDashboard: React.FC = () => {
 
 
   const navigation = <FloatingSidebar
-    sections={sections} routes={MENU_TO_ROUTE}
+    sections={sectionsBoleh} routes={MENU_TO_ROUTE}
     activeMenu={activeMenu} onNavigate={handleMenuSelect}
     userName={nama} userRole={peran}
     dark={effectiveTheme === 'dark'} onToggleTheme={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
@@ -162,7 +164,7 @@ export const InsightTracerDashboard: React.FC = () => {
       <Box sx={{ mb: 2.5 }}><Typography variant="caption" component="p" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'} / {labelFor(activeMenu)}</Typography></Box>
       <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
         <Suspense fallback={<KerangkaMemuat label={`Memuat ${labelFor(activeMenu)}`} />}>
-        {activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
+        {!menuBoleh(activeMenu, user?.role) ? <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography color="text.secondary">Akun Anda tidak memiliki izin untuk membuka menu ini.</Typography></Paper> : activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
             <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch', overflowWrap: 'anywhere' }}>Selamat datang, {nama.split(' ')[0]}</Typography>
