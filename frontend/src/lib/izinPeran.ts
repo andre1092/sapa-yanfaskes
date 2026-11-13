@@ -4,7 +4,7 @@ export type Aksi = 'lihat' | 'ekspor' | 'sinkron' | 'pengaturan';
 
 const PERINGKAT: Record<string, number> = { viewer: 1, Admin: 2, 'Super Admin': 3 };
 const MINIMUM: Record<Aksi, number> = { lihat: 1, ekspor: 2, sinkron: 2, pengaturan: 3 };
-const AKSI_MENU: Record<string, Aksi> = { Integration: 'sinkron', 'Validation Rules': 'pengaturan' };
+const AKSI_MENU: Record<string, Aksi> = { Integration: 'sinkron', Logs: 'pengaturan', 'Validation Rules': 'pengaturan' };
 
 export function bolehMelakukan(peran: string | null | undefined, aksi: Aksi): boolean {
   return (PERINGKAT[peran || ''] || 0) >= MINIMUM[aksi];

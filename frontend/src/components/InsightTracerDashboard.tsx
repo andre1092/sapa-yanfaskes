@@ -22,6 +22,7 @@ const ROUTE_MAP: Record<string, string> = {
   '/kepatuhanfktp': 'Capaian Kepatuhan FKTP',
   '/kepatuhan-fktp': 'Capaian Kepatuhan FKTP',
   '/integration': 'Integration',
+  '/logs': 'Logs',
   '/validation-rules': 'Validation Rules',
   '/home': 'Home',
   '/': 'Capaian Kepatuhan FKRTL',
@@ -33,6 +34,7 @@ const MENU_TO_ROUTE: Record<string, string> = {
   'Pemanfaatan Antrol FKRTL': '/antrolfkrtl',
   'Capaian Kepatuhan FKTP': '/kepatuhanfktp',
   'Integration': '/integration',
+  'Logs': '/logs',
   'Validation Rules': '/validation-rules',
   'Home': '/home',
 };
@@ -50,7 +52,7 @@ const getMenuFromCurrentPath = (): string => {
 const sections = [
   { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Capaian Kepatuhan FKTP', 'Antrean online FKTP'], ['Monitoring LARAS', 'Monitoring LARAS']] },
   { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL']] },
-  { label: 'Administrasi', items: [['Integration', 'Integrasi data'], ['Validation Rules', 'Pengaturan']] },
+  { label: 'Administrasi', items: [['Integration', 'Integrasi data'], ['Logs', 'Log aktivitas'], ['Validation Rules', 'Pengaturan']] },
 ];
 const labelFor = (menu: string) => sections.flatMap(section => section.items).find(([key]) => key === menu)?.[1] || menu;
 
@@ -70,6 +72,7 @@ const LaporanKepatuhanDashboard = resilientLazy(() => import('./LaporanKepatuhan
 const PemanfaatanAntrolDashboard = resilientLazy(() => import('./PemanfaatanAntrolDashboard').then(m => ({ default: m.PemanfaatanAntrolDashboard })));
 const FktpAntrolDashboard = resilientLazy(() => import('./FktpAntrolDashboard').then(m => ({ default: m.FktpAntrolDashboard })));
 const MonitoringLarasDashboard = resilientLazy(() => import('./MonitoringLarasDashboard').then(m => ({ default: m.MonitoringLarasDashboard })));
+const AuditLogView = resilientLazy(() => import('./AuditLogView').then(m => ({ default: m.AuditLogView })));
 const DataIntegrationView = resilientLazy(() => import('./DataIntegrationView').then(m => ({ default: m.DataIntegrationView })));
 const AdminSettings = resilientLazy(() => import('./AdminSettings').then(m => ({ default: m.AdminSettings })));
 
@@ -164,7 +167,7 @@ export const InsightTracerDashboard: React.FC = () => {
       <Box sx={{ mb: 2.5 }}><Typography variant="caption" component="p" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'} / {labelFor(activeMenu)}</Typography></Box>
       <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
         <Suspense fallback={<KerangkaMemuat label={`Memuat ${labelFor(activeMenu)}`} />}>
-        {!menuBoleh(activeMenu, user?.role) ? <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography color="text.secondary">Akun Anda tidak memiliki izin untuk membuka menu ini.</Typography></Paper> : activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
+        {!menuBoleh(activeMenu, user?.role) ? <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography color="text.secondary">Akun Anda tidak memiliki izin untuk membuka menu ini.</Typography></Paper> : activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Logs' ? <AuditLogView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
             <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch', overflowWrap: 'anywhere' }}>Selamat datang, {nama.split(' ')[0]}</Typography>
