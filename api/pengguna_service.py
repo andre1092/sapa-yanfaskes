@@ -23,8 +23,11 @@ PERAN_PETUGAS = "petugas_rs"
 DEFAULT_CONNECTION = "Username-Password-Authentication"
 PESAN_WAJIB_GANTI = "Ganti kata sandi awal Anda terlebih dahulu."
 PESAN_BELUM_SIAP = "Pengelolaan akun belum dikonfigurasi. Hubungi Super Admin."
-_TTL_STATUS = 60.0
-_status: dict[str, tuple[float, bool]] = {}
+PESAN_NONAKTIF = "Akun Anda dinonaktifkan. Hubungi Super Admin."
+PESAN_SUDAH_DIGANTI = "Kata sandi awal sudah diganti. Untuk mengganti lagi, minta email setel sandi ke Super Admin."
+# Singkat supaya atur ulang atau nonaktif cepat berlaku juga di instance server lain.
+_TTL_STATUS = 30.0
+_status: dict[str, tuple[float, dict]] = {}
 _status_lock = threading.Lock()
 
 
@@ -144,24 +147,32 @@ def lupakan_status(user_id: str | None = None) -> None:
             _status.pop(user_id, None)
 
 
-def wajib_ganti_sandi(user_id: str) -> bool:
+def status_akun(user_id: str, segar: bool = False) -> dict:
+    """{"wajib_ganti_sandi", "nonaktif"} dari Auth0. Token yang sudah terbit tetap sah sampai kedaluwarsa,
+    jadi akun nonaktif juga ditolak di sini. `segar=True` melewati simpanan sementara."""
     now = time.monotonic()
-    with _status_lock:
-        cached = _status.get(user_id)
-        if cached and now - cached[0] < _TTL_STATUS:
-            return cached[1]
+    if not segar:
+        with _status_lock:
+            cached = _status.get(user_id)
+            if cached and now - cached[0] < _TTL_STATUS:
+                return cached[1]
     client = get_client()
     if client is None:
         raise PenggunaBelumSiap()
     try:
         user = client.request("GET", f"/api/v2/users/{quote(user_id, safe='')}")
     except LookupError:
-        value = True  # akun tidak ditemukan: tutup akses
+        value = {"wajib_ganti_sandi": False, "nonaktif": True}  # akun tidak ditemukan: tutup akses
     else:
-        value = bool((user.get("app_metadata") or {}).get("wajib_ganti_sandi"))
+        value = {"wajib_ganti_sandi": bool((user.get("app_metadata") or {}).get("wajib_ganti_sandi")),
+                 "nonaktif": bool(user.get("blocked", False))}
     with _status_lock:
         _status[user_id] = (now, value)
     return value
+
+
+def wajib_ganti_sandi(user_id: str) -> bool:
+    return status_akun(user_id)["wajib_ganti_sandi"]
 
 
 # --- Pengelolaan oleh Super Admin ---
@@ -214,8 +225,12 @@ def buat_petugas(client, nama: str, email: str, kode_ppk: str) -> tuple[dict, st
 
 def _ubah_sandi(client, user_id: str, sandi: str, wajib: bool) -> None:
     path = f"/api/v2/users/{quote(user_id, safe='')}"
-    client.request("PATCH", path, json={"password": sandi, "connection": getattr(client, "connection", DEFAULT_CONNECTION)})
-    client.request("PATCH", path, json={"app_metadata": {"wajib_ganti_sandi": wajib}})
+    sandi_baru = {"password": sandi, "connection": getattr(client, "connection", DEFAULT_CONNECTION)}
+    tanda = {"app_metadata": {"wajib_ganti_sandi": wajib}}
+    # Urutan dipilih supaya kegagalan di tengah tetap aman: saat atur ulang, tanda wajib ganti
+    # dipasang dulu; saat petugas mengganti sendiri, tanda baru dilepas setelah sandi tersimpan.
+    for body in ((tanda, sandi_baru) if wajib else (sandi_baru, tanda)):
+        client.request("PATCH", path, json=body)
     lupakan_status(user_id)
 
 

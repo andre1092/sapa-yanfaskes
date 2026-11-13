@@ -103,11 +103,11 @@ def test_petugas_wajib_ganti_sandi_ditolak_semua_data(api):
     res = call(api, "GET", "/api/v1/fkrtl-antrol-stats", PETUGAS, sub="auth0|petugas")
     assert res.status_code == 403
     assert res.json() == {"detail": api.pengguna_service.PESAN_WAJIB_GANTI}
-    assert call(api, "GET", "/api/v1/akun/status", PETUGAS, sub="auth0|petugas").json() == {"wajib_ganti_sandi": True, "petugas_rs": True}
+    assert call(api, "GET", "/api/v1/akun/status", PETUGAS, sub="auth0|petugas").json() == {"wajib_ganti_sandi": True, "petugas_rs": True, "nonaktif": False}
 
 
 def test_status_akun_peran_lain_tidak_memanggil_auth0(api):
-    assert call(api, "GET", "/api/v1/akun/status", ["viewer"]).json() == {"wajib_ganti_sandi": False, "petugas_rs": False}
+    assert call(api, "GET", "/api/v1/akun/status", ["viewer"]).json() == {"wajib_ganti_sandi": False, "petugas_rs": False, "nonaktif": False}
     assert api.fake.calls == []
 
 
@@ -213,3 +213,43 @@ def test_tindakan_akun_tercatat_di_audit_log(api):
     for path in ("/api/v1/pengguna-fkrtl", "/api/v1/pengguna-fkrtl/auth0|x/atur-ulang-sandi",
                  "/api/v1/pengguna-fkrtl/auth0|x/undangan", "/api/v1/pengguna-fkrtl/auth0|x", "/api/v1/akun/ganti-sandi"):
         assert api.audit_log.should_record("POST", path, 200, ""), path
+
+
+# --- Temuan review keamanan Agen Clara (2026-11-13) ---
+def test_ganti_sandi_ditolak_bila_tidak_wajib_ganti(api):
+    # Token curian atau browser yang ditinggal terbuka tidak bisa mengganti sandi lewat SAPA.
+    res = call(api, "POST", "/api/v1/akun/ganti-sandi", PETUGAS, sub="auth0|petugas", body={"sandi_baru": "SandiBaruKuat2026"})
+    assert res.status_code == 403
+    assert not [c for c in api.fake.calls if c[0] == "PATCH"]
+
+
+def test_ganti_sandi_membaca_status_langsung_dari_auth0(api):
+    api.fake.users["auth0|petugas"]["app_metadata"]["wajib_ganti_sandi"] = True
+    assert call(api, "GET", "/api/v1/fkrtl-antrol-stats", PETUGAS, sub="auth0|petugas").status_code == 403  # status tersimpan: wajib
+    api.fake.users["auth0|petugas"]["app_metadata"]["wajib_ganti_sandi"] = False  # sudah diganti di tempat lain
+    res = call(api, "POST", "/api/v1/akun/ganti-sandi", PETUGAS, sub="auth0|petugas", body={"sandi_baru": "SandiBaruKuat2026"})
+    assert res.status_code == 403
+    assert not [c for c in api.fake.calls if c[0] == "PATCH"]
+
+
+def test_akun_nonaktif_ditolak_walau_token_masih_berlaku(api):
+    api.fake.users["auth0|petugas"]["blocked"] = True
+    res = call(api, "GET", "/api/v1/fkrtl-antrol-stats", PETUGAS, sub="auth0|petugas")
+    assert res.status_code == 403
+    assert res.json() == {"detail": api.pengguna_service.PESAN_NONAKTIF}
+    assert call(api, "GET", "/api/v1/akun/status", PETUGAS, sub="auth0|petugas").json() == {"wajib_ganti_sandi": False, "petugas_rs": True, "nonaktif": True}
+    api.fake.users["auth0|petugas"]["app_metadata"]["wajib_ganti_sandi"] = True
+    assert call(api, "POST", "/api/v1/akun/ganti-sandi", PETUGAS, sub="auth0|petugas", body={"sandi_baru": "SandiBaruKuat2026"}).status_code == 403
+
+
+def test_nonaktifkan_langsung_berlaku_di_instance_yang_sama(api):
+    assert call(api, "GET", "/api/v1/fkrtl-antrol-stats", PETUGAS, sub="auth0|petugas").status_code not in (401, 403)
+    assert call(api, "PATCH", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas", ["super_admin"], body={"aktif": False}).status_code == 200
+    assert call(api, "GET", "/api/v1/fkrtl-antrol-stats", PETUGAS, sub="auth0|petugas").status_code == 403
+
+
+def test_atur_ulang_memasang_wajib_ganti_sebelum_sandi_baru(api):
+    call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"])
+    patches = [c[2] for c in api.fake.calls if c[0] == "PATCH"]
+    assert patches[0] == {"app_metadata": {"wajib_ganti_sandi": True}}
+    assert "password" in patches[1]

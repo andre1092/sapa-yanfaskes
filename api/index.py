@@ -230,18 +230,24 @@ def petugas_rs_saja(claims) -> bool:
     return dikenal == {"petugas_rs"}
 
 
+def _status_petugas(claims, segar: bool = False) -> dict:
+    try:
+        return pengguna_service.status_akun(str(claims.get("sub", "")), segar=segar)
+    except pengguna_service.PenggunaBelumSiap:
+        raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
+    except Exception as exc:
+        logger.error("Status akun petugas tidak dapat dicek: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Status akun belum dapat dicek. Coba lagi sebentar.")
+
+
 def _cek_wajib_ganti_sandi(request: Request, claims) -> None:
     """Petugas RS dengan sandi awal belum diganti tidak boleh membuka data apa pun."""
     if not petugas_rs_saja(claims):
         return
-    try:
-        wajib = pengguna_service.wajib_ganti_sandi(str(claims.get("sub", "")))
-    except pengguna_service.PenggunaBelumSiap:
-        raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
-    except Exception as exc:
-        logger.error("Status sandi petugas tidak dapat dicek: %s", type(exc).__name__)
-        raise HTTPException(status_code=503, detail="Status akun belum dapat dicek. Coba lagi sebentar.")
-    if wajib:
+    status = _status_petugas(claims)
+    if status["nonaktif"]:
+        raise HTTPException(status_code=403, detail=pengguna_service.PESAN_NONAKTIF)
+    if status["wajib_ganti_sandi"]:
         raise HTTPException(status_code=403, detail=pengguna_service.PESAN_WAJIB_GANTI)
 
 
@@ -475,17 +481,21 @@ def update_pengguna_fkrtl(user_id: str, body: UbahStatusPengguna, user=Depends(r
 @app.get("/api/v1/akun/status")
 def status_akun(user=Depends(require_signed_in)):
     if not petugas_rs_saja(user):
-        return {"wajib_ganti_sandi": False, "petugas_rs": False}
-    try:
-        return {"wajib_ganti_sandi": pengguna_service.wajib_ganti_sandi(str(user.get("sub", ""))), "petugas_rs": True}
-    except Exception as exc:
-        _gagal_auth0(exc)
+        return {"wajib_ganti_sandi": False, "petugas_rs": False, "nonaktif": False}
+    status = _status_petugas(user)
+    return {"wajib_ganti_sandi": status["wajib_ganti_sandi"] and not status["nonaktif"], "petugas_rs": True, "nonaktif": status["nonaktif"]}
 
 
 @app.post("/api/v1/akun/ganti-sandi")
 def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in)):
     if not petugas_rs_saja(user):
         raise HTTPException(status_code=403, detail="Ganti kata sandi akun ini lewat halaman masuk Auth0.")
+    # Hanya untuk mengganti sandi awal; status dibaca langsung dari Auth0 (bukan simpanan sementara).
+    status = _status_petugas(user, segar=True)
+    if status["nonaktif"]:
+        raise HTTPException(status_code=403, detail=pengguna_service.PESAN_NONAKTIF)
+    if not status["wajib_ganti_sandi"]:
+        raise HTTPException(status_code=403, detail=pengguna_service.PESAN_SUDAH_DIGANTI)
     pesan = pengguna_service.cek_sandi(body.sandi_baru)
     if pesan:
         raise HTTPException(status_code=400, detail=pesan)

@@ -90,7 +90,7 @@ export const InsightTracerDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   // Petugas RS yang masih memakai sandi awal harus menggantinya sebelum menu SAPA tampil.
   const petugasRs = user?.role === 'Petugas RS';
-  const statusAkun = useQuery<{ wajib_ganti_sandi: boolean }, Error>({
+  const statusAkun = useQuery<{ wajib_ganti_sandi: boolean; nonaktif?: boolean }, Error>({
     queryKey: ['akun-status', user?.id],
     queryFn: async ({ signal }) => (await apiClient.get('/api/v1/akun/status', { signal, timeout: 20000 })).data,
     enabled: petugasRs, staleTime: Infinity, retry: 1,
@@ -166,6 +166,7 @@ export const InsightTracerDashboard: React.FC = () => {
 
   if (petugasRs && statusAkun.isPending) return <KerangkaMemuat label="Memeriksa akun" />;
   if (petugasRs && statusAkun.isError) return <Box component="main" sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', p: 2 }}><Paper elevation={0} role="alert" sx={{ p: 4, borderRadius: 3, maxWidth: 440 }}><Typography variant="h3" component="h1" sx={{ mb: 1 }}>Akun belum dapat dicek</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>Status akun Anda belum bisa dibaca. Coba lagi sebentar, atau hubungi Super Admin bila terus terjadi.</Typography><Stack direction="row" spacing={1.5}><Button variant="contained" onClick={() => void statusAkun.refetch()}>Coba lagi</Button><Button onClick={logoutUser}>Keluar</Button></Stack></Paper></Box>;
+  if (petugasRs && statusAkun.data?.nonaktif) return <Box component="main" sx={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', p: 2 }}><Paper elevation={0} role="alert" sx={{ p: 4, borderRadius: 3, maxWidth: 440 }}><Typography variant="h3" component="h1" sx={{ mb: 1 }}>Akun dinonaktifkan</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>Akun Anda tidak bisa membuka SAPA. Hubungi Super Admin bila akun ini masih diperlukan.</Typography><Button variant="contained" onClick={logoutUser}>Keluar</Button></Paper></Box>;
   if (petugasRs && statusAkun.data?.wajib_ganti_sandi) return <GantiSandiWajib nama={nama} onKeluar={logoutUser} onSelesai={() => {
     queryClient.setQueryData(['akun-status', user?.id], { wajib_ganti_sandi: false });
     void queryClient.invalidateQueries({ predicate: q => q.queryKey[0] !== 'akun-status' });
