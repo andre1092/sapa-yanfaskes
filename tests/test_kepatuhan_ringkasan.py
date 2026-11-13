@@ -50,3 +50,21 @@ def test_kpi_dan_grafik_menghitung_patuh_dengan_batas_70(monkeypatch):
     assert kpi["total_belum_patuh"] == 1
     assert kpi["persen_kepatuhan"] == 75.0
     assert [(b["bulan"], b["met_count"]) for b in hasil["monthly_chart"]] == [(BULAN, 3)]
+
+
+def test_tanpa_bulan_memakai_bulan_terakhir_di_spreadsheet(monkeypatch):
+    rows = [
+        baris("0000R001", "77.5"),
+        {**baris("0000R001", "30"), "bulan": "November 2026"},
+        {**baris("0000R002", "35"), "bulan": "November 2026"},
+    ]
+    monkeypatch.setattr(
+        kepatuhan_service,
+        "fetch_sheet_csv",
+        lambda sheet_id, label: rows if label == "RINGKASAN_KEPATUHAN" else [],
+    )
+    hasil = kepatuhan_service.process_ringkasan_kepatuhan()
+
+    assert hasil["selected_period"] == "November 2026"
+    assert sorted(r["kode_ppk"] for r in hasil["table_data"]) == ["0000R001", "0000R002"]
+    assert hasil["filter_options"]["bulan"][:2] == ["Semua Bulan", "November 2026"]

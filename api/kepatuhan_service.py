@@ -189,7 +189,7 @@ def process_ringkasan_kepatuhan(
     )
     latest_month = all_bulan[-1] if all_bulan else "October 2026"
 
-    # Jika bulan tidak ditentukan atau kosong, defaultkan ke bulan paling update (October 2026)
+    # Jika bulan tidak ditentukan atau kosong, pakai bulan terakhir yang ada di spreadsheet
     target_bulan = bulan if (bulan and bulan != "undefined") else latest_month
 
     # Bangun Data Grafik Bulanan Dinamis (Menampilkan Semua Bulan yang Tersedia)
