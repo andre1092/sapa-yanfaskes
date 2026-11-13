@@ -9,6 +9,8 @@ export interface LarasData {
   filter_options: { bulan: Array<{ value: string; label: string }>; faskes: Array<{ value: string; label: string }>; poli: string[]; jenis_kunjungan: string[] };
   active_filters: LarasFilters;
   kpi: { avg_seconds: number | null; sample_count: number; basis: string };
+  /** Angka tiap RS per poli untuk unduhan Excel (API lama tidak mengirimnya). */
+  rincian_poli?: Array<{ faskes: string; kabupaten: string; poli: string; avg_seconds: number }>;
   charts: Record<'per_bulan' | 'per_kabupaten' | 'per_hari' | 'per_faskes' | 'per_poli', LarasChart>;
   metadata: { selected_period?: string | null; bobot_kunjungan?: boolean; source_url: string; last_updated: string | null; methodology: string; source_scope: string; limitations: string[] };
 }
