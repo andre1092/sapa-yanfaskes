@@ -9,7 +9,9 @@ interface FilterSelectProps {
 /** Berry Material UI select preserves controlled filter contracts and keyboard navigation. */
 export function FilterSelect({ value, onChange, children, id, className = '', disabled, 'aria-label': label }: FilterSelectProps) {
  const options = Children.toArray(children).filter(isValidElement<FilterOptionProps>);
- return <FormControl size="small" className={`sapa-filter-select ${className}`} sx={{ minWidth: 0, maxWidth: '100%', width: /w-full/.test(className) ? '100%' : undefined }}>
+ // Opsi pertama adalah nilai bawaan ("Semua ..."); nilai lain dihitung aktif oleh FilterLainnya.
+ const aktif = options.length > 0 && String(value) !== String(options[0].props.value);
+ return <FormControl size="small" data-filter-aktif={aktif ? 'true' : undefined} className={`sapa-filter-select ${className}`} sx={{ minWidth: 0, maxWidth: '100%', width: /w-full/.test(className) ? '100%' : undefined }}>
   <Select id={id} value={String(value)} disabled={disabled} displayEmpty
    inputProps={{ 'aria-label': label }} className="berry-filter-select"
    onChange={event => onChange({ target: { value: String(event.target.value) } })}

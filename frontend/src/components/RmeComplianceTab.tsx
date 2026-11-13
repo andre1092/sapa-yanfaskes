@@ -10,6 +10,7 @@ import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
 import { pencocokCari } from '../lib/cocokCari';
+import { FilterLainnya } from './ui/FilterLainnya';
 export interface RmeKpiData {
   avg_capaian: number;
   bobot_persen: number;
@@ -291,42 +292,6 @@ export const RmeComplianceTab: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <label htmlFor="RmeComplianceTab-filter-2" className="text-xs font-bold text-[var(--text-main)]">Faskes:</label>
-            <FilterSelect aria-label="Fasilitas kesehatan" id="RmeComplianceTab-filter-2"
-              value={selectedNamaPpk}
-              onChange={(e) => {
-                setSelectedNamaPpk(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer max-w-[180px] truncate"
-            >
-              {filterOptions.nama_ppk.map((faskes) => (
-                <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                  {faskes}
-                </FilterOption>
-              ))}
-            </FilterSelect>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="RmeComplianceTab-filter-3" className="text-xs font-bold text-[var(--text-main)]">Tipe:</label>
-            <FilterSelect aria-label="Jenis fasilitas kesehatan" id="RmeComplianceTab-filter-3"
-              value={selectedTipeFaskes}
-              onChange={(e) => {
-                setSelectedTipeFaskes(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-            >
-              {filterOptions.tipe_faskes.map((tipe) => (
-                <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
-                  {tipe}
-                </FilterOption>
-              ))}
-            </FilterSelect>
-          </div>
-
-          <div className="flex items-center gap-2">
             <label htmlFor="RmeComplianceTab-filter-4" className="text-xs font-bold text-[var(--text-main)]">Bulan:</label>
             <FilterSelect aria-label="Bulan" id="RmeComplianceTab-filter-4"
               value={selectedBulan}
@@ -344,21 +309,59 @@ export const RmeComplianceTab: React.FC = () => {
             </FilterSelect>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label htmlFor="RmeComplianceTab-filter-5" className="text-xs font-bold text-[var(--text-main)]">Status:</label>
-            <FilterSelect aria-label="Status capaian" id="RmeComplianceTab-filter-5"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as any);
-                setCurrentPage(1);
-              }}
-              className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
-            >
-              <FilterOption value="ALL" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Semua Status</FilterOption>
-              <FilterOption value="TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Tercapai (100%)</FilterOption>
-              <FilterOption value="BELUM_TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Belum Tercapai (&lt;100%)</FilterOption>
-            </FilterSelect>
-          </div>
+          <FilterLainnya>
+            <div className="flex items-center gap-2">
+              <label htmlFor="RmeComplianceTab-filter-2" className="text-xs font-bold text-[var(--text-main)]">Faskes:</label>
+              <FilterSelect aria-label="Fasilitas kesehatan" id="RmeComplianceTab-filter-2"
+                value={selectedNamaPpk}
+                onChange={(e) => {
+                  setSelectedNamaPpk(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer max-w-[180px] truncate"
+              >
+                {filterOptions.nama_ppk.map((faskes) => (
+                  <FilterOption key={faskes} value={faskes} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {faskes}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="RmeComplianceTab-filter-3" className="text-xs font-bold text-[var(--text-main)]">Tipe:</label>
+              <FilterSelect aria-label="Jenis fasilitas kesehatan" id="RmeComplianceTab-filter-3"
+                value={selectedTipeFaskes}
+                onChange={(e) => {
+                  setSelectedTipeFaskes(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                {filterOptions.tipe_faskes.map((tipe) => (
+                  <FilterOption key={tipe} value={tipe} className="bg-[var(--surface-subtle)] text-[var(--text-main)]">
+                    {tipe}
+                  </FilterOption>
+                ))}
+              </FilterSelect>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="RmeComplianceTab-filter-5" className="text-xs font-bold text-[var(--text-main)]">Status:</label>
+              <FilterSelect aria-label="Status capaian" id="RmeComplianceTab-filter-5"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="sapa-control rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-main)] bg-[var(--surface)] border border-[var(--border-color)] focus:outline-none focus:border-[var(--border-color)] cursor-pointer"
+              >
+                <FilterOption value="ALL" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Semua Status</FilterOption>
+                <FilterOption value="TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Tercapai (100%)</FilterOption>
+                <FilterOption value="BELUM_TERCAPAI" className="bg-[var(--surface-subtle)] text-[var(--text-main)]">Belum Tercapai (&lt;100%)</FilterOption>
+              </FilterSelect>
+            </div>
+          </FilterLainnya>
         </div>
 
         <div className="relative w-full md:w-72">
