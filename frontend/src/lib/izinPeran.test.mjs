@@ -30,6 +30,8 @@ test('menu Administrasi mengikuti izin', () => {
   assert.equal(menuBoleh('Integration', 'Admin'), true);
   assert.equal(menuBoleh('Validation Rules', 'Admin'), false);
   assert.equal(menuBoleh('Validation Rules', 'Super Admin'), true);
+  assert.equal(menuBoleh('Logs', 'Admin'), false);
+  assert.equal(menuBoleh('Logs', 'Super Admin'), true);
   for (const menu of ['Home', 'Pemanfaatan Antrol FKRTL', 'Capaian Kepatuhan FKTP', 'Monitoring LARAS', 'Capaian Kepatuhan FKRTL']) {
     assert.equal(menuBoleh(menu, 'viewer'), true, menu);
   }

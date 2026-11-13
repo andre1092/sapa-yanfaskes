@@ -32,6 +32,10 @@ try:
 except ImportError:
     from laras_service import get_laras_data, LarasSourceUnavailable
 try:
+    from . import audit_log
+except ImportError:
+    import audit_log
+try:
     from .sheets_source import read_sheet_csv
 except ImportError:
     from sheets_source import read_sheet_csv
@@ -171,7 +175,15 @@ def verify_auth0_token(token: str):
         logger.warning(f"Token validation error: {type(e).__name__}")
         raise HTTPException(status_code=401, detail="Token tidak valid")
 
+def _remember_claims(request, claims):
+    """Simpan klaim untuk audit log; abaikan objek permintaan tanpa state (mis. di tes)."""
+    state = getattr(request, "state", None)
+    if state is not None:
+        state.audit_claims = claims
+
+
 def require_auth(request: Request):
+    _remember_claims(request, None)
     """Kembalikan klaim token Auth0 yang sah; selain itu tolak dengan 401/503."""
     if DEV_AUTH_BYPASS:
         return {"sub": "local-dev", ROLES_CLAIM: ["viewer"], "tenant_id": "00000000-0000-0000-0000-000000000001"}
@@ -180,7 +192,9 @@ def require_auth(request: Request):
     token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
     if not token or token in ("undefined", "null"):
         raise HTTPException(status_code=401, detail="Silakan masuk terlebih dahulu", headers={"WWW-Authenticate": "Bearer"})
-    return verify_auth0_token(token)
+    claims = verify_auth0_token(token)
+    _remember_claims(request, claims)
+    return claims
 
 # --- IZIN PER PERAN (matriks disetujui CEO 2026-11-13) ---
 ROLE_RANK = {"viewer": 1, "admin": 2, "super_admin": 3}
@@ -224,6 +238,43 @@ def require_role(minimum: str):
 require_viewer = require_role("viewer")
 require_admin = require_role("admin")
 require_super_admin = require_role("super_admin")
+
+# --- RIWAYAT AKTIVITAS (audit log, hanya Super Admin yang bisa membaca) ---
+_ROLE_BY_RANK = {3: "super_admin", 2: "admin", 1: "viewer", 0: ""}
+
+
+@app.middleware("http")
+async def audit_middleware(request: Request, call_next):
+    response = await call_next(request)
+    try:
+        path, query = request.url.path, request.url.query
+        if audit_log.should_record(request.method, path, response.status_code, query):
+            claims = getattr(request.state, "audit_claims", None)
+            entry = audit_log.build_entry(
+                request.method, path, response.status_code, claims, _ROLE_BY_RANK[role_rank(claims)],
+                request.headers.get("x-forwarded-for"), request.client.host if request.client else None,
+            )
+            await audit_log.record(entry)
+    except Exception as exc:
+        logger.error("Audit log dilewati: %s", type(exc).__name__)
+    return response
+
+
+@app.get("/api/v1/audit-log")
+async def get_audit_log(
+    limit: int = Query(default=100, ge=1, le=500),
+    before_id: Optional[int] = Query(default=None, ge=1),
+    actor: str = Query(default="", max_length=200),
+    action: str = Query(default="", max_length=100),
+    user=Depends(require_super_admin),
+):
+    try:
+        entries = await audit_log.read_entries(limit=limit, before_id=before_id, actor=actor, action=action)
+    except Exception as exc:
+        logger.error("Gagal membaca audit log: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Riwayat aktivitas sedang tidak dapat dibaca.")
+    return {"entries": entries, "next_before_id": entries[-1]["id"] if len(entries) == limit else None}
+
 
 # --- SCIM 2.0 AUTOMATION ---
 @app.post("/api/v2/tenants/{tenant_id}/Users")
