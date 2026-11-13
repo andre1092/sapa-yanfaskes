@@ -251,5 +251,22 @@ def test_nonaktifkan_langsung_berlaku_di_instance_yang_sama(api):
 def test_atur_ulang_memasang_wajib_ganti_sebelum_sandi_baru(api):
     call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"])
     patches = [c[2] for c in api.fake.calls if c[0] == "PATCH"]
-    assert patches[0] == {"app_metadata": {"wajib_ganti_sandi": True}}
+    assert patches[0]["app_metadata"]["wajib_ganti_sandi"] is True and "password" not in patches[0]
     assert "password" in patches[1]
+
+
+def test_token_lama_tidak_bisa_menetapkan_sandi_setelah_atur_ulang(api):
+    # Sisa risiko dari cek ulang Clara: token yang terbit sebelum atur ulang ditolak.
+    import time as _time
+    lama = int(_time.time()) - 600
+    assert call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"]).status_code == 200
+    meta = api.fake.users["auth0|petugas"]["app_metadata"]
+    assert isinstance(meta.get("sandi_diatur_ulang_pada"), int)
+    headers_lama = {"Authorization": f"Bearer {token(api, sub='auth0|petugas', iat=lama, **{api.ROLES_CLAIM: PETUGAS})}"}
+    client = TestClient(api.app, raise_server_exceptions=False)
+    res = client.post("/api/v1/akun/ganti-sandi", headers=headers_lama, json={"sandi_baru": "SandiBaruKuat2026"})
+    assert res.status_code == 403
+    assert res.json() == {"detail": api.pengguna_service.PESAN_SESI_LAMA}
+    baru = meta["sandi_diatur_ulang_pada"]  # terbit pada detik atur ulang atau sesudahnya
+    headers_baru = {"Authorization": f"Bearer {token(api, sub='auth0|petugas', iat=baru, **{api.ROLES_CLAIM: PETUGAS})}"}
+    assert client.post("/api/v1/akun/ganti-sandi", headers=headers_baru, json={"sandi_baru": "SandiBaruKuat2026"}).status_code == 200

@@ -27,3 +27,14 @@ export function saringPengguna(pengguna: readonly PenggunaFkrtl[], saring: Sarin
     && (!saring.kabupaten || p.faskes.kabupaten === saring.kabupaten)
     && (!saring.status || statusPengguna(p) === saring.status));
 }
+
+const FORMAT_WIB = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+});
+
+/** Waktu login terakhir dari Auth0 (UTC) dalam WIB: "dd/mm/yyyy hh:mm". */
+export function formatLoginTerakhir(iso: string | null | undefined): string {
+  const waktu = iso ? new Date(iso) : null;
+  if (!waktu || Number.isNaN(waktu.getTime())) return 'Belum pernah';
+  return FORMAT_WIB.format(waktu).replace(',', '');
+}

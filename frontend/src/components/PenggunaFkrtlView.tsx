@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Drawer, IconButton, Menu, MenuItem,
+  Alert, Autocomplete, Box, Button, Chip, Snackbar, Dialog, DialogActions, DialogContent, DialogTitle, Drawer, IconButton, Menu, MenuItem,
   Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from '@mui/material';
 import { IconCopy, IconDotsVertical, IconPlus, IconX } from '@tabler/icons-react';
 import { apiClient } from '../lib/apiClient';
-import { tanggalIso } from '../lib/formatTanggal';
-import { ringkasPengguna, saringPengguna, statusPengguna } from '../lib/penggunaFkrtl';
+import { formatLoginTerakhir, ringkasPengguna, saringPengguna, statusPengguna } from '../lib/penggunaFkrtl';
 import type { FaskesRef, PenggunaFkrtl, SaringanPengguna, StatusPengguna } from '../lib/penggunaFkrtl';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 
@@ -26,6 +25,8 @@ const pesanGalat = (error: unknown, cadangan: string) => {
   return typeof detail === 'string' ? detail : cadangan;
 };
 const idAman = (userId: string) => encodeURIComponent(userId);
+// Di ponsel kolom ini disembunyikan; kabupaten ikut tampil di bawah nama faskes.
+const KOLOM_LEBAR = { display: { xs: 'none', md: 'table-cell' } } as const;
 
 export function PenggunaFkrtlView() {
   const queryClient = useQueryClient();
@@ -106,7 +107,6 @@ export function PenggunaFkrtlView() {
     </Stack>
 
     {!data.siap && <Alert severity="warning" sx={{ mb: 3 }}>Pengelolaan akun belum dikonfigurasi. Super Admin perlu mengisi aplikasi Management API Auth0 dan ID peran Petugas RS di pengaturan Vercel, lalu memuat ulang halaman ini.</Alert>}
-    {kabar && <Alert severity={kabar.jenis} onClose={() => setKabar(null)} sx={{ mb: 3 }}>{kabar.teks}</Alert>}
 
     <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 1fr' }, mb: 2 }}>
@@ -122,22 +122,26 @@ export function PenggunaFkrtlView() {
       {data.pengguna.length === 0 ? <Box sx={{ py: 6, textAlign: 'center' }}><Typography variant="h4" component="h2" sx={{ mb: 1 }}>Belum ada akun petugas RS</Typography><Typography color="text.secondary" sx={{ mb: 2 }}>Tambahkan akun pertama, lalu serahkan sandi awalnya ke petugas.</Typography>{data.siap && <Button variant="outlined" startIcon={<IconPlus size={18} />} onClick={() => setFormTerbuka(true)}>Tambah pengguna</Button>}</Box>
         : daftar.length === 0 ? <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>Tidak ada akun yang cocok dengan saringan ini.</Typography>
         : <TableContainer>
-          <Table size="small" aria-label="Daftar akun petugas RS">
-            <TableHead><TableRow><TableCell>Petugas</TableCell><TableCell>Faskes</TableCell><TableCell>Kabupaten</TableCell><TableCell>Status</TableCell><TableCell>Login terakhir</TableCell><TableCell align="right"><Box component="span" sx={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Aksi</Box></TableCell></TableRow></TableHead>
+          <Table size="small" aria-label="Daftar akun petugas RS" sx={{ '& .MuiTableCell-root': { px: { xs: 1, md: 2 } } }}>
+            <TableHead><TableRow><TableCell>Petugas</TableCell><TableCell>Faskes</TableCell><TableCell sx={KOLOM_LEBAR}>Kabupaten</TableCell><TableCell sx={KOLOM_LEBAR}>Status</TableCell><TableCell sx={KOLOM_LEBAR}>Login terakhir</TableCell><TableCell align="right"><Box component="span" sx={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Aksi</Box></TableCell></TableRow></TableHead>
             <TableBody>{daftar.map(p => {
               const status = STATUS[statusPengguna(p)];
               return <TableRow key={p.user_id} hover>
-                <TableCell><Typography variant="subtitle2">{p.nama}</Typography><Typography variant="caption" color="text.secondary">{p.email}</Typography></TableCell>
-                <TableCell><Typography variant="body2">{p.faskes.nama_ppk}</Typography><Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>{p.kode_ppk}</Typography></TableCell>
-                <TableCell>{p.faskes.kabupaten || '—'}</TableCell>
-                <TableCell><Chip size="small" label={status.label} color={status.color} variant={status.color === 'default' ? 'outlined' : 'filled'} /></TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>{p.login_terakhir ? tanggalIso(p.login_terakhir.slice(0, 10)) : 'Belum pernah'}</TableCell>
+                <TableCell><Typography variant="subtitle2">{p.nama}</Typography><Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{p.email}</Typography><Box sx={{ display: { md: 'none' }, mt: 0.5 }}><Chip size="small" label={status.label} color={status.color} variant={status.color === 'default' ? 'outlined' : 'filled'} /></Box></TableCell>
+                <TableCell><Typography variant="body2">{p.faskes.nama_ppk}</Typography><Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>{p.kode_ppk}<Box component="span" sx={{ display: { md: 'none' } }}> · {p.faskes.kabupaten || 'Kabupaten belum diisi'}</Box></Typography></TableCell>
+                <TableCell sx={KOLOM_LEBAR}>{p.faskes.kabupaten || 'Belum diisi'}</TableCell>
+                <TableCell sx={KOLOM_LEBAR}><Chip size="small" label={status.label} color={status.color} variant={status.color === 'default' ? 'outlined' : 'filled'} /></TableCell>
+                <TableCell sx={{ ...KOLOM_LEBAR, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatLoginTerakhir(p.login_terakhir)}</TableCell>
                 <TableCell align="right"><IconButton aria-label={`Aksi untuk ${p.nama}`} onClick={event => setMenuAksi({ anchor: event.currentTarget, pengguna: p })}><IconDotsVertical size={18} /></IconButton></TableCell>
               </TableRow>;
             })}</TableBody>
           </Table>
         </TableContainer>}
     </Paper>
+
+    <Snackbar open={Boolean(kabar)} autoHideDuration={kabar?.jenis === 'error' ? null : 6000} onClose={(_, alasan) => { if (alasan !== 'clickaway') setKabar(null); }} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      {kabar ? <Alert severity={kabar.jenis} variant="filled" onClose={() => setKabar(null)} sx={{ width: '100%' }}>{kabar.teks}</Alert> : undefined}
+    </Snackbar>
 
     <Menu anchorEl={menuAksi?.anchor} open={Boolean(menuAksi)} onClose={() => setMenuAksi(null)}>
       {menuAksi && [
@@ -171,7 +175,7 @@ export function PenggunaFkrtlView() {
       </Box>
     </Drawer>
 
-    <Dialog open={Boolean(sandiTampil)} onClose={(_, alasan) => { if (alasan !== 'backdropClick') tutupSandi(); }} aria-labelledby="sandi-awal-judul" maxWidth="xs" fullWidth>
+    <Dialog open={Boolean(sandiTampil)} onClose={() => { /* Hanya lewat tombol Selesai, supaya sandi tidak hilang sebelum disalin. */ }} disableEscapeKeyDown aria-labelledby="sandi-awal-judul" maxWidth="xs" fullWidth>
       {sandiTampil && <>
         <DialogTitle id="sandi-awal-judul">{sandiTampil.judul}</DialogTitle>
         <DialogContent>

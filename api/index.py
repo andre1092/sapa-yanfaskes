@@ -496,6 +496,9 @@ def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in)):
         raise HTTPException(status_code=403, detail=pengguna_service.PESAN_NONAKTIF)
     if not status["wajib_ganti_sandi"]:
         raise HTTPException(status_code=403, detail=pengguna_service.PESAN_SUDAH_DIGANTI)
+    diatur = status.get("diatur_ulang_pada")
+    if diatur and not (isinstance(user.get("iat"), int) and user["iat"] >= diatur):
+        raise HTTPException(status_code=403, detail=pengguna_service.PESAN_SESI_LAMA)
     pesan = pengguna_service.cek_sandi(body.sandi_baru)
     if pesan:
         raise HTTPException(status_code=400, detail=pesan)

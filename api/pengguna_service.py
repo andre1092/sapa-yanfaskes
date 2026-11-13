@@ -24,6 +24,7 @@ DEFAULT_CONNECTION = "Username-Password-Authentication"
 PESAN_WAJIB_GANTI = "Ganti kata sandi awal Anda terlebih dahulu."
 PESAN_BELUM_SIAP = "Pengelolaan akun belum dikonfigurasi. Hubungi Super Admin."
 PESAN_NONAKTIF = "Akun Anda dinonaktifkan. Hubungi Super Admin."
+PESAN_SESI_LAMA = "Sesi ini dibuka sebelum sandi diatur ulang. Keluar, lalu masuk lagi dengan sandi awal yang baru."
 PESAN_SUDAH_DIGANTI = "Kata sandi awal sudah diganti. Untuk mengganti lagi, minta email setel sandi ke Super Admin."
 # Singkat supaya atur ulang atau nonaktif cepat berlaku juga di instance server lain.
 _TTL_STATUS = 30.0
@@ -162,10 +163,12 @@ def status_akun(user_id: str, segar: bool = False) -> dict:
     try:
         user = client.request("GET", f"/api/v2/users/{quote(user_id, safe='')}")
     except LookupError:
-        value = {"wajib_ganti_sandi": False, "nonaktif": True}  # akun tidak ditemukan: tutup akses
+        value = {"wajib_ganti_sandi": False, "nonaktif": True, "diatur_ulang_pada": None}  # akun tidak ditemukan: tutup akses
     else:
-        value = {"wajib_ganti_sandi": bool((user.get("app_metadata") or {}).get("wajib_ganti_sandi")),
-                 "nonaktif": bool(user.get("blocked", False))}
+        meta = user.get("app_metadata") or {}
+        diatur = meta.get("sandi_diatur_ulang_pada")
+        value = {"wajib_ganti_sandi": bool(meta.get("wajib_ganti_sandi")), "nonaktif": bool(user.get("blocked", False)),
+                 "diatur_ulang_pada": diatur if isinstance(diatur, int) else None}
     with _status_lock:
         _status[user_id] = (now, value)
     return value
@@ -226,7 +229,9 @@ def buat_petugas(client, nama: str, email: str, kode_ppk: str) -> tuple[dict, st
 def _ubah_sandi(client, user_id: str, sandi: str, wajib: bool) -> None:
     path = f"/api/v2/users/{quote(user_id, safe='')}"
     sandi_baru = {"password": sandi, "connection": getattr(client, "connection", DEFAULT_CONNECTION)}
-    tanda = {"app_metadata": {"wajib_ganti_sandi": wajib}}
+    # Waktu atur ulang dipakai untuk menolak ganti sandi dari token yang terbit sebelumnya.
+    tanda = {"app_metadata": {"wajib_ganti_sandi": True, "sandi_diatur_ulang_pada": int(time.time())}} if wajib \
+        else {"app_metadata": {"wajib_ganti_sandi": False}}
     # Urutan dipilih supaya kegagalan di tengah tetap aman: saat atur ulang, tanda wajib ganti
     # dipasang dulu; saat petugas mengganti sendiri, tanda baru dilepas setelah sandi tersimpan.
     for body in ((tanda, sandi_baru) if wajib else (sandi_baru, tanda)):
