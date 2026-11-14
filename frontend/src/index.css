@@ -252,7 +252,6 @@ button:disabled { cursor: not-allowed; }
 .sapa-remember { display: flex; align-items: flex-start; justify-content: center; gap: 10px; font-size: 11px; color: var(--text-muted); min-height: 44px; }
 .sapa-remember :is(.checkbox__content, [data-slot=label]) { font-size: inherit; color: inherit; }
 .sapa-remember input { width: 18px; height: 18px; }
-.sapa-turnstile { margin: 20px 0; min-height: 65px; }
 .sapa-login-submit { width: 100%; background: var(--bpjs-navy); color: white; border-color: var(--bpjs-navy); min-height: 48px; justify-content: space-between; }
 .sapa-login-help { margin-top: 24px; font-size: 11px; line-height: 1.8; color: var(--text-muted); }
 .sapa-login-security { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--panel-border); color: var(--text-muted); font-size: 10px; }
@@ -419,7 +418,6 @@ button:disabled { cursor: not-allowed; }
 .sapa-password-field button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .sapa-password-field button:disabled { opacity: .5; cursor: wait; }
 .sapa-remember { min-height: 44px; font-size: 11px; }
-.sapa-turnstile { margin: 12px 0 20px; }
 .sapa-login-submit { min-height: 49px; border-radius: 9px; font-size: 12px; letter-spacing: -.01em; }
 .sapa-login-submit > span[aria-hidden] { margin-left: auto; font-size: 18px; }
 .sapa-login-help { margin-top: 22px; font-size: 10px; line-height: 1.9; max-width: 39ch; }

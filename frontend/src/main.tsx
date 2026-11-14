@@ -10,6 +10,7 @@ import { BerryThemeProvider } from './berry/BerryThemeProvider'
 import App from './App.tsx'
 import { AuthSessionProvider } from './auth/AuthSessionProvider'
 import { useThemeStore } from './store/themeStore.ts'
+import { VerifikasiManusia } from './components/VerifikasiManusia'
 
 // Log aktivitas contoh dari versi lama dibuang dari penyimpanan browser.
 try {
@@ -26,7 +27,9 @@ const queryClient = new QueryClient()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BerryThemeProvider><AuthSessionProvider><App /></AuthSessionProvider></BerryThemeProvider>
+      {/* /verifikasi dibuka di tengah login Auth0, sebelum ada sesi SAPA: tanpa AuthSessionProvider,
+          supaya tidak memicu silent auth yang akan ditolak Action. */}
+      <BerryThemeProvider>{window.location.pathname === '/verifikasi' ? <VerifikasiManusia /> : <AuthSessionProvider><App /></AuthSessionProvider>}</BerryThemeProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

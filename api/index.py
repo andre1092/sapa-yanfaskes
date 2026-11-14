@@ -41,6 +41,10 @@ try:
 except ImportError:
     import pengguna_service
 try:
+    from . import verifikasi_service
+except ImportError:
+    import verifikasi_service
+try:
     from .sheets_source import read_sheet_csv
 except ImportError:
     from sheets_source import read_sheet_csv
@@ -369,6 +373,23 @@ class UbahStatusPengguna(BaseModel):
 
 class GantiSandi(BaseModel):
     sandi_baru: str
+
+
+class VerifikasiManusia(BaseModel):
+    state: str
+    session_token: str
+    turnstile_token: str
+
+
+@app.post("/api/v1/verifikasi-manusia")
+def verifikasi_manusia(body: VerifikasiManusia, request: Request):
+    """Dipanggil halaman /verifikasi di tengah login Auth0, jadi tanpa token SAPA."""
+    ip = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() or (request.client.host if request.client else None)
+    try:
+        hasil = verifikasi_service.verifikasi(body.state, body.session_token, body.turnstile_token, ip)
+    except verifikasi_service.VerifikasiGagal as exc:
+        return JSONResponse(status_code=exc.status, headers=_NO_STORE, content={"detail": exc.pesan})
+    return JSONResponse(headers=_NO_STORE, content=hasil)
 
 
 def _faskes_fkrtl() -> List[Dict[str, str]]:
