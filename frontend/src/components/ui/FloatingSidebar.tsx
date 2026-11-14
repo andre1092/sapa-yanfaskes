@@ -9,7 +9,7 @@ export interface FloatingSidebarProps {
   userName: string;
   userRole: string;
   dark: boolean;
-  onToggleTheme: () => void;
+  onToggleTheme: (event?: MouseEvent<HTMLButtonElement>) => void;
   onLogout: () => void;
   onSearch: () => void;
   mobile: boolean;
