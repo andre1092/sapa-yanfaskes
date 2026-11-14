@@ -639,6 +639,19 @@ body { font-family: var(--font-sans); }
 @keyframes sapa-singkap-tema { from { clip-path: circle(0 at var(--transisi-x, 50%) var(--transisi-y, 50%)); } to { clip-path: circle(var(--transisi-r, 150%) at var(--transisi-x, 50%) var(--transisi-y, 50%)); } }
 @keyframes sapa-singkap-batang { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
+/* Transisi objek bersama (video kedua Charles Liu, "reuse the same layout ID across shared
+   objects"; disetujui CEO 2026-11-14). Tanpa pustaka: View Transitions bawaan browser. Saat
+   pindah halaman lewat menu, sorotan menu aktif menjadi satu objek yang meluncur dari menu lama
+   ke menu baru (ease-in-out untuk gerak di layar), dan isi halaman berganti dengan crossfade
+   singkat; keluar lebih singkat daripada masuk. Di ponsel sidebar ada di drawer tertutup,
+   sehingga hanya crossfade yang terlihat. Mati bila pengguna meminta gerak dikurangi. */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-transisi="halaman"] .sapa-sidebar-item[aria-current="page"] { view-transition-name: sapa-menu-aktif; }
+  :root[data-transisi="halaman"]::view-transition-group(sapa-menu-aktif) { animation-duration: 260ms; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  :root[data-transisi="halaman"]::view-transition-old(root) { animation-duration: 160ms; }
+  :root[data-transisi="halaman"]::view-transition-new(root) { animation-duration: 200ms; }
+}
+
 /* Kerangka memuat (audit UI/UX 2026-11-12, temuan 11). Denyut hanya bila pengguna tidak
    meminta gerak dikurangi. */
 .sapa-kerangka-kartu { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: var(--radius-panel); }
