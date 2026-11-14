@@ -149,10 +149,15 @@ export const InsightTracerDashboard: React.FC = () => {
   const gantiTema = (event?: React.MouseEvent<HTMLElement>) => jalankanTransisi(
     () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark'), { jenis: 'tema', asal: titikDari(event) });
   const handleMenuSelect = (menuName: string) => {
-    setActiveMenu(menuName);
-    setSearchOpen(false);
-    setMenuQuery('');
-    setMobileMenuOpen(false);
+    const ubah = () => {
+      setActiveMenu(menuName);
+      setSearchOpen(false);
+      setMenuQuery('');
+      setMobileMenuOpen(false);
+    };
+    // Objek bersama: sorotan menu aktif meluncur dari menu lama ke menu baru (View Transitions).
+    if (menuName === activeMenu) ubah();
+    else jalankanTransisi(ubah, { jenis: 'halaman' });
     if (typeof window !== 'undefined') {
       const targetPath = MENU_TO_ROUTE[menuName] || `/${menuName.toLowerCase().replace(/\s+/g, '-')}`;
       if (window.location.pathname !== targetPath) {
