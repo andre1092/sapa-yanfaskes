@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppBar, Avatar, Box, Button, Drawer, IconButton, List, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, TextField, Toolbar, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { IconMenu2, IconSearch, IconSun, IconMoon, IconX } from '@tabler/icons-react';
 import { resilientLazy } from '../lib/resilientLazy';
+import { jalankanTransisi, titikDari } from '../lib/transisiTampilan';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { AdminDialog } from './AdminDialog';
 import { AnimatedButton } from './ui/AnimatedButton';
@@ -144,6 +145,9 @@ export const InsightTracerDashboard: React.FC = () => {
     const frame = requestAnimationFrame(() => document.getElementById('workspace-content')?.focus());
     return () => cancelAnimationFrame(frame);
   }, [activeMenu]);
+  // Ganti tema dengan mask lingkaran dari tombol yang diklik (View Transitions bawaan browser).
+  const gantiTema = (event?: React.MouseEvent<HTMLElement>) => jalankanTransisi(
+    () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark'), { jenis: 'tema', asal: titikDari(event) });
   const handleMenuSelect = (menuName: string) => {
     setActiveMenu(menuName);
     setSearchOpen(false);
@@ -162,7 +166,7 @@ export const InsightTracerDashboard: React.FC = () => {
     sections={sectionsBoleh} routes={MENU_TO_ROUTE}
     activeMenu={activeMenu} onNavigate={handleMenuSelect}
     userName={nama} userRole={peran}
-    dark={effectiveTheme === 'dark'} onToggleTheme={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')}
+    dark={effectiveTheme === 'dark'} onToggleTheme={gantiTema}
     onLogout={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }}
     onSearch={() => { setMobileMenuOpen(false); setSearchOpen(true); }}
     mobile={!desktop} onClose={() => setMobileMenuOpen(false)}
@@ -187,7 +191,7 @@ export const InsightTracerDashboard: React.FC = () => {
         <Button aria-label="Cari menu" onClick={() => setSearchOpen(true)} startIcon={<IconSearch size={20} />} color="inherit" sx={{ bgcolor: 'background.default', color: 'text.secondary', border: 1, borderColor: 'divider', minWidth: { xs: 0, sm: 200 }, justifyContent: 'flex-start', display: { xs: 'none', sm: 'inline-flex' } }}>Cari menu<Typography component="kbd" variant="caption" sx={{ ml: 'auto' }}>⌘ K</Typography></Button>
         <Box sx={{ flexGrow: 1 }} />
         <IconButton aria-label="Cari menu" onClick={() => setSearchOpen(true)} sx={{ display: { sm: 'none' } }}><IconSearch size={20} /></IconButton>
-        <IconButton aria-label={effectiveTheme === 'dark' ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={() => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')} className="sapa-ikon-tukar" sx={{ color: 'secondary.main', bgcolor: 'secondary.light', borderRadius: 2 }}>{effectiveTheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}</IconButton>
+        <IconButton aria-label={effectiveTheme === 'dark' ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'} onClick={gantiTema} className="sapa-ikon-tukar" sx={{ color: 'secondary.main', bgcolor: 'secondary.light', borderRadius: 2 }}>{effectiveTheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}</IconButton>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'background.default', borderRadius: 6, py: 0.5, pl: 0.5, pr: { xs: 0.5, sm: 2 } }}><Avatar sx={{ bgcolor: 'secondary.light', color: 'secondary.main' }}>{nama.slice(0, 1).toUpperCase()}</Avatar><Box sx={{ display: { xs: 'none', md: 'block' } }}><Typography variant="subtitle2">{nama}</Typography><Typography variant="caption" color="text.secondary">{peran}</Typography></Box></Box>
       </Toolbar>
     </AppBar>
