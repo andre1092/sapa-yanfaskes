@@ -462,6 +462,8 @@ def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin))
         hasil = pengguna_service.isi_username(client, akun, nama_faskes)
     except pengguna_service.UsernameSudahAda:
         raise HTTPException(status_code=409, detail="Akun ini sudah punya username.")
+    except pengguna_service.KodePpkKosong:
+        raise HTTPException(status_code=409, detail=pengguna_service.PESAN_KODE_KOSONG)
     except ValueError:
         raise HTTPException(status_code=409, detail=pengguna_service.PESAN_NOMOR_HABIS)
     except Exception as exc:

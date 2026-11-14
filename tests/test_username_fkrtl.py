@@ -110,3 +110,24 @@ def test_isi_username_hanya_super_admin(api, monkeypatch, roles):
 def test_isi_username_bukan_untuk_akun_non_petugas(api, monkeypatch):
     monkeypatch.setenv("AUTH0_PAKAI_USERNAME", "1")
     assert call(api, "post", "/api/v1/pengguna-fkrtl/auth0|ceo/username", ADMIN).status_code == 404
+
+
+def test_isi_username_tercatat_di_audit_log():
+    from api import audit_log
+    assert audit_log.should_record("POST", "/api/v1/pengguna-fkrtl/auth0|x/username", 200, "")
+
+
+def test_akun_lama_tanpa_kode_ppk_ditolak_dengan_pesan_jelas(api, monkeypatch):
+    monkeypatch.setenv("AUTH0_PAKAI_USERNAME", "1")
+    api.fake.users["auth0|petugas"]["app_metadata"]["kode_ppk"] = ""
+    res = call(api, "post", "/api/v1/pengguna-fkrtl/auth0|petugas/username", ADMIN)
+    assert res.status_code == 409
+    assert "kode PPK" in res.json()["detail"]
+    assert not any(m == "PATCH" for m, p, j in api.fake.calls)
+
+
+def test_username_hasil_selalu_lolos_aturan():
+    for kode, nama in [("0114R001", "RSD dr Soebandi"), ("0211R002", "!!!"), ("A1", "x" * 200)]:
+        assert ps.cek_username(ps.buat_username(kode, nama, set())) is None
+    with pytest.raises(ValueError):
+        ps.buat_username("", "RSD dr Soebandi", set())

@@ -146,6 +146,7 @@ def cek_sandi(sandi: str) -> str | None:
 _USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9._-]{1,62})[a-z0-9]$")
 USERNAME_TERLARANG = {"admin", "administrator", "root", "support", "sapa", "bpjs", "superadmin", "system"}
 _MAKS_SLUG = 40
+PESAN_KODE_KOSONG = "Akun ini belum punya kode PPK, jadi username tidak bisa dibuat. Hubungi tim SAPA."
 PESAN_NOMOR_HABIS = "Nomor urut username faskes ini sudah habis (99). Hubungi tim SAPA."
 
 
@@ -165,11 +166,20 @@ def slug_faskes(nama: str) -> str:
     return hasil or "faskes"
 
 
+class KodePpkKosong(ValueError):
+    pass
+
+
 def buat_username(kode_ppk: str, nama_faskes: str, dipakai: set) -> str:
-    awal = f"{re.sub(r'[^a-z0-9]', '', kode_ppk.casefold())}-{slug_faskes(nama_faskes)}"
+    kode = re.sub(r"[^a-z0-9]", "", (kode_ppk or "").casefold())
+    if not kode:
+        raise KodePpkKosong(PESAN_KODE_KOSONG)
+    awal = f"{kode}-{slug_faskes(nama_faskes)}"
     for nomor in range(1, 100):
         calon = f"{awal}-{nomor:02d}"
         if calon not in dipakai:
+            if cek_username(calon):
+                raise ValueError(PESAN_NOMOR_HABIS)
             return calon
     raise ValueError(PESAN_NOMOR_HABIS)
 
