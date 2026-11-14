@@ -474,9 +474,13 @@ def update_pengguna_fkrtl(user_id: str, body: UbahStatusPengguna, user=Depends(r
     client = _klien_pengguna()
     _petugas_atau_404(client, user_id)
     try:
-        return {"pengguna": pengguna_service.set_aktif(client, user_id, body.aktif)}
+        akun = pengguna_service.set_aktif(client, user_id, body.aktif)
     except Exception as exc:
         _gagal_auth0(exc)
+    if body.aktif:
+        return {"pengguna": akun}
+    # Akhiri sesi browser lama supaya tidak hidup kembali bila akun diaktifkan lagi tanpa atur ulang.
+    return {"pengguna": akun, "sesi_dihapus": pengguna_service.akhiri_sesi(client, user_id)}
 
 
 @app.get("/api/v1/akun/status")

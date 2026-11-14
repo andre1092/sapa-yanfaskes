@@ -311,3 +311,20 @@ def test_variabel_auth0_dirapikan_dari_spasi_dan_baris_baru(monkeypatch):
     client = pengguna_service.get_client()
     assert (client.domain, client.client_id, client._secret, client.spa_client_id) == ("sapa.test.auth0.com", "id-uji", "rahasia-uji", "spa-uji")
     assert pengguna_service.role_id() == "rol_uji"
+
+
+def test_nonaktifkan_juga_mengakhiri_sesi_lama(api):
+    # Saran Clara: sesi browser lama tidak boleh hidup kembali saat akun diaktifkan lagi.
+    res = call(api, "PATCH", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas", ["super_admin"], body={"aktif": False})
+    assert res.status_code == 200 and res.json()["sesi_dihapus"] is True
+    assert [c[1] for c in api.fake.calls if c[0] == "DELETE"] == [
+        "/api/v2/users/auth0%7Cpetugas/sessions", "/api/v2/users/auth0%7Cpetugas/refresh-tokens"]
+    urutan = [c[0] for c in api.fake.calls if c[0] in ("PATCH", "DELETE")]
+    assert urutan == ["PATCH", "DELETE", "DELETE"]  # blokir dulu, baru sesi diakhiri
+
+
+def test_mengaktifkan_kembali_tidak_mengakhiri_sesi(api):
+    api.fake.users["auth0|petugas"]["blocked"] = True
+    res = call(api, "PATCH", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas", ["super_admin"], body={"aktif": True})
+    assert res.status_code == 200 and "sesi_dihapus" not in res.json()
+    assert not [c for c in api.fake.calls if c[0] == "DELETE"]
