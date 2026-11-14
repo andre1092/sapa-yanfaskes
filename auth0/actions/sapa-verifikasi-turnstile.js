@@ -33,13 +33,20 @@ function konfigurasi(event) {
   if (!nama) return null;
   const secret = event.secrets[`SAPA_SECRET_${nama}`];
   const url = event.secrets[`VERIFIKASI_URL_${nama}`];
-  return secret && url ? { secret, url } : null;
+  return secret && url ? { nama, secret, url } : null;
 }
 
-function sesiLulus(event) {
+// Penanda per lingkungan: staging dan produksi berbagi sesi Auth0 (SSO) di tenant yang sama, jadi
+// lulus di staging (yang kodenya bisa belum di-review) tidak boleh melewati produksi (temuan Clara).
+function penanda(nama, event) {
   const id = event.session && event.session.id;
+  return id ? `${nama}:${id}` : null;
+}
+
+function sesiLulus(event, nama) {
+  const tanda = penanda(nama, event);
   const daftar = (event.user.app_metadata || {})[KUNCI_SESI];
-  return Boolean(id && Array.isArray(daftar) && daftar.includes(id));
+  return Boolean(tanda && Array.isArray(daftar) && daftar.includes(tanda));
 }
 
 function tanpaInteraksi(event) {
@@ -52,14 +59,14 @@ exports.onExecutePostLogin = async (event, api) => {
   if (!diwajibkan(event)) return;
   // Refresh token hanya terbit dari login yang sudah melewati Action ini; redirect tidak didukung di sana.
   if (event.transaction && event.transaction.protocol === 'oauth2-refresh-token') return;
-  if (sesiLulus(event)) return;
-  if (tanpaInteraksi(event)) {
-    api.access.deny('Verifikasi keamanan diperlukan. Silakan masuk kembali.');
-    return;
-  }
   const cfg = konfigurasi(event);
   if (!cfg) {
     api.access.deny('Verifikasi keamanan belum siap. Hubungi administrator SAPA.');
+    return;
+  }
+  if (sesiLulus(event, cfg.nama)) return;
+  if (tanpaInteraksi(event)) {
+    api.access.deny('Verifikasi keamanan diperlukan. Silakan masuk kembali.');
     return;
   }
   const token = api.redirect.encodeToken({ secret: cfg.secret, expiresInSeconds: 300, payload: { tujuan: 'sapa-verifikasi' } });
@@ -81,9 +88,9 @@ exports.onContinuePostLogin = async (event, api) => {
     api.access.deny('Verifikasi keamanan tidak berhasil. Silakan masuk kembali.');
     return;
   }
-  const id = event.session && event.session.id;
-  if (id) {
-    const lama = ((event.user.app_metadata || {})[KUNCI_SESI] || []).filter((s) => s !== id);
-    api.user.setAppMetadata(KUNCI_SESI, [...lama, id].slice(-MAKS_SESI));
+  const tanda = penanda(cfg.nama, event);
+  if (tanda) {
+    const lama = ((event.user.app_metadata || {})[KUNCI_SESI] || []).filter((s) => s !== tanda);
+    api.user.setAppMetadata(KUNCI_SESI, [...lama, tanda].slice(-MAKS_SESI));
   }
 };

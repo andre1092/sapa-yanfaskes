@@ -76,7 +76,7 @@ test('dengan "*", aplikasi tanpa konfigurasi verifikasi ditolak (gagal tertutup)
 test('sesi yang sudah lulus tidak ditanya lagi, termasuk silent auth', async () => {
   for (const transaction of [{ prompt: [] }, { prompt: ['none'] }]) {
     const api = buatApi();
-    await action.onExecutePostLogin(buatEvent({ transaction, user: { user_id: 'auth0|petugas1', app_metadata: { turnstile_sesi: ['sesi-1'] } } }), api);
+    await action.onExecutePostLogin(buatEvent({ transaction, user: { user_id: 'auth0|petugas1', app_metadata: { turnstile_sesi: ['STAGING:sesi-1'] } } }), api);
     assert.equal(api.catat.dialihkan, null);
     assert.equal(api.catat.ditolak, null);
   }
@@ -105,7 +105,7 @@ test('token balasan sah menandai sesi sebagai lulus, diperiksa dengan secret apl
   assert.equal(api.catat.ditolak, null);
   assert.equal(api.catat.validate.tokenParameterName, 'sapa_token');
   assert.equal(api.catat.validate.secret, 'rahasia-staging');
-  assert.deepEqual(api.catat.metadata.turnstile_sesi, ['lama', 'sesi-1']);
+  assert.deepEqual(api.catat.metadata.turnstile_sesi, ['lama', 'STAGING:sesi-1']);
 });
 
 test('daftar sesi lulus dibatasi 10 terakhir', async () => {
@@ -113,7 +113,7 @@ test('daftar sesi lulus dibatasi 10 terakhir', async () => {
   const api = buatApi({ sub: 'auth0|petugas1', turnstile: true });
   await action.onContinuePostLogin(buatEvent({ user: { user_id: 'auth0|petugas1', app_metadata: { turnstile_sesi: lama } } }), api);
   assert.equal(api.catat.metadata.turnstile_sesi.length, 10);
-  assert.equal(api.catat.metadata.turnstile_sesi.at(-1), 'sesi-1');
+  assert.equal(api.catat.metadata.turnstile_sesi.at(-1), 'STAGING:sesi-1');
 });
 
 test('token balasan tidak sah, milik pengguna lain, atau tanpa tanda Turnstile ditolak', async () => {
@@ -122,5 +122,14 @@ test('token balasan tidak sah, milik pengguna lain, atau tanpa tanda Turnstile d
     await action.onContinuePostLogin(buatEvent(), api);
     assert.ok(api.catat.ditolak);
     assert.deepEqual(api.catat.metadata, {});
+  }
+});
+
+test('lulus di staging tidak melewati produksi pada sesi SSO yang sama (temuan Clara)', async () => {
+  const user = { user_id: 'auth0|petugas1', app_metadata: { turnstile_sesi: ['STAGING:sesi-1', 'sesi-1'] } };
+  for (const transaction of [{ prompt: [] }, { prompt: ['none'] }]) {
+    const api = buatApi();
+    await action.onExecutePostLogin(buatEvent({ secrets: { ...SECRETS, CLIENT_DIWAJIBKAN: '*' }, client: { client_id: 'spa-produksi' }, transaction, user }), api);
+    assert.ok(api.catat.dialihkan || api.catat.ditolak, 'produksi harus menantang ulang');
   }
 });
