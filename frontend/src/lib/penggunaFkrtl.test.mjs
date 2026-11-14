@@ -36,3 +36,8 @@ test('login terakhir memakai waktu WIB dengan jam', () => {
   assert.equal(formatLoginTerakhir(null), 'Belum pernah');
   assert.equal(formatLoginTerakhir('bukan tanggal'), 'Belum pernah');
 });
+
+test('saring juga mencari username', () => {
+  const daftar = [p('Dewi', 'A1', 'Jember', { username: '0114r001-rsd-dr-soebandi-01' }), p('Eka', 'B2', 'Bondowoso')];
+  assert.deepEqual(saringPengguna(daftar, { cari: 'soebandi-01', kabupaten: '', status: '' }).map(x => x.nama), ['Dewi']);
+});

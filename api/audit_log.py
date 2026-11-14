@@ -38,7 +38,7 @@ CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON audit_log
     FOR EACH STATEMENT EXECUTE FUNCTION audit_log_append_only();
 """
 
-_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-antrol-sync|fktp-antrol-sync|fkrtl-kepatuhan-sync|fkrtl-export|auth/send-verification-email|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan))?)?)$")
+_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-antrol-sync|fktp-antrol-sync|fkrtl-kepatuhan-sync|fkrtl-export|auth/send-verification-email|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
 _schema_ready = False
 
 
