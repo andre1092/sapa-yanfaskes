@@ -4,21 +4,36 @@
  * Dipasang di Auth0 > Actions > Library, lalu Flow "Login". Kode ini disalin persis dari repo
  * supaya bisa di-review; perubahan selalu lewat PR yang disetujui CEO.
  *
- * Secrets Action (diisi CEO, Widi tidak melihatnya):
- * - SAPA_SECRET         kunci HS256 bersama, sama dengan SAPA_VERIFIKASI_SECRET di Vercel.
- * - VERIFIKASI_URL      alamat halaman /verifikasi (staging atau produksi).
- * - CLIENT_DIWAJIBKAN   daftar client_id yang diwajibkan, dipisah koma; "*" = semua aplikasi.
- *                       Selama uji hanya SPA staging (temuan W1 Clara: Action berlaku se-tenant).
+ * Secrets Action (diisi CEO, Widi tidak melihatnya). Staging dan produksi memakai secret
+ * TERPISAH: secret produksi hanya ada di Vercel Production, supaya kode staging yang belum
+ * di-review tidak bisa memalsukan balasan untuk login produksi (syarat Clara).
+ * - CLIENT_DIWAJIBKAN        client_id yang diwajibkan, dipisah koma; "*" = semua aplikasi.
+ *                            Selama uji hanya SPA staging (temuan W1 Clara: Action berlaku se-tenant).
+ * - STAGING_CLIENT_ID        client_id SPA staging.
+ * - SAPA_SECRET_STAGING      = SAPA_VERIFIKASI_SECRET Vercel cabang staging (acak, minimal 32 byte).
+ * - VERIFIKASI_URL_STAGING   alamat /verifikasi staging.
+ * - PRODUKSI_CLIENT_ID, SAPA_SECRET_PRODUKSI, VERIFIKASI_URL_PRODUKSI   sama, untuk produksi.
+ * Aplikasi yang diwajibkan tetapi tanpa konfigurasi ditolak (gagal tertutup).
  *
  * Silent auth (prompt=none) tidak boleh dialihkan. Sesi yang belum lulus ditolak, bukan dilewati:
  * sesi Auth0 sudah terbentuk walau Turnstile gagal, jadi melewatinya akan memberi token.
  */
 const KUNCI_SESI = 'turnstile_sesi';
 const MAKS_SESI = 10;
+const LINGKUNGAN = ['STAGING', 'PRODUKSI'];
 
 function diwajibkan(event) {
   const daftar = String(event.secrets.CLIENT_DIWAJIBKAN || '').split(',').map((s) => s.trim()).filter(Boolean);
   return daftar.includes('*') || daftar.includes(event.client && event.client.client_id);
+}
+
+function konfigurasi(event) {
+  const id = event.client && event.client.client_id;
+  const nama = LINGKUNGAN.find((n) => id && event.secrets[`${n}_CLIENT_ID`] === id);
+  if (!nama) return null;
+  const secret = event.secrets[`SAPA_SECRET_${nama}`];
+  const url = event.secrets[`VERIFIKASI_URL_${nama}`];
+  return secret && url ? { secret, url } : null;
 }
 
 function sesiLulus(event) {
@@ -42,23 +57,22 @@ exports.onExecutePostLogin = async (event, api) => {
     api.access.deny('Verifikasi keamanan diperlukan. Silakan masuk kembali.');
     return;
   }
-  if (!event.secrets.SAPA_SECRET || !event.secrets.VERIFIKASI_URL) {
+  const cfg = konfigurasi(event);
+  if (!cfg) {
     api.access.deny('Verifikasi keamanan belum siap. Hubungi administrator SAPA.');
     return;
   }
-  const token = api.redirect.encodeToken({
-    secret: event.secrets.SAPA_SECRET,
-    expiresInSeconds: 300,
-    payload: { tujuan: 'sapa-verifikasi' },
-  });
-  api.redirect.sendUserTo(event.secrets.VERIFIKASI_URL, { query: { session_token: token } });
+  const token = api.redirect.encodeToken({ secret: cfg.secret, expiresInSeconds: 300, payload: { tujuan: 'sapa-verifikasi' } });
+  api.redirect.sendUserTo(cfg.url, { query: { session_token: token } });
 };
 
 exports.onContinuePostLogin = async (event, api) => {
+  const cfg = konfigurasi(event);
   let payload;
   try {
+    if (!cfg) throw new Error('konfigurasi');
     // Memeriksa tanda tangan HS256, masa berlaku, dan klaim state yang sama dengan transaksi ini.
-    payload = api.redirect.validateToken({ secret: event.secrets.SAPA_SECRET, tokenParameterName: 'sapa_token' });
+    payload = api.redirect.validateToken({ secret: cfg.secret, tokenParameterName: 'sapa_token' });
   } catch (e) {
     api.access.deny('Verifikasi keamanan tidak berhasil. Silakan masuk kembali.');
     return;

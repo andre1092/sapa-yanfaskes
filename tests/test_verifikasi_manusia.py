@@ -107,6 +107,24 @@ def test_session_token_dari_auth0_yang_tidak_sah_ditolak_tanpa_memanggil_cloudfl
     assert cf.kiriman == []
 
 
+@pytest.mark.parametrize("ubah", [{"state": "state-lain"}, {"iss": "https://penyerang.example/"}])
+def test_klaim_state_atau_iss_yang_tidak_cocok_ditolak(ubah):
+    with pytest.raises(vs.VerifikasiGagal) as err:
+        vs.verifikasi(STATE, token_masuk(**ubah), "jawaban", None, post=Cloudflare())
+    assert err.value.status == 400
+
+
+@pytest.mark.parametrize("iss", ["sapa-yanfaskes.us.auth0.com", "https://sapa-yanfaskes.us.auth0.com/"])
+def test_iss_domain_auth0_dan_state_yang_sama_diterima(iss):
+    assert vs.verifikasi(STATE, token_masuk(iss=iss, state=STATE), "jawaban", None, post=Cloudflare())["state"] == STATE
+
+
+def test_tidak_mengirim_kunci_idempotensi_palsu():
+    cf = Cloudflare()
+    vs.verifikasi(STATE, token_masuk(), "jawaban", None, post=cf)
+    assert "idempotency_key" not in cf.kiriman[0][1] and "remoteip" not in cf.kiriman[0][1]
+
+
 def test_cloudflare_tidak_terjangkau_gagal_tertutup():
     with pytest.raises(vs.VerifikasiGagal) as err:
         vs.verifikasi(STATE, token_masuk(), "jawaban", None, post=Cloudflare(gagal=True))

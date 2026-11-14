@@ -87,8 +87,14 @@ def verifikasi(state, session_token, turnstile_token, remote_ip: str | None, pos
     sub = masuk.get("sub")
     if masuk.get("tujuan") != TUJUAN or not isinstance(sub, str) or not sub:
         raise VerifikasiGagal(400, PESAN_TAUTAN)
+    # Klaim opsional dari encodeToken: bila ada, harus cocok dengan transaksi dan tenant ini.
+    if "state" in masuk and masuk["state"] != state:
+        raise VerifikasiGagal(400, PESAN_TAUTAN)
+    if "iss" in masuk and str(masuk["iss"]).removeprefix("https://").rstrip("/") != domain:
+        raise VerifikasiGagal(400, PESAN_TAUTAN)
 
-    data = {"secret": kunci_turnstile, "response": turnstile_token, "idempotency_key": secrets.token_hex(16)}
+    # Token Turnstile memang sekali pakai, jadi kunci idempotensi acak tidak menambah perlindungan.
+    data = {"secret": kunci_turnstile, "response": turnstile_token}
     if remote_ip:
         data["remoteip"] = remote_ip
     try:

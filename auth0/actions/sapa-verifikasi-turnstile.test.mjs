@@ -1,11 +1,19 @@
-// Tes Action Auth0 dengan event dan api tiruan. Jalankan: node --test auth0/actions/
+// Tes Action Auth0 dengan event dan api tiruan. Jalankan: node --test auth0/actions/sapa-verifikasi-turnstile.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const action = createRequire(import.meta.url)('./sapa-verifikasi-turnstile.js');
 
-const SECRETS = { SAPA_SECRET: 'rahasia', VERIFIKASI_URL: 'https://sapa-yanfaskes.vercel.app/verifikasi', CLIENT_DIWAJIBKAN: 'spa-staging' };
+const SECRETS = {
+  CLIENT_DIWAJIBKAN: 'spa-staging',
+  STAGING_CLIENT_ID: 'spa-staging',
+  SAPA_SECRET_STAGING: 'rahasia-staging',
+  VERIFIKASI_URL_STAGING: 'https://staging.example/verifikasi',
+  PRODUKSI_CLIENT_ID: 'spa-produksi',
+  SAPA_SECRET_PRODUKSI: 'rahasia-produksi',
+  VERIFIKASI_URL_PRODUKSI: 'https://sapa-yanfaskes.vercel.app/verifikasi',
+};
 
 function buatEvent(ubah = {}) {
   return {
@@ -33,15 +41,22 @@ function buatApi(payload) {
   };
 }
 
-test('login interaktif dialihkan ke /verifikasi dengan token bertanda tangan', async () => {
+test('login interaktif staging dialihkan ke /verifikasi staging dengan secret staging', async () => {
   const api = buatApi();
   await action.onExecutePostLogin(buatEvent(), api);
   assert.equal(api.catat.ditolak, null);
-  assert.equal(api.catat.dialihkan.url, SECRETS.VERIFIKASI_URL);
+  assert.equal(api.catat.dialihkan.url, SECRETS.VERIFIKASI_URL_STAGING);
   assert.deepEqual(api.catat.dialihkan.opsi, { query: { session_token: 'token-keluar' } });
-  assert.equal(api.catat.encode.secret, 'rahasia');
+  assert.equal(api.catat.encode.secret, 'rahasia-staging');
   assert.equal(api.catat.encode.payload.tujuan, 'sapa-verifikasi');
   assert.ok(api.catat.encode.expiresInSeconds <= 300);
+});
+
+test('secret dan alamat produksi terpisah dari staging (syarat Clara sebelum "*")', async () => {
+  const api = buatApi();
+  await action.onExecutePostLogin(buatEvent({ secrets: { ...SECRETS, CLIENT_DIWAJIBKAN: '*' }, client: { client_id: 'spa-produksi' } }), api);
+  assert.equal(api.catat.dialihkan.url, SECRETS.VERIFIKASI_URL_PRODUKSI);
+  assert.equal(api.catat.encode.secret, 'rahasia-produksi');
 });
 
 test('aplikasi di luar daftar tidak disentuh selama uji staging (W1)', async () => {
@@ -51,10 +66,11 @@ test('aplikasi di luar daftar tidak disentuh selama uji staging (W1)', async () 
   assert.equal(api.catat.ditolak, null);
 });
 
-test('tanda * mewajibkan semua aplikasi', async () => {
+test('dengan "*", aplikasi tanpa konfigurasi verifikasi ditolak (gagal tertutup)', async () => {
   const api = buatApi();
-  await action.onExecutePostLogin(buatEvent({ secrets: { ...SECRETS, CLIENT_DIWAJIBKAN: '*' }, client: { client_id: 'apa-saja' } }), api);
-  assert.ok(api.catat.dialihkan);
+  await action.onExecutePostLogin(buatEvent({ secrets: { ...SECRETS, CLIENT_DIWAJIBKAN: '*' }, client: { client_id: 'aplikasi-lain' } }), api);
+  assert.ok(api.catat.ditolak);
+  assert.equal(api.catat.dialihkan, null);
 });
 
 test('sesi yang sudah lulus tidak ditanya lagi, termasuk silent auth', async () => {
@@ -78,16 +94,17 @@ test('silent auth dari sesi yang belum lulus ditolak, bukan dilewati', async () 
 
 test('konfigurasi tidak lengkap gagal tertutup', async () => {
   const api = buatApi();
-  await action.onExecutePostLogin(buatEvent({ secrets: { CLIENT_DIWAJIBKAN: 'spa-staging' } }), api);
+  await action.onExecutePostLogin(buatEvent({ secrets: { CLIENT_DIWAJIBKAN: 'spa-staging', STAGING_CLIENT_ID: 'spa-staging' } }), api);
   assert.ok(api.catat.ditolak);
   assert.equal(api.catat.dialihkan, null);
 });
 
-test('token balasan sah menandai sesi sebagai lulus', async () => {
+test('token balasan sah menandai sesi sebagai lulus, diperiksa dengan secret aplikasinya', async () => {
   const api = buatApi({ sub: 'auth0|petugas1', turnstile: true, state: 's' });
   await action.onContinuePostLogin(buatEvent({ user: { user_id: 'auth0|petugas1', app_metadata: { turnstile_sesi: ['lama'] } } }), api);
   assert.equal(api.catat.ditolak, null);
   assert.equal(api.catat.validate.tokenParameterName, 'sapa_token');
+  assert.equal(api.catat.validate.secret, 'rahasia-staging');
   assert.deepEqual(api.catat.metadata.turnstile_sesi, ['lama', 'sesi-1']);
 });
 
