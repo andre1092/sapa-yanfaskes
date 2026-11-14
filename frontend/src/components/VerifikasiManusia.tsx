@@ -134,7 +134,7 @@ export function VerifikasiManusia() {
 
   return (
     <Box component="main" sx={{ minHeight: '100dvh', bgcolor: '#eef3f8', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 2, sm: 3 }, py: 3 }}>
-      <Box sx={{ width: '100%', maxWidth: 400, bgcolor: '#fff', borderRadius: '16px', boxShadow: '0 12px 40px rgba(15, 35, 60, 0.12)', pt: 5, pb: 4, px: { xs: '14px', sm: 4 }, textAlign: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: 400, bgcolor: '#fff', borderRadius: '16px', boxShadow: '0 12px 40px rgba(15, 35, 60, 0.12)', pt: 5, pb: 4, px: '14px', '@media (min-width: 381px)': { px: 4 }, textAlign: 'center' }}>
         <img src="/logo-sapa-yanfaskes-v2-256.png" alt="" width={64} height={64} style={{ display: 'block', margin: '0 auto 16px' }} />
         <Typography ref={judul} tabIndex={-1} component="h1" sx={{ fontSize: 22, fontWeight: 600, color: '#1d2939', outline: 'none', mb: 1 }}>
           {JUDUL[keadaan] ?? 'Verifikasi keamanan'}
