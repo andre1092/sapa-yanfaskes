@@ -403,7 +403,7 @@ def _gagal_auth0(exc: Exception):
     if isinstance(exc, pengguna_service.PenggunaBelumSiap):
         raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
     if isinstance(exc, pengguna_service.Auth0Error) and exc.status == 409:
-        raise HTTPException(status_code=409, detail="Email ini sudah terdaftar.")
+        raise HTTPException(status_code=409, detail="Email atau username ini sudah terdaftar. Coba lagi.")
     if isinstance(exc, pengguna_service.Auth0Error) and exc.status == 400:
         raise HTTPException(status_code=400, detail="Auth0 menolak isian ini. Periksa email dan syarat kata sandi.")
     logger.error("Pengelolaan akun gagal: %s", type(exc).__name__)
@@ -416,7 +416,7 @@ def list_pengguna_fkrtl(user=Depends(require_super_admin)):
     peta = {f["kode_ppk"]: f for f in faskes}
     client = pengguna_service.get_client()
     if client is None:
-        return {"siap": False, "pengguna": [], "faskes": faskes}
+        return {"siap": False, "pakai_username": pengguna_service.pakai_username(), "pengguna": [], "faskes": faskes}
     try:
         pengguna = pengguna_service.daftar_petugas(client)
     except Exception as exc:
@@ -426,7 +426,7 @@ def list_pengguna_fkrtl(user=Depends(require_super_admin)):
         p["faskes"] = {"kode_ppk": p["kode_ppk"], "nama_ppk": f["nama_ppk"] if f else "Faskes tidak ada di referensi",
                        "kabupaten": f["kabupaten"] if f else ""}
     pengguna.sort(key=lambda p: (p["faskes"]["nama_ppk"].casefold(), p["nama"].casefold()))
-    return {"siap": True, "pengguna": pengguna, "faskes": faskes}
+    return {"siap": True, "pakai_username": pengguna_service.pakai_username(), "pengguna": pengguna, "faskes": faskes}
 
 
 @app.post("/api/v1/pengguna-fkrtl", status_code=201)
@@ -436,14 +436,37 @@ def create_pengguna_fkrtl(body: PenggunaBaru, user=Depends(require_super_admin))
         raise HTTPException(status_code=400, detail="Nama wajib diisi (maksimal 100 karakter).")
     if not _EMAIL_RE.fullmatch(email) or len(email) > 200:
         raise HTTPException(status_code=400, detail="Format email tidak valid.")
-    if kode not in {f["kode_ppk"] for f in _faskes_fkrtl()}:
+    faskes = {f["kode_ppk"]: f for f in _faskes_fkrtl()}
+    if kode not in faskes:
         raise HTTPException(status_code=400, detail="Faskes tidak ada di referensi Fasilitas Kesehatan.")
     client = _klien_pengguna()
     try:
-        akun, sandi = pengguna_service.buat_petugas(client, nama, email, kode)
+        akun, sandi = pengguna_service.buat_petugas(client, nama, email, kode, faskes[kode]["nama_ppk"])
+    except ValueError:
+        raise HTTPException(status_code=409, detail=pengguna_service.PESAN_NOMOR_HABIS)
     except Exception as exc:
         _gagal_auth0(exc)
     return JSONResponse(status_code=201, headers=_NO_STORE, content={"pengguna": akun, "sandi_awal": sandi})
+
+
+@app.post("/api/v1/pengguna-fkrtl/{user_id}/username")
+def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
+    """Tahap 2 migrasi: memberi username ke akun petugas yang dibuat sebelum username dipakai."""
+    if not pengguna_service.pakai_username():
+        raise HTTPException(status_code=409, detail="Username belum diaktifkan di Auth0.")
+    client = _klien_pengguna()
+    akun = _petugas_atau_404(client, user_id)
+    kode = (akun.get("app_metadata") or {}).get("kode_ppk") or ""
+    nama_faskes = next((f["nama_ppk"] for f in _faskes_fkrtl() if f["kode_ppk"] == kode), "")
+    try:
+        hasil = pengguna_service.isi_username(client, akun, nama_faskes)
+    except pengguna_service.UsernameSudahAda:
+        raise HTTPException(status_code=409, detail="Akun ini sudah punya username.")
+    except ValueError:
+        raise HTTPException(status_code=409, detail=pengguna_service.PESAN_NOMOR_HABIS)
+    except Exception as exc:
+        _gagal_auth0(exc)
+    return {"pengguna": hasil}
 
 
 @app.post("/api/v1/pengguna-fkrtl/{user_id}/atur-ulang-sandi")
