@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import secrets
 import string
 import threading
@@ -141,6 +142,60 @@ def cek_sandi(sandi: str) -> str | None:
     return None
 
 
+# --- Username: [kode_ppk]-[nama_faskes]-[2 digit nomor urut per faskes] (keputusan CEO) ---
+_USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9._-]{1,62})[a-z0-9]$")
+USERNAME_TERLARANG = {"admin", "administrator", "root", "support", "sapa", "bpjs", "superadmin", "system"}
+_MAKS_SLUG = 40
+PESAN_KODE_KOSONG = "Akun ini belum punya kode PPK, jadi nama pengguna tidak bisa dibuat. Hubungi tim SAPA."
+PESAN_NOMOR_HABIS = "Nomor urut nama pengguna faskes ini sudah habis (99). Hubungi tim SAPA."
+
+
+def pakai_username() -> bool:
+    """Aktif setelah koneksi database Auth0 diberi atribut username; sebelum itu Auth0 menolak username."""
+    return os.environ.get("AUTH0_PAKAI_USERNAME", "").strip() == "1"
+
+
+def slug_faskes(nama: str) -> str:
+    kata = re.sub(r"[^a-z0-9]+", " ", (nama or "").casefold()).split()
+    hasil = ""
+    for k in kata:
+        calon = f"{hasil}-{k}" if hasil else k
+        if len(calon) > _MAKS_SLUG:
+            break
+        hasil = calon
+    return hasil or "faskes"
+
+
+class KodePpkKosong(ValueError):
+    pass
+
+
+def buat_username(kode_ppk: str, nama_faskes: str, dipakai: set) -> str:
+    kode = re.sub(r"[^a-z0-9]", "", (kode_ppk or "").casefold())
+    if not kode:
+        raise KodePpkKosong(PESAN_KODE_KOSONG)
+    awal = f"{kode}-{slug_faskes(nama_faskes)}"
+    for nomor in range(1, 100):
+        calon = f"{awal}-{nomor:02d}"
+        if calon not in dipakai:
+            if cek_username(calon):
+                raise ValueError(PESAN_NOMOR_HABIS)
+            return calon
+    raise ValueError(PESAN_NOMOR_HABIS)
+
+
+def cek_username(username: str) -> str | None:
+    if not isinstance(username, str) or not _USERNAME_RE.fullmatch(username):
+        return "Nama pengguna 3–64 karakter: huruf kecil, angka, titik, garis bawah, atau strip."
+    if username in USERNAME_TERLARANG:
+        return "Nama pengguna ini tidak boleh dipakai."
+    return None
+
+
+def _username_dipakai(client) -> set:
+    return {p["username"] for p in daftar_petugas(client) if p.get("username")}
+
+
 # --- Status wajib ganti sandi (disimpan sebentar supaya tidak memanggil Auth0 tiap permintaan) ---
 def lupakan_status(user_id: str | None = None) -> None:
     with _status_lock:
@@ -185,7 +240,7 @@ def _ringkas(user: dict) -> dict:
     meta = user.get("app_metadata") or {}
     return {
         "user_id": user.get("user_id"), "nama": user.get("name") or "", "email": user.get("email") or "",
-        "aktif": not user.get("blocked", False), "wajib_ganti_sandi": bool(meta.get("wajib_ganti_sandi")),
+        "username": user.get("username") or "", "aktif": not user.get("blocked", False), "wajib_ganti_sandi": bool(meta.get("wajib_ganti_sandi")),
         "kode_ppk": meta.get("kode_ppk") or "", "login_terakhir": user.get("last_login"), "dibuat": user.get("created_at"),
     }
 
@@ -195,7 +250,7 @@ def daftar_petugas(client) -> list[dict]:
     for page in range(10):
         users = client.request("GET", "/api/v2/users", params={
             "q": f'app_metadata.sapa_peran:"{PERAN_PETUGAS}"', "search_engine": "v3", "per_page": 100, "page": page,
-            "fields": "user_id,name,email,blocked,last_login,created_at,app_metadata", "include_fields": "true",
+            "fields": "user_id,name,email,username,blocked,last_login,created_at,app_metadata", "include_fields": "true",
         })
         hasil.extend(_ringkas(u) for u in users if (u.get("app_metadata") or {}).get("sapa_peran") == PERAN_PETUGAS)
         if len(users) < 100:
@@ -211,21 +266,41 @@ def ambil_petugas(client, user_id: str) -> dict | None:
     return user if (user.get("app_metadata") or {}).get("sapa_peran") == PERAN_PETUGAS else None
 
 
-def buat_petugas(client, nama: str, email: str, kode_ppk: str) -> tuple[dict, str]:
+def buat_petugas(client, nama: str, email: str, kode_ppk: str, nama_faskes: str = "") -> tuple[dict, str]:
     peran = role_id()
     sandi = buat_sandi_awal()
-    user = client.request("POST", "/api/v2/users", json={
+    data = {
         "connection": getattr(client, "connection", DEFAULT_CONNECTION), "email": email, "name": nama,
         "password": sandi, "verify_email": False,
         "app_metadata": {"sapa_peran": PERAN_PETUGAS, "kode_ppk": kode_ppk, "wajib_ganti_sandi": True},
-    })
+    }
+    if pakai_username():
+        data["username"] = buat_username(kode_ppk, nama_faskes, _username_dipakai(client))
+    user = client.request("POST", "/api/v2/users", json=data)
     try:
         client.request("POST", f"/api/v2/roles/{quote(peran, safe='')}/users", json={"users": [user["user_id"]]})
     except Exception:
         # Jangan tinggalkan akun tanpa peran.
         client.request("DELETE", f"/api/v2/users/{quote(user['user_id'], safe='')}")
         raise
+    if data.get("username") and not user.get("username"):
+        user = {**user, "username": data["username"]}
     return _ringkas(user), sandi
+
+
+class UsernameSudahAda(Exception):
+    pass
+
+
+def isi_username(client, user: dict, nama_faskes: str) -> dict:
+    """Memberi username ke akun petugas lama (tahap 2 migrasi). Tidak menimpa username yang ada."""
+    if user.get("username"):
+        raise UsernameSudahAda()
+    kode = (user.get("app_metadata") or {}).get("kode_ppk") or ""
+    username = buat_username(kode, nama_faskes, _username_dipakai(client))
+    hasil = client.request("PATCH", f"/api/v2/users/{quote(user['user_id'], safe='')}",
+                           json={"username": username, "connection": getattr(client, "connection", DEFAULT_CONNECTION)})
+    return _ringkas({**user, **(hasil or {}), "username": username})
 
 
 def _ubah_sandi(client, user_id: str, sandi: str, wajib: bool) -> None:

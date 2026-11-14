@@ -10,8 +10,8 @@ import { formatLoginTerakhir, ringkasPengguna, saringPengguna, statusPengguna } 
 import type { FaskesRef, PenggunaFkrtl, SaringanPengguna, StatusPengguna } from '../lib/penggunaFkrtl';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 
-type DataPengguna = { siap: boolean; pengguna: PenggunaFkrtl[]; faskes: FaskesRef[] };
-type SandiTampil = { judul: string; nama: string; email: string; sandi: string; userId: string; sesiLamaTerbuka?: boolean };
+type DataPengguna = { siap: boolean; pakai_username?: boolean; pengguna: PenggunaFkrtl[]; faskes: FaskesRef[] };
+type SandiTampil = { judul: string; nama: string; email: string; username?: string; sandi: string; userId: string; sesiLamaTerbuka?: boolean };
 type Konfirmasi = { jenis: 'atur-ulang' | 'nonaktif' | 'aktif'; pengguna: PenggunaFkrtl };
 
 const STATUS: Record<StatusPengguna, { label: string; color: 'success' | 'warning' | 'default' }> = {
@@ -41,6 +41,7 @@ export function PenggunaFkrtlView() {
   const [galatForm, setGalatForm] = useState('');
   const [sandiTampil, setSandiTampil] = useState<SandiTampil | null>(null);
   const [disalin, setDisalin] = useState(false);
+  const [usernameDisalin, setUsernameDisalin] = useState(false);
   const [menuAksi, setMenuAksi] = useState<{ anchor: HTMLElement; pengguna: PenggunaFkrtl } | null>(null);
   const [konfirmasi, setKonfirmasi] = useState<Konfirmasi | null>(null);
   const [kabar, setKabar] = useState<{ jenis: 'success' | 'error'; teks: string } | null>(null);
@@ -58,20 +59,25 @@ export function PenggunaFkrtlView() {
     onSuccess: hasil => {
       setFormTerbuka(false);
       setForm({ faskes: null, nama: '', email: '' });
-      setSandiTampil({ judul: 'Akun dibuat', nama: hasil.pengguna.nama, email: hasil.pengguna.email, sandi: hasil.sandi_awal, userId: hasil.pengguna.user_id });
+      setSandiTampil({ judul: 'Akun dibuat', nama: hasil.pengguna.nama, email: hasil.pengguna.email, username: hasil.pengguna.username, sandi: hasil.sandi_awal, userId: hasil.pengguna.user_id });
       void muatUlang();
     },
     onError: error => setGalatForm(pesanGalat(error, 'Akun gagal dibuat. Coba lagi.')),
   });
   const aturUlang = useMutation({
     mutationFn: async (p: PenggunaFkrtl) => (await apiClient.post<{ sandi_awal: string; sesi_dihapus?: boolean }>(`/api/v1/pengguna-fkrtl/${idAman(p.user_id)}/atur-ulang-sandi`)).data,
-    onSuccess: (hasil, p) => { setSandiTampil({ judul: 'Sandi diatur ulang', nama: p.nama, email: p.email, sandi: hasil.sandi_awal, userId: p.user_id, sesiLamaTerbuka: hasil.sesi_dihapus === false }); void muatUlang(); },
+    onSuccess: (hasil, p) => { setSandiTampil({ judul: 'Sandi diatur ulang', nama: p.nama, email: p.email, username: p.username, sandi: hasil.sandi_awal, userId: p.user_id, sesiLamaTerbuka: hasil.sesi_dihapus === false }); void muatUlang(); },
     onError: error => setKabar({ jenis: 'error', teks: pesanGalat(error, 'Sandi gagal diatur ulang.') }),
   });
   const ubahAktif = useMutation({
     mutationFn: async ({ p, aktif }: { p: PenggunaFkrtl; aktif: boolean }) => apiClient.patch(`/api/v1/pengguna-fkrtl/${idAman(p.user_id)}`, { aktif }),
     onSuccess: (_, { p, aktif }) => { setKabar({ jenis: 'success', teks: `${p.nama} ${aktif ? 'diaktifkan kembali' : 'dinonaktifkan'}.` }); void muatUlang(); },
     onError: error => setKabar({ jenis: 'error', teks: pesanGalat(error, 'Status akun gagal diubah.') }),
+  });
+  const isiUsername = useMutation({
+    mutationFn: async (p: PenggunaFkrtl) => (await apiClient.post<{ pengguna: PenggunaFkrtl }>(`/api/v1/pengguna-fkrtl/${idAman(p.user_id)}/username`)).data,
+    onSuccess: hasil => { setKabar({ jenis: 'success', teks: `Nama pengguna ${hasil.pengguna.username} dibuat untuk ${hasil.pengguna.nama}.` }); void muatUlang(); },
+    onError: error => setKabar({ jenis: 'error', teks: pesanGalat(error, 'Nama pengguna gagal dibuat.') }),
   });
   const undangan = useMutation({
     mutationFn: async (userId: string) => apiClient.post(`/api/v1/pengguna-fkrtl/${idAman(userId)}/undangan`),
@@ -83,7 +89,11 @@ export function PenggunaFkrtlView() {
     if (!sandiTampil) return;
     try { await navigator.clipboard.writeText(sandiTampil.sandi); setDisalin(true); } catch { setDisalin(false); }
   };
-  const tutupSandi = () => { setSandiTampil(null); setDisalin(false); };
+  const salinUsername = async () => {
+    if (!sandiTampil?.username) return;
+    try { await navigator.clipboard.writeText(sandiTampil.username); setUsernameDisalin(true); } catch { setUsernameDisalin(false); }
+  };
+  const tutupSandi = () => { setSandiTampil(null); setDisalin(false); setUsernameDisalin(false); };
   const jalankanKonfirmasi = () => {
     if (!konfirmasi) return;
     if (konfirmasi.jenis === 'atur-ulang') aturUlang.mutate(konfirmasi.pengguna);
@@ -110,7 +120,7 @@ export function PenggunaFkrtlView() {
 
     <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 1fr' }, mb: 2 }}>
-        <TextField label="Cari nama, email, atau faskes" type="search" value={saring.cari} onChange={event => setSaring(s => ({ ...s, cari: event.target.value }))} />
+        <TextField label="Cari nama, nama pengguna, email, atau faskes" type="search" value={saring.cari} onChange={event => setSaring(s => ({ ...s, cari: event.target.value }))} />
         <TextField select slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }} label="Kabupaten" value={saring.kabupaten} onChange={event => setSaring(s => ({ ...s, kabupaten: event.target.value }))}>
           <MenuItem value="">Semua kabupaten</MenuItem>{kabupaten.map(k => <MenuItem key={k} value={k}>{k}</MenuItem>)}
         </TextField>
@@ -127,7 +137,7 @@ export function PenggunaFkrtlView() {
             <TableBody>{daftar.map(p => {
               const status = STATUS[statusPengguna(p)];
               return <TableRow key={p.user_id} hover>
-                <TableCell><Typography variant="subtitle2">{p.nama}</Typography><Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{p.email}</Typography><Box sx={{ display: { md: 'none' }, mt: 0.5 }}><Chip size="small" label={status.label} color={status.color} variant={status.color === 'default' ? 'outlined' : 'filled'} /></Box></TableCell>
+                <TableCell><Typography variant="subtitle2">{p.nama}</Typography>{p.username ? <Typography variant="caption" component="p" sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', overflowWrap: 'anywhere' }}>{p.username}</Typography> : data.pakai_username && <Typography variant="caption" component="p" color="warning.main">Belum punya nama pengguna</Typography>}<Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{p.email}</Typography><Box sx={{ display: { md: 'none' }, mt: 0.5 }}><Chip size="small" label={status.label} color={status.color} variant={status.color === 'default' ? 'outlined' : 'filled'} /></Box></TableCell>
                 <TableCell><Typography variant="body2">{p.faskes.nama_ppk}</Typography><Typography variant="caption" color="text.secondary" sx={{ fontVariantNumeric: 'tabular-nums' }}>{p.kode_ppk}<Box component="span" sx={{ display: { md: 'none' } }}> · {p.faskes.kabupaten || 'Kabupaten belum diisi'}</Box></Typography></TableCell>
                 <TableCell sx={KOLOM_LEBAR}>{p.faskes.kabupaten || 'Belum diisi'}</TableCell>
                 <TableCell sx={KOLOM_LEBAR}><Chip size="small" label={status.label} color={status.color} variant={status.color === 'default' ? 'outlined' : 'filled'} /></TableCell>
@@ -147,6 +157,9 @@ export function PenggunaFkrtlView() {
       {menuAksi && [
         <MenuItem key="atur" onClick={() => { setKonfirmasi({ jenis: 'atur-ulang', pengguna: menuAksi.pengguna }); setMenuAksi(null); }}>Atur ulang sandi awal</MenuItem>,
         <MenuItem key="email" onClick={() => { undangan.mutate(menuAksi.pengguna.user_id); setMenuAksi(null); }}>Kirim email setel sandi</MenuItem>,
+        data.pakai_username && !menuAksi.pengguna.username
+          ? <MenuItem key="username" onClick={() => { isiUsername.mutate(menuAksi.pengguna); setMenuAksi(null); }}>Buat nama pengguna</MenuItem>
+          : null,
         menuAksi.pengguna.aktif
           ? <MenuItem key="nonaktif" sx={{ color: 'error.main' }} onClick={() => { setKonfirmasi({ jenis: 'nonaktif', pengguna: menuAksi.pengguna }); setMenuAksi(null); }}>Nonaktifkan akun</MenuItem>
           : <MenuItem key="aktif" onClick={() => { setKonfirmasi({ jenis: 'aktif', pengguna: menuAksi.pengguna }); setMenuAksi(null); }}>Aktifkan kembali</MenuItem>,
@@ -165,7 +178,7 @@ export function PenggunaFkrtlView() {
           noOptionsText="Faskes tidak ditemukan"
         />
         <TextField label="Nama petugas" required value={form.nama} onChange={event => setForm(f => ({ ...f, nama: event.target.value }))} autoComplete="off" slotProps={{ htmlInput: { maxLength: 100 } }} />
-        <TextField label="Email" type="email" required value={form.email} onChange={event => setForm(f => ({ ...f, email: event.target.value }))} autoComplete="off" helperText="Dipakai untuk masuk SAPA" />
+        <TextField label="Email" type="email" required value={form.email} onChange={event => setForm(f => ({ ...f, email: event.target.value }))} autoComplete="off" helperText={data.pakai_username ? 'Untuk lupa kata sandi. Nama pengguna dibuat otomatis dari kode dan nama faskes.' : 'Dipakai untuk masuk SAPA'} />
         {galatForm && <Alert severity="error">{galatForm}</Alert>}
         <Box sx={{ flexGrow: 1 }} />
         <Stack direction="row" spacing={1.5} justifyContent="flex-end">
@@ -179,13 +192,17 @@ export function PenggunaFkrtlView() {
       {sandiTampil && <>
         <DialogTitle id="sandi-awal-judul">{sandiTampil.judul}</DialogTitle>
         <DialogContent>
+          {sandiTampil.username && <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+            <Typography variant="body2" sx={{ flex: 1 }}>Nama pengguna: <Box component="strong" sx={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', overflowWrap: 'anywhere' }}>{sandiTampil.username}</Box></Typography>
+            <Button size="small" startIcon={<IconCopy size={16} />} aria-label="Salin nama pengguna" onClick={() => void salinUsername()}>{usernameDisalin ? 'Tersalin' : 'Salin'}</Button>
+          </Stack>}
           <Typography variant="body2" sx={{ mb: 2 }}>Sandi awal untuk <strong>{sandiTampil.nama}</strong> ({sandiTampil.email}):</Typography>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', border: 1, borderColor: 'divider' }}>
             <Typography component="code" sx={{ flex: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 18, letterSpacing: '0.04em', wordBreak: 'break-all' }}>{sandiTampil.sandi}</Typography>
             <Button size="small" startIcon={<IconCopy size={16} />} onClick={() => void salinSandi()}>{disalin ? 'Tersalin' : 'Salin'}</Button>
           </Stack>
           {sandiTampil.sesiLamaTerbuka && <Alert severity="warning" sx={{ mt: 2 }}>Sesi lama di browser petugas belum bisa diakhiri otomatis. Bila akun diduga dibobol, nonaktifkan akun lalu aktifkan lagi.</Alert>}
-          <Alert severity="info" sx={{ mt: 2 }}>Sandi ini hanya tampil sekali. Serahkan ke petugas lewat jalur yang aman. Petugas wajib menggantinya saat masuk pertama.</Alert>
+          <Alert severity="info" sx={{ mt: 2 }}>Sandi ini hanya tampil sekali. Serahkan {sandiTampil.username ? 'nama pengguna dan sandi' : 'sandi'} ke petugas lewat jalur yang aman. Petugas wajib mengganti sandi saat masuk pertama.</Alert>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => undangan.mutate(sandiTampil.userId)} disabled={undangan.isPending}>Kirim juga email setel sandi</Button>
