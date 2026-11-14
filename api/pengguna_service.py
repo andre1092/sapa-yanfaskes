@@ -146,8 +146,8 @@ def cek_sandi(sandi: str) -> str | None:
 _USERNAME_RE = re.compile(r"^[a-z0-9](?:[a-z0-9._-]{1,62})[a-z0-9]$")
 USERNAME_TERLARANG = {"admin", "administrator", "root", "support", "sapa", "bpjs", "superadmin", "system"}
 _MAKS_SLUG = 40
-PESAN_KODE_KOSONG = "Akun ini belum punya kode PPK, jadi username tidak bisa dibuat. Hubungi tim SAPA."
-PESAN_NOMOR_HABIS = "Nomor urut username faskes ini sudah habis (99). Hubungi tim SAPA."
+PESAN_KODE_KOSONG = "Akun ini belum punya kode PPK, jadi nama pengguna tidak bisa dibuat. Hubungi tim SAPA."
+PESAN_NOMOR_HABIS = "Nomor urut nama pengguna faskes ini sudah habis (99). Hubungi tim SAPA."
 
 
 def pakai_username() -> bool:
@@ -186,9 +186,9 @@ def buat_username(kode_ppk: str, nama_faskes: str, dipakai: set) -> str:
 
 def cek_username(username: str) -> str | None:
     if not isinstance(username, str) or not _USERNAME_RE.fullmatch(username):
-        return "Username 3–64 karakter: huruf kecil, angka, titik, garis bawah, atau strip."
+        return "Nama pengguna 3–64 karakter: huruf kecil, angka, titik, garis bawah, atau strip."
     if username in USERNAME_TERLARANG:
-        return "Username ini tidak boleh dipakai."
+        return "Nama pengguna ini tidak boleh dipakai."
     return None
 
 

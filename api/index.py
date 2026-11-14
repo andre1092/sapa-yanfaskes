@@ -403,7 +403,7 @@ def _gagal_auth0(exc: Exception):
     if isinstance(exc, pengguna_service.PenggunaBelumSiap):
         raise HTTPException(status_code=503, detail=pengguna_service.PESAN_BELUM_SIAP)
     if isinstance(exc, pengguna_service.Auth0Error) and exc.status == 409:
-        raise HTTPException(status_code=409, detail="Email atau username ini sudah terdaftar. Coba lagi.")
+        raise HTTPException(status_code=409, detail="Email atau nama pengguna ini sudah terdaftar. Coba lagi.")
     if isinstance(exc, pengguna_service.Auth0Error) and exc.status == 400:
         raise HTTPException(status_code=400, detail="Auth0 menolak isian ini. Periksa email dan syarat kata sandi.")
     logger.error("Pengelolaan akun gagal: %s", type(exc).__name__)
@@ -453,7 +453,7 @@ def create_pengguna_fkrtl(body: PenggunaBaru, user=Depends(require_super_admin))
 def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
     """Tahap 2 migrasi: memberi username ke akun petugas yang dibuat sebelum username dipakai."""
     if not pengguna_service.pakai_username():
-        raise HTTPException(status_code=409, detail="Username belum diaktifkan di Auth0.")
+        raise HTTPException(status_code=409, detail="Nama pengguna belum diaktifkan di Auth0.")
     client = _klien_pengguna()
     akun = _petugas_atau_404(client, user_id)
     kode = (akun.get("app_metadata") or {}).get("kode_ppk") or ""
@@ -461,7 +461,7 @@ def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin))
     try:
         hasil = pengguna_service.isi_username(client, akun, nama_faskes)
     except pengguna_service.UsernameSudahAda:
-        raise HTTPException(status_code=409, detail="Akun ini sudah punya username.")
+        raise HTTPException(status_code=409, detail="Akun ini sudah punya nama pengguna.")
     except pengguna_service.KodePpkKosong:
         raise HTTPException(status_code=409, detail=pengguna_service.PESAN_KODE_KOSONG)
     except ValueError:
