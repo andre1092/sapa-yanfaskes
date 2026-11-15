@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
-import { alamatLanjutSah, bacaParameter, keadaanDariStatus, ringkasState, type Keadaan } from '../lib/verifikasi';
+import { alamatContinue, alamatLanjutSah, bacaParameter, keadaanDariStatus, ringkasState, type Keadaan } from '../lib/verifikasi';
 
 // Halaman /verifikasi: Cloudflare Turnstile setelah sandi benar di Auth0 (desain Kim,
 // agents/kim/desain/login-auth0/verifikasi-turnstile.md). Tampil tanpa sesi SAPA.
@@ -31,19 +31,8 @@ function skripTurnstile(): Promise<Turnstile> {
 }
 
 function kirimKeAuth0(alamat: string, state: string, token: string) {
-  // POST ke /continue sesuai anjuran Auth0 (token tidak masuk riwayat atau log URL).
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = alamat;
-  for (const [name, value] of [['state', state], ['sapa_token', token]]) {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  }
-  document.body.appendChild(form);
-  form.submit();
+  // Navigasi GET supaya cookie transaksi Auth0 ikut terkirim (POST lintas situs ditolak Auth0).
+  window.location.replace(alamatContinue(alamat, state, token));
 }
 
 const JUDUL: Partial<Record<Keadaan, string>> = { kedaluwarsa: 'Waktu verifikasi habis', tautan: 'Halaman tidak dapat dibuka' };
