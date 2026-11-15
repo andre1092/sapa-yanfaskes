@@ -540,7 +540,7 @@ def status_akun(user=Depends(require_signed_in)):
 @app.post("/api/v1/akun/ganti-sandi")
 def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in)):
     if not petugas_rs_saja(user):
-        raise HTTPException(status_code=403, detail="Ganti kata sandi akun ini lewat halaman masuk Auth0.")
+        raise HTTPException(status_code=403, detail="Ganti kata sandi lewat tautan “Lupa kata sandi?” di halaman masuk.")
     # Hanya untuk mengganti sandi awal; status dibaca langsung dari Auth0 (bukan simpanan sementara).
     status = _status_petugas(user, segar=True)
     if status["nonaktif"]:
