@@ -72,7 +72,17 @@ def test_strict_policy_is_enforced():
     assert "'unsafe-inline'" not in policy["script-src"] and "'unsafe-eval'" not in policy["script-src"]
     assert inline_script_hash() in policy["script-src"]
     assert "https:" not in policy["connect-src"] and "https:" not in policy.get("img-src", [])
-    assert policy["form-action"] == ["'self'"]
+    # Halaman /verifikasi mengirim formulir POST ke /continue Auth0 (anjuran Auth0 untuk mencegah replay).
+    assert policy["form-action"] == ["'self'", "https://sapa-yanfaskes.us.auth0.com"]
+
+
+def test_turnstile_hanya_diizinkan_untuk_skrip_dan_bingkainya():
+    policy = csp("Content-Security-Policy")
+    cloudflare = "https://challenges.cloudflare.com"
+    assert cloudflare in policy["script-src"] and cloudflare in policy["frame-src"]
+    lain = {k: v for k, v in policy.items() if k not in ("script-src", "frame-src")}
+    assert not any(cloudflare in values for values in lain.values())
+    assert not any("cloudflare" in v and v != cloudflare for values in policy.values() for v in values)
 
 
 def test_jpeg_export_can_embed_google_fonts():
