@@ -72,8 +72,8 @@ def test_strict_policy_is_enforced():
     assert "'unsafe-inline'" not in policy["script-src"] and "'unsafe-eval'" not in policy["script-src"]
     assert inline_script_hash() in policy["script-src"]
     assert "https:" not in policy["connect-src"] and "https:" not in policy.get("img-src", [])
-    # Halaman /verifikasi mengirim formulir POST ke /continue Auth0 (anjuran Auth0 untuk mencegah replay).
-    assert policy["form-action"] == ["'self'", "https://sapa-yanfaskes.us.auth0.com"]
+    # /verifikasi kembali ke Auth0 lewat navigasi GET, jadi formulir tetap hanya ke situs sendiri.
+    assert policy["form-action"] == ["'self'"]
 
 
 def test_turnstile_hanya_diizinkan_untuk_skrip_dan_bingkainya():

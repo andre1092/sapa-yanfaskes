@@ -36,3 +36,15 @@ export function alamatLanjutSah(alamat: string, domainAuth0: string): boolean {
     return false;
   }
 }
+
+/**
+ * Alamat lanjut ke Auth0 lewat GET (navigasi biasa). POST lintas situs tidak membawa cookie
+ * transaksi Auth0 (SameSite), sehingga Auth0 menolak dengan "invalid state parameter".
+ * Token balasan berumur 2 menit dan terikat ke state, yang hanya bisa dipakai sekali.
+ */
+export function alamatContinue(alamat: string, state: string, token: string): string {
+  const url = new URL(alamat);
+  url.searchParams.set('state', state);
+  url.searchParams.set('sapa_token', token);
+  return url.toString();
+}

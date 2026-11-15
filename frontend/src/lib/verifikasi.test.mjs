@@ -40,3 +40,11 @@ test('lanjut hanya ke /continue di domain Auth0 milik SAPA', () => {
   assert.equal(alamatLanjutSah('bukan url', domain), false);
   assert.equal(alamatLanjutSah('https://sapa-yanfaskes.us.auth0.com/continue', ''), false);
 });
+
+test('alamat lanjut ke Auth0 memakai GET dengan state dan sapa_token di query', async () => {
+  const { alamatContinue } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+  const url = new URL(alamatContinue('https://sapa-yanfaskes.us.auth0.com/continue', 'st a/te', 'a.b.c'));
+  assert.equal(url.origin + url.pathname, 'https://sapa-yanfaskes.us.auth0.com/continue');
+  assert.equal(url.searchParams.get('state'), 'st a/te');
+  assert.equal(url.searchParams.get('sapa_token'), 'a.b.c');
+});
