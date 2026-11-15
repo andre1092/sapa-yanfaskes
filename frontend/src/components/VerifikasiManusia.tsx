@@ -32,7 +32,7 @@ function skripTurnstile(): Promise<Turnstile> {
 
 function kirimKeAuth0(alamat: string, state: string, token: string) {
   // Navigasi GET supaya cookie transaksi Auth0 ikut terkirim (POST lintas situs ditolak Auth0).
-  window.location.assign(alamatContinue(alamat, state, token));
+  window.location.replace(alamatContinue(alamat, state, token));
 }
 
 const JUDUL: Partial<Record<Keadaan, string>> = { kedaluwarsa: 'Waktu verifikasi habis', tautan: 'Halaman tidak dapat dibuka' };
