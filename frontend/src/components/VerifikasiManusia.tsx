@@ -126,7 +126,8 @@ export function VerifikasiManusia() {
   const tampilWidget = Boolean(param && siteKey) && keadaan !== 'tautan' && keadaan !== 'kedaluwarsa';
   const pesan = PESAN[keadaan];
   const galat = keadaan === 'gagal' || keadaan === 'layanan' || keadaan === 'tautan';
-  const fokus = { '&:focus-visible': { outline: '3px solid #0060a0', outlineOffset: '2px' } };
+  // '&&' menaikkan spesifisitas supaya aturan fokus global di index.css (#1565c0, offset 3 px) tidak menimpa.
+  const fokus = { '&&:focus-visible': { outline: '3px solid #0060a0', outlineOffset: '2px' } };
   const tombol = { minHeight: 44, width: '100%', textTransform: 'none', fontWeight: 600, ...fokus } as const;
   // Teks putih dikunci: halaman ini ada di dalam BerryThemeProvider, dan tema gelap akan menggelapkannya.
   const hijau = { ...tombol, bgcolor: HIJAU, color: '#fff', '&:hover': { bgcolor: '#00663a', color: '#fff' } } as const;
@@ -146,7 +147,8 @@ export function VerifikasiManusia() {
         {tampilWidget && <Box ref={wadah} sx={{ minHeight: 65, display: 'flex', justifyContent: 'center', mb: 2 }} />}
         {/* Wadah status selalu ada supaya pembaca layar mengumumkan setiap perubahan teksnya. */}
         <Box role="status" aria-live="polite" sx={{
-          fontSize: 14, borderRadius: '8px', minHeight: 24, mb: 2,
+          // Saat galat, wadah kosong dirapatkan supaya tidak menyisakan jarak sekitar 40 px di atas kotak galat.
+          fontSize: 14, borderRadius: '8px', minHeight: galat ? 0 : 24, mb: galat ? 0 : 2,
           p: keadaan === 'berhasil' ? 1.5 : 0,
           color: keadaan === 'berhasil' ? '#14532d' : '#5b6b7f',
           bgcolor: keadaan === 'berhasil' ? '#e8f3ec' : 'transparent',
