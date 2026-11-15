@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
 import { useAuthStore } from '../store/authStore';
 import { mapAuth0User, registerAuthSession, safeReturnTo } from './session';
-import { alamatSetelahMasuk } from '../lib/halamanAwal';
+import { alamatSetelahMasuk, tujuanSetelahMasuk } from '../lib/halamanAwal';
 
 import { Context } from './useSession';
 
@@ -22,7 +22,7 @@ function SessionBridge({ children }: { children: ReactNode }) {
   const login = async () => {
     setLoginError(null);
     try {
-      await loginWithRedirect({ appState: { returnTo: safeReturnTo(`${window.location.pathname}${window.location.search}${window.location.hash}`) } });
+      await loginWithRedirect({ appState: { returnTo: safeReturnTo(tujuanSetelahMasuk(`${window.location.pathname}${window.location.search}${window.location.hash}`)) } });
     } catch { setLoginError('Tidak dapat membuka layanan masuk. Periksa koneksi lalu coba kembali.'); }
   };
   return <Context.Provider value={{ ready: !isLoading, authenticated: isAuthenticated && Boolean(user?.sub), configured: true, error: loginError || (error ? 'Sesi masuk tidak dapat diverifikasi. Silakan coba masuk kembali.' : null), login }}>{children}</Context.Provider>;
