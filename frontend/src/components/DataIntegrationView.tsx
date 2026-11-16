@@ -203,7 +203,7 @@ export function DataIntegrationView() {
           <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
             <li>Login ke SSBI.</li>
-            <li>Di browser yang sama, buka tautan <a className="underline text-[var(--action-primary)]" href={TAUTAN_SSBI} target="_blank" rel="noopener noreferrer">FKRTL.csv</a>. Berkas langsung terunduh dalam ±2 menit.</li>
+            <li>Di browser yang sama, buka tautan <a className="tautan-kalimat underline text-[var(--action-primary)]" href={TAUTAN_SSBI} target="_blank" rel="noopener noreferrer">FKRTL.csv</a>. Berkas langsung terunduh dalam ±2 menit.</li>
             <li>Unggah berkas yang terunduh tanpa diubah dan tanpa dibuka di Excel.</li>
           </ol>
         </details>

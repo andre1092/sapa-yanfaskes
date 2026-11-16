@@ -85,10 +85,10 @@ export const UnduhJpegKepatuhan = <K extends TabUnduhJpeg>({ tab, rows, periode,
   }, [keadaan, barisUrut.length, namaBerkas]);
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex w-full sm:w-auto items-center gap-2">
       <button
         type="button"
-        className="sapa-button sapa-button-secondary"
+        className="sapa-button sapa-button-secondary w-full sm:w-auto"
         onClick={() => setKeadaan('menyiapkan')}
         disabled={rows.length === 0 || keadaan === 'menyiapkan'}
         aria-busy={keadaan === 'menyiapkan'}
