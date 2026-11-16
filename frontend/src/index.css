@@ -517,7 +517,7 @@ body { font-family: var(--font-sans); }
 .sapa-button-secondary, .sapa-button--secondary { background: var(--panel-bg); color: var(--text-main); }
 /* Tombol nonaktif harus terlihat nonaktif (design QA Kim 2026-11-16). Tombol yang sedang memproses
    (aria-busy) tetap berwarna supaya "Mengintegrasikan…" dan "Menyiapkan berkas…" terbaca sebagai berjalan. */
-.sapa-button:disabled:not([aria-busy="true"]) { background: var(--surface-subtle); border-color: var(--border-color); color: var(--text-muted); box-shadow: none; cursor: not-allowed; }
+.sapa-button:disabled:not([aria-busy="true"]) { background: var(--surface-subtle); border-color: var(--border-color); color: var(--text-muted); box-shadow: none; cursor: not-allowed; opacity: .6; }
 .sapa-panel, .glass-panel, .glass-card { border-radius: var(--radius-panel); box-shadow: none; background: var(--panel-bg); backdrop-filter: none; }
 .glass-card-hover:hover { transform: none; box-shadow: none; border-color: var(--panel-border); }
 .bpjs-gradient, .bpjs-gradient-light { background: var(--accent-soft); color: var(--accent-text); }
