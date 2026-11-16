@@ -42,7 +42,15 @@ export function FloatingSidebar(props: FloatingSidebarProps) {
       nav.dataset.luber = String(nav.scrollHeight > nav.clientHeight + 1);
       nav.dataset.diBawah = String(nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 1);
     };
-    const pengamat = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(tandai);
+    // Saat tinggi jendela berubah, jaga item aktif tetap terlihat (bukan saat pengguna menggulir).
+    const saatUkuranBerubah = () => {
+      tandai();
+      const aktif = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!aktif) return;
+      const n = nav.getBoundingClientRect(), a = aktif.getBoundingClientRect();
+      if (a.top < n.top - 1 || a.bottom > n.bottom + 1) aktif.scrollIntoView?.({ block: 'nearest' });
+    };
+    const pengamat = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(saatUkuranBerubah);
     pengamat?.observe(nav);
     nav.addEventListener('scroll', tandai, { passive: true });
     tandai();
@@ -84,7 +92,7 @@ export function FloatingSidebar(props: FloatingSidebarProps) {
       {props.mobile && <button type="button" className="sapa-sidebar-action" onClick={props.onSearch} aria-label="Cari menu" title="Cari menu"><ActionIcon name="search" /></button>}
       {props.mobile
         ? <button type="button" className="sapa-sidebar-action" onClick={props.onClose} aria-label="Tutup navigasi" title="Tutup navigasi"><ActionIcon name="close" /></button>
-        : <button type="button" className="sapa-sidebar-action" onClick={props.onTogglePin} aria-label="Sematkan navigasi" title={props.pinned ? 'Lepas sematan navigasi' : 'Sematkan navigasi'} aria-pressed={props.pinned}><ActionIcon name="pin" /><span className="sapa-sidebar-reveal sapa-sidebar-action-label" aria-hidden="true">{props.pinned ? 'Lepas sematan' : 'Sematkan navigasi'}</span></button>}
+        : <button type="button" className="sapa-sidebar-action" onClick={props.onTogglePin} aria-label="Sematkan navigasi" title="Sematkan navigasi" aria-pressed={props.pinned}><ActionIcon name="pin" /><span className="sapa-sidebar-reveal sapa-sidebar-action-label" aria-hidden="true">Sematkan navigasi</span></button>}
       <button type="button" className="sapa-sidebar-action sapa-sidebar-logout" onClick={props.onLogout} aria-label="Keluar" title="Keluar"><ActionIcon name="logout" />{!props.mobile && <span className="sapa-sidebar-reveal sapa-sidebar-action-label" aria-hidden="true">Keluar</span>}</button>
     </div>
   </aside>;
