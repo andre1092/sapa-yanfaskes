@@ -278,11 +278,29 @@ def _aman_nama(teks: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", ascii_).strip("_")
 
 
-def nama_berkas(bulan: str, rs: Optional[str]) -> str:
+def rentang(bulan_ada: Iterable[str]) -> Tuple[str, str]:
+    """("April–Oktober 2026", "April-Oktober_2026") untuk judul dan nama berkas; lintas tahun ditulis lengkap."""
+    ada = sorted(set(bulan_ada))
+    if not ada:
+        return "", ""
+    awal, akhir = label_bulan(ada[0]).split(), label_bulan(ada[-1]).split()
+    if awal == akhir:
+        return " ".join(awal), "_".join(awal)
+    if awal[1] == akhir[1]:
+        return f"{awal[0]}–{akhir[0]} {akhir[1]}", f"{awal[0]}-{akhir[0]}_{akhir[1]}"
+    return f"{' '.join(awal)}–{' '.join(akhir)}", f"{'_'.join(awal)}-{'_'.join(akhir)}"
+
+
+def nama_berkas(bulan: str, rs: Optional[str], bulan_ada: Iterable[str] = ()) -> str:
     bagian = ["Detail_Jadwal_Dokter_FKRTL"]
     if rs:
         bagian.append(_aman_nama(rs))
-    bagian.append(_aman_nama(label_bulan(bulan)))
+    if bulan == SEMUA:
+        # Nama berkas memuat rentang supaya unduhan bulan lain tidak bentrok (masukan Kim).
+        _, teks = rentang(bulan_ada)
+        bagian.append(re.sub(r"[^A-Za-z0-9_-]+", "", teks) or "Semua_Bulan")
+    else:
+        bagian.append(_aman_nama(label_bulan(bulan)))
     return "_".join(b for b in bagian if b) + ".xlsx"
 
 
@@ -314,10 +332,8 @@ def buat_xlsx(baris: List[Dict[str, str]], bulan: str, rs: Optional[str], diinte
 
     subjek = f"Detail Kesesuaian Jadwal Praktik Dokter FKRTL {rs}" if rs else "Detail Kesesuaian Jadwal Praktik Dokter FKRTL"
     if bulan == SEMUA:
-        ada = sorted({r["Periode Data"][:7] for r in baris})
-        awal, akhir = (label_bulan(ada[0]), label_bulan(ada[-1])) if ada else ("", "")
-        rentang = awal if awal == akhir else (f"{awal.split()[0]}–{akhir}" if awal[-4:] == akhir[-4:] else f"{awal}–{akhir}")
-        periode = f"semua bulan ({rentang})" if rentang else "semua bulan"
+        teks, _ = rentang(r["Periode Data"][:7] for r in baris)
+        periode = f"semua bulan ({teks})" if teks else "semua bulan"
     else:
         periode = label_bulan(bulan)
     lembar.write_string(0, 0, f"{subjek}, {periode}", tebal)

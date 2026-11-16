@@ -277,8 +277,10 @@ def test_all_months_filter_keeps_every_month_and_hospital_limit():
 
 
 def test_all_months_file_name_and_title():
-    assert ssbi.nama_berkas("semua", None) == "Detail_Jadwal_Dokter_FKRTL_Semua_Bulan.xlsx"
-    assert ssbi.nama_berkas("semua", "RSD dr Soebandi") == "Detail_Jadwal_Dokter_FKRTL_RSD_dr_Soebandi_Semua_Bulan.xlsx"
+    assert ssbi.nama_berkas("semua", None, ["2026-04", "2026-10"]) == "Detail_Jadwal_Dokter_FKRTL_April-Oktober_2026.xlsx"
+    assert ssbi.nama_berkas("semua", "RSD dr Soebandi", ["2026-12", "2027-01"]) == \
+        "Detail_Jadwal_Dokter_FKRTL_RSD_dr_Soebandi_Desember_2026-Januari_2027.xlsx"
+    assert ssbi.nama_berkas("semua", None, ["2026-10"]) == "Detail_Jadwal_Dokter_FKRTL_Oktober_2026.xlsx"
     ws = _sheet(ssbi.buat_xlsx(periksa().baris, "semua", None, "x"))
     assert ws["A1"].value == "Detail Kesesuaian Jadwal Praktik Dokter FKRTL, semua bulan (April–Mei 2026)"
     assert ws.max_row == 4 + 4

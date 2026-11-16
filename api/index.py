@@ -3699,10 +3699,10 @@ def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_
         label = "-"
     isi = ssbi_jadwal_service.buat_xlsx(pilihan, bulan, cakupan["rs"], label)
     if len(isi) > _SSBI_BATAS_RESPON:
-        pesan = ("Data semua bulan terlalu besar untuk satu berkas. Pilih satu bulan lalu unduh per bulan."
+        pesan = ("Data semua bulan terlalu besar untuk satu berkas. Pilih satu bulan di filter Bulan, lalu unduh lagi."
                  if bulan == ssbi_jadwal_service.SEMUA else "Berkas detail terlalu besar untuk diunduh. Hubungi tim teknis SAPA.")
         raise HTTPException(status_code=413, detail=pesan, headers=_NO_STORE)
-    nama = ssbi_jadwal_service.nama_berkas(bulan, cakupan["rs"])
+    nama = ssbi_jadwal_service.nama_berkas(bulan, cakupan["rs"], (r["Periode Data"][:7] for r in pilihan))
     return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
 

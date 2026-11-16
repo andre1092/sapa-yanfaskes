@@ -233,8 +233,8 @@ export function DataIntegrationView() {
               </ul>
               {pilihan.takTerpetakan.length > 0 && (
                 <p className="mt-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
-                  <strong>{angka(pilihan.takTerpetakan.length)} RS belum ada di tabel padanan:</strong> {pilihan.takTerpetakan.join('; ')}.
-                  {' '}Data RS ini tetap tersimpan dan bisa diunduh Admin, tetapi Petugas RS-nya belum bisa mengunduh detail. Kabari tim teknis SAPA.
+                  <strong>{angka(pilihan.takTerpetakan.length)} RS belum dikenali SAPA:</strong> {pilihan.takTerpetakan.join('; ')}.
+                  {' '}Datanya tetap tersimpan dan bisa diunduh Admin, tetapi Petugas RS tersebut belum bisa mengunduh detailnya. Kabari tim teknis SAPA.
                 </p>
               )}
             </div>
