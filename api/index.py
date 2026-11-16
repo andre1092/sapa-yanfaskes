@@ -3586,8 +3586,10 @@ def _ssbi_nama_admin(claims) -> str:
         client = pengguna_service.get_client()
         if client is not None:
             user = client.request("GET", f"/api/v2/users/{quote(str(claims.get('sub', '')), safe='')}")
-            nama = re.sub(r"[^\w .,'()-]", "", str(user.get("name") or ""))[:60].strip()
-            if nama and "@" not in nama:
+            mentah = str(user.get("name") or "")
+            # Nama Auth0 bisa berisi email; jangan pernah disimpan ke Drive atau ditampilkan.
+            nama = re.sub(r"[^\w .,'()-]", "", mentah)[:60].strip() if "@" not in mentah else ""
+            if nama:
                 return nama
     except Exception as exc:
         logger.warning("Nama admin tidak terbaca: %s", type(exc).__name__)
@@ -3626,7 +3628,13 @@ async def ssbi_periksa(request: Request, user=Depends(require_admin)):
         aktif = await run_in_threadpool(_ssbi_info_aktif)
     except Exception:
         aktif = None
-    return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "aktif": aktif})
+    try:
+        tak_terpetakan = _ssbi_peta().tak_terpetakan(hasil.baris)
+    except Exception as exc:
+        logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
+        tak_terpetakan = None
+    return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "aktif": aktif,
+                                                    "faskes_tak_terpetakan": tak_terpetakan})
 
 
 @app.post("/api/v1/ssbi-jadwal/integrasikan")

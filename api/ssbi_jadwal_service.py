@@ -46,8 +46,8 @@ _RE_BULAN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
 _RE_ANGKA = re.compile(r"[+-]?\d+(\.\d+)?")
 _AWALAN_FORMULA = ("=", "+", "-", "@", "\t", "\r", "＝", "＋", "－", "＠")
 
-PESAN_BUKAN_KOMA = ("Berkas ini bukan CSV berpemisah koma. Biasanya ini terjadi bila berkas dibuka lalu disimpan "
-                    "ulang di Excel. Unduh ulang lewat tautan FKRTL.csv, lalu unggah tanpa dibuka.")
+PESAN_BUKAN_KOMA = ("Berkas ini bukan CSV berpemisah koma atau tab. Biasanya ini terjadi bila berkas dibuka lalu "
+                    "disimpan ulang di Excel. Unduh ulang dari SSBI, lalu unggah tanpa dibuka.")
 PADANAN_BAWAAN = Path(__file__).resolve().parent / "data" / "padanan_faskes_ssbi.csv"
 
 
@@ -149,15 +149,15 @@ def _baku(nomor: int, sel: Dict[str, str]) -> Dict[str, str]:
 
 
 def _teks(raw: bytes) -> str:
-    if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
-        raise BerkasDitolak(PESAN_BUKAN_KOMA)
-    if b"\x00" in raw:
-        raise BerkasDitolak("Berkas memuat karakter yang tidak sah. Unduh ulang lewat tautan FKRTL.csv.")
+    """UTF-8 (unduhan FKRTL.csv) atau UTF-16 ber-BOM (unduhan Tableau "Download Data")."""
+    utf16 = raw[:2] in (b"\xff\xfe", b"\xfe\xff")
     try:
-        teks = raw.decode("utf-8")
+        teks = raw.decode("utf-16" if utf16 else "utf-8")
     except UnicodeDecodeError:
-        raise BerkasDitolak("Berkas harus CSV UTF-8. Unduh ulang lewat tautan FKRTL.csv, lalu unggah tanpa dibuka.") from None
-    return teks[1:] if teks.startswith("﻿") else teks
+        raise BerkasDitolak("Berkas harus CSV UTF-8 atau UTF-16. Unduh ulang dari SSBI, lalu unggah tanpa dibuka.") from None
+    if "\x00" in teks:
+        raise BerkasDitolak("Berkas memuat karakter yang tidak sah. Unduh ulang dari SSBI.")
+    return teks[1:] if teks.startswith("\ufeff") else teks
 
 
 def periksa_csv(raw: bytes) -> HasilPeriksa:
@@ -165,9 +165,11 @@ def periksa_csv(raw: bytes) -> HasilPeriksa:
         raise BerkasDitolak(f"Ukuran berkas melebihi batas {BATAS_MENTAH // (1024 * 1024)} MB.")
     teks = _teks(raw)
     baris_pertama = teks.split("\n", 1)[0]
-    if "," not in baris_pertama and ("\t" in baris_pertama or ";" in baris_pertama):
+    # Header periode berisi koma, jadi tab di baris judul berarti berkas berpemisah tab.
+    pemisah = "\t" if "\t" in baris_pertama else ","
+    if pemisah == "," and ";" in baris_pertama and "," not in baris_pertama.replace(PERIODE_PANJANG, ""):
         raise BerkasDitolak(PESAN_BUKAN_KOMA)
-    pembaca = csv.reader(io.StringIO(teks, newline=""), strict=True)
+    pembaca = csv.reader(io.StringIO(teks, newline=""), delimiter=pemisah, strict=True)
     try:
         header = next(pembaca, None)
         if not header:
@@ -344,6 +346,16 @@ class Padanan:
     def dari_berkas(cls, path: Path = PADANAN_BAWAAN) -> "Padanan":
         with open(path, encoding="utf-8", newline="") as f:
             return cls([(r["nama_faskes_ssbi"], r["kode_ppk"].strip()) for r in csv.DictReader(f)])
+
+    def tak_terpetakan(self, baris: Iterable[Dict[str, str]]) -> List[str]:
+        """Nama Faskes di data yang belum ada di tabel padanan (Petugas RS-nya belum bisa mengunduh)."""
+        dikenal = {nama for _, nama_set in self.kode.values() for nama in nama_set}
+        hasil: Dict[str, str] = {}
+        for r in baris:
+            kunci = norm(r["Nama Faskes"])
+            if kunci not in dikenal:
+                hasil.setdefault(kunci, r["Nama Faskes"])
+        return sorted(hasil.values(), key=str.casefold)
 
     def untuk_kode(self, kode: str) -> Optional[Tuple[str, Set[str]]]:
         """(nama tampil, himpunan nama baku) untuk kode PPK, atau None (gagal tertutup)."""

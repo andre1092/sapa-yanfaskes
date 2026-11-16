@@ -13,7 +13,7 @@ const KOLOM = ['Kabupaten', 'Nama Faskes', 'Tipe Faskes', 'Nama Poli', 'Nama Dok
   'Jam Tutup HFIS', 'Day, Month, Year of Periode Data', 'Hari HFIS', 'Status'];
 
 type Tahap = 'kosong' | 'memeriksa' | 'cocok' | 'galat' | 'mengirim' | 'menyimpan' | 'berhasil' | 'gagal' | 'sibuk';
-type Pilihan = { nama: string; ukuran: number; gz: Blob; ringkasan: Ringkasan };
+type Pilihan = { nama: string; ukuran: number; gz: Blob; ringkasan: Ringkasan; takTerpetakan: string[] };
 
 const pesanGalat = (error: unknown, cadangan: string) => {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
@@ -100,7 +100,7 @@ export function DataIntegrationView() {
       const besar = cekHasilKompres(gz.size);
       if (besar) { setGalat(besar); setTahap('galat'); return; }
       const res = await kirim('/api/v1/ssbi-jadwal/periksa', { nama: berkas.name, gz });
-      setPilihan({ nama: berkas.name, ukuran: berkas.size, gz, ringkasan: res.data.ringkasan });
+      setPilihan({ nama: berkas.name, ukuran: berkas.size, gz, ringkasan: res.data.ringkasan, takTerpetakan: res.data.faskes_tak_terpetakan ?? [] });
       setTahap('cocok');
     } catch (error) {
       setGalat(statusHttp(error) === undefined && error instanceof Error && error.message.startsWith('Browser')
@@ -196,7 +196,7 @@ export function DataIntegrationView() {
               onChange={(e: ChangeEvent<HTMLInputElement>) => pilih(e.target.files?.[0])}
             />
           </label>
-          <span className="text-xs text-[var(--text-muted)]">Berkas CSV hasil unduhan FKRTL.csv dari SSBI. Paling besar {BATAS_MENTAH_MB} MB.</span>
+          <span className="text-xs text-[var(--text-muted)]">Berkas CSV dari SSBI (tautan FKRTL.csv atau menu Download Data). Paling besar {BATAS_MENTAH_MB} MB.</span>
         </div>
 
         <details className="mt-3 text-sm">
@@ -231,6 +231,12 @@ export function DataIntegrationView() {
                 <Centang selesai>{angka(r.faskes)} faskes</Centang>
                 <Centang selesai>Per kabupaten: {Object.entries(r.kabupaten).map(([k, n]) => `${k.replace(/^KAB\.\s*/i, '')} ${angka(n)}`).join(', ')}</Centang>
               </ul>
+              {pilihan.takTerpetakan.length > 0 && (
+                <p className="mt-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
+                  <strong>{angka(pilihan.takTerpetakan.length)} RS belum ada di tabel padanan:</strong> {pilihan.takTerpetakan.join('; ')}.
+                  {' '}Data RS ini tetap tersimpan dan bisa diunduh Admin, tetapi Petugas RS-nya belum bisa mengunduh detail. Kabari tim teknis SAPA.
+                </p>
+              )}
             </div>
           )}
           {aktif && r && bisaIntegrasi && (
