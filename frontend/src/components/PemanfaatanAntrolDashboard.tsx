@@ -179,7 +179,7 @@ export const PemanfaatanAntrolDashboard: React.FC = () => {
           <p className="sapa-eyebrow">Antrean online FKRTL</p>
           <Typography component="h1" variant="h3" id="antrol-unavailable-title" className="sapa-title mt-2">Data belum tersedia</Typography>
           <p className="mt-2 text-sm text-[var(--text-muted)]">Sumber data tidak dapat dihubungi. Capaian terkini belum dapat ditampilkan.</p>
-          <AnimatedButton onClick={() => refetch()} disabled={isLoading} className="sapa-button sapa-button-primary mt-4">{isLoading ? 'Memuat...' : 'Coba lagi'}</AnimatedButton>
+          <AnimatedButton onClick={() => refetch()} disabled={isLoading} aria-busy={isLoading} className="sapa-button sapa-button-primary mt-4">{isLoading ? 'Memuat...' : 'Coba lagi'}</AnimatedButton>
         </MainCard>
       </section>
     );
