@@ -553,6 +553,8 @@ body { font-family: var(--font-sans); }
   .berry-canvas .MuiInputBase-root { min-height: var(--sasaran-sentuh); }
   .berry-canvas :is(button, [role="button"], a[href]) { min-width: var(--sasaran-sentuh); }
   .berry-canvas a[href] { display: inline-flex; align-items: center; }
+  /* Tautan di dalam kalimat dikecualikan dari ukuran target (WCAG 2.5.8) supaya baris teks rata. */
+  .berry-canvas a[href].tautan-kalimat { display: inline; min-height: 0; min-width: 0; }
 }
 
 /* Hukum Fitts (prinsip video "20 Principles of UX & Animation", PR 2 dari 4): di desktop dengan
