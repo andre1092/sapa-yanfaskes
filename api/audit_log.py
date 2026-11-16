@@ -1,7 +1,7 @@
 """Riwayat aktivitas (audit log) di Postgres Neon, hanya bisa ditambah.
 
 Yang dicatat: akses ditolak (401/403) dan tindakan admin (sinkronisasi, muat ulang,
-ekspor, email verifikasi, membuka log). Tidak mencatat email, token, atau isi data.
+ekspor, unggah dan unduh data SSBI, email verifikasi, membuka log). Tidak mencatat email, token, atau isi data.
 Kegagalan menulis log tidak pernah menggagalkan permintaan pengguna.
 """
 import logging
@@ -38,7 +38,7 @@ CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON audit_log
     FOR EACH STATEMENT EXECUTE FUNCTION audit_log_append_only();
 """
 
-_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-antrol-sync|fktp-antrol-sync|fkrtl-kepatuhan-sync|fkrtl-export|auth/send-verification-email|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
+_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-export|ssbi-jadwal/(periksa|integrasikan|detail)|auth/send-verification-email|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
 _schema_ready = False
 
 
@@ -61,13 +61,14 @@ def mask_ip(forwarded: Optional[str], fallback: Optional[str]) -> str:
     return ""
 
 
-def build_entry(method: str, path: str, status: int, claims: Optional[dict], role: str, forwarded: Optional[str], client_ip: Optional[str]) -> dict:
+def build_entry(method: str, path: str, status: int, claims: Optional[dict], role: str, forwarded: Optional[str], client_ip: Optional[str],
+                detail: str = "") -> dict:
     sub = claims.get("sub", "") if isinstance(claims, dict) else ""
     return {
         "actor": str(sub)[:200],
         "role": role,
         "action": f"{method} {path}"[:300],
-        "target": path[:300],
+        "target": (f"{path} {detail}" if detail else path)[:300],
         "status": int(status),
         "ip": mask_ip(forwarded, client_ip),
     }
