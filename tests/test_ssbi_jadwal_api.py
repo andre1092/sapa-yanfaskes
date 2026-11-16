@@ -300,7 +300,7 @@ def test_admin_can_download_all_months(env):
     integrasikan(call)
     res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua")
     assert res.status_code == 200
-    assert res.headers["content-disposition"] == 'attachment; filename="Detail_Jadwal_Dokter_FKRTL_Semua_Bulan.xlsx"'
+    assert res.headers["content-disposition"] == 'attachment; filename="Detail_Jadwal_Dokter_FKRTL_April-Mei_2026.xlsx"'
     assert len(_rows(res)) == 4
     assert written[-1]["target"].endswith("bulan=semua baris=4")
 
@@ -310,7 +310,7 @@ def test_petugas_all_months_has_only_own_hospital(env):
     integrasikan(call)
     res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua", roles=["Petugas RS"], sub="auth0|petugas-melati")
     assert {row[1] for row in _rows(res)} == {"RSD Melati"}
-    assert "RSD_Melati_Semua_Bulan" in res.headers["content-disposition"]
+    assert 'filename="Detail_Jadwal_Dokter_FKRTL_RSD_Melati_April_2026.xlsx"' in res.headers["content-disposition"]
 
 
 @pytest.mark.parametrize("roles", [None, ["viewer"]])
@@ -325,4 +325,4 @@ def test_too_large_all_months_file_asks_for_a_single_month(env, monkeypatch):
     integrasikan(call)
     monkeypatch.setattr(api, "_SSBI_BATAS_RESPON", 10)
     res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua")
-    assert res.status_code == 413 and "per bulan" in res.json()["detail"]
+    assert res.status_code == 413 and "filter Bulan" in res.json()["detail"]

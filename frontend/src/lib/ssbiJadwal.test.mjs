@@ -70,3 +70,13 @@ test('parameter bulan untuk server', () => {
   assert.equal(s.parameterBulan('October 2026'), '2026-10');
   assert.equal(s.parameterBulan('Pilih'), null);
 });
+
+test('nama berkas cadangan memuat rentang bulan', () => {
+  assert.equal(s.namaBerkasCadangan('semua', ['2026-04', '2026-10']), 'Detail_Jadwal_Dokter_FKRTL_April-Oktober_2026.xlsx');
+  assert.equal(s.namaBerkasCadangan('semua', ['2026-12', '2027-01']), 'Detail_Jadwal_Dokter_FKRTL_Desember_2026-Januari_2027.xlsx');
+  assert.equal(s.namaBerkasCadangan('2026-05', []), 'Detail_Jadwal_Dokter_FKRTL_Mei_2026.xlsx');
+});
+
+test('admin tanpa detail mendapat teks lengkap', () => {
+  assert.equal(s.keadaanUnduh('Semua Bulan', { ...INFO, bulan: [] }).teks, 'Belum ada detail di data SSBI yang terpasang.');
+});

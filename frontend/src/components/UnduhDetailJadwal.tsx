@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { bolehMelakukan } from '../lib/izinPeran';
-import { keadaanUnduh, labelBulan, namaDariHeader, parameterBulan } from '../lib/ssbiJadwal';
+import { keadaanUnduh, labelBulan, namaBerkasCadangan, namaDariHeader, parameterBulan } from '../lib/ssbiJadwal';
 import type { InfoBulan } from '../lib/ssbiJadwal';
 import { useAuthStore } from '../store/authStore';
 
@@ -35,7 +35,7 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
     setKeadaan('menyiapkan');
     try {
       const res = await apiClient.get<Blob>('/api/v1/ssbi-jadwal/detail', { params: { bulan: kode }, responseType: 'blob', timeout: 60000 });
-      const nama = namaDariHeader(res.headers['content-disposition'], `Detail_Jadwal_Dokter_FKRTL_${kode === 'semua' ? 'Semua_Bulan' : labelBulan(kode).replace(' ', '_')}.xlsx`);
+      const nama = namaDariHeader(res.headers['content-disposition'], namaBerkasCadangan(kode, info.data?.bulan ?? []));
       const url = URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
@@ -69,7 +69,7 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
         <span role="alert" className="text-xs text-[var(--danger)]">Berkas gagal disiapkan. Coba lagi.</span>
       )}
       {keadaan === 'terlalu-besar' && (
-        <span role="alert" className="text-xs text-[var(--danger)]">Data semua bulan terlalu besar untuk satu berkas. Pilih satu bulan lalu unduh per bulan.</span>
+        <span role="alert" className="text-xs text-[var(--danger)]">Data semua bulan terlalu besar untuk satu berkas. Pilih satu bulan di filter Bulan, lalu unduh lagi.</span>
       )}
       {keadaan === 'diganti' && (
         <span role="alert" className="text-xs text-[var(--danger)]">Data SSBI sedang diperbarui admin. Coba beberapa menit lagi.</span>

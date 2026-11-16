@@ -112,7 +112,7 @@ export function keadaanUnduh(bulanDipilih: string, info: InfoBulan | undefined):
   const per = tanggalData(info.data_per);
   const siapa = info.rs ? `Detail per dokter ${info.rs}` : 'Detail per dokter';
   if (kode === 'semua') {
-    if (info.bulan.length === 0) return { aktif: false, teks: info.rs ? `Belum ada detail ${info.rs}.` : 'Belum ada detail.' };
+    if (info.bulan.length === 0) return { aktif: false, teks: info.rs ? `Belum ada detail ${info.rs}.` : 'Belum ada detail di data SSBI yang terpasang.' };
     return { aktif: true, teks: `${siapa}, semua bulan (${rentangBulan(info.bulan)})${per ? ` · data SSBI per ${per}` : ''}` };
   }
   const label = labelBulan(kode);
@@ -124,8 +124,21 @@ export function keadaanUnduh(bulanDipilih: string, info: InfoBulan | undefined):
   return { aktif: true, teks: `${siapa}, ${label}${per ? ` · data SSBI per ${per}` : ''}` };
 }
 
+/** Nama berkas bila header server tidak terbaca; semua bulan memakai rentang supaya tidak bentrok. */
+export function namaBerkasCadangan(kode: string, bulanAda: readonly string[]): string {
+  const urut = [...bulanAda].sort();
+  let akhiran: string;
+  if (kode !== 'semua') akhiran = labelBulan(kode).replace(' ', '_');
+  else if (urut.length === 0) akhiran = 'Semua_Bulan';
+  else {
+    const [a, b] = [labelBulan(urut[0]).split(' '), labelBulan(urut[urut.length - 1]).split(' ')];
+    akhiran = a.join(' ') === b.join(' ') ? a.join('_') : a[1] === b[1] ? `${a[0]}-${b[0]}_${b[1]}` : `${a.join('_')}-${b.join('_')}`;
+  }
+  return `Detail_Jadwal_Dokter_FKRTL_${akhiran}.xlsx`;
+}
+
 /** Nama berkas dari header Content-Disposition server (hanya huruf, angka, _ dan .xlsx). */
 export function namaDariHeader(header: string | undefined, cadangan: string): string {
-  const m = /filename="([A-Za-z0-9_]+\.xlsx)"/.exec(header ?? '');
+  const m = /filename="([A-Za-z0-9_-]+\.xlsx)"/.exec(header ?? '');
   return m ? m[1] : cadangan;
 }
