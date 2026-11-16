@@ -246,14 +246,20 @@ def norm(nama: str) -> str:
     return " ".join((nama or "").split()).casefold()
 
 
+SEMUA = "semua"  # parameter unduh semua bulan (keputusan CEO 2026-11-16)
+
+
 def cek_bulan(bulan: str) -> str:
+    if bulan == SEMUA:
+        return bulan
     if not isinstance(bulan, str) or not _RE_BULAN.fullmatch(bulan):
-        raise ValueError("bulan harus YYYY-MM")
+        raise ValueError("bulan harus YYYY-MM atau semua")
     return bulan
 
 
 def saring(baris: Iterable[Dict[str, str]], bulan: str, faskes: Optional[Set[str]]) -> List[Dict[str, str]]:
-    return [r for r in baris if r["Periode Data"][:7] == bulan and (faskes is None or norm(r["Nama Faskes"]) in faskes)]
+    return [r for r in baris if (bulan == SEMUA or r["Periode Data"][:7] == bulan)
+            and (faskes is None or norm(r["Nama Faskes"]) in faskes)]
 
 
 def bulan_tersedia(baris: Iterable[Dict[str, str]], faskes: Optional[Set[str]]) -> List[str]:
@@ -261,6 +267,8 @@ def bulan_tersedia(baris: Iterable[Dict[str, str]], faskes: Optional[Set[str]]) 
 
 
 def label_bulan(bulan: str) -> str:
+    if bulan == SEMUA:
+        return "Semua Bulan"
     tahun, nomor = bulan.split("-")
     return f"{BULAN_ID[int(nomor) - 1]} {tahun}"
 
@@ -305,7 +313,14 @@ def buat_xlsx(baris: List[Dict[str, str]], bulan: str, rs: Optional[str], diinte
     merah = buku.add_format({"bg_color": "#FBE1E1"})
 
     subjek = f"Detail Kesesuaian Jadwal Praktik Dokter FKRTL {rs}" if rs else "Detail Kesesuaian Jadwal Praktik Dokter FKRTL"
-    lembar.write_string(0, 0, f"{subjek}, {label_bulan(bulan)}", tebal)
+    if bulan == SEMUA:
+        ada = sorted({r["Periode Data"][:7] for r in baris})
+        awal, akhir = (label_bulan(ada[0]), label_bulan(ada[-1])) if ada else ("", "")
+        rentang = awal if awal == akhir else (f"{awal.split()[0]}–{akhir}" if awal[-4:] == akhir[-4:] else f"{awal}–{akhir}")
+        periode = f"semua bulan ({rentang})" if rentang else "semua bulan"
+    else:
+        periode = label_bulan(bulan)
+    lembar.write_string(0, 0, f"{subjek}, {periode}", tebal)
     lembar.write_string(1, 0, f"Sumber: SSBI BPJS Kesehatan, diintegrasikan {diintegrasikan}")
     for c, nama in enumerate(KOLOM_KELUAR):
         lembar.write_string(3, c, nama, judul_kolom)

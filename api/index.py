@@ -3683,7 +3683,7 @@ def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_
     try:
         bulan = ssbi_jadwal_service.cek_bulan(bulan)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Pilih satu bulan untuk mengunduh detail.", headers=_NO_STORE)
+        raise HTTPException(status_code=400, detail="Pilihan bulan tidak dikenali. Pilih satu bulan atau semua bulan.", headers=_NO_STORE)
     info, baris = _ssbi_drive(_ssbi_baris_aktif)
     if info is None:
         raise HTTPException(status_code=404, detail="Detail belum tersedia. Admin perlu mengunggah data SSBI di menu Integrasi data.", headers=_NO_STORE)
@@ -3699,7 +3699,9 @@ def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_
         label = "-"
     isi = ssbi_jadwal_service.buat_xlsx(pilihan, bulan, cakupan["rs"], label)
     if len(isi) > _SSBI_BATAS_RESPON:
-        raise HTTPException(status_code=413, detail="Berkas detail terlalu besar untuk diunduh. Hubungi tim teknis SAPA.", headers=_NO_STORE)
+        pesan = ("Data semua bulan terlalu besar untuk satu berkas. Pilih satu bulan lalu unduh per bulan."
+                 if bulan == ssbi_jadwal_service.SEMUA else "Berkas detail terlalu besar untuk diunduh. Hubungi tim teknis SAPA.")
+        raise HTTPException(status_code=413, detail=pesan, headers=_NO_STORE)
     nama = ssbi_jadwal_service.nama_berkas(bulan, cakupan["rs"])
     return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})

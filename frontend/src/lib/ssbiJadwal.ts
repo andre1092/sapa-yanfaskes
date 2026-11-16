@@ -96,20 +96,31 @@ export function cekHasilKompres(ukuran: number): string | null {
 
 export type KeadaanUnduh = { aktif: boolean; teks: string };
 
+export const SEMUA_BULAN = 'Semua Bulan';
+
+/** Nilai filter bulan menjadi parameter server: "YYYY-MM", "semua", atau null bila tidak dikenali. */
+export function parameterBulan(bulanDipilih: string): string | null {
+  return bulanDipilih === SEMUA_BULAN ? 'semua' : kodeBulan(bulanDipilih);
+}
+
 /** Keadaan tombol Download Detail dan keterangan yang selalu terlihat di sampingnya. */
 export function keadaanUnduh(bulanDipilih: string, info: InfoBulan | undefined): KeadaanUnduh {
-  const kode = kodeBulan(bulanDipilih);
-  if (!kode) return { aktif: false, teks: 'Pilih satu bulan untuk mengunduh detail.' };
+  const kode = parameterBulan(bulanDipilih);
+  if (!kode) return { aktif: false, teks: 'Pilih bulan untuk mengunduh detail.' };
   if (!info) return { aktif: false, teks: 'Memeriksa ketersediaan detail…' };
   if (!info.ada_data) return { aktif: false, teks: 'Detail belum tersedia. Admin perlu mengunggah data SSBI di menu Integrasi data.' };
+  const per = tanggalData(info.data_per);
+  const siapa = info.rs ? `Detail per dokter ${info.rs}` : 'Detail per dokter';
+  if (kode === 'semua') {
+    if (info.bulan.length === 0) return { aktif: false, teks: info.rs ? `Belum ada detail ${info.rs}.` : 'Belum ada detail.' };
+    return { aktif: true, teks: `${siapa}, semua bulan (${rentangBulan(info.bulan)})${per ? ` · data SSBI per ${per}` : ''}` };
+  }
   const label = labelBulan(kode);
   if (!info.bulan.includes(kode)) {
     if (info.rs) return { aktif: false, teks: `Belum ada detail ${info.rs} untuk ${label}.` };
     const cakupan = rentangBulan(info.bulan);
     return { aktif: false, teks: `Belum ada detail untuk ${label}.${cakupan ? ` Data SSBI yang terpasang mencakup ${cakupan}.` : ''}` };
   }
-  const per = tanggalData(info.data_per);
-  const siapa = info.rs ? `Detail per dokter ${info.rs}` : 'Detail per dokter';
   return { aktif: true, teks: `${siapa}, ${label}${per ? ` · data SSBI per ${per}` : ''}` };
 }
 
