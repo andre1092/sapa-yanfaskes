@@ -2,6 +2,7 @@ import io
 import csv
 import time
 import logging
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 try:
@@ -67,7 +68,7 @@ def normalize_month(m_str: Optional[str]) -> str:
                 pass
     return cleaned
 
-def fetch_sheet_csv(spreadsheet_id: str, label: str) -> List[Dict[str, str]]:
+def fetch_sheet_csv(spreadsheet_id: str, label: str, gid=None) -> List[Dict[str, str]]:
     cache_key = f"svc_{spreadsheet_id}_{label}"
     now = time.time()
     if cache_key in _SERVICE_CACHE:
@@ -75,7 +76,7 @@ def fetch_sheet_csv(spreadsheet_id: str, label: str) -> List[Dict[str, str]]:
         if (now - cached_time) < _SERVICE_CACHE_TTL:
             return recs
 
-    content = read_sheet_csv(spreadsheet_id, None, label)
+    content = read_sheet_csv(spreadsheet_id, gid, label)
     if content:
         records = list(csv.DictReader(io.StringIO(content.decode("utf-8", errors="ignore"))))
         _SERVICE_CACHE[cache_key] = (now, records)
@@ -98,6 +99,43 @@ def clear_kepatuhan_cache(module: Optional[str] = None) -> Dict[str, Any]:
         _SERVICE_CACHE.pop(k, None)
     logger.info(f"Cache kepatuhan untuk modul '{module}' ({len(keys_to_del)} keys) berhasil dibersihkan.")
     return {"status": "success", "cleared_count": len(keys_to_del), "target": module}
+
+# Tab "last_update_bi" di spreadsheet nilai_kepatuhan_fkrtl: waktu Last Update tiap
+# indikator seperti tertulis di dashboard BI BPJS. Diisi Agen Kris setiap update kepatuhan.
+LAST_UPDATE_BI_GID = 288075315
+LAST_UPDATE_TABS = [
+    "01-nakes", "02-pengaduan", "03-umabl", "04-display-tt",
+    "05-tmo", "06-antrean-wtl", "07-surkon", "08-rme",
+]
+
+
+def _parse_waktu_bi(teks: str) -> Optional[datetime]:
+    teks = str(teks or "").replace("\xa0", " ").strip()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M:%S", "%m/%d/%Y %I:%M:%S %p"):
+        try:
+            return datetime.strptime(teks.split(".")[0] if fmt.startswith("%Y") else teks, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def get_last_update_bi() -> Dict[str, Any]:
+    """Last Update BI per tab, ditulis DD/MM/YYYY HH:MM:SS.
+
+    Ringkasan (00) tidak punya Last Update di BI; isinya waktu terbaru dari indikator 01-08.
+    """
+    raw = fetch_sheet_csv(RINGKASAN_KEPATUHAN_SPREADSHEET_ID, "LAST_UPDATE_BI", LAST_UPDATE_BI_GID)
+    waktu: Dict[str, datetime] = {}
+    for r in raw:
+        tab = str(r.get("indikator", "")).strip()
+        dt = _parse_waktu_bi(r.get("last_update_bi", ""))
+        if tab in LAST_UPDATE_TABS and dt:
+            waktu[tab] = dt
+    tabs = {tab: dt.strftime("%d/%m/%Y %H:%M:%S") for tab, dt in waktu.items()}
+    if waktu:
+        tabs["00-ringkasan"] = max(waktu.values()).strftime("%d/%m/%Y %H:%M:%S")
+    return {"status": "success", "sumber": "BI BPJS Kesehatan", "tabs": tabs}
+
 
 def get_ref_lookup() -> Dict[str, Dict[str, str]]:
     raw = fetch_sheet_csv(REF_FASKES_SPREADSHEET_ID, "REF_FASKES")

@@ -1,7 +1,7 @@
 import MainCard from '../berry/MainCard';
 import '../berry/berry-dashboards.css';
 import { Box, Chip, Stack, Tab, Tabs, Typography } from '@mui/material';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { RingkasanComplianceTab } from './RingkasanComplianceTab';
 import { AMBANG_PATUH_NILAI_AKHIR } from '../lib/kepatuhanJpeg';
 import { NakesComplianceTab } from './NakesComplianceTab';
@@ -12,7 +12,7 @@ import { TmoComplianceTab } from './TmoComplianceTab';
 import { AntreanWtlComplianceTab } from './AntreanWtlComplianceTab';
 import { SurkonComplianceTab } from './SurkonComplianceTab';
 import { RmeComplianceTab } from './RmeComplianceTab';
-import { useSyncStore } from '../store/syncStore';
+import { apiClient } from '../lib/apiClient';
 
 export type ComplianceTabId =
   | '00-ringkasan'
@@ -144,24 +144,25 @@ export const LaporanKepatuhanDashboard: React.FC = () => {
     return COMPLIANCE_TABS.find((t) => t.id === activeTabId) || COMPLIANCE_TABS[0];
   }, [activeTabId]);
 
-  const { lastUpdateNakes, lastUpdatePengaduan, lastUpdateUmabl, lastUpdateDisplayTt, lastUpdateAll } = useSyncStore();
+  // Waktu "Last Update" tiap indikator seperti di dashboard BI BPJS (tab last_update_bi).
+  const [lastUpdateBi, setLastUpdateBi] = useState<Partial<Record<ComplianceTabId, string>>>({});
+  useEffect(() => {
+    let aktif = true;
+    apiClient
+      .get<{ status: string; tabs: Partial<Record<ComplianceTabId, string>> }>('/api/v1/fkrtl-kepatuhan/last-update')
+      .then((res) => { if (aktif && res?.data?.tabs) setLastUpdateBi(res.data.tabs); })
+      .catch(() => { /* label tetap "Belum tersedia" */ });
+    return () => { aktif = false; };
+  }, []);
 
-  const activeLiveSync = useMemo(() => {
-    switch (activeTabId) {
-      case '01-nakes': return lastUpdateNakes || lastUpdateAll;
-      case '02-pengaduan': return lastUpdatePengaduan || lastUpdateAll;
-      case '03-umabl': return lastUpdateUmabl || lastUpdateAll;
-      case '04-display-tt': return lastUpdateDisplayTt || lastUpdateAll;
-      default: return lastUpdateAll;
-    }
-  }, [activeTabId, lastUpdateNakes, lastUpdatePengaduan, lastUpdateUmabl, lastUpdateDisplayTt, lastUpdateAll]);
+  const activeLiveSync = lastUpdateBi[activeTabId] || '';
 
 
   return (
     <div className="berry-dashboard sapa-page min-w-0 w-full p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
       <Stack className="berry-dashboard-heading" direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" gap={2}>
         <Box><Typography variant="h3" component="h1">Kepatuhan FKRTL</Typography><Typography color="text.secondary" variant="body2" sx={{ mt: 0.5 }}>Pemantauan 8 indikator kepatuhan fasilitas kesehatan rujukan.</Typography></Box>
-        <Box><Typography variant="caption" color="text.secondary">Pembaruan terakhir</Typography><Typography variant="body2" fontWeight={500}>{activeLiveSync || 'Belum tersedia'}</Typography></Box>
+        <Box><Typography variant="caption" color="text.secondary">Pembaruan terakhir (BI)</Typography><Typography variant="body2" fontWeight={500}>{activeLiveSync || 'Belum tersedia'}</Typography></Box>
       </Stack>
       <MainCard content={false} className="berry-dashboard-card berry-compliance-navigation">
         <Tabs value={activeTabId} onChange={(_, value: ComplianceTabId) => setActiveTabId(value)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile aria-label="Indikator kepatuhan FKRTL">
