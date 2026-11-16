@@ -13,6 +13,9 @@ interface Jawaban { entries: Entri[]; next_before_id: number | null }
 const waktu = (iso: string) => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'medium' });
 
 // Riwayat aktivitas dari server; hanya Super Admin yang dapat membukanya (diperiksa juga di server).
+// Kolom target menyimpan "<path> <rincian>" (mis. baris=…, bulan=…, sha256=…); tampilkan rinciannya saja.
+const rincian = (target: string) => (target.includes(' ') ? target.slice(target.indexOf(' ') + 1) : '-');
+
 export function AuditLogView() {
   const [aksi, setAksi] = useState('');
   const [pelaku, setPelaku] = useState('');
@@ -47,13 +50,13 @@ export function AuditLogView() {
             <Table size="small" aria-label="Log aktivitas">
               <TableHead><TableRow>
                 <TableCell>Waktu</TableCell><TableCell>Pelaku</TableCell><TableCell>Peran</TableCell>
-                <TableCell>Tindakan</TableCell><TableCell>Status</TableCell><TableCell>IP</TableCell>
+                <TableCell>Tindakan</TableCell><TableCell>Rincian</TableCell><TableCell>Status</TableCell><TableCell>IP</TableCell>
               </TableRow></TableHead>
               <TableBody>
                 {query.data.entries.map((e) => (
                   <TableRow key={e.id}>
                     <TableCell>{waktu(e.at)}</TableCell><TableCell>{e.actor || 'tanpa login'}</TableCell>
-                    <TableCell>{e.role || '-'}</TableCell><TableCell>{e.action}</TableCell>
+                    <TableCell>{e.role || '-'}</TableCell><TableCell>{e.action}</TableCell><TableCell sx={{ wordBreak: 'break-all' }}>{rincian(e.target)}</TableCell>
                     <TableCell>{e.status}</TableCell><TableCell>{e.ip || '-'}</TableCell>
                   </TableRow>
                 ))}

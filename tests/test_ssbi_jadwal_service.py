@@ -94,10 +94,36 @@ def test_missing_columns_are_named():
     assert "Hari HFIS" in str(err.value) and "Status" in str(err.value)
 
 
+def _tsv(rows=BARIS):
+    """Bentuk unduhan Tableau "Download Data": pemisah tab, header periode berkoma."""
+    import csv as _csv
+    out = io.StringIO()
+    w = _csv.writer(out, delimiter="\t", lineterminator="\r\n")
+    for line in [HEADER, *rows]:
+        w.writerow(next(_csv.reader([line])))
+    return out.getvalue()
+
+
+def test_tableau_utf16_tab_export_is_accepted():
+    hasil = ssbi.periksa_csv(_tsv().encode("utf-16"))
+    assert hasil.ringkasan["baris"] == 4
+    assert hasil.baris == periksa().baris
+
+
+def test_utf8_tab_export_is_accepted():
+    assert ssbi.periksa_csv(_tsv().encode("utf-8")).ringkasan["baris"] == 4
+
+
+def test_utf16_bad_row_is_still_refused_without_echo():
+    rows = [BARIS[0].replace(",SESUAI,", ",MUNGKIN,"), *BARIS[1:]]
+    with pytest.raises(ssbi.BerkasDitolak) as err:
+        ssbi.periksa_csv(_tsv(rows).encode("utf-16"))
+    assert "Status" in err.value.pesan and "MUNGKIN" not in err.value.pesan
+
+
 @pytest.mark.parametrize("raw", [
-    "﻿a\tb".encode("utf-16"),
-    HEADER.replace(",", "\t").encode("utf-8"),
     HEADER.replace(",", ";").encode("utf-8"),
+    "a;b".encode("utf-16"),
 ])
 def test_excel_resaved_files_get_the_clear_message(raw):
     with pytest.raises(ssbi.BerkasDitolak, match="bukan CSV berpemisah koma"):
@@ -231,3 +257,28 @@ def test_data_after_the_first_gzip_member_is_refused():
 def test_stored_drive_file_is_bounded():
     with pytest.raises(ValueError):
         ssbi.dari_gzip(gzip.compress(b"\x00" * (ssbi.BATAS_MENTAH + 10)))
+
+
+def test_unmapped_hospitals_are_listed():
+    padanan = ssbi.Padanan([("RSD Melati", "0101R001")])
+    assert padanan.tak_terpetakan(periksa().baris) == ["KENANGA LUMAJANG, RSUD", "RS MAWAR"]
+
+
+# --- semua bulan (keputusan CEO 2026-11-16: "Buat unduh semua bulan") -------
+
+def test_all_months_keyword_is_accepted():
+    assert ssbi.cek_bulan("semua") == "semua"
+
+
+def test_all_months_filter_keeps_every_month_and_hospital_limit():
+    rows = periksa().baris
+    assert len(ssbi.saring(rows, "semua", None)) == 4
+    assert [r["Nama Dokter"] for r in ssbi.saring(rows, "semua", {ssbi.norm("RSD Melati")})] == ["DOKTER B"]
+
+
+def test_all_months_file_name_and_title():
+    assert ssbi.nama_berkas("semua", None) == "Detail_Jadwal_Dokter_FKRTL_Semua_Bulan.xlsx"
+    assert ssbi.nama_berkas("semua", "RSD dr Soebandi") == "Detail_Jadwal_Dokter_FKRTL_RSD_dr_Soebandi_Semua_Bulan.xlsx"
+    ws = _sheet(ssbi.buat_xlsx(periksa().baris, "semua", None, "x"))
+    assert ws["A1"].value == "Detail Kesesuaian Jadwal Praktik Dokter FKRTL, semua bulan (April–Mei 2026)"
+    assert ws.max_row == 4 + 4

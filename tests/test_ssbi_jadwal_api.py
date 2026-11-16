@@ -256,3 +256,73 @@ def test_errors_are_not_cached(env):
     _, _, call, _ = env
     res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=Semua")
     assert res.status_code == 400 and res.headers["cache-control"] == "no-store"
+
+
+def test_check_lists_hospitals_missing_from_the_mapping(env):
+    _, _, call, _ = env
+    assert unggah(call, "/api/v1/ssbi-jadwal/periksa").json()["faskes_tak_terpetakan"] == ["RS MAWAR"]
+
+
+@pytest.mark.parametrize("nama", ["andreas.dwi@bpjs-kesehatan.go.id", "Andreas <andreas@contoh.test>", ""])
+def test_uploader_name_never_contains_an_email(env, monkeypatch, nama):
+    api, drive, call, _ = env
+
+    class Klien:
+        def request(self, method, path):
+            return {"name": nama}
+
+    monkeypatch.setattr(api.pengguna_service, "get_client", lambda: Klien())
+    unggah(call, roles=["super_admin"])
+    assert drive.properti["diunggah_oleh"] == "Super Admin"
+
+
+def test_uploader_display_name_is_kept(env, monkeypatch):
+    api, drive, call, _ = env
+
+    class Klien:
+        def request(self, method, path):
+            return {"name": "Andreas Dwi"}
+
+    monkeypatch.setattr(api.pengguna_service, "get_client", lambda: Klien())
+    unggah(call)
+    assert drive.properti["diunggah_oleh"] == "Andreas Dwi"
+
+
+def test_utf16_tab_upload_is_integrated(env):
+    from test_ssbi_jadwal_service import _tsv
+    _, drive, call, _ = env
+    res = unggah(call, data=gzip.compress(_tsv().encode("utf-16")))
+    assert res.status_code == 200 and res.json()["aktif"]["baris"] == 4
+
+
+def test_admin_can_download_all_months(env):
+    _, _, call, written = env
+    integrasikan(call)
+    res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua")
+    assert res.status_code == 200
+    assert res.headers["content-disposition"] == 'attachment; filename="Detail_Jadwal_Dokter_FKRTL_Semua_Bulan.xlsx"'
+    assert len(_rows(res)) == 4
+    assert written[-1]["target"].endswith("bulan=semua baris=4")
+
+
+def test_petugas_all_months_has_only_own_hospital(env):
+    _, _, call, _ = env
+    integrasikan(call)
+    res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua", roles=["Petugas RS"], sub="auth0|petugas-melati")
+    assert {row[1] for row in _rows(res)} == {"RSD Melati"}
+    assert "RSD_Melati_Semua_Bulan" in res.headers["content-disposition"]
+
+
+@pytest.mark.parametrize("roles", [None, ["viewer"]])
+def test_viewer_cannot_download_all_months(env, roles):
+    _, _, call, _ = env
+    integrasikan(call)
+    assert call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua", roles=roles).status_code == 403
+
+
+def test_too_large_all_months_file_asks_for_a_single_month(env, monkeypatch):
+    api, _, call, _ = env
+    integrasikan(call)
+    monkeypatch.setattr(api, "_SSBI_BATAS_RESPON", 10)
+    res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=semua")
+    assert res.status_code == 413 and "per bulan" in res.json()["detail"]
