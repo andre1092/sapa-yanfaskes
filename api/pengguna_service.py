@@ -220,12 +220,13 @@ def status_akun(user_id: str, segar: bool = False) -> dict:
     try:
         user = client.request("GET", f"/api/v2/users/{quote(user_id, safe='')}")
     except LookupError:
-        value = {"wajib_ganti_sandi": False, "nonaktif": True, "diatur_ulang_pada": None}  # akun tidak ditemukan: tutup akses
+        value = {"wajib_ganti_sandi": False, "nonaktif": True, "diatur_ulang_pada": None, "kode_ppk": ""}  # akun tidak ditemukan: tutup akses
     else:
         meta = user.get("app_metadata") or {}
         diatur = meta.get("sandi_diatur_ulang_pada")
         value = {"wajib_ganti_sandi": bool(meta.get("wajib_ganti_sandi")), "nonaktif": bool(user.get("blocked", False)),
-                 "diatur_ulang_pada": diatur if isinstance(diatur, int) else None}
+                 "diatur_ulang_pada": diatur if isinstance(diatur, int) else None,
+                 "kode_ppk": str(meta.get("kode_ppk") or "")}
     with _status_lock:
         _status[user_id] = (now, value)
     return value

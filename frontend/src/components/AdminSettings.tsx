@@ -11,32 +11,15 @@ import MainCard from "../berry/MainCard";
 import { AnimatedButton } from "./ui/AnimatedButton";
 import { AdminDialog } from "./AdminDialog";
 import React, { useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../lib/apiClient";
-import { useSyncStore, formatCurrentTimestamp } from "../store/syncStore";
 import { useUserStore } from "../store/userStore";
 
-type SettingsTab = "profile" | "fktp" | "fkrtl";
+type SettingsTab = "profile";
 
 export const AdminSettings: React.FC = () => {
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync Store
-  const {
-    lastUpdateAntrol,
-    lastUpdateNakes,
-    lastUpdatePengaduan,
-    lastUpdateUmabl,
-    lastUpdateDisplayTt,
-    setSyncAntrol,
-    setSyncNakes,
-    setSyncPengaduan,
-    setSyncUmabl,
-    setSyncDisplayTt,
-    setSyncAll,
-  } = useSyncStore();
 
   // User Store
   const { profile, updateProfile, confirmEmailVerification } = useUserStore();
@@ -65,8 +48,6 @@ export const AdminSettings: React.FC = () => {
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Integration Loading States
-  const [syncingModule, setSyncingModule] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -183,83 +164,6 @@ export const AdminSettings: React.FC = () => {
     );
   };
 
-  // --- TAB 3: INTEGRASI FKRTL LOGIC ---
-  const handleSyncModule = async (moduleId: string, name: string) => {
-    setSyncingModule(moduleId);
-    const nowTimestamp = formatCurrentTimestamp();
-
-    try {
-      if (moduleId === "antrol") {
-        try {
-          const res = await apiClient.post(
-            "/api/v1/fkrtl-antrol-sync",
-            {},
-            { timeout: 20000 },
-          );
-          if (res.data?.last_update) {
-            setSyncAntrol(res.data.last_update);
-          } else {
-            setSyncAntrol(nowTimestamp);
-          }
-        } catch (e) {
-          console.warn("Sync endpoint fallback to get with refresh=true", e);
-          try {
-            const res = await apiClient.get(
-              "/api/v1/fkrtl-antrol-stats?refresh=true",
-              { timeout: 20000 },
-            );
-            if (res.data?.last_update) {
-              setSyncAntrol(res.data.last_update);
-            } else {
-              setSyncAntrol(nowTimestamp);
-            }
-          } catch (errFallback) {
-            console.error(
-              "Failed to sync antrol data from backend:",
-              errFallback,
-            );
-            setSyncAntrol(nowTimestamp);
-          }
-        }
-        await queryClient.invalidateQueries({
-          queryKey: ["fkrtl-antrol-stats"],
-        });
-        await queryClient.invalidateQueries({ queryKey: ["fkrtl-stats"] });
-      } else if (moduleId === "nakes") {
-        await queryClient.invalidateQueries({
-          queryKey: ["fkrtl-kepatuhan-nakes"],
-        });
-        setSyncNakes(nowTimestamp);
-      } else if (moduleId === "pengaduan") {
-        await queryClient.invalidateQueries({
-          queryKey: ["fkrtl-kepatuhan-pengaduan"],
-        });
-        setSyncPengaduan(nowTimestamp);
-      } else if (moduleId === "umabl") {
-        await queryClient.invalidateQueries({
-          queryKey: ["fkrtl-kepatuhan-umabl"],
-        });
-        setSyncUmabl(nowTimestamp);
-      } else if (moduleId === "display-tt") {
-        await queryClient.invalidateQueries({
-          queryKey: ["fkrtl-kepatuhan-display-tt"],
-        });
-        setSyncDisplayTt(nowTimestamp);
-      } else if (moduleId === "all") {
-        await queryClient.invalidateQueries();
-        setSyncAll(nowTimestamp);
-      }
-
-      showToast(
-        `Integrasi ${name} berhasil! Pembaruan terakhir diperbarui ke: ${nowTimestamp}`,
-      );
-    } finally {
-      setTimeout(() => {
-        setSyncingModule(null);
-      }, 500);
-    }
-  };
-
   return (
     <Stack
       spacing={3}
@@ -296,7 +200,7 @@ export const AdminSettings: React.FC = () => {
               color="text.secondary"
               sx={{ mt: 0.75 }}
             >
-              Kelola profil akun dan sumber data fasilitas kesehatan.
+              Kelola profil akun.
             </Typography>
           </div>
           <Chip
@@ -318,8 +222,6 @@ export const AdminSettings: React.FC = () => {
         aria-label="Bagian pengaturan"
       >
         <Tab value="profile" label="Profil" />
-        <Tab value="fktp" label="Integrasi FKTP" />
-        <Tab value="fkrtl" label="Integrasi FKRTL" />
       </Tabs>
 
       {/* 3. TAB CONTENT RENDERING */}
@@ -442,337 +344,6 @@ export const AdminSettings: React.FC = () => {
         </MainCard>
       )}
 
-      {/* TAB 2: INTEGRASI DATA FKTP (KOSONGKAN DULU) */}
-      {activeTab === "fktp" && (
-        <MainCard
-          content={false}
-          sx={{ p: 4, minWidth: 0 }}
-          className="text-center flex flex-col items-center justify-center space-y-4"
-        >
-          <div className="max-w-md">
-            <Typography
-              component="h3"
-              variant="h5"
-              className="text-lg sm:text-xl font-black text-[var(--text-main)]"
-            >
-              Integrasi Data FKTP (Pelayanan Primer)
-            </Typography>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-2 leading-relaxed">
-              Modul integrasi data Fasilitas Kesehatan Tingkat Pertama
-              (Puskesmas, Klinik Pratama, dan Dokter Praktik Mandiri) saat ini
-              dikosongkan terlebih dahulu dan sedang dipersiapkan untuk
-              standarisasi indikator Kapitasi Berbasis Komitmen (KBK) dan
-              rujukan primer.
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[var(--panel-bg)] text-[var(--text-main)] border border-[var(--border-color)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--panel-bg)] animate-pulse" />
-            Tahap Perancangan Sumber Data
-          </span>
-        </MainCard>
-      )}
-
-      {/* TAB 3: INTEGRASI DATA FKRTL (TOMBOL-TOMBOL UPDATE SPREADSHEET DENGAN LAST UPDATE) */}
-      {activeTab === "fkrtl" && (
-        <div className="space-y-6">
-          {/* Master Sync Bar */}
-          <MainCard
-            content={false}
-            sx={{ p: 3, minWidth: 0 }}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-          >
-            <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--panel-bg)] text-[var(--text-main)]">
-                SINKRONISASI MENYELURUH
-              </span>
-              <Typography
-                component="h2"
-                variant="h4"
-                className="text-base sm:text-lg font-black text-[var(--text-main)] mt-1"
-              >
-                Integrasi Seluruh Modul FKRTL Sekaligus
-              </Typography>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                Segarkan seluruh cache data Google Spreadsheet FKRTL secara
-                serentak untuk memperbarui antarmuka dashboard.
-              </p>
-            </div>
-
-            <AnimatedButton
-              onClick={() => handleSyncModule("all", "Seluruh Modul FKRTL")}
-              loading={syncingModule === "all"}
-              className="sapa-button sapa-button-secondary px-5 py-2.5 rounded-xl sapa-button-primary text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0"
-            >
-              <span
-                className={syncingModule === "all" ? "animate-spin" : ""}
-              ></span>
-              <span>
-                {syncingModule === "all"
-                  ? "Mengintegrasikan..."
-                  : "Integrasikan Semua Modul"}
-              </span>
-            </AnimatedButton>
-          </MainCard>
-
-          {/* Cards Modul-Modul Integrasi FKRTL */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* 1. Antrol FKRTL */}
-            <MainCard
-              content={false}
-              sx={{ p: 2.5, minWidth: 0 }}
-              className="flex flex-col justify-between gap-4"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
-                    <span className="text-base">⏱</span>
-                    <span>Pemanfaatan Antrol FKRTL</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
-                    2.052 Baris
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Data antrean online terintegrasi (Mobile JKN &amp; Bridging
-                  SIMRS). Memperbarui KPI, kurva tren bulanan, serta perankingan
-                  poliklinik dan rumah sakit.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Pembaruan terakhir: {lastUpdateAntrol}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  Target: 80% &amp; 95%
-                </span>
-                <AnimatedButton
-                  onClick={() =>
-                    handleSyncModule("antrol", "Pemanfaatan Antrol FKRTL")
-                  }
-                  loading={syncingModule === "antrol"}
-                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span
-                    className={syncingModule === "antrol" ? "animate-spin" : ""}
-                  ></span>
-                  <span>
-                    {syncingModule === "antrol"
-                      ? "Memproses..."
-                      : "Integrasikan Antrol"}
-                  </span>
-                </AnimatedButton>
-              </div>
-            </MainCard>
-
-            {/* 2. Tab 01 Nakes */}
-            <MainCard
-              content={false}
-              sx={{ p: 2.5, minWidth: 0 }}
-              className="flex flex-col justify-between gap-4"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
-                    <span>Tab 01. Jadwal Praktik Nakes</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
-                    Bobot 25%
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Kesesuaian jadwal praktik dokter spesialis pada Aplikasi HFIS
-                  dengan data pelayanan faskes. Terhubung master referensi 26
-                  rumah sakit KC Jember.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Pembaruan terakhir: {lastUpdateNakes}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  Target Nasional: 100%
-                </span>
-                <AnimatedButton
-                  onClick={() =>
-                    handleSyncModule("nakes", "Tab 01 Jadwal Nakes")
-                  }
-                  loading={syncingModule === "nakes"}
-                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span
-                    className={syncingModule === "nakes" ? "animate-spin" : ""}
-                  ></span>
-                  <span>
-                    {syncingModule === "nakes"
-                      ? "Memproses..."
-                      : "Integrasikan Nakes"}
-                  </span>
-                </AnimatedButton>
-              </div>
-            </MainCard>
-
-            {/* 3. Tab 02 Pengaduan */}
-            <MainCard
-              content={false}
-              sx={{ p: 2.5, minWidth: 0 }}
-              className="flex flex-col justify-between gap-4"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
-                    <span>Tab 02. Penyelesaian Pengaduan</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
-                    Bobot 20%
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Kecepatan tindak lanjut keluhan peserta sesuai SLA 1-3 hari
-                  kerja pada Aplikasi SIPP. Terkoneksi 228 baris data live
-                  Google Sheets.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Pembaruan terakhir: {lastUpdatePengaduan}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  Target Nasional: 100%
-                </span>
-                <AnimatedButton
-                  onClick={() =>
-                    handleSyncModule(
-                      "pengaduan",
-                      "Tab 02 Penyelesaian Pengaduan",
-                    )
-                  }
-                  loading={syncingModule === "pengaduan"}
-                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span
-                    className={
-                      syncingModule === "pengaduan" ? "animate-spin" : ""
-                    }
-                  ></span>
-                  <span>
-                    {syncingModule === "pengaduan"
-                      ? "Memproses..."
-                      : "Integrasikan Pengaduan"}
-                  </span>
-                </AnimatedButton>
-              </div>
-            </MainCard>
-
-            {/* 4. Tab 03 Umbal Peserta (KESSAN) */}
-            <MainCard
-              content={false}
-              sx={{ p: 2.5, minWidth: 0 }}
-              className="flex flex-col justify-between gap-4"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
-                    <span>Tab 03. Umbal Peserta (KESSAN)</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
-                    Bobot 10%
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Pengukuran umpan balik customer feedback peserta berdasarkan
-                  proporsi target responden dan sampling populasi kunjungan
-                  rumah sakit.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Pembaruan terakhir: {lastUpdateUmabl}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  Target: &ge; 100% dari target
-                </span>
-                <AnimatedButton
-                  onClick={() =>
-                    handleSyncModule("umabl", "Tab 03 Umbal Peserta")
-                  }
-                  loading={syncingModule === "umabl"}
-                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span
-                    className={syncingModule === "umabl" ? "animate-spin" : ""}
-                  ></span>
-                  <span>
-                    {syncingModule === "umabl"
-                      ? "Memproses..."
-                      : "Integrasikan Umabl"}
-                  </span>
-                </AnimatedButton>
-              </div>
-            </MainCard>
-
-            {/* 5. Tab 04 Display TT */}
-            <MainCard
-              content={false}
-              sx={{ p: 2.5, minWidth: 0 }}
-              className="flex flex-col justify-between gap-4 md:col-span-2"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-[var(--text-main)]">
-                    <span>
-                      Tab 04. Pembaruan (Update) Data Ketersediaan Tempat Tidur
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--panel-bg)] text-[var(--text-main)]">
-                    Bobot 10%
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Memperhitungkan jumlah hari faskes melakukan pembaruan
-                  informasi data ketersediaan tempat tidur secara harian dalam 1
-                  bulan dari spreadsheet Display TT.
-                </p>
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--panel-bg)] text-[var(--text-main)] text-xs font-bold border border-[var(--border-color)]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--panel-bg)]" />
-                  <span>Pembaruan terakhir: {lastUpdateDisplayTt}</span>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between">
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  Target Nasional: &ge; 25 hari
-                </span>
-                <AnimatedButton
-                  onClick={() =>
-                    handleSyncModule("display-tt", "Tab 04 Display TT")
-                  }
-                  loading={syncingModule === "display-tt"}
-                  className="sapa-button sapa-button-secondary px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span
-                    className={
-                      syncingModule === "display-tt" ? "animate-spin" : ""
-                    }
-                  ></span>
-                  <span>
-                    {syncingModule === "display-tt"
-                      ? "Memproses..."
-                      : "Integrasikan Display TT"}
-                  </span>
-                </AnimatedButton>
-              </div>
-            </MainCard>
-          </div>
-        </div>
-      )}
 
       {/* --- POP-UP MODAL: INFO VERIFIKASI EMAIL SAPA YANFASKES --- */}
       {showVerifyModal && (

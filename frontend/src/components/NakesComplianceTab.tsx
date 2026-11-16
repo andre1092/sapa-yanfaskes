@@ -8,6 +8,7 @@ import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
+import { UnduhDetailJadwal } from './UnduhDetailJadwal';
 
 import { pencocokCari } from '../lib/cocokCari';
 import { FilterLainnya } from './ui/FilterLainnya';
@@ -966,7 +967,8 @@ export const NakesComplianceTab: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex justify-end px-4 pb-3">
+        <div className="flex flex-wrap justify-end items-center gap-2 px-4 pb-3">
+          <UnduhDetailJadwal bulan={selectedBulan} />
           <UnduhJpegKepatuhan tab="nakes" rows={processedTableRows} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
         </div>
 
