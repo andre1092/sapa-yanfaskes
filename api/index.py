@@ -88,6 +88,7 @@ except Exception:
 try:
     from .kepatuhan_service import (
         process_ringkasan_kepatuhan,
+        get_last_update_bi,
         process_tmo_kepatuhan,
         process_antrean_wtl_kepatuhan,
         process_surkon_kepatuhan,
@@ -98,6 +99,7 @@ except Exception:
     try:
         from kepatuhan_service import (
             process_ringkasan_kepatuhan,
+        get_last_update_bi,
             process_tmo_kepatuhan,
             process_antrean_wtl_kepatuhan,
             process_surkon_kepatuhan,
@@ -3037,6 +3039,16 @@ async def get_fkrtl_kepatuhan_display_tt(
             status_code=500,
             detail="Gagal memproses data Laporan Kepatuhan Pembaruan (Update) Data Ketersediaan Tempat Tidur. Silakan coba lagi atau hubungi administrator."
         )
+
+
+@app.get("/api/v1/fkrtl-kepatuhan/last-update")
+async def get_fkrtl_kepatuhan_last_update(user=Depends(require_viewer)):
+    """Last Update BI per indikator untuk label "Pembaruan terakhir" di halaman Kepatuhan FKRTL."""
+    try:
+        return get_last_update_bi()
+    except Exception:
+        logger.error(f"Error in get_fkrtl_kepatuhan_last_update: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Gagal membaca waktu pembaruan data BI.")
 
 
 @app.get("/api/v1/fkrtl-kepatuhan/ringkasan")
