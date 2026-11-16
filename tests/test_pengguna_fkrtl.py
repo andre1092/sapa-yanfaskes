@@ -78,7 +78,7 @@ PETUGAS = ["Petugas RS"]
 FKRTL = ["/api/v1/fkrtl-antrol-stats", "/api/v1/dashboard-stats", "/api/v1/monitoring-laras",
          "/api/v1/fkrtl-kepatuhan/ringkasan", "/api/v1/fkrtl-kepatuhan/antrean-wtl", "/api/v1/fkrtl-export?type=faskes"]
 TERLARANG = [("GET", "/api/v1/fktp-antrol-stats"), ("GET", "/api/v1/fkrtl-antrol-stats?refresh=true"),
-             ("POST", "/api/v1/fkrtl-antrol-sync"), ("POST", "/api/v1/fktp-antrol-sync"), ("GET", "/api/v1/audit-log"),
+             ("POST", "/api/v1/ssbi-jadwal/integrasikan"), ("GET", "/api/v1/ssbi-jadwal/status"), ("GET", "/api/v1/audit-log"),
              ("GET", "/api/v1/pengguna-fkrtl")]
 
 

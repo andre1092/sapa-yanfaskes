@@ -6,6 +6,10 @@ import time
 import json
 import re
 import traceback
+import hashlib
+import contextlib
+import threading
+from urllib.parse import quote
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
@@ -44,6 +48,11 @@ try:
     from . import verifikasi_service
 except ImportError:
     import verifikasi_service
+try:
+    from . import drive_ssbi, ssbi_jadwal_service
+except ImportError:
+    import drive_ssbi
+    import ssbi_jadwal_service
 try:
     from .sheets_source import read_sheet_csv
 except ImportError:
@@ -325,6 +334,7 @@ async def audit_middleware(request: Request, call_next):
             entry = audit_log.build_entry(
                 request.method, path, response.status_code, claims, role_label(claims),
                 request.headers.get("x-forwarded-for"), request.client.host if request.client else None,
+                detail=str(getattr(request.state, "audit_detail", "") or ""),
             )
             await audit_log.record(entry)
     except Exception as exc:
@@ -1386,36 +1396,6 @@ async def get_dashboard_stats(
     )
     return stats
 
-# Dedicated cache invalidation and force-sync endpoint for Antrol FKRTL
-@app.post("/api/v1/fkrtl-antrol-sync")
-async def sync_fkrtl_antrol(
-    user=Depends(require_admin)
-):
-    try:
-        invalidate_sheets_cache(FKRTL_ANTROL_SPREADSHEET_ID)
-        ranges = [
-            "DB_FASKES!A:Z",
-            "DB_LAP_ANTROL_FKRTL!A:Z",
-            "per_poli!A:R"
-        ]
-        sheets_data = fetch_multiple_sheets(FKRTL_ANTROL_SPREADSHEET_ID, ranges, force_refresh=True)
-        df_antrol = sheets_data.get("DB_LAP_ANTROL_FKRTL", pl.DataFrame())
-        last_update_str = "No data available."
-        if not df_antrol.is_empty():
-            ts_col = find_column_name(df_antrol, ["timestamp", "waktu", "tanggal", "time"])
-            if ts_col:
-                raw_ts = [str(t).strip() for t in df_antrol[ts_col].to_list() if t]
-                if raw_ts:
-                    last_update_str = format_timestamp_standard(raw_ts[-1])
-        return {
-            "status": "success",
-            "message": "Sinkronisasi live data Google Sheets berhasil.",
-            "last_update": last_update_str,
-            "total_records": df_antrol.height if not df_antrol.is_empty() else 0
-        }
-    except Exception as e:
-        logger.error(f"Error in sync_fkrtl_antrol: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail="Gagal melakukan sinkronisasi live Google Sheets. Silakan coba lagi atau hubungi administrator.")
 
 @app.get("/api/v1/fkrtl-export")
 async def export_fkrtl_data(
@@ -3190,30 +3170,6 @@ async def get_fkrtl_kepatuhan_rme(
         )
 
 
-@app.post("/api/v1/fkrtl-kepatuhan-sync")
-async def sync_fkrtl_kepatuhan(
-    module: Optional[str] = "all",
-    user=Depends(require_admin)
-):
-    try:
-        res = clear_kepatuhan_cache(module)
-        from datetime import datetime
-        now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        return {
-            "status": "success",
-            "message": f"Sinkronisasi data kepatuhan FKRTL ({module}) berhasil diperbarui.",
-            "module": module,
-            "cache_cleared": res.get("cleared_count", 0),
-            "last_update": now_str
-        }
-    except Exception as e:
-        logger.error(f"Error in sync_fkrtl_kepatuhan: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail="Gagal melakukan sinkronisasi data kepatuhan FKRTL. Silakan coba lagi atau hubungi administrator."
-        )
-
-
 # ==============================================================================
 # --- FKTP PEMANFAATAN ANTROL (FASILITAS KESEHATAN TINGKAT PERTAMA) ---
 # ==============================================================================
@@ -3500,30 +3456,245 @@ async def get_fktp_antrol_stats(
         )
 
 
-@app.post("/api/v1/fktp-antrol-sync")
-async def sync_fktp_antrol(user=Depends(require_admin)):
+# ==============================================================================
+# --- DATA SSBI KESESUAIAN JADWAL PRAKTIK DOKTER FKRTL (Integrasi data + Download Detail) ---
+# Unggah/integrasikan: Admin ke atas. Unduh: Admin ke atas (semua RS) atau Petugas RS (RS sendiri,
+# lewat tabel padanan; gagal tertutup). Viewer ditolak. Syarat keamanan: laporan Clara 2026-11-16.
+# ==============================================================================
+_SSBI_JENIS = "application/gzip"
+_SSBI_KUNCI = 0x55B1_0001  # kunci advisory Postgres: satu integrasi pada satu waktu
+_SSBI_BELUM_SIAP = "Penyimpanan data SSBI belum disiapkan. Hubungi tim teknis SAPA."
+_SSBI_DRIVE_GAGAL = "Penyimpanan data SSBI sedang bermasalah. Data lama tetap dipakai. Coba lagi sebentar."
+_SSBI_TANPA_RS = "Akun Anda belum terhubung ke data SSBI rumah sakit. Hubungi admin SAPA."
+_SSBI_BATAS_RESPON = 4_400_000
+_ssbi_simpanan: Dict[str, Any] = {"versi": None, "baris": None}
+_ssbi_simpanan_lock = threading.Lock()
+_ssbi_padanan = None
+
+
+def _ssbi_peta():
+    global _ssbi_padanan
+    if _ssbi_padanan is None:
+        _ssbi_padanan = ssbi_jadwal_service.Padanan.dari_berkas()
+    return _ssbi_padanan
+
+
+def require_ssbi_unduh(request: Request) -> dict:
+    """Satu penjaga untuk endpoint bulan dan detail: Viewer 403, Petugas RS dibatasi RS-nya sendiri."""
+    claims = require_auth(request)
+    petugas = petugas_rs_saja(claims)
+    if role_rank(claims) < ROLE_RANK["admin"] and not petugas:
+        _forbid(request, "admin atau Petugas RS")
+    _cek_wajib_ganti_sandi(request, claims)
+    if not petugas:
+        return {"claims": claims, "rs": None, "faskes": None}
+    kode = _status_petugas(claims).get("kode_ppk") or ""
     try:
-        cache_key = "fktp_antrol_merged_df"
-        if cache_key in _SHEETS_CACHE:
-            del _SHEETS_CACHE[cache_key]
-        df = fetch_fktp_antrol_dfs(force_refresh=True)
-        ts_list = df["Timestamp"].unique().to_list() if not df.is_empty() else []
-        last_dt = None
-        last_ts_str = "No data available."
-        for ts in ts_list:
-            dt = parse_fktp_datetime(ts)
-            if dt and (last_dt is None or dt > last_dt):
-                last_dt = dt
-                last_ts_str = format_timestamp_standard(ts)
-        return {
-            "status": "success",
-            "message": "Sinkronisasi live data Pemanfaatan Antrol FKTP berhasil.",
-            "last_update": last_ts_str,
-            "total_records": df.height if not df.is_empty() else 0
-        }
-    except Exception as e:
-        logger.error(f"Error in sync_fktp_antrol: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail="Gagal melakukan sinkronisasi live Google Sheets FKTP. Silakan coba lagi atau hubungi administrator.")
+        peta = _ssbi_peta()
+    except Exception as exc:
+        logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=_SSBI_BELUM_SIAP)
+    cakupan = peta.untuk_kode(kode)
+    if cakupan is None:
+        logger.warning("Unduh SSBI ditolak: kode PPK petugas tidak ada di tabel padanan")
+        raise HTTPException(status_code=403, detail=_SSBI_TANPA_RS)
+    return {"claims": claims, "rs": cakupan[0], "faskes": cakupan[1]}
+
+
+def _ssbi_info_aktif() -> Optional[dict]:
+    """Ringkasan data aktif dari properti berkas Drive, atau None bila belum pernah diintegrasikan."""
+    info = drive_ssbi.info()
+    prop = info["properti"]
+    if not prop.get("baris"):
+        return None
+    return {
+        "nama_berkas": prop.get("nama_berkas", ""),
+        "diunggah_pada": prop.get("diunggah_pada", ""),
+        "diunggah_oleh": prop.get("diunggah_oleh", ""),
+        "baris": int(prop.get("baris", "0") or 0),
+        "faskes": int(prop.get("faskes", "0") or 0),
+        "periode_awal": prop.get("periode_awal", ""),
+        "periode_akhir": prop.get("periode_akhir", ""),
+        "bulan": [b for b in (prop.get("bulan") or "").split(",") if b],
+    }
+
+
+def _ssbi_baris_aktif() -> Tuple[Optional[dict], List[Dict[str, str]]]:
+    """Baris data aktif, di-cache per instans dengan penanda versi berkas Drive."""
+    info = drive_ssbi.info()
+    if not info["properti"].get("baris"):
+        return None, []
+    with _ssbi_simpanan_lock:
+        if _ssbi_simpanan["versi"] == info["versi"] and _ssbi_simpanan["baris"] is not None:
+            return info, _ssbi_simpanan["baris"]
+    baris = ssbi_jadwal_service.dari_gzip(drive_ssbi.unduh())
+    with _ssbi_simpanan_lock:
+        _ssbi_simpanan.update(versi=info["versi"], baris=baris)
+    return info, baris
+
+
+def _ssbi_drive(fungsi, *args):
+    try:
+        return fungsi(*args)
+    except drive_ssbi.DriveBelumSiap:
+        raise HTTPException(status_code=503, detail=_SSBI_BELUM_SIAP)
+    except Exception as exc:
+        logger.error("Data SSBI di Drive tidak bisa dipakai: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail=_SSBI_DRIVE_GAGAL)
+
+
+async def _ssbi_terima(request: Request):
+    """Baca body gzip dengan batas ukuran sebelum dibaca seluruhnya, lalu buka dan periksa CSV-nya."""
+    from starlette.concurrency import run_in_threadpool
+
+    if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
+        raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.")
+    batas = ssbi_jadwal_service.BATAS_KOMPRES
+    try:
+        panjang = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        panjang = 0
+    if panjang > batas:
+        raise HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).")
+    data = bytearray()
+    async for potong in request.stream():
+        data.extend(potong)
+        if len(data) > batas:
+            raise HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).")
+
+    def olah():
+        mentah = ssbi_jadwal_service.buka_gzip(bytes(data))
+        return ssbi_jadwal_service.periksa_csv(mentah), hashlib.sha256(mentah).hexdigest()
+
+    try:
+        return await run_in_threadpool(olah)
+    except ssbi_jadwal_service.BerkasDitolak as exc:
+        raise HTTPException(status_code=400, detail=exc.pesan)
+
+
+def _ssbi_nama_berkas(request: Request) -> str:
+    from urllib.parse import unquote
+
+    nama = unquote(request.headers.get("x-nama-berkas", ""))[:80]
+    nama = re.sub(r"[^A-Za-z0-9 ._()-]", "", nama).strip()
+    return nama or "FKRTL.csv"
+
+
+def _ssbi_nama_admin(claims) -> str:
+    """Nama tampilan admin dari Auth0 (tanpa email); cadangannya label peran."""
+    try:
+        client = pengguna_service.get_client()
+        if client is not None:
+            user = client.request("GET", f"/api/v2/users/{quote(str(claims.get('sub', '')), safe='')}")
+            nama = re.sub(r"[^\w .,'()-]", "", str(user.get("name") or ""))[:60].strip()
+            if nama and "@" not in nama:
+                return nama
+    except Exception as exc:
+        logger.warning("Nama admin tidak terbaca: %s", type(exc).__name__)
+    return "Super Admin" if role_rank(claims) >= ROLE_RANK["super_admin"] else "Admin"
+
+
+@contextlib.asynccontextmanager
+async def _ssbi_kunci():
+    """Kunci advisory tingkat transaksi di Postgres audit; aman di pooler mode transaksi."""
+    dsn = os.environ.get(audit_log.DSN_ENV)
+    if not dsn:
+        logger.warning("Kunci integrasi SSBI tanpa Postgres (%s kosong)", audit_log.DSN_ENV)
+        yield True
+        return
+    import asyncpg
+
+    try:
+        conn = await asyncpg.connect(dsn, timeout=5, statement_cache_size=0)
+    except Exception as exc:
+        logger.error("Kunci integrasi SSBI tidak bisa dibuat: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Integrasi belum bisa dijalankan. Coba lagi sebentar.")
+    try:
+        async with conn.transaction():
+            yield bool(await conn.fetchval("SELECT pg_try_advisory_xact_lock($1)", _SSBI_KUNCI))
+    finally:
+        await conn.close()
+
+
+@app.post("/api/v1/ssbi-jadwal/periksa")
+async def ssbi_periksa(request: Request, user=Depends(require_admin)):
+    from starlette.concurrency import run_in_threadpool
+
+    hasil, sha = await _ssbi_terima(request)
+    request.state.audit_detail = f"baris={hasil.ringkasan['baris']} sha256={sha}"
+    try:
+        aktif = await run_in_threadpool(_ssbi_info_aktif)
+    except Exception:
+        aktif = None
+    return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "aktif": aktif})
+
+
+@app.post("/api/v1/ssbi-jadwal/integrasikan")
+async def ssbi_integrasikan(request: Request, user=Depends(require_admin)):
+    from starlette.concurrency import run_in_threadpool
+
+    hasil, sha = await _ssbi_terima(request)
+    r = hasil.ringkasan
+    request.state.audit_detail = f"baris={r['baris']} sha256={sha}"
+    properti = {
+        "baris": str(r["baris"]), "faskes": str(r["faskes"]),
+        "periode_awal": r["periode_awal"], "periode_akhir": r["periode_akhir"],
+        "bulan": ",".join(r["bulan"]), "sha256": sha,
+        "nama_berkas": _ssbi_nama_berkas(request),
+        "diunggah_pada": datetime.now(WIB).strftime("%Y-%m-%dT%H:%M:%S+07:00"),
+        "diunggah_oleh": await run_in_threadpool(_ssbi_nama_admin, user),
+    }
+    isi = await run_in_threadpool(ssbi_jadwal_service.ke_gzip, hasil.baris)
+    async with _ssbi_kunci() as dapat:
+        if not dapat:
+            raise HTTPException(status_code=409, detail="Admin lain sedang mengintegrasikan data. Coba lagi setelah selesai.")
+        versi, _ = await run_in_threadpool(_ssbi_drive, drive_ssbi.tulis, isi, properti)
+    with _ssbi_simpanan_lock:
+        _ssbi_simpanan.update(versi=versi, baris=hasil.baris)
+    aktif = {k: properti[k] for k in ("nama_berkas", "diunggah_pada", "diunggah_oleh", "periode_awal", "periode_akhir")}
+    aktif.update(baris=r["baris"], faskes=r["faskes"], bulan=list(r["bulan"]))
+    return JSONResponse(headers=_NO_STORE, content={"status": "success", "aktif": aktif})
+
+
+@app.get("/api/v1/ssbi-jadwal/status")
+def ssbi_status(user=Depends(require_admin)):
+    return JSONResponse(headers=_NO_STORE, content={"aktif": _ssbi_drive(_ssbi_info_aktif)})
+
+
+@app.get("/api/v1/ssbi-jadwal/bulan")
+def ssbi_bulan(cakupan=Depends(require_ssbi_unduh)):
+    info, baris = _ssbi_drive(_ssbi_baris_aktif)
+    tersedia = ssbi_jadwal_service.bulan_tersedia(baris, cakupan["faskes"]) if info else []
+    data_per = info["properti"].get("diunggah_pada", "") if info else ""
+    return JSONResponse(headers=_NO_STORE, content={"ada_data": info is not None, "rs": cakupan["rs"],
+                                                    "bulan": tersedia, "data_per": data_per})
+
+
+@app.get("/api/v1/ssbi-jadwal/detail")
+def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_unduh)):
+    try:
+        bulan = ssbi_jadwal_service.cek_bulan(bulan)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Pilih satu bulan untuk mengunduh detail.")
+    info, baris = _ssbi_drive(_ssbi_baris_aktif)
+    if info is None:
+        raise HTTPException(status_code=404, detail="Detail belum tersedia. Admin perlu mengunggah data SSBI di menu Integrasi data.")
+    pilihan = ssbi_jadwal_service.saring(baris, bulan, cakupan["faskes"])
+    if not pilihan:
+        raise HTTPException(status_code=404, detail="Belum ada detail untuk bulan ini.")
+    request.state.audit_detail = f"bulan={bulan} baris={len(pilihan)}"
+    diunggah = info["properti"].get("diunggah_pada", "")
+    try:
+        waktu = datetime.fromisoformat(diunggah).astimezone(WIB)
+        label = f"{waktu.day} {ssbi_jadwal_service.BULAN_ID[waktu.month - 1][:3]} {waktu.year} {waktu:%H.%M} WIB"
+    except ValueError:
+        label = "-"
+    isi = ssbi_jadwal_service.buat_xlsx(pilihan, bulan, cakupan["rs"], label)
+    if len(isi) > _SSBI_BATAS_RESPON:
+        raise HTTPException(status_code=413, detail="Berkas detail terlalu besar untuk diunduh. Hubungi tim teknis SAPA.")
+    nama = ssbi_jadwal_service.nama_berkas(bulan, cakupan["rs"])
+    return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
 
 
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)

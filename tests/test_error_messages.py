@@ -28,9 +28,6 @@ def client_api(monkeypatch):
     ("get", "/api/v1/fkrtl-antrol-stats"),
     ("get", "/api/v1/fkrtl-export?type=faskes"),
     ("get", "/api/v1/fktp-antrol-stats"),
-    ("post", "/api/v1/fkrtl-antrol-sync"),
-    ("post", "/api/v1/fkrtl-kepatuhan-sync"),
-    ("post", "/api/v1/fktp-antrol-sync"),
 ])
 def test_internal_errors_are_not_shown_to_users(client_api, method, path):
     client, headers = client_api

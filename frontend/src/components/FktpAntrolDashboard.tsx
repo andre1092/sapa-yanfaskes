@@ -7,20 +7,13 @@ import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import { AnimatedButton } from './ui/AnimatedButton';
 import React, { useState, useMemo } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useFktpAntrolData } from '../hooks/useDashboardData';
 import type { FktpFilterParams, FktpTableRow } from '../hooks/useDashboardData';
-import { apiClient } from '../lib/apiClient';
 import { useSyncStore } from '../store/syncStore';
-import { useAuthStore } from '../store/authStore';
-import { bolehMelakukan } from '../lib/izinPeran';
 
 import { pencocokCari } from '../lib/cocokCari';
-const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE || '';
 
 export const FktpAntrolDashboard: React.FC = () => {
-  const bolehSinkron = bolehMelakukan(useAuthStore((s) => s.user?.role), 'sinkron');
-  const { getAccessTokenSilently } = useAuth0();
 
   // 1. Filter State (Bulan, Kabupaten, Jenis FKTP, Sumber Antrean)
   const [filters, setFilters] = useState<FktpFilterParams>({
@@ -35,8 +28,6 @@ export const FktpAntrolDashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
   // Active floating tooltip state for table row
   const [hoveredRowData, setHoveredRowData] = useState<{
@@ -47,31 +38,6 @@ export const FktpAntrolDashboard: React.FC = () => {
 
   const liveSyncAntrol = useSyncStore((s) => s.lastUpdateAntrol);
   const { data, isLoading, refetch } = useFktpAntrolData(filters, true);
-
-  // Sync Trigger Handler
-  const handleForceSync = async () => {
-    setIsSyncing(true);
-    setSyncSuccessMsg(null);
-    try {
-      const token = await getAccessTokenSilently({
-        authorizationParams: { audience: AUTH0_AUDIENCE },
-      });
-      const res = await apiClient.post(
-        '/api/v1/fktp-antrol-sync',
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (res.data?.status === 'success') {
-        setSyncSuccessMsg(`Data berhasil disinkronkan (${res.data.total_records} baris)`);
-        await refetch();
-        setTimeout(() => setSyncSuccessMsg(null), 4000);
-      }
-    } catch (err) {
-      console.error('Gagal sinkronisasi data FKTP:', err);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   // Helper formatting
   const formatPercentID = (val: number | null | undefined): string => {
@@ -140,7 +106,6 @@ export const FktpAntrolDashboard: React.FC = () => {
             </p>
           </div>
 
-          {/* Last Update & Sync Button Card */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="bg-[var(--surface)] border border-[var(--border-color)] px-4 py-2.5 rounded-xl">
               <div className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
@@ -152,40 +117,9 @@ export const FktpAntrolDashboard: React.FC = () => {
               </div>
             </div>
 
-            {bolehSinkron && <AnimatedButton
-              onClick={handleForceSync}
-              aria-label={isSyncing ? 'Menyinkronkan data' : 'Sinkronkan data terbaru'}
-              aria-busy={isSyncing}
-              disabled={isSyncing}
-              title="Sinkronisasikan data terbaru langsung dari Google Spreadsheet"
-              className="px-3.5 py-2.5 rounded-xl sapa-button sapa-button-primary text-[var(--text-main)] text-xs font-bold flex items-center gap-2 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <svg
-                className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span className="hidden sm:inline">{isSyncing ? 'Menyinkronkan...' : 'Sinkronisasi'}</span>
-            </AnimatedButton>}
           </div>
         </div>
 
-        {syncSuccessMsg && (
-          <div className="mt-3 p-2.5 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs flex items-center gap-2">
-            <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span>{syncSuccessMsg}</span>
-          </div>
-        )}
       </div>
 
       <p className="sapa-filter-summary sapa-status text-xs text-[var(--text-muted)]" aria-live="polite"><span>Filter aktif: {Object.entries(filters).filter(([, value]) => value && value !== '(All)').map(([key, value]) => `${({ bulan: 'Periode', kabupaten: 'Wilayah', jenis_fktp: 'Jenis FKTP', sumber_antrean: 'Kanal' } as Record<string, string>)[key]}: ${value}`).join(' · ') || 'Semua data'}</span>

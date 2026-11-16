@@ -25,9 +25,9 @@ MATRIX = [
     ("get", "/api/v1/fkrtl-antrol-stats?refresh=true", "admin"),
     ("get", "/api/v1/fktp-antrol-stats?refresh=true", "admin"),
     ("get", "/api/v1/monitoring-laras?refresh=true", "admin"),
-    ("post", "/api/v1/fkrtl-antrol-sync", "admin"),
-    ("post", "/api/v1/fkrtl-kepatuhan-sync", "admin"),
-    ("post", "/api/v1/fktp-antrol-sync", "admin"),
+    ("get", "/api/v1/ssbi-jadwal/status", "admin"),
+    ("post", "/api/v1/ssbi-jadwal/periksa", "admin"),
+    ("post", "/api/v1/ssbi-jadwal/integrasikan", "admin"),
     ("post", "/api/v1/auth/send-verification-email", "super_admin"),
 ]
 
@@ -61,7 +61,7 @@ def test_each_endpoint_follows_the_approved_matrix(api, method, path, minimum, r
 
 @pytest.mark.parametrize("roles", [["Super Admin"], ["Admin", "viewer"], ["owner", "super_admin"]])
 def test_role_names_from_auth0_are_recognised(api, roles):
-    assert call(api, "post", "/api/v1/fkrtl-antrol-sync", roles).status_code not in (401, 403)
+    assert call(api, "get", "/api/v1/ssbi-jadwal/status", roles).status_code not in (401, 403)
 
 
 @pytest.mark.parametrize("claims", [{"role": "super_admin"}, {"roles": ["super_admin"]}, {"https://sapa-yanfaskes.com/roles": "super_admin"}])
@@ -75,12 +75,13 @@ def test_no_token_is_still_401(api):
 
 
 @pytest.mark.parametrize("path", ["/api/v1/fkrtl-antrol-sync", "/api/v1/fkrtl-kepatuhan-sync", "/api/v1/fktp-antrol-sync"])
-def test_sync_no_longer_accepts_get(api, path):
-    assert call(api, "get", path, ["super_admin"]).status_code == 405
+def test_old_sync_endpoints_are_gone(api, path):
+    for method in ("get", "post"):
+        assert call(api, method, path, ["super_admin"]).status_code == 404
 
 
 def test_every_data_route_requires_a_role(api):
-    guarded = {"require_viewer", "require_admin", "require_super_admin", "require_viewer_fktp", "require_fkrtl_export", "require_signed_in"}
+    guarded = {"require_viewer", "require_admin", "require_super_admin", "require_viewer_fktp", "require_fkrtl_export", "require_signed_in", "require_ssbi_unduh"}
     # /api/v1/verifikasi-manusia dipanggil di tengah login, sebelum ada token SAPA. Penjaganya
     # session_token bertanda tangan dari Action Auth0 (tes di test_verifikasi_manusia.py).
     open_routes = {"/", "/api", "/api/index.py", "/api/v1/health", "/health", "/api/v2/tenants/{tenant_id}/Users",
@@ -93,5 +94,5 @@ def test_every_data_route_requires_a_role(api):
 
 
 def test_refused_requests_do_not_leak_details(api):
-    body = call(api, "post", "/api/v1/fkrtl-antrol-sync", ["viewer"]).json()
+    body = call(api, "get", "/api/v1/ssbi-jadwal/status", ["viewer"]).json()
     assert body == {"detail": "Akun Anda tidak memiliki izin untuk tindakan ini"}

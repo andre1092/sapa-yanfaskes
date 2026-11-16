@@ -196,7 +196,6 @@ def test_unreadable_source_returns_no_data_instead_of_sample_data(monkeypatch):
 @pytest.mark.parametrize("path", [
     "/api/v1/fkrtl-antrol-stats",
     "/api/v1/dashboard-stats",
-    "/api/v1/fkrtl-antrol-sync",
     "/api/v1/fkrtl-export?type=faskes",
 ])
 def test_spreadsheet_id_from_request_is_ignored(monkeypatch, path):

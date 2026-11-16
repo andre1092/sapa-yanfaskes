@@ -18,7 +18,7 @@ def setup(monkeypatch):
 
     async def fake_read(**filters):
         return [{"id": 1, "at": "2026-11-13T00:00:00+00:00", "actor": "auth0|uji", "role": "super_admin",
-                 "action": "POST /api/v1/fktp-antrol-sync", "target": "/api/v1/fktp-antrol-sync", "status": 200, "ip": "10.0.0.0"}]
+                 "action": "GET /api/v1/fktp-antrol-stats", "target": "/api/v1/fktp-antrol-stats", "status": 200, "ip": "10.0.0.0"}]
 
     monkeypatch.setattr(audit_log, "write_entry", fake_write)
     monkeypatch.setattr(audit_log, "read_entries", fake_read)
@@ -35,11 +35,11 @@ def setup(monkeypatch):
 def test_admin_action_is_recorded_without_email_or_token(setup):
     api, written, client_for = setup
     client, headers = client_for(["super_admin"])
-    assert client.post("/api/v1/fktp-antrol-sync", headers=headers).status_code == 200
+    assert client.get("/api/v1/fktp-antrol-stats?refresh=true", headers=headers).status_code == 200
     assert len(written) == 1
     entry = written[0]
     assert entry["actor"] == "auth0|ceo" and entry["role"] == "super_admin"
-    assert entry["action"] == "POST /api/v1/fktp-antrol-sync" and entry["status"] == 200
+    assert entry["action"] == "GET /api/v1/fktp-antrol-stats" and entry["status"] == 200
     assert entry["ip"] == "203.0.113.0"
     blob = json.dumps(entry)
     assert "Bearer" not in blob and "@" not in blob
@@ -49,7 +49,7 @@ def test_admin_action_is_recorded_without_email_or_token(setup):
 def test_refused_access_is_recorded(setup, roles, expected):
     api, written, client_for = setup
     client, headers = client_for(roles)
-    assert client.post("/api/v1/fktp-antrol-sync", headers=headers).status_code == expected
+    assert client.get("/api/v1/fktp-antrol-stats?refresh=true", headers=headers).status_code == expected
     assert written and written[-1]["status"] == expected and written[-1]["role"] in ("", "viewer")
 
 
@@ -73,7 +73,7 @@ def test_audit_log_page_is_super_admin_only(setup, roles, expected):
     response = client.get("/api/v1/audit-log", headers=headers)
     assert response.status_code == expected
     if expected == 200:
-        assert response.json()["entries"][0]["action"] == "POST /api/v1/fktp-antrol-sync"
+        assert response.json()["entries"][0]["action"] == "GET /api/v1/fktp-antrol-stats"
 
 
 def test_audit_log_cannot_be_changed_through_the_api(setup):
@@ -97,7 +97,7 @@ def test_database_failure_does_not_break_the_request(setup, monkeypatch):
 
     monkeypatch.setattr(audit_log, "write_entry", broken)
     client, headers = client_for(["super_admin"])
-    assert client.post("/api/v1/fktp-antrol-sync", headers=headers).status_code == 200
+    assert client.get("/api/v1/fktp-antrol-stats?refresh=true", headers=headers).status_code == 200
 
 
 def test_time_range_filter_uses_whole_days_in_wib(setup, monkeypatch):
