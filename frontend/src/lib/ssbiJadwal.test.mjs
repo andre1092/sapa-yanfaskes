@@ -42,7 +42,10 @@ test('berkas dicek sebelum dikirim', () => {
 });
 
 test('keadaan tombol Download Detail', () => {
-  assert.deepEqual(s.keadaanUnduh('Semua Bulan', INFO), { aktif: false, teks: 'Pilih satu bulan untuk mengunduh detail.' });
+  assert.deepEqual(s.keadaanUnduh('Semua Bulan', INFO), {
+    aktif: true, teks: 'Detail per dokter, semua bulan (April–Oktober 2026) · data SSBI per 16 Nov 2026',
+  });
+  assert.equal(s.keadaanUnduh('Pilih', INFO).aktif, false);
   assert.equal(s.keadaanUnduh('October 2026', { ...INFO, ada_data: false, bulan: [] }).aktif, false);
   assert.deepEqual(s.keadaanUnduh('October 2026', INFO), { aktif: true, teks: 'Detail per dokter, Oktober 2026 · data SSBI per 16 Nov 2026' });
   assert.deepEqual(s.keadaanUnduh('September 2026', INFO), {
@@ -51,6 +54,8 @@ test('keadaan tombol Download Detail', () => {
   const petugas = { ...INFO, rs: 'RSD Melati', bulan: ['2026-10'] };
   assert.equal(s.keadaanUnduh('October 2026', petugas).teks, 'Detail per dokter RSD Melati, Oktober 2026 · data SSBI per 16 Nov 2026');
   assert.deepEqual(s.keadaanUnduh('May 2026', petugas), { aktif: false, teks: 'Belum ada detail RSD Melati untuk Mei 2026.' });
+  assert.equal(s.keadaanUnduh('Semua Bulan', petugas).teks, 'Detail per dokter RSD Melati, semua bulan (Oktober 2026) · data SSBI per 16 Nov 2026');
+  assert.deepEqual(s.keadaanUnduh('Semua Bulan', { ...petugas, bulan: [] }), { aktif: false, teks: 'Belum ada detail RSD Melati.' });
   assert.equal(s.keadaanUnduh('October 2026', undefined).aktif, false);
 });
 
@@ -58,4 +63,20 @@ test('nama berkas hanya diambil dari header yang aman', () => {
   assert.equal(s.namaDariHeader('attachment; filename="Detail_Jadwal_Dokter_FKRTL_Mei_2026.xlsx"', 'x.xlsx'), 'Detail_Jadwal_Dokter_FKRTL_Mei_2026.xlsx');
   assert.equal(s.namaDariHeader('attachment; filename="../evil.exe"', 'x.xlsx'), 'x.xlsx');
   assert.equal(s.namaDariHeader(undefined, 'x.xlsx'), 'x.xlsx');
+});
+
+test('parameter bulan untuk server', () => {
+  assert.equal(s.parameterBulan('Semua Bulan'), 'semua');
+  assert.equal(s.parameterBulan('October 2026'), '2026-10');
+  assert.equal(s.parameterBulan('Pilih'), null);
+});
+
+test('nama berkas cadangan memuat rentang bulan', () => {
+  assert.equal(s.namaBerkasCadangan('semua', ['2026-04', '2026-10']), 'Detail_Jadwal_Dokter_FKRTL_April-Oktober_2026.xlsx');
+  assert.equal(s.namaBerkasCadangan('semua', ['2026-12', '2027-01']), 'Detail_Jadwal_Dokter_FKRTL_Desember_2026-Januari_2027.xlsx');
+  assert.equal(s.namaBerkasCadangan('2026-05', []), 'Detail_Jadwal_Dokter_FKRTL_Mei_2026.xlsx');
+});
+
+test('admin tanpa detail mendapat teks lengkap', () => {
+  assert.equal(s.keadaanUnduh('Semua Bulan', { ...INFO, bulan: [] }).teks, 'Belum ada detail di data SSBI yang terpasang.');
 });

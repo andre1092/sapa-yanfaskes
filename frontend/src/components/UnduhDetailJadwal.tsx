@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { bolehMelakukan } from '../lib/izinPeran';
-import { kodeBulan, keadaanUnduh, labelBulan, namaDariHeader } from '../lib/ssbiJadwal';
+import { keadaanUnduh, labelBulan, namaBerkasCadangan, namaDariHeader, parameterBulan } from '../lib/ssbiJadwal';
 import type { InfoBulan } from '../lib/ssbiJadwal';
 import { useAuthStore } from '../store/authStore';
 
@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/authStore';
 export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
   const boleh = bolehMelakukan(useAuthStore((s) => s.user?.role), 'ekspor');
   const idKeterangan = useId();
-  const [keadaan, setKeadaan] = useState<'diam' | 'menyiapkan' | 'gagal' | 'diganti'>('diam');
+  const [keadaan, setKeadaan] = useState<'diam' | 'menyiapkan' | 'gagal' | 'diganti' | 'terlalu-besar'>('diam');
   const info = useQuery<InfoBulan, Error>({
     queryKey: ['ssbi-jadwal-bulan'],
     queryFn: async ({ signal }) => (await apiClient.get<InfoBulan>('/api/v1/ssbi-jadwal/bulan', { signal, timeout: 30000 })).data,
@@ -23,7 +23,8 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
   });
   if (!boleh) return null;
 
-  const kode = kodeBulan(bulan);
+  const kode = parameterBulan(bulan);
+  const labelUnduh = kode === 'semua' ? 'semua bulan' : kode ? labelBulan(kode) : '';
   const status = info.isError
     ? { aktif: false, teks: 'Ketersediaan detail belum bisa dicek. Muat ulang halaman.' }
     : keadaanUnduh(bulan, info.data);
@@ -34,7 +35,7 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
     setKeadaan('menyiapkan');
     try {
       const res = await apiClient.get<Blob>('/api/v1/ssbi-jadwal/detail', { params: { bulan: kode }, responseType: 'blob', timeout: 60000 });
-      const nama = namaDariHeader(res.headers['content-disposition'], `Detail_Jadwal_Dokter_FKRTL_${labelBulan(kode).replace(' ', '_')}.xlsx`);
+      const nama = namaDariHeader(res.headers['content-disposition'], namaBerkasCadangan(kode, info.data?.bulan ?? []));
       const url = URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
@@ -45,14 +46,14 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
     } catch (error) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       console.error('Gagal mengunduh detail jadwal dokter', status);
-      setKeadaan(status === 409 ? 'diganti' : 'gagal');
+      setKeadaan(status === 409 ? 'diganti' : status === 413 ? 'terlalu-besar' : 'gagal');
     }
   };
 
   return (
     <span className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
       <span id={idKeterangan} className="text-xs text-[var(--text-muted)]">
-        {menyiapkan && kode ? `Menyiapkan detail ${labelBulan(kode)}…` : status.teks}
+        {menyiapkan && kode ? `Menyiapkan detail ${labelUnduh}…` : status.teks}
       </span>
       <button
         type="button"
@@ -66,6 +67,9 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
       </button>
       {keadaan === 'gagal' && (
         <span role="alert" className="text-xs text-[var(--danger)]">Berkas gagal disiapkan. Coba lagi.</span>
+      )}
+      {keadaan === 'terlalu-besar' && (
+        <span role="alert" className="text-xs text-[var(--danger)]">Data semua bulan terlalu besar untuk satu berkas. Pilih satu bulan di filter Bulan, lalu unduh lagi.</span>
       )}
       {keadaan === 'diganti' && (
         <span role="alert" className="text-xs text-[var(--danger)]">Data SSBI sedang diperbarui admin. Coba beberapa menit lagi.</span>

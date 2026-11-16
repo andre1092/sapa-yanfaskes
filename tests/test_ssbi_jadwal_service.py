@@ -262,3 +262,25 @@ def test_stored_drive_file_is_bounded():
 def test_unmapped_hospitals_are_listed():
     padanan = ssbi.Padanan([("RSD Melati", "0101R001")])
     assert padanan.tak_terpetakan(periksa().baris) == ["KENANGA LUMAJANG, RSUD", "RS MAWAR"]
+
+
+# --- semua bulan (keputusan CEO 2026-11-16: "Buat unduh semua bulan") -------
+
+def test_all_months_keyword_is_accepted():
+    assert ssbi.cek_bulan("semua") == "semua"
+
+
+def test_all_months_filter_keeps_every_month_and_hospital_limit():
+    rows = periksa().baris
+    assert len(ssbi.saring(rows, "semua", None)) == 4
+    assert [r["Nama Dokter"] for r in ssbi.saring(rows, "semua", {ssbi.norm("RSD Melati")})] == ["DOKTER B"]
+
+
+def test_all_months_file_name_and_title():
+    assert ssbi.nama_berkas("semua", None, ["2026-04", "2026-10"]) == "Detail_Jadwal_Dokter_FKRTL_April-Oktober_2026.xlsx"
+    assert ssbi.nama_berkas("semua", "RSD dr Soebandi", ["2026-12", "2027-01"]) == \
+        "Detail_Jadwal_Dokter_FKRTL_RSD_dr_Soebandi_Desember_2026-Januari_2027.xlsx"
+    assert ssbi.nama_berkas("semua", None, ["2026-10"]) == "Detail_Jadwal_Dokter_FKRTL_Oktober_2026.xlsx"
+    ws = _sheet(ssbi.buat_xlsx(periksa().baris, "semua", None, "x"))
+    assert ws["A1"].value == "Detail Kesesuaian Jadwal Praktik Dokter FKRTL, semua bulan (April–Mei 2026)"
+    assert ws.max_row == 4 + 4

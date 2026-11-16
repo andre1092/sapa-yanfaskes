@@ -96,25 +96,49 @@ export function cekHasilKompres(ukuran: number): string | null {
 
 export type KeadaanUnduh = { aktif: boolean; teks: string };
 
+export const SEMUA_BULAN = 'Semua Bulan';
+
+/** Nilai filter bulan menjadi parameter server: "YYYY-MM", "semua", atau null bila tidak dikenali. */
+export function parameterBulan(bulanDipilih: string): string | null {
+  return bulanDipilih === SEMUA_BULAN ? 'semua' : kodeBulan(bulanDipilih);
+}
+
 /** Keadaan tombol Download Detail dan keterangan yang selalu terlihat di sampingnya. */
 export function keadaanUnduh(bulanDipilih: string, info: InfoBulan | undefined): KeadaanUnduh {
-  const kode = kodeBulan(bulanDipilih);
-  if (!kode) return { aktif: false, teks: 'Pilih satu bulan untuk mengunduh detail.' };
+  const kode = parameterBulan(bulanDipilih);
+  if (!kode) return { aktif: false, teks: 'Pilih bulan untuk mengunduh detail.' };
   if (!info) return { aktif: false, teks: 'Memeriksa ketersediaan detail…' };
   if (!info.ada_data) return { aktif: false, teks: 'Detail belum tersedia. Admin perlu mengunggah data SSBI di menu Integrasi data.' };
+  const per = tanggalData(info.data_per);
+  const siapa = info.rs ? `Detail per dokter ${info.rs}` : 'Detail per dokter';
+  if (kode === 'semua') {
+    if (info.bulan.length === 0) return { aktif: false, teks: info.rs ? `Belum ada detail ${info.rs}.` : 'Belum ada detail di data SSBI yang terpasang.' };
+    return { aktif: true, teks: `${siapa}, semua bulan (${rentangBulan(info.bulan)})${per ? ` · data SSBI per ${per}` : ''}` };
+  }
   const label = labelBulan(kode);
   if (!info.bulan.includes(kode)) {
     if (info.rs) return { aktif: false, teks: `Belum ada detail ${info.rs} untuk ${label}.` };
     const cakupan = rentangBulan(info.bulan);
     return { aktif: false, teks: `Belum ada detail untuk ${label}.${cakupan ? ` Data SSBI yang terpasang mencakup ${cakupan}.` : ''}` };
   }
-  const per = tanggalData(info.data_per);
-  const siapa = info.rs ? `Detail per dokter ${info.rs}` : 'Detail per dokter';
   return { aktif: true, teks: `${siapa}, ${label}${per ? ` · data SSBI per ${per}` : ''}` };
+}
+
+/** Nama berkas bila header server tidak terbaca; semua bulan memakai rentang supaya tidak bentrok. */
+export function namaBerkasCadangan(kode: string, bulanAda: readonly string[]): string {
+  const urut = [...bulanAda].sort();
+  let akhiran: string;
+  if (kode !== 'semua') akhiran = labelBulan(kode).replace(' ', '_');
+  else if (urut.length === 0) akhiran = 'Semua_Bulan';
+  else {
+    const [a, b] = [labelBulan(urut[0]).split(' '), labelBulan(urut[urut.length - 1]).split(' ')];
+    akhiran = a.join(' ') === b.join(' ') ? a.join('_') : a[1] === b[1] ? `${a[0]}-${b[0]}_${b[1]}` : `${a.join('_')}-${b.join('_')}`;
+  }
+  return `Detail_Jadwal_Dokter_FKRTL_${akhiran}.xlsx`;
 }
 
 /** Nama berkas dari header Content-Disposition server (hanya huruf, angka, _ dan .xlsx). */
 export function namaDariHeader(header: string | undefined, cadangan: string): string {
-  const m = /filename="([A-Za-z0-9_]+\.xlsx)"/.exec(header ?? '');
+  const m = /filename="([A-Za-z0-9_-]+\.xlsx)"/.exec(header ?? '');
   return m ? m[1] : cadangan;
 }
