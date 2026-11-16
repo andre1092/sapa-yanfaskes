@@ -967,7 +967,7 @@ export const NakesComplianceTab: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-end items-center gap-2 px-4 pb-3">
+        <div className="flex flex-wrap justify-end items-center gap-2 px-4 py-3">
           <UnduhDetailJadwal bulan={selectedBulan} />
           <UnduhJpegKepatuhan tab="nakes" rows={processedTableRows} periode={bulanIndonesia(selectedBulan)} filter={[selectedKabupaten, selectedNamaPpk, selectedTipeFaskes]} pencarian={searchQuery} statusFilter={statusFilter} />
         </div>

@@ -139,7 +139,7 @@ export function DataIntegrationView() {
         <h1 className="text-2xl font-bold text-[var(--text-main)]">Integrasi data</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--text-muted)]">
           Unggah data SSBI Kesesuaian Jadwal Praktik Dokter FKRTL, lalu integrasikan. Setelah itu pengguna bisa mengunduh
-          detailnya per bulan di menu Kepatuhan FKRTL.
+          detailnya, per bulan atau semua bulan, di menu Kepatuhan FKRTL.
         </p>
       </header>
 
@@ -200,15 +200,15 @@ export function DataIntegrationView() {
         </div>
 
         <details className="mt-3 text-sm">
-          <summary className="cursor-pointer font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
+          <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
             <li>Login ke SSBI.</li>
-            <li>Di browser yang sama, buka tautan <a className="underline text-[var(--action-primary)]" href={TAUTAN_SSBI} target="_blank" rel="noopener noreferrer">FKRTL.csv</a>. Berkas langsung terunduh dalam ±2 menit.</li>
+            <li>Di browser yang sama, buka tautan <a className="tautan-kalimat underline text-[var(--action-primary)]" href={TAUTAN_SSBI} target="_blank" rel="noopener noreferrer">FKRTL.csv</a>. Berkas langsung terunduh dalam ±2 menit.</li>
             <li>Unggah berkas yang terunduh tanpa diubah dan tanpa dibuka di Excel.</li>
           </ol>
         </details>
         <details className="mt-2 text-sm">
-          <summary className="cursor-pointer font-semibold text-[var(--text-main)]">Kolom yang dibutuhkan</summary>
+          <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Kolom yang dibutuhkan</summary>
           <p className="mt-2 text-[var(--text-muted)]">{KOLOM.join(' · ')}. Urutan kolom bebas.</p>
         </details>
 

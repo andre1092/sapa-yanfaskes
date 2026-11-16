@@ -1066,11 +1066,11 @@ export const DisplayTtComplianceTab: React.FC = () => {
 
             {/* Export CSV Button */}
             <button
+              type="button"
               onClick={handleExportCSV}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[var(--bpjs-green)] hover:text-[var(--text-main)] hover:bg-[var(--bpjs-green)] border border-[var(--border-color)] transition-all flex items-center gap-1.5"
+              className="sapa-button sapa-button-secondary w-full sm:w-auto"
             >
-              <span></span>
-              <span>Ekspor CSV</span>
+              Ekspor CSV
             </button>
           </div>
         </div>

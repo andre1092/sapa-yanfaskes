@@ -515,6 +515,9 @@ body { font-family: var(--font-sans); }
 .sapa-button, .sapa-theme-toggle { font-family: inherit; font-weight: 500; border-radius: var(--radius-control); }
 .sapa-button-primary, .sapa-button--primary, .sapa-login-submit { background: var(--action-primary); border-color: var(--action-primary); color: var(--action-on-primary); }
 .sapa-button-secondary, .sapa-button--secondary { background: var(--panel-bg); color: var(--text-main); }
+/* Tombol nonaktif harus terlihat nonaktif (design QA Kim 2026-11-16). Tombol yang sedang memproses
+   (aria-busy) tetap berwarna supaya "Mengintegrasikan…" dan "Menyiapkan berkas…" terbaca sebagai berjalan. */
+.sapa-button:disabled:not([aria-busy="true"]) { background: var(--surface-subtle); border-color: var(--border-color); color: var(--text-muted); box-shadow: none; cursor: not-allowed; opacity: .6; }
 .sapa-panel, .glass-panel, .glass-card { border-radius: var(--radius-panel); box-shadow: none; background: var(--panel-bg); backdrop-filter: none; }
 .glass-card-hover:hover { transform: none; box-shadow: none; border-color: var(--panel-border); }
 .bpjs-gradient, .bpjs-gradient-light { background: var(--accent-soft); color: var(--accent-text); }
@@ -550,6 +553,8 @@ body { font-family: var(--font-sans); }
   .berry-canvas .MuiInputBase-root { min-height: var(--sasaran-sentuh); }
   .berry-canvas :is(button, [role="button"], a[href]) { min-width: var(--sasaran-sentuh); }
   .berry-canvas a[href] { display: inline-flex; align-items: center; }
+  /* Tautan di dalam kalimat dikecualikan dari ukuran target (WCAG 2.5.8) supaya baris teks rata. */
+  .berry-canvas a[href].tautan-kalimat { display: inline; min-height: 0; min-width: 0; }
 }
 
 /* Hukum Fitts (prinsip video "20 Principles of UX & Animation", PR 2 dari 4): di desktop dengan
