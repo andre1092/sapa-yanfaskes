@@ -101,3 +101,60 @@
   .sapa-floating-sidebar, .sapa-floating-sidebar * { transition: none !important; scroll-behavior: auto !important; }
   .sapa-floating-sidebar :is(button, a):active { transform: none; }
 }
+
+/* Rail desktop (desain Kim 2026-11-16, agents/kim/desain/sidebar-rail/SPEK.md): semua menu terlihat,
+   tidak ada reflow saat melebar. Dimuat setelah aturan di atas; drawer HP tidak berubah. */
+
+.sapa-floating-sidebar {
+  --sidebar-item: 48px;          /* tadinya 56 */
+  --sidebar-group: 28px;         /* satu slot judul grup, sama tinggi di rail dan panel */
+  --sidebar-label-width: 160px;  /* 264 - 2x20 padding - 56 kiri label - 8 kanan */
+  --sidebar-divider: #d5dbe3;
+}
+.sapa-floating-sidebar[data-theme='dark'] { --sidebar-divider: #46505f; }
+
+@media (min-width: 900px) {
+  /* 0. Ruang vertikal: rail 16 px dari atas/bawah layar, padding atas/bawah 16, jarak antarblok 12.
+        Admin (6 menu) muat mulai tinggi viewport 600 px (laptop 1366x768). */
+  .sapa-floating-sidebar[data-mobile='false'] { top: 16px; bottom: 16px; padding: 16px 20px; gap: 12px; }
+
+  /* 1. Tidak ada reflow saat melebar: label item selalu absolut dengan lebar tetap, satu baris. */
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-item { height: var(--sidebar-item); min-height: var(--sidebar-item); padding: 0; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-item > .sapa-sidebar-reveal,
+  .sapa-floating-sidebar[data-mobile='false']:is(:hover, :focus-within, [data-pinned='true']) .sapa-sidebar-item > .sapa-sidebar-reveal {
+    position: absolute; left: 56px; width: var(--sidebar-label-width); padding-right: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* 2. Grup: satu slot 28 px. Rail menampilkan garis pendek, panel menampilkan teks judul. Tinggi sama. */
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-group { position: relative; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-group + .sapa-sidebar-group { margin-top: 0; padding-top: 0; border-top: 0; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-group-label { height: var(--sidebar-group); min-height: var(--sidebar-group); margin: 0; line-height: var(--sidebar-group); }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-group + .sapa-sidebar-group::before {
+    content: ""; position: absolute; top: calc(var(--sidebar-group) / 2); left: 10px; width: 24px; height: 1px;
+    background: var(--sidebar-divider); transition: opacity var(--sidebar-fade) ease;
+  }
+  .sapa-floating-sidebar[data-mobile='false']:is(:hover, :focus-within, [data-pinned='true']) .sapa-sidebar-group + .sapa-sidebar-group::before { opacity: 0; }
+
+  /* 3. Tindakan rail desktop hanya Sematkan dan Keluar (Cari menu dan tema sudah ada di header).
+        Bloknya 96 px di KEDUA keadaan, supaya tinggi nav tidak berubah saat melebar
+        (kalau berubah, posisi gulir nav terpotong dan item bergeser). Di panel, tiap tombol diberi label. */
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-actions,
+  .sapa-floating-sidebar[data-mobile='false']:is(:hover, :focus-within, [data-pinned='true']) .sapa-sidebar-actions { height: 96px; flex-basis: 96px; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-action { justify-items: start; padding-left: 11px; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-action:nth-child(2),
+  .sapa-floating-sidebar[data-mobile='false']:is(:hover, :focus-within, [data-pinned='true']) .sapa-sidebar-action:nth-child(2) { top: 52px; left: 0; }
+  .sapa-floating-sidebar[data-mobile='false']:is(:hover, :focus-within, [data-pinned='true']) .sapa-sidebar-action { width: 100%; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-action-label {
+    position: absolute; left: 56px; width: var(--sidebar-label-width); font-size: 13px; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* 4. Kalau tetap tidak muat (Super Admin di layar pendek): scrollbar tipis terlihat dan tepi bawah memudar. */
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-navigation { margin-right: -12px; padding-right: 12px; scrollbar-width: thin; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-navigation::-webkit-scrollbar { width: 4px; }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-navigation[data-luber='true'] {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  }
+  .sapa-floating-sidebar[data-mobile='false'] .sapa-sidebar-navigation[data-luber='true'][data-di-bawah='true'] { mask-image: none; }
+}
