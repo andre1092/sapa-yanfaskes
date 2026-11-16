@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import './FloatingSidebar.css';
 
@@ -32,6 +33,25 @@ function ActionIcon({ name }: { name: 'sun' | 'moon' | 'search' | 'pin' | 'logou
 }
 
 export function FloatingSidebar(props: FloatingSidebarProps) {
+  const navRef = useRef<HTMLElement>(null);
+  // Rail desktop: tandai nav yang luber (scrollbar dan tepi pudar) dan jaga item aktif tetap terlihat.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || props.mobile) return;
+    const tandai = () => {
+      nav.dataset.luber = String(nav.scrollHeight > nav.clientHeight + 1);
+      nav.dataset.diBawah = String(nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 1);
+    };
+    const pengamat = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(tandai);
+    pengamat?.observe(nav);
+    nav.addEventListener('scroll', tandai, { passive: true });
+    tandai();
+    return () => { pengamat?.disconnect(); nav.removeEventListener('scroll', tandai); };
+  }, [props.mobile, props.sections]);
+  useEffect(() => {
+    if (props.mobile) return;
+    navRef.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [props.activeMenu, props.mobile]);
   const initials = props.userName.trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'S';
   const navigate = (event: MouseEvent<HTMLAnchorElement>, key: string) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -54,17 +74,18 @@ export function FloatingSidebar(props: FloatingSidebarProps) {
       <div className="sapa-sidebar-reveal sapa-sidebar-profile-details"><p className="sapa-sidebar-name">{props.userName}</p><p className="sapa-sidebar-role">{props.userRole}</p></div>
       {props.mobile && <button type="button" className="sapa-sidebar-close" onClick={props.onClose} aria-label="Tutup navigasi" title="Tutup navigasi"><ActionIcon name="close" /></button>}
     </div>
-    <button type="button" className="sapa-sidebar-search" onClick={props.onSearch} aria-label="Cari menu" title="Cari menu"><span className="sapa-sidebar-reveal">Cari menu...</span><span className="sapa-sidebar-search-icon"><ActionIcon name="search" /></span></button>
-    <nav className="sapa-sidebar-navigation" aria-label="Menu utama">
+    {props.mobile && <button type="button" className="sapa-sidebar-search" onClick={props.onSearch} aria-label="Cari menu" title="Cari menu"><span className="sapa-sidebar-reveal">Cari menu...</span><span className="sapa-sidebar-search-icon"><ActionIcon name="search" /></span></button>}
+    <nav ref={navRef} className="sapa-sidebar-navigation" aria-label="Menu utama">
       {props.sections.map(section => <section className="sapa-sidebar-group" key={section.label} aria-label={section.label}><h2 className="sapa-sidebar-group-label sapa-sidebar-reveal">{section.label}</h2>{section.items.map(renderItem)}</section>)}
     </nav>
     <div className="sapa-sidebar-actions" aria-label="Tindakan akun">
-      <button type="button" className="sapa-sidebar-action" onClick={props.onToggleTheme} aria-label={props.dark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} title={props.dark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} aria-pressed={props.dark}><ActionIcon name={props.dark ? 'sun' : 'moon'} /></button>
-      <button type="button" className="sapa-sidebar-action" onClick={props.onSearch} aria-label="Cari menu" title="Cari menu"><ActionIcon name="search" /></button>
+      {/* Tema dan Cari menu sudah ada di header; di rail desktop tidak diulang (desain Kim). */}
+      {props.mobile && <button type="button" className="sapa-sidebar-action" onClick={props.onToggleTheme} aria-label={props.dark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} title={props.dark ? 'Gunakan tema terang' : 'Gunakan tema gelap'} aria-pressed={props.dark}><ActionIcon name={props.dark ? 'sun' : 'moon'} /></button>}
+      {props.mobile && <button type="button" className="sapa-sidebar-action" onClick={props.onSearch} aria-label="Cari menu" title="Cari menu"><ActionIcon name="search" /></button>}
       {props.mobile
         ? <button type="button" className="sapa-sidebar-action" onClick={props.onClose} aria-label="Tutup navigasi" title="Tutup navigasi"><ActionIcon name="close" /></button>
-        : <button type="button" className="sapa-sidebar-action" onClick={props.onTogglePin} aria-label="Sematkan navigasi" title={props.pinned ? 'Lepas sematan navigasi' : 'Sematkan navigasi'} aria-pressed={props.pinned}><ActionIcon name="pin" /></button>}
-      <button type="button" className="sapa-sidebar-action sapa-sidebar-logout" onClick={props.onLogout} aria-label="Keluar" title="Keluar"><ActionIcon name="logout" /></button>
+        : <button type="button" className="sapa-sidebar-action" onClick={props.onTogglePin} aria-label="Sematkan navigasi" title={props.pinned ? 'Lepas sematan navigasi' : 'Sematkan navigasi'} aria-pressed={props.pinned}><ActionIcon name="pin" /><span className="sapa-sidebar-reveal sapa-sidebar-action-label" aria-hidden="true">{props.pinned ? 'Lepas sematan' : 'Sematkan navigasi'}</span></button>}
+      <button type="button" className="sapa-sidebar-action sapa-sidebar-logout" onClick={props.onLogout} aria-label="Keluar" title="Keluar"><ActionIcon name="logout" />{!props.mobile && <span className="sapa-sidebar-reveal sapa-sidebar-action-label" aria-hidden="true">Keluar</span>}</button>
     </div>
   </aside>;
 }
