@@ -221,3 +221,13 @@ def test_mapping_is_exact_after_trim_space_and_case(tmp_path):
 def test_mapping_file_in_repo_is_one_to_one():
     padanan = ssbi.Padanan.dari_berkas()
     assert len(padanan.kode) == 25
+
+
+def test_data_after_the_first_gzip_member_is_refused():
+    with pytest.raises(ssbi.BerkasDitolak):
+        ssbi.buka_gzip(gzip.compress(csv_bytes()) + gzip.compress(b"tambahan"))
+
+
+def test_stored_drive_file_is_bounded():
+    with pytest.raises(ValueError):
+        ssbi.dari_gzip(gzip.compress(b"\x00" * (ssbi.BATAS_MENTAH + 10)))

@@ -250,3 +250,9 @@ def test_cache_follows_the_drive_version(env, monkeypatch):
     drive.versi = "v-baru-dari-instans-lain"
     call("GET", "/api/v1/ssbi-jadwal/bulan")
     assert drive.unduh_dipanggil == 2
+
+
+def test_errors_are_not_cached(env):
+    _, _, call, _ = env
+    res = call("GET", "/api/v1/ssbi-jadwal/detail?bulan=Semua")
+    assert res.status_code == 400 and res.headers["cache-control"] == "no-store"

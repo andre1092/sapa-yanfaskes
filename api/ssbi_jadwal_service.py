@@ -83,6 +83,8 @@ def buka_gzip(data: bytes) -> bytes:
         raise BerkasDitolak("Berkas kiriman rusak. Muat ulang halaman lalu coba lagi.") from None
     if not pembuka.eof:
         raise BerkasDitolak("Berkas kiriman terpotong. Muat ulang halaman lalu coba lagi.")
+    if pembuka.unused_data:
+        raise BerkasDitolak("Berkas kiriman tidak terbaca. Muat ulang halaman lalu coba lagi.")
     return keluar.getvalue()
 
 
@@ -224,7 +226,11 @@ def ke_gzip(baris: List[Dict[str, str]]) -> bytes:
 
 def dari_gzip(data: bytes) -> List[Dict[str, str]]:
     """Membaca berkas simpanan buatan ke_gzip (dari Drive)."""
-    teks = gzip.decompress(data).decode("utf-8")
+    pembuka = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    mentah = pembuka.decompress(data, BATAS_MENTAH + 1)
+    if len(mentah) > BATAS_MENTAH or not pembuka.eof:
+        raise ValueError("simpanan SSBI melebihi batas atau rusak")
+    teks = mentah.decode("utf-8")
     pembaca = csv.reader(io.StringIO(teks, newline=""))
     header = next(pembaca)
     if tuple(header) != KOLOM_KELUAR:

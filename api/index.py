@@ -3493,11 +3493,11 @@ def require_ssbi_unduh(request: Request) -> dict:
         peta = _ssbi_peta()
     except Exception as exc:
         logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
-        raise HTTPException(status_code=503, detail=_SSBI_BELUM_SIAP)
+        raise HTTPException(status_code=503, detail=_SSBI_BELUM_SIAP, headers=_NO_STORE)
     cakupan = peta.untuk_kode(kode)
     if cakupan is None:
         logger.warning("Unduh SSBI ditolak: kode PPK petugas tidak ada di tabel padanan")
-        raise HTTPException(status_code=403, detail=_SSBI_TANPA_RS)
+        raise HTTPException(status_code=403, detail=_SSBI_TANPA_RS, headers=_NO_STORE)
     return {"claims": claims, "rs": cakupan[0], "faskes": cakupan[1]}
 
 
@@ -3537,10 +3537,10 @@ def _ssbi_drive(fungsi, *args):
     try:
         return fungsi(*args)
     except drive_ssbi.DriveBelumSiap:
-        raise HTTPException(status_code=503, detail=_SSBI_BELUM_SIAP)
+        raise HTTPException(status_code=503, detail=_SSBI_BELUM_SIAP, headers=_NO_STORE)
     except Exception as exc:
         logger.error("Data SSBI di Drive tidak bisa dipakai: %s", type(exc).__name__)
-        raise HTTPException(status_code=502, detail=_SSBI_DRIVE_GAGAL)
+        raise HTTPException(status_code=502, detail=_SSBI_DRIVE_GAGAL, headers=_NO_STORE)
 
 
 async def _ssbi_terima(request: Request):
@@ -3548,19 +3548,19 @@ async def _ssbi_terima(request: Request):
     from starlette.concurrency import run_in_threadpool
 
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
-        raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.")
+        raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
     batas = ssbi_jadwal_service.BATAS_KOMPRES
     try:
         panjang = int(request.headers.get("content-length") or 0)
     except ValueError:
         panjang = 0
     if panjang > batas:
-        raise HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).")
+        raise HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).", headers=_NO_STORE)
     data = bytearray()
     async for potong in request.stream():
         data.extend(potong)
         if len(data) > batas:
-            raise HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).")
+            raise HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).", headers=_NO_STORE)
 
     def olah():
         mentah = ssbi_jadwal_service.buka_gzip(bytes(data))
@@ -3569,7 +3569,7 @@ async def _ssbi_terima(request: Request):
     try:
         return await run_in_threadpool(olah)
     except ssbi_jadwal_service.BerkasDitolak as exc:
-        raise HTTPException(status_code=400, detail=exc.pesan)
+        raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
 
 
 def _ssbi_nama_berkas(request: Request) -> str:
@@ -3608,7 +3608,7 @@ async def _ssbi_kunci():
         conn = await asyncpg.connect(dsn, timeout=5, statement_cache_size=0)
     except Exception as exc:
         logger.error("Kunci integrasi SSBI tidak bisa dibuat: %s", type(exc).__name__)
-        raise HTTPException(status_code=503, detail="Integrasi belum bisa dijalankan. Coba lagi sebentar.")
+        raise HTTPException(status_code=503, detail="Integrasi belum bisa dijalankan. Coba lagi sebentar.", headers=_NO_STORE)
     try:
         async with conn.transaction():
             yield bool(await conn.fetchval("SELECT pg_try_advisory_xact_lock($1)", _SSBI_KUNCI))
@@ -3647,7 +3647,7 @@ async def ssbi_integrasikan(request: Request, user=Depends(require_admin)):
     isi = await run_in_threadpool(ssbi_jadwal_service.ke_gzip, hasil.baris)
     async with _ssbi_kunci() as dapat:
         if not dapat:
-            raise HTTPException(status_code=409, detail="Admin lain sedang mengintegrasikan data. Coba lagi setelah selesai.")
+            raise HTTPException(status_code=409, detail="Admin lain sedang mengintegrasikan data. Coba lagi setelah selesai.", headers=_NO_STORE)
         versi, _ = await run_in_threadpool(_ssbi_drive, drive_ssbi.tulis, isi, properti)
     with _ssbi_simpanan_lock:
         _ssbi_simpanan.update(versi=versi, baris=hasil.baris)
@@ -3675,13 +3675,13 @@ def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_
     try:
         bulan = ssbi_jadwal_service.cek_bulan(bulan)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Pilih satu bulan untuk mengunduh detail.")
+        raise HTTPException(status_code=400, detail="Pilih satu bulan untuk mengunduh detail.", headers=_NO_STORE)
     info, baris = _ssbi_drive(_ssbi_baris_aktif)
     if info is None:
-        raise HTTPException(status_code=404, detail="Detail belum tersedia. Admin perlu mengunggah data SSBI di menu Integrasi data.")
+        raise HTTPException(status_code=404, detail="Detail belum tersedia. Admin perlu mengunggah data SSBI di menu Integrasi data.", headers=_NO_STORE)
     pilihan = ssbi_jadwal_service.saring(baris, bulan, cakupan["faskes"])
     if not pilihan:
-        raise HTTPException(status_code=404, detail="Belum ada detail untuk bulan ini.")
+        raise HTTPException(status_code=404, detail="Belum ada detail untuk bulan ini.", headers=_NO_STORE)
     request.state.audit_detail = f"bulan={bulan} baris={len(pilihan)}"
     diunggah = info["properti"].get("diunggah_pada", "")
     try:
@@ -3691,7 +3691,7 @@ def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_
         label = "-"
     isi = ssbi_jadwal_service.buat_xlsx(pilihan, bulan, cakupan["rs"], label)
     if len(isi) > _SSBI_BATAS_RESPON:
-        raise HTTPException(status_code=413, detail="Berkas detail terlalu besar untuk diunduh. Hubungi tim teknis SAPA.")
+        raise HTTPException(status_code=413, detail="Berkas detail terlalu besar untuk diunduh. Hubungi tim teknis SAPA.", headers=_NO_STORE)
     nama = ssbi_jadwal_service.nama_berkas(bulan, cakupan["rs"])
     return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
