@@ -13,7 +13,7 @@ import { useAuthStore } from '../store/authStore';
 export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
   const boleh = bolehMelakukan(useAuthStore((s) => s.user?.role), 'ekspor');
   const idKeterangan = useId();
-  const [keadaan, setKeadaan] = useState<'diam' | 'menyiapkan' | 'gagal'>('diam');
+  const [keadaan, setKeadaan] = useState<'diam' | 'menyiapkan' | 'gagal' | 'diganti'>('diam');
   const info = useQuery<InfoBulan, Error>({
     queryKey: ['ssbi-jadwal-bulan'],
     queryFn: async ({ signal }) => (await apiClient.get<InfoBulan>('/api/v1/ssbi-jadwal/bulan', { signal, timeout: 30000 })).data,
@@ -43,8 +43,9 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setKeadaan('diam');
     } catch (error) {
-      console.error('Gagal mengunduh detail jadwal dokter', (error as { response?: { status?: number } })?.response?.status);
-      setKeadaan('gagal');
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      console.error('Gagal mengunduh detail jadwal dokter', status);
+      setKeadaan(status === 409 ? 'diganti' : 'gagal');
     }
   };
 
@@ -65,6 +66,9 @@ export function UnduhDetailJadwal({ bulan }: { bulan: string }) {
       </button>
       {keadaan === 'gagal' && (
         <span role="alert" className="text-xs text-[var(--danger)]">Berkas gagal disiapkan. Coba lagi.</span>
+      )}
+      {keadaan === 'diganti' && (
+        <span role="alert" className="text-xs text-[var(--danger)]">Data SSBI sedang diperbarui admin. Coba beberapa menit lagi.</span>
       )}
     </span>
   );

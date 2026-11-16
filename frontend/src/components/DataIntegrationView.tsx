@@ -121,7 +121,7 @@ export function DataIntegrationView() {
       setTahap('berhasil');
     } catch (error) {
       if (statusHttp(error) === 409) { setTahap('sibuk'); return; }
-      setGalat(pesanGalat(error, 'Koneksi terputus'));
+      setGalat(pesanGalat(error, 'koneksi terputus'));
       setTahap('gagal');
     }
   };
@@ -167,7 +167,14 @@ export function DataIntegrationView() {
       <section aria-labelledby="ssbi-unggah" className="rounded-xl border border-[var(--border-color)] bg-[var(--surface)] p-5">
         <h2 id="ssbi-unggah" className="text-base font-bold text-[var(--text-main)]">Unggah data baru</h2>
         <ol className="mt-1 flex flex-wrap gap-x-4 text-xs text-[var(--text-muted)]">
-          <li>1 Pilih berkas</li><li>2 Periksa isi</li><li>3 Integrasikan</li>
+          {['Pilih berkas', 'Periksa isi', 'Integrasikan'].map((nama, i) => {
+            const aktifKe = tahap === 'kosong' || tahap === 'galat' ? 0 : tahap === 'memeriksa' ? 1 : tahap === 'berhasil' ? 3 : 2;
+            return (
+              <li key={nama} aria-current={i === aktifKe ? 'step' : undefined} className={i === aktifKe ? 'font-bold text-[var(--text-main)]' : ''}>
+                {i < aktifKe ? '✓' : i + 1} {nama}
+              </li>
+            );
+          })}
         </ol>
 
         <div
@@ -215,7 +222,7 @@ export function DataIntegrationView() {
               <p className="flex flex-wrap items-center gap-2 text-[var(--text-main)]">
                 <strong className="break-all">{pilihan.nama}</strong>
                 <span className="text-[var(--text-muted)]">{ukuranMb(pilihan.ukuran)} MB</span>
-                {!sibukProses && <button type="button" className="underline text-[var(--action-primary)]" onClick={() => inputRef.current?.click()}>Ganti berkas</button>}
+                {!sibukProses && <button type="button" className="min-h-[44px] px-2 underline text-[var(--action-primary)]" onClick={() => inputRef.current?.click()}>Ganti berkas</button>}
               </p>
               <ul className="mt-2 space-y-1">
                 <Centang selesai>11 kolom sesuai</Centang>
@@ -228,7 +235,7 @@ export function DataIntegrationView() {
           )}
           {aktif && r && bisaIntegrasi && (
             <p className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
-              Data lama akan diganti total. {ringkasAktif(aktif)} dihapus dan diganti berkas ini.
+              <strong>Data lama akan diganti total.</strong> {ringkasAktif(aktif)} dihapus dan diganti berkas ini.
               {hilang.length > 0 && ` Setelah diganti, detail ${hilang.map(labelBulan).join(', ')} tidak bisa diunduh lagi.`}
             </p>
           )}
@@ -237,8 +244,7 @@ export function DataIntegrationView() {
               <ul className="space-y-1">
                 <Centang selesai>Membaca dan mengompres berkas</Centang>
                 <Centang selesai={tahap === 'menyimpan'} berjalan={tahap === 'mengirim'}>Mengirim berkas ({ukuranMb(pilihan.gz.size)} MB setelah dikompres)</Centang>
-                <Centang selesai={false} berjalan={tahap === 'menyimpan'}>Memeriksa {angka(pilihan.ringkasan.baris)} baris</Centang>
-                <Centang selesai={false} berjalan={tahap === 'menyimpan'}>Menyimpan dan mengganti data lama</Centang>
+                <Centang selesai={false} berjalan={tahap === 'menyimpan'}>Memeriksa dan menyimpan {angka(pilihan.ringkasan.baris)} baris</Centang>
               </ul>
               <p className="mt-2 text-xs text-[var(--text-muted)]">Jangan tutup halaman ini sampai unggahan selesai.</p>
             </div>
@@ -251,7 +257,7 @@ export function DataIntegrationView() {
           )}
           {tahap === 'gagal' && (
             <div ref={hasilRef} tabIndex={-1} role="alert" className="rounded-lg border border-[var(--danger)] p-3 text-[var(--danger)]">
-              Integrasi gagal: {galat.replace(/\.$/, '')}. Data lama tetap dipakai, tidak ada yang berubah.
+              Integrasi gagal: {galat.charAt(0).toLowerCase() + galat.slice(1).replace(/\.$/, '')}. Data lama tetap dipakai, tidak ada yang berubah.
             </div>
           )}
           {tahap === 'sibuk' && (
