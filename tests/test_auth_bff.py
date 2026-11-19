@@ -25,6 +25,7 @@ KUNCI_B = base64.b64encode(b"b" * 32).decode()
 COOKIE = "__Host-sapa_sesi"
 PESAN_SALAH = "Nama pengguna atau kata sandi salah."
 SALAH = {"detail": PESAN_SALAH, "kode": "sandi_salah"}
+ISIAN = {"detail": "Isian masuk tidak lengkap atau tidak sah.", "kode": "isian_tidak_sah"}
 
 ENV = {
     "AUTH0_DOMAIN": "sapa.test.auth0.com",
@@ -242,8 +243,11 @@ def test_masuk_sukses_memasang_cookie_aman(bff, ingat, max_age):
 
 def test_masuk_meneruskan_ke_auth0_dengan_realm_dari_env_dan_ip_asli(bff):
     b = bff()
+    # Field sisipan (realm/audience/client_id) kini ditolak seluruhnya (AUTH-5), dan Auth0 tidak dipanggil.
     assert masuk(b, realm="Username-Password-Authentication", audience="https://lain.example",
-                 client_id="klien-lain").status_code == 200
+                 client_id="klien-lain").status_code == 400
+    assert b.auth0.panggilan(path="/oauth/token") == []
+    assert masuk(b).status_code == 200
     [(path, data, header)] = b.auth0.panggilan(path="/oauth/token")
     assert path == "/oauth/token"
     assert data["grant_type"] == "http://auth0.com/oauth/grant-type/password-realm"
@@ -639,10 +643,10 @@ def test_get_dan_query_string_ditolak_tanpa_memanggil_layanan(bff):
     {"username": USERNAME, "password": SANDI, "turnstile_token": "x", "ingat": "ya"},
     [SANDI],
 ])
-def test_bentuk_tidak_sah_422_tanpa_memantulkan_isian(bff, body):
+def test_bentuk_tidak_sah_400_tanpa_memantulkan_isian(bff, body):
     b = bff()
     res = b.client.post("/api/v1/auth/masuk", json=body, headers=HEADER)
-    assert res.status_code == 422
+    assert res.status_code == 400 and res.json() == ISIAN
     assert SANDI not in res.text and USERNAME not in res.text
     assert b.auth0.kiriman == [] and b.cf.kiriman == []
 
@@ -650,10 +654,10 @@ def test_bentuk_tidak_sah_422_tanpa_memantulkan_isian(bff, body):
 def test_body_bukan_json_dan_terlalu_besar_ditolak(bff):
     b = bff()
     form = b.client.post("/api/v1/auth/masuk", data={"username": USERNAME, "password": SANDI}, headers=HEADER)
-    assert form.status_code in (415, 422) and SANDI not in form.text
+    assert form.status_code == 400 and form.json() == ISIAN and SANDI not in form.text
     besar = b.client.post("/api/v1/auth/masuk", content=b"{" + b" " * 20000 + b"}",
                           headers={**HEADER, "Content-Type": "application/json"})
-    assert besar.status_code == 413
+    assert besar.status_code == 400 and besar.json() == ISIAN
     assert b.auth0.kiriman == []
 
 
@@ -1388,7 +1392,7 @@ def test_galat_422_dan_500_tidak_mencetak_body_ke_log(bff, monkeypatch, caplog):
     assert res.status_code == 422 and SANDI not in res.text
     rusak = b.client.post("/api/v1/auth/masuk", content=json.dumps({"username": USERNAME, "password": SANDI}).encode() + b"}",
                           headers={**HEADER, "Content-Type": "application/json"})
-    assert rusak.status_code == 422 and SANDI not in rusak.text
+    assert rusak.status_code == 400 and SANDI not in rusak.text
 
     # 500 sungguhan: galat tak tertangkap di rute lain yang pesannya memuat sandi.
     def meledak(*a, **k):
@@ -1708,3 +1712,31 @@ def test_blokir_brute_force_auth0_sama_dengan_pembatas_sapa(bff):
 def test_aksi_turnstile_login_sesuai_spek_kim():
     from api import turnstile
     assert turnstile.AKSI_MASUK == "login"
+
+
+# --- AUTH-5 (Clara): validasi isian ketat, semua pelanggaran 400 dengan satu pesan -----------------
+
+@pytest.mark.parametrize("ubah", [
+    {"lain": "x"},                                   # field tak dikenal
+    {"ingat": None},                                 # ingat wajib boolean
+    {"ingat": 1},
+    {"username": "a" * 255},                         # identitas maks 254
+    {"username": "petugas\u0007uji"},               # karakter kontrol
+    {"password": "é" * 37},                          # 74 byte UTF-8 > 72: ditolak, tidak dipotong
+    {"turnstile_token": "t" * 2049},
+])
+def test_auth5_isian_ditolak_400_satu_pesan(bff, ubah):
+    b = bff()
+    body = kredensial(**ubah)
+    if ubah.get("ingat", False) is None:
+        body.pop("ingat")
+    res = b.client.post("/api/v1/auth/masuk", json=body, headers=HEADER)
+    assert res.status_code == 400 and res.json() == ISIAN
+    assert SANDI not in res.text and "petugas" not in res.text
+    assert b.auth0.kiriman == [] and b.cf.kiriman == []
+
+
+def test_auth5_batas_tepat_diterima(bff):
+    b = bff()
+    res = masuk(b, username="a" * 254, password="é" * 36)  # 72 byte tepat
+    assert res.status_code != 400

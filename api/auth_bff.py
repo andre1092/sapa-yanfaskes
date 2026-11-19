@@ -64,8 +64,9 @@ _NO_STORE = {"Cache-Control": "no-store"}
 WAKTU_MINIMUM_GAGAL = 0.7
 LANGKAH_WAKTU_GAGAL = 0.25
 MAKS_BODY = 4096
-_MAKS_USERNAME = 200  # selama transisi email juga diterima
-_MAKS_SANDI = 256
+_MAKS_USERNAME = 254  # AUTH-5: identitas (username atau email selama transisi)
+_MAKS_SANDI_BYTE = 72  # AUTH-5: batas bcrypt Auth0; lebih panjang ditolak, tidak dipotong
+_FIELD_MASUK = {"username", "password", "ingat", "turnstile_token"}
 _MAKS_TURNSTILE = 2048
 # Token Turnstile berbentuk base64url bertitik. Pola ketat supaya varian token yang sama (spasi, karakter
 # tak terlihat) tidak menghasilkan hash sekali pakai yang berbeda.
@@ -95,8 +96,6 @@ PESAN_SESI_BERAKHIR = "Sesi berakhir. Silakan masuk kembali."
 PESAN_TERLALU_BANYAK = "Terlalu banyak percobaan. Coba lagi beberapa saat lagi."
 PESAN_BELUM_SIAP = "Layanan masuk sedang tidak tersedia. Coba beberapa saat lagi."
 PESAN_ISIAN = "Isian masuk tidak lengkap atau tidak sah."
-PESAN_BUKAN_JSON = "Format permintaan tidak didukung."
-PESAN_TERLALU_BESAR = "Permintaan terlalu besar."
 PESAN_DITOLAK = "Permintaan ditolak. Muat ulang halaman lalu coba lagi."
 PESAN_KELUAR_GAGAL = "Sesi belum dapat diakhiri. Coba lagi."
 
@@ -109,7 +108,7 @@ KODE = {
     "mfa": (403, PESAN_MFA),
     "belum_siap": (503, PESAN_BELUM_SIAP),
     "asal_tidak_sah": (403, PESAN_DITOLAK),
-    "isian_tidak_sah": (422, PESAN_ISIAN),
+    "isian_tidak_sah": (400, PESAN_ISIAN),  # AUTH-5: semua pelanggaran isian 400 dengan satu pesan
     "sesi_berakhir": (401, PESAN_SESI_BERAKHIR),
 }
 
@@ -210,17 +209,17 @@ def _teks(nilai, maks: int) -> str:
 
 async def _baca_json(request: Request) -> dict:
     if (request.headers.get("content-type") or "").split(";")[0].strip().lower() != "application/json":
-        raise _Gagal("isian_tidak_sah", 415, PESAN_BUKAN_JSON)
+        raise _Gagal("isian_tidak_sah")
     try:
         if int(request.headers.get("content-length") or 0) > MAKS_BODY:
-            raise _Gagal("isian_tidak_sah", 413, PESAN_TERLALU_BESAR)
+            raise _Gagal("isian_tidak_sah")
     except ValueError:
-        raise _Gagal("isian_tidak_sah", 400) from None
+        raise _Gagal("isian_tidak_sah") from None
     isi = bytearray()
     async for potong in request.stream():
         isi += potong
         if len(isi) > MAKS_BODY:
-            raise _Gagal("isian_tidak_sah", 413, PESAN_TERLALU_BESAR)
+            raise _Gagal("isian_tidak_sah")
     try:
         body = json.loads(bytes(isi))
     except (ValueError, UnicodeDecodeError):
@@ -316,16 +315,21 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
     async def _proses_masuk(request: Request, catatan: dict) -> tuple[dict, str, bool]:
         # Sandi tidak boleh lewat URL: query string apa pun ditolak.
         if request.url.query:
-            raise _Gagal("isian_tidak_sah", 400)
+            raise _Gagal("isian_tidak_sah")
         if not permintaan_masuk_sah(request, asal_diizinkan):
             raise _Gagal("asal_tidak_sah")
         body = await _baca_json(request)
         username = _teks(body.get("username"), _MAKS_USERNAME).strip()
-        password = _teks(body.get("password"), _MAKS_SANDI)
+        if set(body) - _FIELD_MASUK:
+            raise _Gagal("isian_tidak_sah")
+        password = body.get("password")
+        if not isinstance(password, str) or not password or len(password.encode("utf-8")) > _MAKS_SANDI_BYTE \
+                or any(ord(c) < 32 for c in password):
+            raise _Gagal("isian_tidak_sah")
         token_turnstile = _teks(body.get("turnstile_token"), _MAKS_TURNSTILE)
         if not _POLA_TURNSTILE.fullmatch(token_turnstile):
             raise _Gagal("turnstile_gagal")
-        ingat = body.get("ingat", False)
+        ingat = body.get("ingat")
         if not isinstance(ingat, bool):
             raise _Gagal("isian_tidak_sah")
         normal = normal_username(username)
