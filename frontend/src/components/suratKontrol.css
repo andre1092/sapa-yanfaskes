@@ -1,0 +1,46 @@
+/* Monitoring Surat Kontrol: wireframe Kim agents/kim/desain/monitoring-surkon (2026-11-19). */
+.sk-page { --sk-lt: #59a14f; --sk-eq: #4e79a7; --sk-gt: #b42318; --sk-lt-teks: #3d7a35; --sk-eq-teks: #35628f; --sk-gt-teks: #b42318;
+  max-width: 1600px; margin-inline: auto; }
+.dark .sk-page { --sk-lt-teks: #8fd18a; --sk-eq-teks: #9cc0e8; --sk-gt-teks: #ff8a7a; }
+.sk-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.sk-heading .sapa-description { max-width: 760px; }
+.sk-data-per { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+.sk-grid { display: grid; grid-template-columns: 1fr; gap: calc(var(--space-page) / 2); margin-top: calc(var(--space-page) / 2); }
+.sk-panel { min-width: 0; padding: 18px; }
+.sk-panel h2 { font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+.sk-panel-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.sk-merah { color: var(--sk-gt-teks); font-style: italic; }
+.sk-catatan { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+.sk-kosong { font-size: 13px; color: var(--text-muted); padding: 12px 0; }
+.sk-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.sk-sw-lt { background: var(--sk-lt); } .sk-sw-eq { background: var(--sk-eq); } .sk-sw-gt { background: var(--sk-gt); }
+.sk-teks-lt { color: var(--sk-lt-teks); } .sk-teks-eq { color: var(--sk-eq-teks); } .sk-teks-gt { color: var(--sk-gt-teks); }
+.sk-ubin-daftar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.sk-ubin { border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px; }
+.sk-ubin[data-redup='true'] { opacity: .45; }
+.sk-ubin-nama { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text-main); }
+.sk-ubin-angka { font-size: clamp(22px, 4vw, 32px); font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 8px; line-height: 1.1; }
+.sk-ubin-persen { font-size: 13px; font-style: italic; color: var(--text-muted); }
+.sk-ubin-def { margin-top: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.sk-legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.sk-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.sk-tren svg { display: block; width: 100%; height: auto; }
+.sk-tren .sk-sumbu { font-size: 10px; fill: var(--text-muted); }
+.sk-bar-daftar { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sk-bar-daftar.sk-gulir { max-height: 420px; overflow-y: auto; padding-right: 6px; }
+.sk-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; font-size: 12px; }
+.sk-bar-label { color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-bar[data-pilih='true'] .sk-bar-label { font-weight: 700; }
+.sk-bar[data-pilih='true'] .sk-bar-jalur { outline: 2px solid var(--text-main); outline-offset: 1px; }
+.sk-bar-baris { display: flex; align-items: center; gap: 8px; }
+.sk-bar-jalur { flex: 1; display: flex; height: 14px; border-radius: 4px; background: var(--surface-subtle); overflow: hidden; }
+.sk-bar-jalur > span { display: block; height: 100%; }
+.sk-bar-angka { min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-main); font-weight: 600; }
+.sk-lebih { margin-top: 10px; min-height: 44px; font-size: 13px; text-decoration: underline; color: var(--action-primary); background: none; border: 0; cursor: pointer; }
+.sk-treemap { position: relative; width: 100%; height: 420px; }
+.sk-treemap > div { position: absolute; box-sizing: border-box; border: 1px solid var(--panel-bg); color: #fff; font-size: 11px; line-height: 1.25; padding: 4px 5px; overflow: hidden; }
+.sk-treemap > div strong { display: block; font-weight: 700; }
+.sk-besar { font-size: clamp(24px, 4vw, 34px); font-weight: 700; color: var(--sk-gt-teks); font-variant-numeric: tabular-nums; }
+.sk-jpeg-abaikan { }
+@media (min-width: 900px) { .sk-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); } .sk-penuh { grid-column: 1 / -1; } }
+@media (max-width: 639px) { .sk-heading > span, .sk-heading .sapa-button { width: 100%; } .sk-panel { padding: 14px; } }
