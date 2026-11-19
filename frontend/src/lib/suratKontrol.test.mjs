@@ -99,8 +99,8 @@ test('treemap mengisi kotak penuh dengan luas sebanding nilai', () => {
 
 test('nama berkas JPEG mengikuti filter tanpa karakter aneh', () => {
   assert.equal(s.namaBerkasJpeg('2026-11', 'RJ', ''), 'Monitoring_Surat_Kontrol_November_2026_Rawat_Jalan');
-  assert.equal(s.namaBerkasJpeg('2026-11', 'semua', 'DR HARYOTO LUMAJANG, RSUD'),
-    'Monitoring_Surat_Kontrol_November_2026_Semua_Jenis_DR_HARYOTO_LUMAJANG_RSUD');
+  assert.equal(s.namaBerkasJpeg('2026-11', 'semua', 'MELATI LUMAJANG, RSUD'),
+    'Monitoring_Surat_Kontrol_November_2026_Semua_Jenis_MELATI_LUMAJANG_RSUD');
 });
 
 const NAMA = ['Faskes Surkon', 'Header Surkon', 'Keterangan', 'Poli', 'Tren'];
