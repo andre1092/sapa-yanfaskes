@@ -3835,7 +3835,8 @@ def _sk_tak_dikenal(data: dict) -> Optional[List[str]]:
     except Exception as exc:
         logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
         return None
-    return [f"{kode} - {nama}" for kode, nama in surat_kontrol_service.kode_faskes(data) if kode not in dikenal]
+    # Hanya kode PPK yang ditampilkan ke admin (desain Kim); nama dan isi sel tidak.
+    return [kode for kode, _ in surat_kontrol_service.kode_faskes(data) if kode not in dikenal]
 
 
 @app.post("/api/v1/surat-kontrol/periksa")

@@ -73,40 +73,54 @@ ANGKA = {
 }
 
 
-def satu_jenis(jenis, bulan="2026-11", angka=None, hari=12):
+def satu_jenis(jenis, angka=None, hari=12, poli_kurang=0):
     per = angka or ANGKA[jenis]
-    total = {s: sum(v.values()) for s, v in per.items()}
-    awal = f"{bulan}_{jenis}_"
-    return [(awal + "Faskes Surkon.csv", faskes(per)), (awal + "Header Surkon.csv", header(total)),
-            (awal + "Keterangan.csv", keterangan()), (awal + "Poli.csv", poli(total)),
-            (awal + "Tren.csv", tren(total, hari))]
+    total = {st: sum(v.values()) for st, v in per.items()}
+    poli_total = dict(total)
+    if poli_kurang:
+        k = next(iter(poli_total))
+        poli_total[k] -= poli_kurang
+    return [(jenis, faskes(per)), (jenis, header(total)), (jenis, keterangan()), (jenis, poli(poli_total)),
+            (jenis, tren(total, hari))]
 
 
-def sepuluh(bulan="2026-11", **kw):
-    return satu_jenis("RJ", bulan, **kw) + satu_jenis("RI", bulan)
+def sepuluh(**kw):
+    return satu_jenis("RJ", **kw) + satu_jenis("RI")
 
 
-def ganti(berkas, nama_akhir, isi):
-    return [(n, isi if n.endswith(nama_akhir) else b) for n, b in berkas]
+def ganti(berkas, urutan, isi):
+    """Ganti berkas ke-`urutan` (0 Faskes, 1 Header, 2 Keterangan, 3 Poli, 4 Tren; +5 untuk RI)."""
+    return [(j, isi if i == urutan else b) for i, (j, b) in enumerate(berkas)]
 
 
-def kiriman(berkas):
-    return gzip.compress(json.dumps({"berkas": [{"nama": n, "isi": base64.b64encode(b).decode()} for n, b in berkas]}).encode())
+def kiriman(berkas, **tambahan):
+    return gzip.compress(json.dumps({"berkas": [{"jenis": j, "isi": base64.b64encode(b).decode(), **tambahan}
+                                                for j, b in berkas]}).encode())
 
 
 # --- kiriman gzip berisi JSON ---------------------------------------------
 
-def test_upload_body_is_unpacked_into_named_files():
+def test_upload_body_is_unpacked_into_service_type_and_bytes():
     berkas = sepuluh()
     assert sk.baca_kiriman(kiriman(berkas)) == berkas
 
 
 @pytest.mark.parametrize("data", [b"", b"bukan gzip", gzip.compress(b"[1,2]"), gzip.compress(b"{rusak"),
-                                  gzip.compress(json.dumps({"berkas": [{"nama": "a.csv", "isi": "%%%"}]}).encode()),
-                                  gzip.compress(json.dumps({"berkas": [{"nama": 5, "isi": ""}]}).encode())])
+                                  gzip.compress(json.dumps({"berkas": [{"jenis": "RJ", "isi": "%%%"}]}).encode()),
+                                  gzip.compress(json.dumps({"berkas": [{"jenis": "RX", "isi": ""}]}).encode()),
+                                  gzip.compress(json.dumps({"berkas": [{"jenis": 5, "isi": ""}]}).encode()),
+                                  gzip.compress(json.dumps({"berkas": []}).encode())])
 def test_broken_upload_body_is_refused(data):
     with pytest.raises(sk.BerkasDitolak):
         sk.baca_kiriman(data)
+
+
+def test_unknown_keys_in_upload_body_are_refused():
+    with pytest.raises(sk.BerkasDitolak):
+        sk.baca_kiriman(kiriman(sepuluh(), nama="../rahasia.csv"))
+    tambahan = gzip.compress(json.dumps({"berkas": [], "bulan": "2026-11"}).encode())
+    with pytest.raises(sk.BerkasDitolak):
+        sk.baca_kiriman(tambahan)
 
 
 def test_upload_body_over_compressed_limit_is_refused():
@@ -121,12 +135,26 @@ def test_gzip_bomb_stops_at_raw_limit():
 
 def test_more_than_ten_files_is_refused():
     with pytest.raises(sk.BerkasDitolak, match="10 berkas"):
-        sk.baca_kiriman(kiriman(sepuluh() + [("2026-11_RJ_Poli (1).csv", b"x")]))
+        sk.baca_kiriman(kiriman(sepuluh() + [("RJ", b"x")]))
 
 
 def test_single_file_over_limit_is_refused():
     with pytest.raises(sk.BerkasDitolak, match="200 KB"):
-        sk.baca_kiriman(kiriman([("2026-11_RJ_Poli.csv", b"x" * (sk.BATAS_BERKAS + 1))]))
+        sk.baca_kiriman(kiriman([("RJ", b"x" * (sk.BATAS_BERKAS + 1))]))
+
+
+def test_total_decoded_size_over_limit_is_refused(monkeypatch):
+    monkeypatch.setattr(sk, "BATAS_TOTAL", 10_000)
+    with pytest.raises(sk.BerkasDitolak, match="2 MB"):
+        sk.baca_kiriman(kiriman([("RJ", b"x" * 6000), ("RI", b"y" * 6000)]))
+
+
+# --- kenali sheet dari isi ---------------------------------------------------
+
+def test_sheets_are_recognised_from_content():
+    assert [sk.kenali_sheet(b) for _, b in satu_jenis("RJ")] == ["Faskes Surkon", "Header Surkon", "Keterangan", "Poli", "Tren"]
+    assert sk.kenali_sheet(_berkas([["a", "b"], ["c", "d"]])) is None
+    assert sk.kenali_sheet(b"\xff\xfe\x00") is None
 
 
 # --- periksa satu bulan ----------------------------------------------------
@@ -145,53 +173,60 @@ def test_ten_files_are_read_into_one_month():
     assert hasil.data["sampai"] == "2026-11-12"
 
 
+def test_order_of_files_does_not_matter():
+    berkas = list(reversed(sepuluh()))
+    assert sk.periksa_bulan("2026-11", berkas).data["RI"]["total"]["gt"] == 271
+
+
 def test_summary_lists_totals_per_service_type():
     r = sk.periksa_bulan("2026-11", sepuluh()).ringkasan
     assert r["bulan"] == "2026-11" and r["sampai"] == "2026-11-12"
-    assert r["jenis"]["RJ"] == {"total": {"lt": 3600, "eq": 12, "gt": 0}, "faskes": 2, "poli": 3}
+    assert r["jenis"]["RJ"] == {"total": {"lt": 3600, "eq": 12, "gt": 0}, "faskes": 2, "poli": 3, "selisih_poli": 0}
     assert r["jenis"]["RI"]["faskes"] == 3
+    assert r["peringatan"] == []
+
+
+def test_poli_difference_is_reported_not_refused():
+    berkas = satu_jenis("RJ", poli_kurang=7) + satu_jenis("RI")
+    r = sk.periksa_bulan("2026-11", berkas).ringkasan
+    assert r["jenis"]["RJ"]["selisih_poli"] == 7
+
+
+def test_inpatient_larger_than_outpatient_is_warned():
+    berkas = satu_jenis("RJ", angka={LT: {RS[0]: 10}}) + satu_jenis("RI")
+    assert any("tertukar" in p for p in sk.periksa_bulan("2026-11", berkas).ringkasan["peringatan"])
 
 
 def test_utf8_crosstab_is_also_accepted():
-    berkas = [(n, b.decode("utf-16").encode("utf-8")) for n, b in sepuluh()]
+    berkas = [(j, b.decode("utf-16").encode("utf-8")) for j, b in sepuluh()]
     assert sk.periksa_bulan("2026-11", berkas).data["RJ"]["total"]["lt"] == 3600
 
 
 def test_keterangan_is_optional():
-    berkas = [(n, b) for n, b in sepuluh() if "Keterangan" not in n]
+    berkas = [b for i, b in enumerate(sepuluh()) if i not in (2, 7)]
     assert sk.periksa_bulan("2026-11", berkas).data["RI"]["total"]["gt"] == 271
 
 
-@pytest.mark.parametrize("buang", ["RJ_Faskes Surkon", "RI_Tren", "RJ_Header Surkon", "RI_Poli"])
-def test_missing_required_sheet_is_refused(buang):
-    berkas = [(n, b) for n, b in sepuluh() if buang not in n]
-    with pytest.raises(sk.BerkasDitolak, match="belum ada"):
+@pytest.mark.parametrize("buang,pesan", [(0, "Faskes Surkon rawat jalan"), (9, "Tren rawat inap"),
+                                         (1, "Header Surkon rawat jalan"), (8, "Poli rawat inap")])
+def test_missing_required_sheet_is_refused(buang, pesan):
+    berkas = [b for i, b in enumerate(sepuluh()) if i != buang]
+    with pytest.raises(sk.BerkasDitolak, match="belum ada") as err:
         sk.periksa_bulan("2026-11", berkas)
+    assert pesan in err.value.pesan
 
 
-@pytest.mark.parametrize("nama", ["Poli.csv", "2026-11_RJ_Poli.xlsx", "2026-11_RX_Poli.csv", "2026-11_RJ_Cabang.csv",
-                                  "2026-11-RJ-Poli.csv", "../2026-11_RJ_Poli.csv"])
-def test_unknown_file_name_is_refused(nama):
-    berkas = sepuluh() + [(nama, b"")]
-    with pytest.raises(sk.BerkasDitolak, match="Nama berkas"):
+def test_unrecognised_file_is_counted_without_echo():
+    berkas = sepuluh() + [("RJ", _berkas([["<script>", "x"]]))]
+    with pytest.raises(sk.BerkasDitolak, match="1 berkas di area Rawat jalan tidak dikenali") as err:
         sk.periksa_bulan("2026-11", berkas)
-
-
-def test_unknown_file_name_is_not_echoed():
-    with pytest.raises(sk.BerkasDitolak) as err:
-        sk.periksa_bulan("2026-11", sepuluh() + [("<script>.csv", b"")])
     assert "<script>" not in err.value.pesan
 
 
 def test_duplicate_sheet_is_refused():
     berkas = sepuluh()
-    with pytest.raises(sk.BerkasDitolak, match="lebih dari sekali"):
-        sk.periksa_bulan("2026-11", berkas + [berkas[0]])
-
-
-def test_file_month_must_match_chosen_month():
-    with pytest.raises(sk.BerkasDitolak, match="Oktober 2026"):
-        sk.periksa_bulan("2026-10", sepuluh())
+    with pytest.raises(sk.BerkasDitolak, match="Poli rawat jalan terpilih dua kali"):
+        sk.periksa_bulan("2026-11", berkas + [berkas[3]])
 
 
 @pytest.mark.parametrize("bulan", ["", "2026-13", "2026-1", "semua", "2026-11-01"])
@@ -200,16 +235,16 @@ def test_invalid_month_is_refused(bulan):
         sk.cek_bulan(bulan)
 
 
-def test_cross_check_mismatch_is_refused():
-    berkas = ganti(sepuluh(), "RJ_Tren.csv", tren({LT: 3599, EQ: 12}))
-    with pytest.raises(sk.BerkasDitolak, match="Rawat Jalan") as err:
+def test_cross_check_mismatch_is_refused_with_totals_only():
+    berkas = ganti(sepuluh(), 4, tren({LT: 3599, EQ: 12}))
+    with pytest.raises(sk.BerkasDitolak, match="rawat jalan") as err:
         sk.periksa_bulan("2026-11", berkas)
-    assert "tidak sama" in err.value.pesan
+    assert "tidak cocok" in err.value.pesan and "MAWAR" not in err.value.pesan
 
 
 def test_unknown_status_is_refused():
-    berkas = ganti(sepuluh(), "RJ_Poli.csv", poli({"Surkon ? SEP": 3600, EQ: 12}))
-    with pytest.raises(sk.BerkasDitolak, match="Status"):
+    berkas = ganti(sepuluh(), 3, poli({"Surkon ? SEP": 3600, EQ: 12}))
+    with pytest.raises(sk.BerkasDitolak, match="status yang tidak dikenal"):
         sk.periksa_bulan("2026-11", berkas)
 
 
@@ -217,42 +252,37 @@ def test_unknown_status_is_refused():
 def test_non_count_cell_is_refused(nilai):
     isi = faskes(ANGKA["RJ"]).decode("utf-16").replace("3,513", nilai).encode("utf-16")
     with pytest.raises(sk.BerkasDitolak, match="angka"):
-        sk.periksa_bulan("2026-11", ganti(sepuluh(), "RJ_Faskes Surkon.csv", isi))
+        sk.periksa_bulan("2026-11", ganti(sepuluh(), 0, isi))
 
 
 def test_hospital_without_ppk_code_is_refused():
     isi = faskes(ANGKA["RJ"]).decode("utf-16").replace("0101R001 - ", "").encode("utf-16")
     with pytest.raises(sk.BerkasDitolak, match="kode PPK"):
-        sk.periksa_bulan("2026-11", ganti(sepuluh(), "RJ_Faskes Surkon.csv", isi))
+        sk.periksa_bulan("2026-11", ganti(sepuluh(), 0, isi))
 
 
 def test_day_beyond_month_length_is_refused():
-    berkas = satu_jenis("RJ", "2026-11", hari=31) + satu_jenis("RI")
-    with pytest.raises(sk.BerkasDitolak, match="tanggal"):
+    berkas = satu_jenis("RJ", hari=31) + satu_jenis("RI")
+    with pytest.raises(sk.BerkasDitolak, match="tanggal 31, padahal November hanya 30 hari"):
         sk.periksa_bulan("2026-11", berkas)
-
-
-def test_layout_change_is_refused_with_clear_message():
-    with pytest.raises(sk.BerkasDitolak, match="tata letak"):
-        sk.periksa_bulan("2026-11", ganti(sepuluh(), "RJ_Header Surkon.csv", _berkas([["a", "b"], ["c", "d"]])))
 
 
 def test_nul_character_is_refused():
     with pytest.raises(sk.BerkasDitolak):
-        sk.periksa_bulan("2026-11", ganti(sepuluh(), "RJ_Poli.csv", "﻿a\x00b".encode("utf-16-le")))
+        sk.periksa_bulan("2026-11", ganti(sepuluh(), 3, "﻿a\x00b".encode("utf-16-le")))
 
 
 def test_long_cell_is_refused():
     isi = faskes(ANGKA["RJ"]).decode("utf-16").replace("RSD MAWAR", "X" * 300).encode("utf-16")
     with pytest.raises(sk.BerkasDitolak, match="200 karakter"):
-        sk.periksa_bulan("2026-11", ganti(sepuluh(), "RJ_Faskes Surkon.csv", isi))
+        sk.periksa_bulan("2026-11", ganti(sepuluh(), 0, isi))
 
 
 # --- simpanan per bulan ----------------------------------------------------
 
 def test_new_month_is_added_and_existing_month_replaced():
     nov = sk.periksa_bulan("2026-11", sepuluh()).data
-    des = sk.periksa_bulan("2026-12", sepuluh("2026-12")).data
+    des = sk.periksa_bulan("2026-12", sepuluh()).data
     simpan = sk.simpanan_baru(None, "2026-11", nov, {"diunggah_oleh": "Admin"})
     simpan = sk.simpanan_baru(simpan, "2026-12", des, {"diunggah_oleh": "Admin"})
     nov2 = sk.periksa_bulan("2026-11", satu_jenis("RJ", angka={LT: {RS[0]: 10}}) + satu_jenis("RI")).data
@@ -272,20 +302,29 @@ def test_empty_gzip_placeholder_means_no_months():
     assert sk.baca_simpanan(gzip.compress(b"")) == {"versi": 1, "bulan": {}}
 
 
-def test_unknown_storage_format_is_rejected():
+@pytest.mark.parametrize("isi", [b'{"versi": 9}', b'{"versi": 1, "bulan": {"nov": {}}}', b'{"versi": 1, "bulan": []}', b"[]"])
+def test_unknown_storage_format_is_rejected(isi):
     with pytest.raises(ValueError):
-        sk.baca_simpanan(gzip.compress(b'{"versi": 9}'))
+        sk.baca_simpanan(gzip.compress(isi))
+
+
+def test_storage_over_raw_limit_is_rejected(monkeypatch):
+    monkeypatch.setattr(sk, "BATAS_SIMPANAN", 100)
+    with pytest.raises(ValueError):
+        sk.baca_simpanan(gzip.compress(b" " * 200))
 
 
 # --- cakupan Petugas RS ----------------------------------------------------
 
-def test_hospital_officer_sees_only_own_row_and_totals():
+def test_hospital_officer_sees_only_own_row_and_totals_but_branch_trend():
     data = sk.periksa_bulan("2026-11", sepuluh()).data
     milik = sk.untuk_petugas(data, "0202R002")
     assert [f["kode"] for f in milik["RJ"]["faskes"]] == ["0202R002"]
     assert milik["RJ"]["total"] == {"lt": 87, "eq": 3, "gt": 0}
     assert milik["RI"]["total"] == {"lt": 0, "eq": 627, "gt": 112}
-    assert milik["RJ"]["poli"] == [] and milik["RJ"]["tren"] == []
+    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b, disetujui Clara); tanpa nama RS.
+    assert milik["RJ"]["poli"] == data["RJ"]["poli"] and milik["RJ"]["tren"] == data["RJ"]["tren"]
+    assert "MAWAR" not in json.dumps(milik)
     assert milik["sampai"] == data["sampai"]
 
 

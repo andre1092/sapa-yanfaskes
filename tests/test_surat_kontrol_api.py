@@ -69,7 +69,7 @@ def env(monkeypatch):
 
 
 def unggah(call, bulan="2026-11", berkas=None, aksi="integrasikan", data=None, **kw):
-    body = kiriman(berkas if berkas is not None else sepuluh(bulan)) if data is None else data
+    body = kiriman(berkas if berkas is not None else sepuluh()) if data is None else data
     return call("POST", f"/api/v1/surat-kontrol/{aksi}?bulan={bulan}", content=body,
                 headers={**GZ, **kw.pop("headers", {})}, **kw)
 
@@ -120,7 +120,8 @@ def test_check_returns_summary_without_writing(env):
     body = res.json()
     assert res.status_code == 200 and res.headers["cache-control"] == "no-store"
     assert body["ringkasan"]["jenis"]["RJ"]["total"]["lt"] == 3600 and body["ada"] is None
-    assert body["faskes_tak_dikenal"] == ["0303S003 - KLINIK UTAMA KENANGA"]
+    assert body["faskes_tak_dikenal"] == ["0303S003"] and "KENANGA" not in res.text
+    assert body["ringkasan"]["jenis"]["RI"]["selisih_poli"] == 0 and body["ringkasan"]["peringatan"] == []
     assert drive.tulis_dipanggil == 0
     assert written[-1]["action"] == "POST /api/v1/surat-kontrol/periksa"
     assert "bulan=2026-11" in written[-1]["target"] and "sha256=" in written[-1]["target"]
@@ -155,7 +156,7 @@ def test_reupload_replaces_only_that_month(env):
     (kiriman(sepuluh()), {"Content-Type": "text/csv"}, 415),
     (b"bukan gzip", GZ, 400),
     (kiriman(sepuluh())[:-10], GZ, 400),
-    (kiriman([(n, b) for n, b in sepuluh() if "RI_Tren" not in n]), GZ, 400),
+    (kiriman(sepuluh()[:-1]), GZ, 400),
     (b"\x1f\x8b" + b"\x00" * (1024 * 1024 + 1), GZ, 413),
 ])
 def test_bad_upload_keeps_old_data(env, data, headers, status):
@@ -245,8 +246,11 @@ def test_petugas_sees_only_own_hospital_and_parameter_is_ignored(env):
     assert body["terkunci"] is True and body["rs"] == {"kode": "0101R001", "nama": "RSD MAWAR"}
     assert [f["kode"] for f in body["data"]["RJ"]["faskes"]] == ["0101R001"]
     assert body["data"]["RJ"]["total"]["lt"] == 3513
-    assert body["data"]["RJ"]["poli"] == [] and body["data"]["RJ"]["tren"] == []
-    assert "MELATI" not in res.text and "KENANGA" not in res.text
+    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b, disetujui Clara).
+    assert body["data"]["RJ"]["poli"] and body["data"]["RJ"]["tren"]
+    # Syarat Clara C: tidak ada baris atau kode RS lain di mana pun dalam JSON.
+    for lain in ("MELATI", "KENANGA", "0202R002", "0303S003"):
+        assert lain not in res.text
 
 
 def test_petugas_hospital_absent_this_month_gets_empty_rows(env):
