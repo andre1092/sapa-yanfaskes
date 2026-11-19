@@ -21,6 +21,7 @@ TURNSTILE_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 SECRET_ENV = "TURNSTILE_SECRET_KEY"
 AKSI_MASUK = "login"  # sama dengan action widget di SPEK Kim v2.1
 HOST_LOKAL = {"localhost", "127.0.0.1", "::1"}
+TIMEOUT_SITEVERIFY = 5  # detik (TS-2): login tidak boleh tertahan lama bila Cloudflare lambat
 
 
 ALASAN_KEDALUWARSA = "kedaluwarsa"
@@ -64,7 +65,7 @@ def cek_turnstile(token: str, ip: str | None, aksi_diharapkan: str, *, cdata: st
     if idempotency_key:
         data["idempotency_key"] = idempotency_key
     try:
-        res = (post or _kirim)(TURNSTILE_URL, data=data, timeout=8)
+        res = (post or _kirim)(TURNSTILE_URL, data=data, timeout=TIMEOUT_SITEVERIFY)
         hasil = res.json() if res.status_code == 200 else None
     except (requests.RequestException, ValueError):
         hasil = None

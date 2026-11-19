@@ -2,22 +2,36 @@
 
 - Browser hanya memegang cookie acak __Host-sapa_sesi (32 byte). Database hanya menyimpan sha256-nya.
 - Token Auth0 (access dan refresh) disimpan terenkripsi AES-GCM dengan kunci SAPA_SESI_KUNCI
-  (base64, 32 byte). Kunci sebelumnya di SAPA_SESI_KUNCI_LAMA tetap bisa membuka sesi lama, lalu
-  sesi itu dienkripsi ulang dengan kunci baru. Isi terenkripsi diikat ke id sesi (AAD).
+  (base64, 32 byte), berformat "v2.<versi kunci>.<isi>". Versi kunci adalah sidik 8 karakter dari kunci
+  (HKDF, bukan kunci itu sendiri), jadi dekripsi langsung memilih SAPA_SESI_KUNCI atau
+  SAPA_SESI_KUNCI_LAMA tanpa coba-coba. Sesi yang terbuka dengan kunci lama, dan baris lama "v1."
+  (tanpa versi, masih dicoba dengan kedua kunci), ditulis ulang dengan kunci baru. Isi terenkripsi
+  diikat ke id sesi dan versi kunci (AAD).
 - "Ingat saya": berlaku 30 hari. Tanpa centang: maksimal SAPA_SESI_TANPA_INGAT_JAM (12) jam total
   dan SAPA_SESI_IDLE_MENIT (120) menit menganggur.
 - Access token disegarkan di server lewat refresh token bila sisa umurnya kurang dari 60 detik, dan
   paling lama tiap 15 menit, supaya akun yang diblokir di Auth0 cepat kehilangan sesinya.
   Penyegaran memakai kuota global /oauth/token tersendiri (KUNCI_GLOBAL_SEGAR), terpisah dari login,
   supaya banjir login tidak menunda penyegaran sesi yang sudah masuk. IP klien diteruskan lewat
-  header auth0-forwarded-for, sama dengan login. Bila dua permintaan paralel menyegarkan bersamaan
-  dan Auth0 menolak salah satunya, baris dibaca ulang sebelum sesi diakhiri.
+  header auth0-forwarded-for, sama dengan login; di Vercel tanpa IP tepercaya tidak ada penyegaran
+  (token yang masih berlaku dipakai, selain itu 503).
+- Single-flight per baris sesi (SES-6): hanya permintaan yang memenangi UPDATE bersyarat atas kolom
+  segar_sampai (kunci sewa UMUR_KUNCI_SEGAR) yang memanggil Auth0. Permintaan lain memakai token lama
+  bila masih berlaku, atau menunggu paling lama MAKS_TUNGGU_SEGAR lalu memakai token baru (503 bila
+  tetap belum ada). Bila Auth0 tetap menolak refresh token, baris dibaca ulang sebelum sesi diakhiri.
+  Semua penulisan token bersyarat (S1): tulis ulang rotasi kunci atau v1 adalah compare-and-swap atas
+  token_enc yang dibaca (tanpa menyentuh segar_sampai), dan hasil penyegaran hanya disimpan oleh pemegang
+  sewa atau selama baris masih berisi token sebelum penyegaran. Bila syarat gagal, baris dibaca ulang dan
+  isinya yang dipakai. Sewa mencakup waktu terburuk Auth0 dan DB; pemegang yang terlambat sebelum
+  memanggil Auth0 berhenti tanpa memanggilnya.
 - Batas menganggur khusus Admin dan Super Admin (usulan IDLE_ADMIN_USULAN_MENIT = 30) sudah disiapkan,
   tetapi NONAKTIF sampai CEO memutuskan: berlaku hanya bila SAPA_SESI_IDLE_ADMIN_MENIT diisi.
 - Tanpa cache sesi di memori. SLA pencabutan: sesi yang dihapus (keluar, pencabutan admin,
   kedaluwarsa) ditolak pada permintaan berikutnya di instans mana pun, karena setiap permintaan membaca
   baris sesi dari DB. Batas atas yang disepakati bila kelak ada cache: 5 detik per instans.
-- Pembatas percobaan (batas) memakai tabel sapa_batas supaya tahan lintas instance serverless.
+- Pembatas percobaan (batas) memakai tabel sapa_batas supaya tahan lintas instance serverless. Hitungan
+  gagal kumulatif per (username + IP) untuk penanda lengket (B1) memakai tabel yang sama dengan jendela -1
+  dan kedaluwarsa yang diperpanjang setiap kegagalan.
   Baris kedaluwarsa dibersihkan sesekali (PELUANG_BERSIH per panggilan) dan saat login sukses.
 - satu_koneksi(): semua operasi penyimpanan di dalam blok memakai satu koneksi Postgres.
   Kunci pembatas dan penanda log memakai HMAC dengan kunci turunan SAPA_SESI_KUNCI (HKDF,
@@ -43,6 +57,7 @@ import os
 import random
 import re
 import secrets
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional, Protocol
@@ -70,6 +85,19 @@ BATAS_GLOBAL_LOGIN = (1, 3)
 KUNCI_GLOBAL_SEGAR = "global:oauth-refresh"
 BATAS_GLOBAL_SEGAR = (1, 2)
 _JEDA_SENTUH = timedelta(seconds=60)
+# Timeout satu panggilan: requests (connect dan read masing-masing TIMEOUT_AUTH0) dan asyncpg (connect dan
+# command masing-masing TIMEOUT_DB). Waktu terburuk satu panggilan = dua kali timeout-nya.
+TIMEOUT_AUTH0 = 8
+TIMEOUT_DB = 5
+WAKTU_TERBURUK_AUTH0 = 2 * TIMEOUT_AUTH0
+WAKTU_TERBURUK_DB = 2 * TIMEOUT_DB
+# Single-flight penyegaran (S1): sewa mencakup jatah sebelum Auth0 (kuota global), panggilan Auth0 terburuk,
+# dan simpanan token terburuk. Pemegang yang sudah melewati BATAS_SEBELUM_AUTH0 sebelum memanggil Auth0
+# berhenti tanpa memanggil Auth0, jadi refresh token tidak dipakai dua kali karena sewa basi diambil alih.
+BATAS_SEBELUM_AUTH0 = 4
+UMUR_KUNCI_SEGAR = timedelta(seconds=BATAS_SEBELUM_AUTH0 + WAKTU_TERBURUK_AUTH0 + WAKTU_TERBURUK_DB)
+MAKS_TUNGGU_SEGAR = 2.0
+JEDA_TUNGGU_SEGAR = 0.1
 # Peluang satu panggilan pembatas ikut membersihkan baris sapa_batas yang sudah kedaluwarsa.
 PELUANG_BERSIH = 0.01
 BATAS_BERSIH = 1000
@@ -87,8 +115,10 @@ CREATE TABLE IF NOT EXISTS sapa_sesi (
     terakhir_dipakai TIMESTAMPTZ NOT NULL,
     kedaluwarsa TIMESTAMPTZ NOT NULL,
     token_enc TEXT NOT NULL,
-    token_exp TIMESTAMPTZ NOT NULL
+    token_exp TIMESTAMPTZ NOT NULL,
+    segar_sampai TIMESTAMPTZ
 );
+ALTER TABLE sapa_sesi ADD COLUMN IF NOT EXISTS segar_sampai TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS sapa_sesi_sub_idx ON sapa_sesi (sub);
 CREATE INDEX IF NOT EXISTS sapa_sesi_kedaluwarsa_idx ON sapa_sesi (kedaluwarsa);
 CREATE TABLE IF NOT EXISTS sapa_batas (
@@ -181,7 +211,7 @@ async def _auth0_post(path: str, data: dict, headers: Optional[dict] = None) -> 
 
     def kirim():
         try:
-            res = requests.post(url, data=data, headers=headers or {}, timeout=8)
+            res = requests.post(url, data=data, headers=headers or {}, timeout=TIMEOUT_AUTH0)
         except requests.RequestException:
             return 0, None
         try:
@@ -226,34 +256,66 @@ def jejak(nilai: str) -> str:
     return hmac.new(rahasia, nilai.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
+@functools.lru_cache(maxsize=8)
+def versi_kunci(kunci: bytes) -> str:
+    """Penanda versi kunci (R6): 8 karakter hex dari HKDF kunci; tidak bisa dipakai untuk membuka isi."""
+    return HKDF(algorithm=hashes.SHA256(), length=4, salt=None, info=b"sapa-versi-kunci").derive(kunci).hex()
+
+
+def _aad(id_hash: str, versi: str = "") -> bytes:
+    return f"{id_hash}|{versi}".encode("ascii") if versi else id_hash.encode("ascii")
+
+
 def _enkripsi(isi: dict, id_hash: str) -> str:
     kunci = _kunci(KUNCI_ENV)
     if kunci is None:
         logger.error("Kunci sesi belum dikonfigurasi atau tidak sah (%s)", KUNCI_ENV)
         raise SesiBelumSiap()
+    versi = versi_kunci(kunci)
     nonce = os.urandom(12)
-    sandi = AESGCM(kunci).encrypt(nonce, json.dumps(isi).encode("utf-8"), id_hash.encode("ascii"))
-    return "v1." + base64.urlsafe_b64encode(nonce + sandi).decode("ascii")
+    sandi = AESGCM(kunci).encrypt(nonce, json.dumps(isi).encode("utf-8"), _aad(id_hash, versi))
+    return f"v2.{versi}." + base64.urlsafe_b64encode(nonce + sandi).decode("ascii")
+
+
+def _buka(kunci: bytes, mentah: bytes, aad: bytes) -> Optional[dict]:
+    try:
+        isi = json.loads(AESGCM(kunci).decrypt(mentah[:12], mentah[12:], aad))
+    except (InvalidTag, ValueError):
+        return None
+    return isi if isinstance(isi, dict) else None
 
 
 def _dekripsi(teks: str, id_hash: str) -> tuple[Optional[dict], bool]:
-    """(isi, pakai_kunci_lama); isi None bila tidak ada kunci yang cocok."""
-    if not isinstance(teks, str) or not teks.startswith("v1."):
+    """(isi, perlu_tulis_ulang); isi None bila tidak ada kunci yang cocok.
+
+    perlu_tulis_ulang benar bila isi dibuka dengan kunci lama atau masih berformat v1 (tanpa versi kunci).
+    """
+    if not isinstance(teks, str):
+        return None, False
+    bagian = teks.split(".")
+    if len(bagian) == 3 and bagian[0] == "v2":
+        _, versi, badan = bagian
+    elif len(bagian) == 2 and bagian[0] == "v1":
+        versi, badan = "", bagian[1]
+    else:
         return None, False
     try:
-        mentah = base64.urlsafe_b64decode(teks[3:].encode("ascii"))
+        mentah = base64.urlsafe_b64decode(badan.encode("ascii"))
     except (binascii.Error, ValueError):
         return None, False
-    nonce, sandi = mentah[:12], mentah[12:]
-    for lama, nama in ((False, KUNCI_ENV), (True, KUNCI_LAMA_ENV)):
-        kunci = _kunci(nama)
-        if kunci is None:
-            continue
-        try:
-            isi = json.loads(AESGCM(kunci).decrypt(nonce, sandi, id_hash.encode("ascii")))
-        except (InvalidTag, ValueError):
-            continue
-        return (isi, lama) if isinstance(isi, dict) else (None, False)
+    kunci_ada = [(nama == KUNCI_LAMA_ENV, k) for nama in (KUNCI_ENV, KUNCI_LAMA_ENV) if (k := _kunci(nama))]
+    if versi:
+        # v2: kunci dipilih dari penanda versinya; versi yang tidak dikenal tidak pernah dicoba.
+        for lama, kunci in kunci_ada:
+            if hmac.compare_digest(versi_kunci(kunci), versi):
+                isi = _buka(kunci, mentah, _aad(id_hash, versi))
+                return (isi, lama) if isi is not None else (None, False)
+        return None, False
+    # v1 (baris sebelum R6): belum ada penanda versi, jadi kedua kunci dicoba lalu baris ditulis ulang.
+    for _, kunci in kunci_ada:
+        isi = _buka(kunci, mentah, _aad(id_hash))
+        if isi is not None:
+            return isi, True
     return None, False
 
 
@@ -265,12 +327,18 @@ class SesiStore(Protocol):
     async def simpan(self, baris: dict) -> None: ...
     async def ambil(self, id_hash: str) -> Optional[dict]: ...
     async def sentuh(self, id_hash: str, waktu: datetime) -> None: ...
-    async def perbarui_token(self, id_hash: str, token_enc: str, token_exp: datetime) -> None: ...
+    async def tulis_ulang_token(self, id_hash: str, token_lama: str, token_baru: str) -> bool: ...
+    async def simpan_hasil_segar(self, id_hash: str, token_enc: str, token_exp: datetime, sampai: datetime,
+                                 token_lama: str) -> bool: ...
     async def hapus(self, id_hash: str) -> bool: ...
     async def hapus_sub(self, sub: str) -> int: ...
     async def tambah_batas(self, kunci_hash: str, jendela: int, kedaluwarsa: datetime) -> int: ...
     async def tambah_batas_geser(self, kunci_hash: str, jendela: int, kedaluwarsa: datetime) -> tuple[int, int]: ...
     async def kurangi_batas(self, kunci_hash: str, jendela: int) -> None: ...
+    async def klaim_segar(self, id_hash: str, token_enc: str, sampai: datetime, sekarang: datetime) -> bool: ...
+    async def lepas_segar(self, id_hash: str, sampai: datetime) -> None: ...
+    async def tambah_gagal_kumulatif(self, kunci_hash: str, kedaluwarsa: datetime, sekarang: datetime) -> int: ...
+    async def padamkan_penanda(self, kunci_hash: str) -> None: ...
     async def bersihkan_batas(self, sekarang: datetime) -> None: ...
     async def cek(self) -> None: ...
 
@@ -282,6 +350,7 @@ class MemorySesiStore:
         self.sesi: dict[str, dict] = {}
         self.batas: dict[tuple, int] = {}
         self.kedaluwarsa_batas: dict[tuple, datetime] = {}
+        self.penanda: dict[str, tuple[int, datetime]] = {}  # kunci -> (jumlah gagal, kedaluwarsa)
 
     async def simpan(self, baris):
         self.sesi[baris["id_hash"]] = dict(baris)
@@ -294,9 +363,36 @@ class MemorySesiStore:
         if id_hash in self.sesi:
             self.sesi[id_hash]["terakhir_dipakai"] = waktu
 
-    async def perbarui_token(self, id_hash, token_enc, token_exp):
-        if id_hash in self.sesi:
-            self.sesi[id_hash].update(token_enc=token_enc, token_exp=token_exp)
+    async def tulis_ulang_token(self, id_hash, token_lama, token_baru):
+        # Compare-and-swap (S1): hanya bila baris masih berisi token yang dibaca; sewa tidak disentuh.
+        baris = self.sesi.get(id_hash)
+        if not baris or baris["token_enc"] != token_lama:
+            return False
+        baris["token_enc"] = token_baru
+        return True
+
+    async def simpan_hasil_segar(self, id_hash, token_enc, token_exp, sampai, token_lama):
+        # Hanya pemegang sewa, atau bila belum ada penyegar lain yang menyimpan token lebih baru (S1).
+        baris = self.sesi.get(id_hash)
+        if not baris or (baris.get("segar_sampai") != sampai and baris["token_enc"] != token_lama):
+            return False
+        baris.update(token_enc=token_enc, token_exp=token_exp, segar_sampai=None)
+        return True
+
+    async def klaim_segar(self, id_hash, token_enc, sampai, sekarang):
+        # Tanpa await di antara pemeriksaan dan penulisan, jadi atomik di satu event loop (setara UPDATE bersyarat).
+        baris = self.sesi.get(id_hash)
+        if not baris or baris["token_enc"] != token_enc:
+            return False
+        if baris.get("segar_sampai") is not None and baris["segar_sampai"] >= sekarang:
+            return False
+        baris["segar_sampai"] = sampai
+        return True
+
+    async def lepas_segar(self, id_hash, sampai):
+        baris = self.sesi.get(id_hash)
+        if baris and baris.get("segar_sampai") == sampai:
+            baris["segar_sampai"] = None
 
     async def hapus(self, id_hash):
         return self.sesi.pop(id_hash, None) is not None
@@ -326,6 +422,17 @@ class MemorySesiStore:
         for kunci in [k for k, v in self.kedaluwarsa_batas.items() if v < sekarang]:
             self.batas.pop(kunci, None)
             self.kedaluwarsa_batas.pop(kunci, None)
+        for kunci in [k for k, (_, v) in self.penanda.items() if v < sekarang]:
+            del self.penanda[kunci]
+
+    async def tambah_gagal_kumulatif(self, kunci_hash, kedaluwarsa, sekarang):
+        jumlah, lama = self.penanda.get(kunci_hash, (0, None))
+        jumlah = jumlah + 1 if lama is not None and lama > sekarang else 1
+        self.penanda[kunci_hash] = (jumlah, kedaluwarsa)
+        return jumlah
+
+    async def padamkan_penanda(self, kunci_hash):
+        self.penanda.pop(kunci_hash, None)
 
     async def cek(self):
         return None
@@ -368,7 +475,7 @@ class PostgresSesiStore:
     async def _sambung(self):
         import asyncpg
 
-        return await asyncpg.connect(self.dsn, timeout=5, command_timeout=5, statement_cache_size=0)
+        return await asyncpg.connect(self.dsn, timeout=TIMEOUT_DB, command_timeout=TIMEOUT_DB, statement_cache_size=0)
 
     async def _jalankan_di(self, conn, perintah: list):
         if not self._skema_siap:
@@ -416,16 +523,43 @@ class PostgresSesiStore:
     async def ambil(self, id_hash):
         baris = await self._jalankan(
             "fetchrow",
-            "SELECT id_hash, sub, ingat, dibuat_pada, terakhir_dipakai, kedaluwarsa, token_enc, token_exp "
+            "SELECT id_hash, sub, ingat, dibuat_pada, terakhir_dipakai, kedaluwarsa, token_enc, token_exp, segar_sampai "
             "FROM sapa_sesi WHERE id_hash = $1", id_hash)
         return dict(baris) if baris else None
 
     async def sentuh(self, id_hash, waktu):
         await self._jalankan("execute", "UPDATE sapa_sesi SET terakhir_dipakai = $2 WHERE id_hash = $1", id_hash, waktu)
 
-    async def perbarui_token(self, id_hash, token_enc, token_exp):
-        await self._jalankan("execute", "UPDATE sapa_sesi SET token_enc = $2, token_exp = $3 WHERE id_hash = $1",
-                             id_hash, token_enc, token_exp)
+    async def tulis_ulang_token(self, id_hash, token_lama, token_baru):
+        # S1: compare-and-swap. Tulis ulang rotasi kunci atau v1 tidak pernah menimpa hasil penyegaran yang
+        # tersimpan sesudah baris dibaca, dan tidak menyentuh sewa penyegaran (segar_sampai).
+        hasil = await self._jalankan("execute", "UPDATE sapa_sesi SET token_enc = $3 WHERE id_hash = $1 AND token_enc = $2",
+                                     id_hash, token_lama, token_baru)
+        return str(hasil).endswith(" 1")
+
+    async def simpan_hasil_segar(self, id_hash, token_enc, token_exp, sampai, token_lama):
+        # S1: hanya pemegang sewa ini, atau bila baris masih berisi token sebelum penyegaran (sewa sudah diambil
+        # alih tetapi penyegar lain belum menyimpan apa pun). Selain itu pemanggil membaca ulang baris.
+        hasil = await self._jalankan(
+            "execute",
+            "UPDATE sapa_sesi SET token_enc = $2, token_exp = $3, segar_sampai = NULL "
+            "WHERE id_hash = $1 AND (segar_sampai = $4 OR token_enc = $5)",
+            id_hash, token_enc, token_exp, sampai, token_lama)
+        return str(hasil).endswith(" 1")
+
+    async def klaim_segar(self, id_hash, token_enc, sampai, sekarang):
+        # UPDATE bersyarat: hanya satu permintaan yang mendapat "UPDATE 1" untuk token_enc yang sama.
+        # Tanpa transaksi terbuka selama Auth0 dipanggil (aman untuk koneksi serverless).
+        hasil = await self._jalankan(
+            "execute",
+            "UPDATE sapa_sesi SET segar_sampai = $3 "
+            "WHERE id_hash = $1 AND token_enc = $2 AND (segar_sampai IS NULL OR segar_sampai < $4)",
+            id_hash, token_enc, sampai, sekarang)
+        return str(hasil).endswith(" 1")
+
+    async def lepas_segar(self, id_hash, sampai):
+        await self._jalankan("execute", "UPDATE sapa_sesi SET segar_sampai = NULL WHERE id_hash = $1 AND segar_sampai = $2",
+                             id_hash, sampai)
 
     async def hapus(self, id_hash):
         hasil = await self._jalankan("execute", "DELETE FROM sapa_sesi WHERE id_hash = $1", id_hash)
@@ -460,6 +594,20 @@ class PostgresSesiStore:
         await self._jalankan(
             "execute", "UPDATE sapa_batas SET jumlah = GREATEST(jumlah - 1, 0) WHERE kunci_hash = $1 AND jendela = $2",
             kunci_hash, jendela)
+
+    # Hitungan gagal kumulatif (B1) memakai baris sapa_batas dengan jendela -1; kedaluwarsa diperpanjang setiap
+    # kegagalan, baris yang sudah kedaluwarsa mulai lagi dari 1, dan ikut dibersihkan bersihkan_batas.
+    async def tambah_gagal_kumulatif(self, kunci_hash, kedaluwarsa, sekarang):
+        return int(await self._jalankan(
+            "fetchval",
+            "INSERT INTO sapa_batas (kunci_hash, jendela, jumlah, kedaluwarsa) VALUES ($1, -1, 1, $2) "
+            "ON CONFLICT (kunci_hash, jendela) DO UPDATE SET "
+            "jumlah = CASE WHEN sapa_batas.kedaluwarsa > $3 THEN sapa_batas.jumlah + 1 ELSE 1 END, kedaluwarsa = $2 "
+            "RETURNING jumlah",
+            kunci_hash, kedaluwarsa, sekarang))
+
+    async def padamkan_penanda(self, kunci_hash):
+        await self._jalankan("execute", "DELETE FROM sapa_batas WHERE kunci_hash = $1 AND jendela = -1", kunci_hash)
 
     async def bersihkan_batas(self, sekarang):
         # Dibatasi BATAS_BERSIH baris per panggilan supaya tidak pernah menjadi kueri panjang.
@@ -570,7 +718,7 @@ async def ambil_sesi(cookie, adalah_admin: Optional[Callable[[str], bool]] = Non
     if sekarang >= baris["kedaluwarsa"] or menganggur:
         await _aman(s.hapus(id_hash))
         return None
-    isi, pakai_kunci_lama = _dekripsi(baris["token_enc"], id_hash)
+    isi, tulis_ulang = _dekripsi(baris["token_enc"], id_hash)
     if isi is None or not isinstance(isi.get("at"), str):
         # Baris ada tetapi tidak terbuka: kemungkinan besar kunci salah pasang. Gagal tertutup (503) tanpa
         # menghapus baris maupun cookie, supaya sesi kembali terbaca setelah kunci dibetulkan.
@@ -582,9 +730,21 @@ async def ambil_sesi(cookie, adalah_admin: Optional[Callable[[str], bool]] = Non
         await _aman(s.hapus(id_hash))
         return None
     token_enc = baris["token_enc"]
-    if pakai_kunci_lama:
-        token_enc = _enkripsi(isi, id_hash)
-        await _aman(s.perbarui_token(id_hash, token_enc, baris["token_exp"]))
+    if tulis_ulang:
+        baru = _enkripsi(isi, id_hash)
+        if await _aman(s.tulis_ulang_token(id_hash, token_enc, baru)):
+            token_enc = baru
+        else:
+            # S1: baris sudah diubah permintaan lain sejak dibaca (misalnya hasil penyegaran tersimpan).
+            # Isinya lebih baru, jadi dipakai apa adanya; tidak ada yang ditimpa.
+            baris = await _aman(s.ambil(id_hash))
+            if not baris:
+                return None
+            isi, _ = _dekripsi(baris["token_enc"], id_hash)
+            if isi is None or not isinstance(isi.get("at"), str):
+                logger.error("Sesi tidak dapat dibuka dengan kunci yang ada (%s)", KUNCI_ENV)
+                raise SesiBelumSiap()
+            token_enc = baris["token_enc"]
     if sekarang - baris["terakhir_dipakai"] >= _JEDA_SENTUH:
         await sentuh(id_hash, sekarang)
     return Sesi(id_hash=id_hash, sub=baris["sub"], ingat=baris["ingat"], dibuat_pada=baris["dibuat_pada"],
@@ -604,11 +764,8 @@ async def sentuh(id_hash: str, waktu: Optional[datetime] = None) -> None:
     await _aman(_store_wajib().sentuh(id_hash, waktu or _sekarang()))
 
 
-async def _baca_ulang(sesi: Sesi) -> Optional[Sesi]:
-    """Sesi dengan token yang sudah disegarkan permintaan lain (baris berubah sejak dibaca), atau None."""
-    baris = await _aman(_store_wajib().ambil(sesi.id_hash))
-    if not baris or baris["token_enc"] == sesi.token_enc:
-        return None
+def _sesi_dari_baris(sesi: Sesi, baris: dict) -> Optional[Sesi]:
+    """Sesi dengan token dari baris terbaru, atau None bila isinya tidak terbuka."""
     isi, _ = _dekripsi(baris["token_enc"], sesi.id_hash)
     if isi is None or not isinstance(isi.get("at"), str):
         return None
@@ -618,12 +775,52 @@ async def _baca_ulang(sesi: Sesi) -> Optional[Sesi]:
     return sesi
 
 
-async def segarkan_bila_perlu(sesi: Sesi, ip: Optional[str] = None) -> Optional[Sesi]:
+async def _baca_ulang(sesi: Sesi) -> Optional[Sesi]:
+    """Sesi dengan token yang sudah disegarkan permintaan lain (baris berubah sejak dibaca), atau None."""
+    baris = await _aman(_store_wajib().ambil(sesi.id_hash))
+    if not baris or baris["token_enc"] == sesi.token_enc:
+        return None
+    return _sesi_dari_baris(sesi, baris)
+
+
+async def _tunggu(detik: float) -> None:
+    await asyncio.sleep(detik)
+
+
+def _monoton() -> float:
+    return time.monotonic()
+
+
+_HABIS = object()  # penanda: baris sesi sudah dihapus permintaan lain
+_TANPA_TOKEN_BARU = object()  # penanda: penyegar tidak memperoleh token baru
+
+
+async def _tunggu_penyegar(sesi: Sesi):
+    """Tunggu permintaan lain yang sedang menyegarkan baris ini (single-flight).
+
+    Kembalikan Sesi bertoken baru yang masih berlaku, _HABIS bila baris dihapus (refresh ditolak), atau
+    None bila waktu tunggu habis atau penyegar melepas kunci tanpa token baru.
+    """
+    s = _store_wajib()
+    for _ in range(max(1, math.ceil(MAKS_TUNGGU_SEGAR / JEDA_TUNGGU_SEGAR))):
+        await _tunggu(JEDA_TUNGGU_SEGAR)
+        baris = await _aman(s.ambil(sesi.id_hash))
+        if not baris:
+            return _HABIS
+        if baris["token_enc"] != sesi.token_enc and baris["token_exp"] > _sekarang():
+            return _sesi_dari_baris(sesi, baris)
+        if baris.get("segar_sampai") is None and baris["token_enc"] == sesi.token_enc:
+            return None  # penyegar gagal dan sudah melepas kunci
+    return None
+
+
+async def segarkan_bila_perlu(sesi: Sesi, ip: Optional[str] = None, ip_wajib: bool = False) -> Optional[Sesi]:
     """Segarkan access token lewat refresh token bila sisa umurnya < 60 detik atau sudah 15 menit.
 
-    `ip` adalah IP klien tepercaya (BF-1) untuk header auth0-forwarded-for; tanpa IP header tidak dikirim.
-    None bila Auth0 menolak refresh token (sesi dihapus). SesiBelumSiap bila Auth0 tidak terjangkau
-    atau kuota global penyegaran penuh, dan access token sudah habis.
+    `ip` adalah IP klien tepercaya (BF-1) untuk header auth0-forwarded-for. `ip_wajib` (di Vercel): tanpa
+    IP tidak ada penyegaran (BF-2). None bila Auth0 menolak refresh token (sesi dihapus). SesiBelumSiap bila
+    token sudah habis dan token baru tidak bisa diperoleh (Auth0 tidak terjangkau, kuota global penuh,
+    IP tidak ada, atau penyegar lain belum selesai).
     """
     sekarang = _sekarang()
     hampir_habis = (sesi.token_exp - sekarang).total_seconds() <= SISA_SEGAR_DETIK
@@ -631,6 +828,12 @@ async def segarkan_bila_perlu(sesi: Sesi, ip: Optional[str] = None) -> Optional[
     if not hampir_habis and not sudah_lama:
         return sesi
     masih_berlaku = sesi.token_exp > sekarang
+
+    def tanpa_token_baru() -> Sesi:
+        if masih_berlaku:
+            return sesi
+        raise SesiBelumSiap()
+
     cfg = konfigurasi_auth0()
     if not sesi.refresh_token or cfg is None:
         if masih_berlaku:
@@ -640,42 +843,95 @@ async def segarkan_bila_perlu(sesi: Sesi, ip: Optional[str] = None) -> Optional[
             raise SesiBelumSiap()
         await _aman(_store_wajib().hapus(sesi.id_hash))
         return None
-    if not await batas(KUNCI_GLOBAL_SEGAR, *BATAS_GLOBAL_SEGAR):
-        logger.warning("Penyegaran token ditunda: kuota global penyegaran /oauth/token penuh")
+    if ip_wajib and not ip:
+        logger.error("Penyegaran token dilewati: IP klien tepercaya tidak tersedia (periksa header Vercel)")
+        return tanpa_token_baru()
+    s = _store_wajib()
+    sampai = sekarang + UMUR_KUNCI_SEGAR
+    mulai = _monoton()
+    if not await _aman(s.klaim_segar(sesi.id_hash, sesi.token_enc, sampai, sekarang)):
+        # Permintaan lain sedang (atau baru saja) menyegarkan baris ini.
         if masih_berlaku:
             return sesi
+        terbaru = await _tunggu_penyegar(sesi)
+        if terbaru is _HABIS:
+            return None
+        if terbaru is not None:
+            return terbaru
+        logger.warning("Penyegaran token oleh permintaan lain belum selesai; permintaan ini 503")
         raise SesiBelumSiap()
+    try:
+        hasil = await _segarkan_sebagai_pemegang_kunci(sesi, cfg, ip, sekarang, sampai, mulai)
+    except BaseException:
+        await _lepas_kunci(s, sesi.id_hash, sampai)
+        raise
+    if hasil is _TANPA_TOKEN_BARU:
+        await _lepas_kunci(s, sesi.id_hash, sampai)
+        return tanpa_token_baru()
+    return hasil
+
+
+async def _lepas_kunci(s: SesiStore, id_hash: str, sampai: datetime) -> None:
+    """Lepas sewa penyegaran milik permintaan ini saja; kegagalan hanya dicatat (sewa habis sendiri)."""
+    try:
+        await s.lepas_segar(id_hash, sampai)
+    except Exception as exc:
+        logger.warning("Kunci penyegaran tidak dapat dilepas: %s", type(exc).__name__)
+
+
+async def _segarkan_sebagai_pemegang_kunci(sesi: Sesi, cfg: dict, ip: Optional[str], sekarang: datetime,
+                                           sampai: datetime, mulai: float):
+    """Panggil Auth0 sebagai satu-satunya penyegar baris ini (sewa `sampai`, diklaim pada monoton `mulai`).
+
+    Kembalikan Sesi bertoken baru (kunci dilepas oleh simpan_hasil_segar), None bila sesi diakhiri, atau
+    _TANPA_TOKEN_BARU bila token baru tidak diperoleh.
+    """
+    s = _store_wajib()
+    if not await batas(KUNCI_GLOBAL_SEGAR, *BATAS_GLOBAL_SEGAR):
+        logger.warning("Penyegaran token ditunda: kuota global penyegaran /oauth/token penuh")
+        return _TANPA_TOKEN_BARU
+    if _monoton() - mulai > BATAS_SEBELUM_AUTH0:
+        # S1: sisa sewa tidak cukup untuk Auth0 dan simpanan terburuk; penyegar lain bisa mengambil alih
+        # dan memakai refresh token yang sama. Lebih baik tidak memanggil Auth0 sama sekali.
+        logger.warning("Penyegaran token dibatalkan: sisa sewa tidak cukup sebelum Auth0")
+        return _TANPA_TOKEN_BARU
     status, body = await _auth0_post("/oauth/token", {
         "grant_type": "refresh_token", "client_id": cfg["client_id"], "client_secret": cfg["client_secret"],
         "refresh_token": sesi.refresh_token,
     }, {"auth0-forwarded-for": ip} if ip else None)
     if status == 200 and body and isinstance(body.get("access_token"), str):
         rt = body.get("refresh_token") or sesi.refresh_token
-        sesi.access_token, sesi.refresh_token = body["access_token"], rt
-        sesi.token_exp, sesi.diperoleh = sekarang + _umur_token(body), sekarang
-        isi = {"at": sesi.access_token, "rt": rt, "nama": sesi.nama, "t": int(sekarang.timestamp())}
-        sesi.token_enc = _enkripsi(isi, sesi.id_hash)
-        await _aman(_store_wajib().perbarui_token(sesi.id_hash, sesi.token_enc, sesi.token_exp))
-        return sesi
+        token_exp = sekarang + _umur_token(body)
+        isi = {"at": body["access_token"], "rt": rt, "nama": sesi.nama, "t": int(sekarang.timestamp())}
+        token_enc = _enkripsi(isi, sesi.id_hash)
+        if await _aman(s.simpan_hasil_segar(sesi.id_hash, token_enc, token_exp, sampai, sesi.token_enc)):
+            sesi.access_token, sesi.refresh_token = body["access_token"], rt
+            sesi.token_exp, sesi.diperoleh, sesi.token_enc = token_exp, sekarang, token_enc
+            return sesi
+        # S1: sewa sudah diambil alih dan penyegar lain sudah menyimpan token yang lebih baru: pakai itu.
+        logger.warning("Hasil penyegaran tidak disimpan: baris sudah berisi token dari penyegar lain")
+        baris = await _aman(s.ambil(sesi.id_hash))
+        if not baris:
+            return None
+        terbaru = _sesi_dari_baris(sesi, baris)
+        return terbaru if terbaru is not None else _TANPA_TOKEN_BARU
     galat = (body or {}).get("error")
     if status in (400, 401, 403) and galat in _GALAT_REFRESH_DITOLAK:
-        # Permintaan paralel dengan cookie yang sama bisa sudah menyegarkan lebih dulu (rotasi refresh token).
+        # Penyegar lain (mis. setelah sewa kunci basi) bisa sudah merotasi refresh token lebih dulu.
         terbaru = await _baca_ulang(sesi)
         if terbaru is not None:
             return terbaru
         logger.info("Refresh token ditolak Auth0 (%s); sesi diakhiri", galat)
-        await _aman(_store_wajib().hapus(sesi.id_hash))
+        await _aman(s.hapus(sesi.id_hash))
         return None
     logger.warning("Penyegaran token Auth0 gagal: status %s", status)
-    if masih_berlaku:
-        return sesi
-    raise SesiBelumSiap()
+    return _TANPA_TOKEN_BARU
 
 
 async def ambil_sesi_segar(cookie, adalah_admin: Optional[Callable[[str], bool]] = None,
-                           ip: Optional[str] = None) -> Optional[Sesi]:
+                           ip: Optional[str] = None, ip_wajib: bool = False) -> Optional[Sesi]:
     sesi = await ambil_sesi(cookie, adalah_admin)
-    return await segarkan_bila_perlu(sesi, ip) if sesi else None
+    return await segarkan_bila_perlu(sesi, ip, ip_wajib) if sesi else None
 
 
 async def hapus_sesi(cookie) -> bool:
@@ -710,12 +966,6 @@ async def batas(kunci: str, jendela_detik: int, maks: int) -> bool:
     """
     jumlah, _ = await hitung(kunci, jendela_detik)
     return jumlah <= maks
-
-
-def sisa_jendela(jendela_detik: int) -> int:
-    """Detik sampai jendela tetap `jendela_detik` yang sedang berjalan berakhir (untuk Retry-After)."""
-    detik = _sekarang().timestamp()
-    return max(1, math.ceil((int(detik // jendela_detik) + 1) * jendela_detik - detik))
 
 
 def _acak() -> float:
@@ -761,17 +1011,6 @@ class HitunganGeser:
         # Dibulatkan supaya galat pecahan biner (mis. 10 x 0.9) tidak menggeser keputusan batas.
         return round(self.ini + self.lalu * (1 - self.lewat / self.jendela_detik), 6)
 
-    def coba_lagi(self, maks: int) -> int:
-        """Detik sampai satu percobaan berikutnya muat di bawah `maks` (percobaan ini dianggap dikembalikan)."""
-        lain, j = self.ini - 1, self.jendela_detik
-        if lain + 1 <= maks:
-            # Jendela ini masih muat; tunggu porsi jendela lalu menyusut.
-            perlu = j * (1 - (maks - lain - 1) / self.lalu) - self.lewat if self.lalu else 0
-        else:
-            # Tunggu jendela ini selesai; hitungannya menjadi "lalu" yang menyusut di jendela berikutnya.
-            perlu = (j - self.lewat) + j * (1 - (maks - 1) / lain)
-        return max(1, math.ceil(round(perlu, 6)))
-
 
 async def hitung_geser(kunci: str, jendela_detik: int) -> HitunganGeser:
     """Seperti `hitung`, tetapi dengan perkiraan jendela geser: hitungan jendela ini + hitungan jendela
@@ -789,6 +1028,20 @@ async def hitung_geser(kunci: str, jendela_detik: int) -> HitunganGeser:
 async def kembalikan(tiket: tuple) -> None:
     """Batalkan satu hitungan dari `hitung` (misalnya percobaan yang ternyata bukan kegagalan)."""
     await _aman(_store_wajib().kurangi_batas(*tiket))
+
+
+# --- hitungan gagal kumulatif per (username + IP), B1 ------------------------------------------
+
+async def tambah_gagal_kumulatif(kunci: str, umur: timedelta) -> int:
+    """Tambah satu kegagalan pada hitungan kumulatif `kunci` (berumur `umur` sejak gagal terakhir, mulai lagi
+    dari 1 bila sudah lewat); kembalikan jumlahnya termasuk kegagalan ini. Kunci disimpan sebagai HMAC."""
+    sekarang = _sekarang()
+    return await _aman(_store_wajib().tambah_gagal_kumulatif(jejak(f"kumulatif:{kunci}"), sekarang + umur, sekarang))
+
+
+async def padamkan_penanda(kunci: str) -> None:
+    """Reset hitungan kumulatif `kunci` (login sukses)."""
+    await _aman(_store_wajib().padamkan_penanda(jejak(f"kumulatif:{kunci}")))
 
 
 async def sekali_pakai(kunci: str, umur_detik: int) -> bool:

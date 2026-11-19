@@ -523,8 +523,9 @@ if LOGIN_BFF:
         cookie = request.cookies.get(sesi_service.NAMA_COOKIE)
         if cookie and request.url.path.startswith("/api/") and request.url.path != "/api/v1/auth/masuk":
             try:
+                # BF-2: di Vercel penyegaran hanya dengan IP tepercaya (auth0-forwarded-for).
                 request.state.sapa_sesi = await sesi_service.ambil_sesi_segar(
-                    cookie, adalah_admin=_token_admin, ip=ip_klien(request))
+                    cookie, adalah_admin=_token_admin, ip=ip_klien(request), ip_wajib=_di_vercel())
             except sesi_service.SesiBelumSiap:
                 request.state.sapa_sesi_galat = 503
         return await call_next(request)

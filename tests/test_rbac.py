@@ -87,11 +87,33 @@ def test_every_data_route_requires_a_role(api):
     # /api/v1/auth/mode hanya menjawab mode login ({"bff": bool}) dan dibaca sebelum pengguna masuk.
     open_routes = {"/", "/api", "/api/index.py", "/api/v1/health", "/health", "/api/v2/tenants/{tenant_id}/Users",
                    "/api/v1/verifikasi-manusia", "/api/v1/auth/mode"}
-    for route in api.app.routes:
-        if not isinstance(route, APIRoute) or route.path in open_routes:
+    # Login satu halaman (hanya ada bila SAPA_LOGIN_BFF=1) memang terbuka sebelum masuk; penjaganya sendiri
+    # diuji di test_auth_bff.py: /masuk (CSRF, Turnstile, pembatas), /sesi (hanya status sesi pemanggil),
+    # /keluar (CSRF, hanya sesi pemanggil), /siap (rincian hanya untuk Super Admin).
+    rute_bff = {"/api/v1/auth/masuk", "/api/v1/auth/sesi", "/api/v1/auth/keluar", "/api/v1/auth/siap"}
+    semua = list(_api_routes(api.app.routes))
+    paths = {route.path for route in semua}
+    # Rute dari router yang di-include harus ikut diperiksa (FastAPI baru membungkusnya, bukan meratakan).
+    if api.LOGIN_BFF:
+        assert rute_bff <= paths
+    else:
+        assert not rute_bff & paths
+    for route in semua:
+        if route.path in open_routes or (api.LOGIN_BFF and route.path in rute_bff):
             continue
         names = {dep.call.__name__ for dep in route.dependant.dependencies if dep.call}
         assert names & guarded, f"{sorted(route.methods)} {route.path} tidak memeriksa peran"
+
+
+def _api_routes(routes):
+    """Semua APIRoute, termasuk yang berada di dalam router yang di-include."""
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+        elif getattr(route, "original_router", None) is not None:
+            yield from _api_routes(route.original_router.routes)
+        elif getattr(route, "routes", None):
+            yield from _api_routes(route.routes)
 
 
 def test_refused_requests_do_not_leak_details(api):
