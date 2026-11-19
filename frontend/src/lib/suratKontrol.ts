@@ -13,17 +13,17 @@ export type PilihanStatus = Kunci | 'semua';
 
 export const KUNCI: Kunci[] = ['lt', 'eq', 'gt'];
 export const STATUS: Record<Kunci, { label: string; definisi: string }> = {
-  lt: { label: 'Surkon < SEP', definisi: 'Tanggal terbit kontrol lebih kecil dari tanggal SEP' },
-  eq: { label: 'Surkon = SEP', definisi: 'Tanggal terbit kontrol sama dengan tanggal SEP' },
-  gt: { label: 'Surkon > SEP', definisi: 'Surat kontrol terbit setelah tanggal SEP' },
+  lt: { label: 'Surkon < SEP', definisi: 'Tanggal terbit surat kontrol lebih awal dari tanggal SEP.' },
+  eq: { label: 'Surkon = SEP', definisi: 'Tanggal terbit surat kontrol sama dengan tanggal SEP.' },
+  gt: { label: 'Surkon > SEP', definisi: 'Surat kontrol terbit setelah tanggal SEP.' },
 };
-export const JENIS: Record<PilihanJenis, string> = { RJ: 'Rawat jalan', RI: 'Rawat inap', semua: 'Semua' };
+export const JENIS: Record<PilihanJenis, string> = { RJ: 'Rawat jalan', RI: 'Rawat inap', semua: 'Semua (RJ + RI)' };
+export type Sheet = 'Header Surkon' | 'Faskes Surkon' | 'Tren' | 'Poli' | 'Keterangan';
+export const SHEET: Sheet[] = ['Header Surkon', 'Faskes Surkon', 'Tren', 'Poli', 'Keterangan'];
+const SHEET_WAJIB: Sheet[] = ['Header Surkon', 'Faskes Surkon', 'Tren', 'Poli'];
 
 const BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-const SHEET_WAJIB = ['Faskes Surkon', 'Header Surkon', 'Poli', 'Tren'];
-const RE_NAMA = /^(\d{4}-\d{2})_(RJ|RI)_(Faskes Surkon|Header Surkon|Keterangan|Poli|Tren)\.csv$/;
 export const BATAS_BERKAS_KB = 200;
-export const BATAS_JUMLAH_BERKAS = 10;
 
 export const angka = (n: number) => n.toLocaleString('id-ID');
 export const persen = (p: number) => `${(p * 100).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
@@ -35,7 +35,7 @@ export function labelBulan(bulan: string): string {
 
 export function tanggalSampai(tanggal: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(tanggal || '');
-  return m ? `${Number(m[3])} ${BULAN_ID[Number(m[2]) - 1]} ${m[1]}` : '';
+  return m ? `${Number(m[3])} ${BULAN_ID[Number(m[2]) - 1].slice(0, 3)} ${m[1]}` : '';
 }
 
 const nol = (): Jumlah => ({ lt: 0, eq: 0, gt: 0 });
@@ -79,17 +79,22 @@ export function saringStatus(j: Jumlah, status: PilihanStatus): Jumlah {
   return { ...nol(), [status]: j[status] };
 }
 
-/** < dan = selalu tampil seperti BI; > hanya bila ada nilainya. */
-export function statusTampil(j: Jumlah): Kunci[] {
-  return j.gt > 0 ? ['lt', 'eq', 'gt'] : ['lt', 'eq'];
+/** Ubin dan pilihan Status: RJ dua status, RI dan Semua tiga (BI menampilkan RI dalam 3 kolom). */
+export function statusJenis(jenis: PilihanJenis): Kunci[] {
+  return jenis === 'RJ' ? ['lt', 'eq'] : ['lt', 'eq', 'gt'];
 }
 
-export function poliTeratas(poli: BarisPoli[], status: PilihanStatus, n = 10): BarisPoli[] {
-  const disaring = poli.map(p => ({ nama: p.nama, ...saringStatus(p, status) })).filter(p => totalOf(p) > 0);
-  const urut = disaring.map((p, i) => [p, i] as const).sort((a, b) => urutTotal(a[0], b[0]) || a[1] - b[1]).map(([p]) => p);
+export function labelTotalCabang(rsAktif: boolean, statusAktif: boolean): string {
+  return rsAktif || statusAktif ? 'Total cabang (semua faskes, semua status)' : 'Total cabang';
+}
+
+/** Poli selalu total cabang: 10 terbesar, sisanya "Poli lain ({n} poli)". */
+export function poliTeratas(poli: BarisPoli[], n = 10): BarisPoli[] {
+  const urut = poli.filter(p => totalOf(p) > 0).map((p, i) => [p, i] as const)
+    .sort((a, b) => urutTotal(a[0], b[0]) || a[1] - b[1]).map(([p]) => p);
   if (urut.length <= n) return urut;
-  const lain = urut.slice(n).reduce<Jumlah>((acc, p) => tambah(acc, p), nol());
-  return [...urut.slice(0, n), { nama: 'Poli lain', ...lain }];
+  const sisa = urut.slice(n);
+  return [...urut.slice(0, n), { nama: `Poli lain (${sisa.length} poli)`, ...sisa.reduce<Jumlah>((acc, p) => tambah(acc, p), nol()) }];
 }
 
 export type Kotak = { id: string; nilai: number; x: number; y: number; w: number; h: number };
@@ -136,32 +141,41 @@ export function treemap(items: { id: string; nilai: number }[], w: number, h: nu
 const aman = (teks: string) => teks.normalize('NFKD').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 export function namaBerkasJpeg(bulan: string, jenis: PilihanJenis, rs: string): string {
-  const bagian = ['Monitoring_Surat_Kontrol', aman(labelBulan(bulan)), jenis === 'semua' ? 'Semua_Jenis' : aman(JENIS[jenis]), rs ? aman(rs) : ''];
-  return bagian.filter(Boolean).join('_').replace('Rawat_jalan', 'Rawat_Jalan').replace('Rawat_inap', 'Rawat_Inap');
+  return ['Monitoring_Surat_Kontrol', aman(labelBulan(bulan)), jenis === 'semua' ? 'Semua' : jenis, rs ? aman(rs) : '']
+    .filter(Boolean).join('_');
 }
 
-/** Bulan YYYY-MM dari awalan nama berkas bila semua berkas sepakat; selain itu null. */
-export function bulanDariBerkas(nama: string[]): string | null {
-  const bulan = new Set(nama.map(n => RE_NAMA.exec(n)?.[1] ?? '?'));
-  const [satu] = [...bulan];
-  return bulan.size === 1 && satu !== '?' ? satu : null;
+/** Sama dengan kenali_sheet di server: nama sheet Crosstab dari baris judul, atau null. */
+export function kenaliSheet(teks: string): Sheet | null {
+  const baris = teks.replace(/^\ufeff/, '').split(/\r?\n/).filter(b => b.trim()).map(b => b.split('\t').map(c => c.trim()));
+  if (baris.length < 2 || baris[0].length < 2) return null;
+  const [kepala, ...isi] = baris;
+  const sisa = kepala.slice(1);
+  if (kepala[0] === 'Status' && sisa.every(c => /^\d+$/.test(c))) return 'Tren';
+  if (kepala[0]) return null;
+  if (sisa.every(c => c === 'Poli Tuju SEP')) return 'Poli';
+  if (sisa.every(c => c === 'Status Surat Kontrol')) return 'Keterangan';
+  if (sisa.every(c => c === 'Status')) return isi.slice(1).some(r => r[0] === 'Jumlah SEP') ? 'Header Surkon' : 'Faskes Surkon';
+  return null;
 }
 
-/** Pemeriksaan cepat sebelum dikirim; server tetap memeriksa isi. null = siap dikirim. */
-export function cekBerkasUnggah(berkas: { name: string; size: number }[], bulan: string): string | null {
-  if (!berkas.length) return 'Pilih 10 berkas CSV Crosstab untuk satu bulan.';
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(bulan || '')) return 'Pilih bulan data terlebih dahulu.';
-  if (berkas.length > BATAS_JUMLAH_BERKAS) return `Pilih paling banyak ${BATAS_JUMLAH_BERKAS} berkas untuk satu bulan.`;
-  if (berkas.some(b => b.size > BATAS_BERKAS_KB * 1024)) return `Ada berkas lebih dari ${BATAS_BERKAS_KB} KB. Berkas Crosstab biasanya di bawah 5 KB.`;
-  const kenal = new Set<string>();
-  for (const b of berkas) {
-    const m = RE_NAMA.exec(b.name);
-    if (!m) return 'Nama berkas harus berpola YYYY-MM_RJ_<Sheet>.csv atau YYYY-MM_RI_<Sheet>.csv.';
-    if (m[1] !== bulan) return `Ada berkas yang bukan untuk ${labelBulan(bulan)}. Periksa awalan tanggal di nama berkas.`;
-    const k = `${m[2]} ${m[3]}`;
-    if (kenal.has(k)) return `Berkas ${k} dipilih lebih dari sekali.`;
-    kenal.add(k);
+export type KeadaanSheet = 'ada' | 'belum' | 'ganda';
+
+/** Daftar periksa satu area unggah (5 sheet); server tetap memeriksa ulang. */
+export function periksaArea(sheet: (Sheet | null)[]) {
+  const hitung = new Map<Sheet, number>();
+  for (const s of sheet) if (s) hitung.set(s, (hitung.get(s) ?? 0) + 1);
+  const keadaan = Object.fromEntries(SHEET.map(s => [s, (hitung.get(s) ?? 0) === 0 ? 'belum' : hitung.get(s) === 1 ? 'ada' : 'ganda'])) as Record<Sheet, KeadaanSheet>;
+  const asing = sheet.filter(s => !s).length;
+  const lengkap = SHEET_WAJIB.every(s => keadaan[s] === 'ada') && keadaan.Keterangan !== 'ganda' && asing === 0;
+  return { sheet: keadaan, asing, lengkap };
+}
+
+/** Bulan yang boleh diunggah: Nov 2026 (awal riwayat) sampai bulan berjalan, terbaru di atas. */
+export function bulanUnggah(sekarang: Date): string[] {
+  const hasil: string[] = [];
+  for (let t = sekarang.getFullYear(), b = sekarang.getMonth() + 1; t > 2026 || (t === 2026 && b >= 11); b === 1 ? (t--, b = 12) : b--) {
+    hasil.push(`${t}-${String(b).padStart(2, '0')}`);
   }
-  const hilang = ['RJ', 'RI'].flatMap(jj => SHEET_WAJIB.map(sh => `${jj} ${sh}`)).filter(k => !kenal.has(k));
-  return hilang.length ? `Berkas ini belum ada: ${hilang.join(', ')}.` : null;
+  return hasil;
 }

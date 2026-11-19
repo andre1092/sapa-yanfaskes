@@ -35,7 +35,7 @@ test('angka dan persen berformat Indonesia', () => {
 
 test('label bulan dan tanggal data', () => {
   assert.equal(s.labelBulan('2026-11'), 'November 2026');
-  assert.equal(s.tanggalSampai('2026-11-12'), '12 November 2026');
+  assert.equal(s.tanggalSampai('2026-11-12'), '12 Nov 2026');
   assert.equal(s.tanggalSampai(''), '');
 });
 
@@ -72,20 +72,26 @@ test('filter status mengosongkan status lain untuk grafik', () => {
   assert.deepEqual(s.saringStatus(j(5, 6, 7), 'semua'), j(5, 6, 7));
 });
 
-test('status yang ada hanya yang punya nilai, kecuali < dan = selalu tampil', () => {
-  assert.deepEqual(s.statusTampil(j(5, 0, 0)), ['lt', 'eq']);
-  assert.deepEqual(s.statusTampil(j(5, 0, 2)), ['lt', 'eq', 'gt']);
+test('jumlah status mengikuti jenis: RJ dua, RI dan Semua tiga', () => {
+  assert.deepEqual(s.statusJenis('RJ'), ['lt', 'eq']);
+  assert.deepEqual(s.statusJenis('RI'), ['lt', 'eq', 'gt']);
+  assert.deepEqual(s.statusJenis('semua'), ['lt', 'eq', 'gt']);
 });
 
-test('poli teratas menggabungkan sisanya menjadi Poli lain dan mengikuti filter status', () => {
-  const poli = Array.from({ length: 12 }, (_, i) => ({ nama: `POLI ${i + 1}`, ...j(100 - i, i, 0) }));
-  const atas = s.poliTeratas(poli, 'semua', 10);
+test('label total cabang lebih rinci saat filter RS atau Status aktif', () => {
+  assert.equal(s.labelTotalCabang(false, false), 'Total cabang');
+  assert.equal(s.labelTotalCabang(true, false), 'Total cabang (semua faskes, semua status)');
+  assert.equal(s.labelTotalCabang(false, true), 'Total cabang (semua faskes, semua status)');
+});
+
+test('poli teratas menggabungkan sisanya menjadi Poli lain dengan jumlah poli', () => {
+  const poli = Array.from({ length: 12 }, (_, i) => ({ nama: `POLI ${i + 1}`, ...j(100 - i * 5, i, 0) }));
+  const atas = s.poliTeratas(poli, 10);
   assert.equal(atas.length, 11);
-  assert.equal(atas[10].nama, 'Poli lain');
-  assert.equal(atas[10].lt + atas[10].eq, 90 + 10 + 89 + 11);
-  const eq = s.poliTeratas(poli, 'eq', 3);
-  assert.deepEqual(eq.slice(0, 3).map(p => p.nama), ['POLI 12', 'POLI 11', 'POLI 10']);
-  assert.equal(s.poliTeratas(poli.slice(0, 3), 'semua', 10).length, 3);
+  assert.equal(atas[10].nama, 'Poli lain (2 poli)');
+  assert.equal(atas[10].lt + atas[10].eq, 50 + 10 + 45 + 11);
+  assert.deepEqual(atas.slice(0, 2).map(p => p.nama), ['POLI 1', 'POLI 2']);
+  assert.equal(s.poliTeratas(poli.slice(0, 3), 10).length, 3);
 });
 
 test('treemap mengisi kotak penuh dengan luas sebanding nilai', () => {
@@ -98,28 +104,38 @@ test('treemap mengisi kotak penuh dengan luas sebanding nilai', () => {
 });
 
 test('nama berkas JPEG mengikuti filter tanpa karakter aneh', () => {
-  assert.equal(s.namaBerkasJpeg('2026-11', 'RJ', ''), 'Monitoring_Surat_Kontrol_November_2026_Rawat_Jalan');
-  assert.equal(s.namaBerkasJpeg('2026-11', 'semua', 'MELATI LUMAJANG, RSUD'),
-    'Monitoring_Surat_Kontrol_November_2026_Semua_Jenis_MELATI_LUMAJANG_RSUD');
+  assert.equal(s.namaBerkasJpeg('2026-11', 'RJ', ''), 'Monitoring_Surat_Kontrol_November_2026_RJ');
+  assert.equal(s.namaBerkasJpeg('2026-11', 'semua', 'MELATI LUMAJANG, RSUD'), 'Monitoring_Surat_Kontrol_November_2026_Semua_MELATI_LUMAJANG_RSUD');
 });
 
-const NAMA = ['Faskes Surkon', 'Header Surkon', 'Keterangan', 'Poli', 'Tren'];
-const sepuluh = (bulan = '2026-11') => ['RJ', 'RI'].flatMap(jj => NAMA.map(n => ({ name: `${bulan}_${jj}_${n}.csv`, size: 2000 })));
+// Tata letak meniru Crosstab asli (baris pertama), nama samaran.
+const TEKS = {
+  'Faskes Surkon': '\tStatus\tStatus\r\n\tSurkon = SEP\tSurkon < SEP\r\n0101R001 - RS A\t1\t2\r\n',
+  'Header Surkon': '\tStatus\tStatus\r\n\tSurkon < SEP\tSurkon = SEP\r\n% of Total Jumlah SEP along Status\t1%\t99%\r\nJumlah SEP\t1\t99\r\n',
+  Keterangan: '\tStatus Surat Kontrol\tStatus Surat Kontrol\r\n\ta\tb\r\n',
+  Poli: '\tPoli Tuju SEP\tPoli Tuju SEP\r\n\tANAK\tSARAF\r\nSurkon < SEP\t1\t2\r\n',
+  Tren: 'Status\t1\t2\r\nSurkon < SEP\t1\t2\r\n',
+};
 
-test('bulan diusulkan dari awalan nama berkas', () => {
-  assert.equal(s.bulanDariBerkas(sepuluh().map(b => b.name)), '2026-11');
-  assert.equal(s.bulanDariBerkas(['2026-11_RJ_Poli.csv', '2026-12_RI_Poli.csv']), null);
-  assert.equal(s.bulanDariBerkas(['Poli.csv']), null);
+test('sheet dikenali dari baris judul seperti di server', () => {
+  for (const [nama, teks] of Object.entries(TEKS)) assert.equal(s.kenaliSheet(teks), nama);
+  assert.equal(s.kenaliSheet('﻿Status\t1\t2\r\nSurkon < SEP\t1\t2\r\n'), 'Tren');
+  assert.equal(s.kenaliSheet('Kabupaten,Nama Faskes\r\n'), null);
+  assert.equal(s.kenaliSheet(''), null);
 });
 
-test('pemeriksaan awal di browser: lengkap lolos, sisanya diberi pesan', () => {
-  assert.equal(s.cekBerkasUnggah(sepuluh(), '2026-11'), null);
-  assert.equal(s.cekBerkasUnggah(sepuluh().filter(b => !b.name.includes('Keterangan')), '2026-11'), null);
-  assert.match(s.cekBerkasUnggah(sepuluh().filter(b => !b.name.includes('RI_Tren')), '2026-11'), /RI Tren/);
-  assert.match(s.cekBerkasUnggah([...sepuluh(), { name: 'x.csv', size: 1 }], '2026-11'), /10 berkas/);
-  assert.match(s.cekBerkasUnggah([...sepuluh().slice(1), { name: 'Poli.csv', size: 1 }], '2026-11'), /Nama berkas/);
-  assert.match(s.cekBerkasUnggah(sepuluh(), '2026-10'), /Oktober 2026/);
-  assert.match(s.cekBerkasUnggah(sepuluh().map(b => ({ ...b, size: 300 * 1024 })), '2026-11'), /200 KB/);
-  assert.match(s.cekBerkasUnggah([], '2026-11'), /Pilih/);
-  assert.match(s.cekBerkasUnggah(sepuluh(), ''), /bulan/);
+test('daftar periksa area: ditemukan, belum ada, dua kali, dan tidak dikenali', () => {
+  const area = s.periksaArea(['Tren', 'Poli', 'Poli', null, 'Header Surkon']);
+  assert.equal(area.sheet.Tren, 'ada');
+  assert.equal(area.sheet.Poli, 'ganda');
+  assert.equal(area.sheet['Faskes Surkon'], 'belum');
+  assert.equal(area.sheet.Keterangan, 'belum');
+  assert.equal(area.asing, 1);
+  assert.equal(area.lengkap, false);
+  assert.equal(s.periksaArea(['Tren', 'Poli', 'Header Surkon', 'Faskes Surkon']).lengkap, true);
+});
+
+test('pilihan bulan unggah dari Nov 2026 sampai bulan berjalan, terbaru di atas', () => {
+  assert.deepEqual(s.bulanUnggah(new Date(2027, 1, 3)), ['2027-02', '2027-01', '2026-12', '2026-11']);
+  assert.deepEqual(s.bulanUnggah(new Date(2026, 10, 19)), ['2026-11']);
 });
