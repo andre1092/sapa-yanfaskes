@@ -71,7 +71,7 @@ function Kepala({ id, judul, ket, tabel, setTabel, penuh }: { id: string; judul:
 function KartuStatus({ d, kodeRs, namaRs, status, jenis, bulan }: { d: DataJenis; kodeRs: string; namaRs: string; status: PilihanStatus; jenis: PilihanJenis; bulan: string }) {
   const r = ringkasStatus(d, kodeRs);
   const daftar = statusJenis(jenis);
-  return <MainCard content={false} className="sk-panel berry-dashboard-card" aria-labelledby="sk-status">
+  return <MainCard content={false} className="sk-panel sk-panel-status berry-dashboard-card" aria-labelledby="sk-status">
     <div className="sk-panel-kepala"><div>
       <h2 id="sk-status">Status surat kontrol{namaRs ? ` · ${namaRs}` : ''}</h2>
       <p className="sk-ket">Jumlah SEP kontrol, <span className="sk-aksen">{labelBulan(bulan)}</span></p>
@@ -240,7 +240,9 @@ export function MonitoringSuratKontrolDashboard() {
   const query = useQuery<Respons, Error>({
     queryKey: ['surat-kontrol', bulan],
     queryFn: async ({ signal }) => (await apiClient.get('/api/v1/surat-kontrol/data', { params: bulan ? { bulan } : {}, signal, timeout: 30000 })).data,
-    staleTime: 5 * 60 * 1000,
+    // QA Kim #1: data dari unggahan di tab/sesi lain muncul dalam ±1 menit tanpa muat ulang halaman.
+    staleTime: 60 * 1000,
+    refetchOnMount: 'always',
     retry: (n, error) => statusHttp(error) !== 403 && n < 1,
     placeholderData: prev => prev,
   });
@@ -302,20 +304,20 @@ export function MonitoringSuratKontrolDashboard() {
   return <div className="sapa-page sk-page berry-dashboard">
     <header className="sk-judul">
       <div>
-        <p className="sapa-eyebrow">Ruang kerja / Pemantauan / Monitoring Surat Kontrol</p>
         <Typography component="h1" variant="h3" className="sapa-title">Monitoring Surat Kontrol</Typography>
         <p className="sapa-description">Membandingkan tanggal terbit surat kontrol dengan tanggal SEP kontrol di FKRTL. Berbeda dengan tab
           07 Surkon di Kepatuhan FKRTL, yang menilai kepatuhan penerbitan lewat bridging.</p>
         {dataBulan && <p className="sk-data-per">Data SEP sampai <strong>{tanggalSampai(dataBulan.sampai)}</strong> · sumber BI BPJS Kesehatan</p>}
       </div>
-      <span>
+      {props && <span>
         <button type="button" className="sapa-button sapa-button-secondary" onClick={() => setJpeg('menyiapkan')} disabled={!d || jpeg === 'menyiapkan'} aria-busy={jpeg === 'menyiapkan'}>
           {jpeg === 'menyiapkan' ? 'Menyiapkan JPEG…' : 'Unduh JPEG'}</button>
         {jpeg === 'gagal' && <span role="alert" className="sk-catatan block">JPEG belum bisa dibuat. Coba lagi.</span>}
-      </span>
+      </span>}
     </header>
 
-    <MainCard content={false} className="sk-filter berry-dashboard-card" aria-label="Filter monitoring surat kontrol">
+    {/* QA Kim #2: keadaan kosong hanya kepala halaman dan kotak info. */}
+    {(query.isPending || props) && <MainCard content={false} className="sk-filter berry-dashboard-card" aria-label="Filter monitoring surat kontrol">
       <div className="sk-filter-grid">
         {filter.map(f => <div key={f.id}>
           <label htmlFor={`sk-${f.id}`}>{f.label}</label>
@@ -327,7 +329,7 @@ export function MonitoringSuratKontrolDashboard() {
         {terkunci && <p className="sk-filter-ket">Akun rumah sakit hanya bisa memilih faskesnya sendiri. Tren dan poli tetap total cabang.</p>}
         <p className="sk-filter-ket" role="status">{pesanFilter || (d ? `Menampilkan ${ringkasFilter}` : '')}</p>
       </div>
-    </MainCard>
+    </MainCard>}
 
     {query.isPending ? <KerangkaMemuat label="Memuat monitoring surat kontrol" /> : query.isError ? (
       statusHttp(query.error) === 403 && user?.role === 'Petugas RS'
