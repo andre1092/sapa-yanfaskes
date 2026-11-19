@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
-import { buatPengirimMasuk } from '../auth/alurMasuk';
+import { buatKendaliForm, buatPengirimMasuk } from '../auth/alurMasuk';
 import { useSession } from '../auth/useSession';
 import type { KendaliWidget } from '../lib/turnstile';
 import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
@@ -81,13 +81,8 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
     setMengirim(true);
     setGalat(null);
     setSudahMencoba(true);
-    const masuk = await pengirim.kirim({ username, password, ingat, token }, widget.current, session.muatUlang, {
-      kosongkanPassword: () => setPassword(''),
-      sembunyikanPassword: () => setLihat(false),
-      buangToken: () => setToken(null),
-      tampilkanGalat: setGalat,
-      fokusPassword: () => kolomPassword.current?.focus(),
-    });
+    const masuk = await pengirim.kirim({ username, password, ingat, token }, widget.current, session.muatUlang,
+      buatKendaliForm({ setPassword, setLihat, setToken, setGalat, fokus: () => kolomPassword.current?.focus() }));
     if (masuk === false) setMengirim(false);
   };
 

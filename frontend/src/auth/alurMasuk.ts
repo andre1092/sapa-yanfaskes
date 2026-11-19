@@ -16,6 +16,26 @@ export type KendaliForm = {
   fokusPassword: () => void;
 };
 
+/** Setter state komponen form masuk yang dibungkus menjadi KendaliForm. */
+export type SetelanForm = {
+  setPassword: (nilai: string) => void;
+  setLihat: (nilai: boolean) => void;
+  setToken: (nilai: string | null) => void;
+  setGalat: (nilai: string | null) => void;
+  fokus: () => void;
+};
+
+/** Bangun KendaliForm dari setter useState komponen, supaya pemetaannya bisa diuji tanpa DOM. */
+export function buatKendaliForm({ setPassword, setLihat, setToken, setGalat, fokus }: SetelanForm): KendaliForm {
+  return {
+    kosongkanPassword: () => setPassword(''),
+    sembunyikanPassword: () => setLihat(false),
+    buangToken: () => setToken(null),
+    tampilkanGalat: pesan => setGalat(pesan),
+    fokusPassword: fokus,
+  };
+}
+
 export const PESAN_SESI_BELUM_TERBUKA = 'Sesi belum dapat dibuka. Coba masuk kembali.';
 
 /**

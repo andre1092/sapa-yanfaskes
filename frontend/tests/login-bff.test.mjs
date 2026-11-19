@@ -21,7 +21,7 @@ const { renderToString } = await import('react-dom/server');
 const { createElement: h } = await import('react');
 const { LayarKeluar, LoginPage } = await muat('components/LoginPage.tsx');
 const { FormMasuk, PanelLupaSandi } = await muat('components/FormMasuk.tsx');
-const { buatPengirimMasuk, kirimMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
+const { buatKendaliForm, buatPengirimMasuk, kirimMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
 const { Context } = await muat('auth/useSession.ts');
 const bff = await muat('auth/bff.ts');
 const sesi = await muat('auth/session.ts');
@@ -286,6 +286,7 @@ test('kirim dua kali cepat (klik ganda atau Enter berulang) hanya mengirim satu 
 
   const form = await sumber('components/FormMasuk.tsx');
   assert.match(form, /buatPengirimMasuk\(\)/, 'komponen memakai pengirim tunggal');
+  // Penjaga di handler komponen hanya diperiksa lewat sumber (tanpa DOM); kunci pengirimnya diuji di atas.
   assert.match(form, /pengirim\.sibuk\(\)/, 'kirim kedua ditolak sebelum keadaan form diubah');
 });
 
@@ -303,9 +304,45 @@ test('ingat dikirim sebagai boolean di body JSON', async () => {
   }
 });
 
+// Setter palsu meniru useState: menerima nilai atau fungsi pembaru, dan mencatat setiap panggilan.
+function keadaanPalsu(awal) {
+  const log = [];
+  const k = { nilai: { ...awal }, log };
+  const setter = nama => v => { k.nilai[nama] = typeof v === 'function' ? v(k.nilai[nama]) : v; log.push([nama, k.nilai[nama]]); };
+  k.setel = { setPassword: setter('password'), setLihat: setter('lihat'), setToken: setter('token'), setGalat: setter('galat') };
+  return k;
+}
+
+test('buatKendaliForm memetakan kendali alur kirim ke state komponen', () => {
+  const k = keadaanPalsu({ password: SANDI_PALSU, lihat: true, token: 'token-palsu', galat: null });
+  let fokus = 0;
+  const form = buatKendaliForm({ ...k.setel, fokus: () => { fokus += 1; } });
+  form.kosongkanPassword();
+  form.sembunyikanPassword();
+  form.buangToken();
+  form.tampilkanGalat('pesan uji');
+  form.fokusPassword();
+  assert.deepEqual(k.log, [['password', ''], ['lihat', false], ['token', null], ['galat', 'pesan uji']], 'tiap kendali memanggil setter sekali');
+  assert.deepEqual(k.nilai, { password: '', lihat: false, token: null, galat: 'pesan uji' });
+  assert.equal(fokus, 1);
+});
+
 test('tombol lihat password kembali tersembunyi setelah setiap jawaban /masuk', async () => {
+  for (const [status, isi, muatUlang] of [
+    [401, { kode: 'sandi_salah', detail: 'Nama pengguna atau kata sandi salah.' }, async () => true],
+    [200, { masuk: true, peran: 'admin' }, async () => true],
+    [200, { masuk: true, peran: 'admin' }, async () => false],
+  ]) {
+    fetchPalsu({ status, isi });
+    const k = keadaanPalsu({ password: SANDI_PALSU, lihat: true, token: 'token-palsu', galat: null });
+    await kirimMasuk(isianUji, widgetPalsu(), muatUlang, buatKendaliForm({ ...k.setel, fokus: () => {} }));
+    assert.equal(k.nilai.lihat, false, `${status} ${muatUlang}`);
+    assert.equal(k.nilai.password, '', `${status} ${muatUlang}`);
+    Object.assign(lokasi, { pathname: '/login', search: '', hash: '' });
+  }
+  // Sambungan ke React: komponen membuat kendali dari setter useState-nya. Tanpa DOM, bagian ini diperiksa lewat sumber.
   const form = await sumber('components/FormMasuk.tsx');
-  assert.match(form, /sembunyikanPassword: \(\) => setLihat\(false\)/);
+  assert.match(form, /buatKendaliForm\(\{[^}]*\bsetLihat\b[^}]*\}\)/);
 });
 
 test('form masuk tidak menyimpan isian di browser', async () => {
