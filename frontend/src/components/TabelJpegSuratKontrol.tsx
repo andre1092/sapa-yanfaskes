@@ -12,7 +12,7 @@ const JUDUL: React.CSSProperties = { ...SEL, backgroundColor: '#00529C', color: 
 export const KUNING = '#FFEB9C';
 const WARNA_SKOR = (skor: number): React.CSSProperties =>
   skor >= 100 ? { backgroundColor: '#C6EFCE', color: '#006100' } : skor <= 25 ? { backgroundColor: '#FFC7CE', color: '#9C0006' } : { backgroundColor: '#FFFFFF', color: TEKS };
-const JENJANG: [number, string][] = [[100, '≥ 90%'], [75, '> 80% – < 90%'], [50, '60% – 80%'], [25, '> 50% – < 60%'], [0, '≤ 50%']];
+const JENJANG: [number, string][] = [[100, '≥ 90%'], [75, '> 80% – < 90%'], [50, '≥ 60% – 80%'], [25, '> 50% – < 60%'], [0, '≤ 50%']];
 
 type Props = { baris: BarisTabel[]; bulan: string; jenis: PilihanJenis; sampai: string; namaRs: string; kodeTerpilih: string; petugas: boolean };
 
