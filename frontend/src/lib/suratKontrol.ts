@@ -201,9 +201,8 @@ export function bulanUnggah(sekarang: Date): string[] {
 
 /**
  * Capaian Skor Kepatuhan Surkon (0/25/50/75/100) dari persen SRK sesuai (rasio 0–1).
- * Jenjang dibaca dari data Capaian sheet Kris 07_surkon_terbit (1.459 baris, Jan–Okt 2026). Batas 60% dan 90%
- * belum terbukti di data (tidak ada titik di 56,27–62,03% dan 88,59–95,58%); nilainya usulan dan menunggu
- * konfirmasi CEO sebelum rilis.
+ * Jenjang dibaca dari data Capaian sheet Kris 07_surkon_terbit (1.459 baris, Jan–Okt 2026); batas 60% dan 90%
+ * (tidak terlihat di data) dikonfirmasi CEO 2026-11-19 ("Setuju semua usulan").
  */
 export function skorKepatuhan(rasio: number): number {
   const p = rasio * 100;

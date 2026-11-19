@@ -161,7 +161,7 @@ test('skor kepatuhan berjenjang cocok dengan titik data asli sheet Kris', () => 
   for (const [pct, skor] of [[0, 0], [50, 0], [51.35, 25], [56.27, 25], [62.03, 50], [80, 50], [80.06, 75], [88.59, 75], [95.58, 100], [100, 100]]) {
     assert.equal(s.skorKepatuhan(pct / 100), skor, `${pct}%`);
   }
-  // Batas usulan (menunggu konfirmasi CEO): 90% → 100, 60% → 50.
+  // Batas yang dikonfirmasi CEO 2026-11-19: 90% → 100, 60% → 50.
   assert.equal(s.skorKepatuhan(0.9), 100);
   assert.equal(s.skorKepatuhan(0.8999), 75);
   assert.equal(s.skorKepatuhan(0.6), 50);
