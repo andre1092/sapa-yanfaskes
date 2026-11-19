@@ -32,9 +32,12 @@ MATRIX = [
 ]
 
 
-@pytest.fixture
-def api(monkeypatch):
-    module = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com")
+# Flag login BFF dibaca saat index diimpor, jadi setiap tes memuat ulang modul dengan flag 0 dan 1:
+# matriks izin jalur Bearer harus sama di kedua mode.
+@pytest.fixture(params=["0", "1"], ids=["bff0", "bff1"])
+def api(monkeypatch, request):
+    module = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com", SAPA_LOGIN_BFF=request.param)
+    assert module.LOGIN_BFF is (request.param == "1")
     for name in ("GCP_SA_CREDENTIALS_BASE64", "GCP_SA_CREDENTIALS_JSON"):
         monkeypatch.delenv(name, raising=False)
     return module

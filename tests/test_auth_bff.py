@@ -333,13 +333,23 @@ def test_mfa_required_tidak_dipetakan_ke_sandi_salah(bff):
     assert "mfa-rahasia" not in res.text and set_cookie(res) == []
 
 
-@pytest.mark.parametrize("jawaban", [(429, {"error": "too_many_requests"}), (429, None)])
-def test_auth0_rate_limit_global_menjadi_terlalu_banyak(bff, jawaban):
+@pytest.mark.parametrize("jawaban", [(429, {"error": "too_many_requests"}), (429, None), (429, {"error": "lain"}),
+                                     (429, {"error": "too_many_attempts"})])
+def test_n5_semua_429_auth0_dihitung_sebagai_kegagalan(bff, jawaban):
+    """N5: bentuk 429 apa pun dari /oauth/token dijawab dan dihitung persis seperti too_many_attempts, jadi
+    anti-oracle tidak bergantung pada bentuk galat Auth0 yang tepat."""
     b = bff()
     b.auth0.jawaban_token = jawaban
     res = masuk(b)
-    assert res.status_code == 429 and res.json() == {"detail": b.ab.PESAN_TERLALU_BANYAK, "kode": "terlalu_banyak"}
-    assert "retry-after" not in res.headers
+    assert res.status_code == 401 and res.json() == SALAH and "retry-after" not in res.headers
+    jendela = int(b.jam.waktu.timestamp() // 900)
+    assert b.store.batas[(b.ss.jejak(f"900:gagal:username:{USERNAME}|ip:{IP_ASLI}"), jendela)] == 1  # slot tetap
+    assert b.store.penanda[b.ss.jejak(f"kumulatif:gagal:username:{USERNAME}|ip:{IP_ASLI}")][0] == 1
+    for _ in range(9):
+        b.jam.maju(seconds=4)
+        assert masuk(b).json() == SALAH
+    b.jam.maju(minutes=31)
+    assert masuk(b).json() == TERLALU_BANYAK  # penanda lengket menyala dari 10 kegagalan ini
 
 
 @pytest.mark.parametrize("jawaban", [(500, {"error": "server_error"}), (0, None), (401, {"error": "invalid_client"}),
@@ -1215,14 +1225,17 @@ def test_token_turnstile_sekali_pakai_dijamin_sapa(bff):
     assert len(b.cf.kiriman) == 1
 
 
-def test_token_turnstile_dicatat_sebelum_siteverify_dan_berumur_10_menit(bff):
+def test_token_turnstile_dicatat_sebelum_siteverify_dan_berumur_5_menit(bff):
     b = bff()
     b.cf.jawaban = {**b.cf.jawaban, "success": False}
     assert masuk(b, turnstile_token="token-x").status_code == 403
     b.cf.jawaban = {**b.cf.jawaban, "success": True}
     res = masuk(b, turnstile_token="token-x")
     assert res.json()["kode"] == "turnstile_kedaluwarsa" and len(b.cf.kiriman) == 1
-    assert b.ab.UMUR_TURNSTILE == 600
+    # S3: sama dengan masa berlaku token di Cloudflare; baris token palsu tidak hidup lebih lama dari itu.
+    assert b.ab.UMUR_TURNSTILE == 300
+    kunci = (b.ss.jejak("sekali:turnstile:token-x"), 0)
+    assert b.store.kedaluwarsa_batas[kunci] == b.jam.waktu + timedelta(seconds=300)
     assert all("token-x" not in k for k in b.store.batas)
 
 
@@ -1345,7 +1358,11 @@ def _picu_kode(b, kode):
     if kode == "sandi_salah":
         b.auth0.jawaban_token = (403, {"error": "invalid_grant"})
     elif kode == "terlalu_banyak":
-        b.auth0.jawaban_token = (429, None)
+        # 429 Auth0 sendiri dijawab sandi_salah (N5); terlalu_banyak datang dari pembatas SAPA.
+        b.auth0.jawaban_token = (403, {"error": "invalid_grant"})
+        for _ in range(10):
+            masuk(b)
+            b.jam.maju(seconds=4)
     elif kode == "turnstile_gagal":
         b.cf.jawaban = {**b.cf.jawaban, "success": False}
     elif kode == "turnstile_kedaluwarsa":
@@ -1874,10 +1891,12 @@ def test_penanda_lengket_bertahan_30_hari_sejak_gagal_terakhir(bff):
     assert masuk(b2, header={"x-vercel-forwarded-for": "203.0.113.5"}).json() == SALAH
 
 
-def test_auth0_429_global_tidak_menyalakan_penanda(bff):
+def test_n5_429_sekali_tidak_langsung_menyalakan_penanda(bff):
+    """N5: 429 dihitung sebagai satu kegagalan, tidak langsung menyalakan penanda lengket. Penanda hanya
+    ditentukan hitungan SAPA (lihat test_n1_penanda_tidak_naik_karena_blokir_auth0)."""
     b = bff()
     b.auth0.jawaban_token = (429, {"error": "too_many_requests"})
-    assert masuk(b).json() == TERLALU_BANYAK
+    assert masuk(b).json() == SALAH
     b.auth0.jawaban_token = (403, {"error": "invalid_grant"})
     b.jam.maju(seconds=4)
     assert masuk(b).json() == SALAH
@@ -1916,19 +1935,24 @@ def test_semua_jawaban_terlalu_banyak_seragam_tanpa_retry_after(bff, monkeypatch
             asyncio.run(b.ss.batas(b.ss.KUNCI_GLOBAL_LOGIN, *b.ss.BATAS_GLOBAL_LOGIN))
         return masuk(b)
 
-    def auth0_global(b):
-        b.auth0.jawaban_token = (429, None)
-        return masuk(b)
-
     def auth0_akun(b):
-        # too_many_attempts sendiri dijawab sandi_salah (B1); terlalu_banyak datang dari hitungan SAPA.
+        # too_many_attempts (dan 429 lain, N5) sendiri dijawab sandi_salah (B1); terlalu_banyak datang dari
+        # hitungan SAPA. Jeda 5 menit masih di dalam umur hitungan pendek (15 menit sejak gagal terakhir).
         b.auth0.jawaban_token = (429, {"error": "too_many_attempts"})
         for _ in range(10):
             masuk(b)
-            b.jam.maju(minutes=20)
+            b.jam.maju(minutes=5)
         return masuk(b)
 
-    for picu in (kasar, per_ip, username_ip, penanda, global_login, auth0_global, auth0_akun):
+    def username_unik_ip(b):
+        # N1: username unik ke-51 yang gagal dari satu IP dalam sehari.
+        b.auth0.jawaban_token = (403, {"error": "invalid_grant"})
+        for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1]):
+            masuk(b, username=f"pengguna.{i}")
+            b.jam.maju(seconds=4)
+        return masuk(b, username="pengguna.baru")
+
+    for picu in (kasar, per_ip, username_ip, penanda, global_login, auth0_akun, username_unik_ip):
         jejak[picu.__name__] = _jejak_respons(picu(bff()))
     pertama = jejak["kasar"]
     assert pertama[0] == 429 and json.loads(pertama[1]) == TERLALU_BANYAK and pertama[2]["retry-after"] is None
@@ -2104,8 +2128,9 @@ def test_postgres_klaim_segar_memakai_update_bersyarat(bff, monkeypatch):
         return Koneksi(next(hasil))
     monkeypatch.setattr(pg, "_sambung", sambung)
     sekarang = b.jam.waktu
-    assert asyncio.run(pg.klaim_segar("id-uji", "v2.lama", sekarang + timedelta(seconds=15), sekarang)) is True
-    assert asyncio.run(pg.klaim_segar("id-uji", "v2.lama", sekarang + timedelta(seconds=15), sekarang)) is False
+    sampai = sekarang + b.ss.UMUR_KUNCI_SEGAR
+    assert asyncio.run(pg.klaim_segar("id-uji", "v2.lama", sampai, sekarang)) is True
+    assert asyncio.run(pg.klaim_segar("id-uji", "v2.lama", sampai, sekarang)) is False
     sql = kueri[0][0]
     assert sql.startswith("UPDATE sapa_sesi SET segar_sampai = $3")
     assert "id_hash = $1 AND token_enc = $2 AND (segar_sampai IS NULL OR segar_sampai < $4)" in sql
@@ -2270,13 +2295,16 @@ def test_b1_oracle_percobaan_pelan_jeda_120_detik(bff, monkeypatch):
 
 
 def test_b1_oracle_9_gagal_jeda_31_menit_lalu_2_gagal(bff, monkeypatch):
+    """N1: di bawah 10 gagal, hitungan hanya hidup 15 menit sejak gagal terakhir. Setelah jeda 31 menit
+    hitungan mulai lagi untuk akun ada maupun tidak ada; Auth0 yang sudah memblokir akun ada tetap dijawab
+    sandi_salah, jadi jawabannya tetap identik."""
     def jalankan(b, u):
         hasil = _deret(b, u, 9, 4)
         b.jam.maju(minutes=31)
         return hasil + _deret(b, u, 2, 4)
     ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan)
     assert ada == kosong
-    assert _kode(ada) == ["sandi_salah"] * 10 + ["terlalu_banyak"]
+    assert _kode(ada) == ["sandi_salah"] * 11
 
 
 def test_b1_oracle_campuran_email_dan_username(bff, monkeypatch):
@@ -2316,16 +2344,16 @@ def test_b1_hitungan_kumulatif_direset_login_sukses(bff):
     b = bff()
     b.auth0.jawaban_token = (403, {"error": "invalid_grant"})
     for _ in range(9):
-        b.jam.maju(minutes=20)
+        b.jam.maju(minutes=5)
         assert masuk(b).json() == SALAH
     b.auth0.jawaban_token = None
-    b.jam.maju(minutes=20)
+    b.jam.maju(minutes=5)
     assert masuk(b).status_code == 200
     b.auth0.jawaban_token = (403, {"error": "invalid_grant"})
     for _ in range(10):
-        b.jam.maju(minutes=20)
+        b.jam.maju(minutes=5)
         assert masuk(b).json() == SALAH
-    b.jam.maju(minutes=20)
+    b.jam.maju(minutes=5)
     assert masuk(b).json() == TERLALU_BANYAK
 
 
@@ -2347,17 +2375,34 @@ def test_b1_postgres_hitungan_kumulatif_reset_bila_kedaluwarsa(bff, monkeypatch)
         return Koneksi()
     monkeypatch.setattr(pg, "_sambung", sambung)
     sekarang = b.jam.waktu
-    assert asyncio.run(pg.tambah_gagal_kumulatif("k", sekarang + timedelta(days=30), sekarang)) == 3
+    pendek, lengket = sekarang + timedelta(minutes=15), sekarang + timedelta(days=30)
+    assert asyncio.run(pg.tambah_gagal_kumulatif("k", sekarang, pendek, lengket, 10)) == 3
     [(sql, args)] = kueri
     assert "VALUES ($1, -1, 1, $2)" in sql
-    assert "CASE WHEN sapa_batas.kedaluwarsa > $3 THEN sapa_batas.jumlah + 1 ELSE 1 END" in sql
-    assert "kedaluwarsa = $2" in sql and sql.rstrip().endswith("RETURNING jumlah")
-    assert args == ("k", sekarang + timedelta(days=30), sekarang)
+    # N1: kedaluwarsa pendek, baru naik ke lengket (30 hari) setelah hitungan mencapai ambang.
+    lanjut = "CASE WHEN sapa_batas.kedaluwarsa > $4 THEN sapa_batas.jumlah + 1 ELSE 1 END"
+    assert f"jumlah = {lanjut}" in sql
+    assert f"kedaluwarsa = CASE WHEN {lanjut} >= $5 THEN $3 ELSE $2 END" in sql
+    assert sql.rstrip().endswith("RETURNING jumlah")
+    assert args == ("k", pendek, lengket, sekarang, 10)
+    kueri.clear()
+    assert asyncio.run(pg.ada_gagal_kumulatif("k", sekarang)) is True
+    [(sql, args)] = kueri
+    assert sql == "SELECT 1 FROM sapa_batas WHERE kunci_hash = $1 AND jendela = -1 AND kedaluwarsa > $2"
+    assert args == ("k", sekarang)
+    kueri.clear()
+    assert asyncio.run(pg.hitung_baris_batas(5)) == 3
+    [(sql, args)] = kueri
+    # Hitungan dibatasi LIMIT, jadi tetap murah walau tabel membengkak.
+    assert sql == "SELECT count(*) FROM (SELECT 1 FROM sapa_batas LIMIT $1) AS t" and args == (5,)
 
 
-def _tahan_tulis(store, nama_tugas, sampai_event):
+def _tahan_tulis(store, nama_tugas, ambil_event):
     """Bungkus semua penulisan token di store: tulisan milik tugas `nama_tugas` ditahan sampai event diset
-    (meniru latensi koneksi Neon baru per operasi di sesi_middleware)."""
+    (meniru latensi koneksi Neon baru per operasi di sesi_middleware).
+
+    `ambil_event()` mengembalikan event yang dibuat di dalam loop yang berjalan (N2: di Python 3.9
+    asyncio.Event yang dibuat di luar loop terikat ke loop lain)."""
     for nama in ("perbarui_token", "tulis_ulang_token", "simpan_hasil_segar"):
         asli = getattr(store, nama, None)
         if asli is None:
@@ -2365,6 +2410,7 @@ def _tahan_tulis(store, nama_tugas, sampai_event):
 
         def bungkus(asli):
             async def tulis(*args, **kw):
+                sampai_event = ambil_event()
                 if asyncio.current_task().get_name() == nama_tugas and not sampai_event.is_set():
                     await sampai_event.wait()
                 return await asli(*args, **kw)
@@ -2404,24 +2450,26 @@ def test_s1_tulis_ulang_rotasi_kunci_tidak_menimpa_hasil_refresh(bff, monkeypatc
     monkeypatch.setenv("SAPA_SESI_KUNCI_LAMA", KUNCI_A)
     b.jam.maju(hours=3)  # access token habis
     _auth0_rotasi(b, monkeypatch)
-    b_sudah_baca, a_selesai = asyncio.Event(), asyncio.Event()
+    peristiwa = {}  # N2: event dibuat di dalam jalan(), di loop asyncio.run
     asli_ambil = b.store.ambil
 
     async def ambil(id_hash):
         baris = await asli_ambil(id_hash)
         if asyncio.current_task().get_name() == "B":
-            b_sudah_baca.set()
+            peristiwa["b_sudah_baca"].set()
         return baris
     monkeypatch.setattr(b.store, "ambil", ambil)
-    _tahan_tulis(b.store, "B", a_selesai)
+    _tahan_tulis(b.store, "B", lambda: peristiwa["a_selesai"])
 
     async def jalan():
+        peristiwa.update(b_sudah_baca=asyncio.Event(), a_selesai=asyncio.Event())
+
         async def tugas_a():
-            await b_sudah_baca.wait()
+            await peristiwa["b_sudah_baca"].wait()
             try:
                 return await b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI)
             finally:
-                a_selesai.set()
+                peristiwa["a_selesai"].set()
         tb = asyncio.create_task(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI), name="B")
         ta = asyncio.create_task(tugas_a(), name="A")
         return await asyncio.gather(ta, tb, return_exceptions=True)
@@ -2530,7 +2578,8 @@ def test_s1_postgres_tulis_token_bersyarat(bff, monkeypatch):
 
 def test_s1_sewa_penyegaran_mencakup_timeout_terburuk(bff):
     ss = bff().ss
-    assert ss.WAKTU_TERBURUK_AUTH0 >= 2 * ss.TIMEOUT_AUTH0  # requests: timeout connect + read
+    assert ss.WAKTU_TERBURUK_AUTH0 >= 2 * ss.TIMEOUT_AUTH0  # httpx: timeout connect + read
+    assert ss.TENGGAT_AUTH0 <= ss.WAKTU_TERBURUK_AUTH0  # tenggat total (wait_for) di dalam sewa
     assert ss.WAKTU_TERBURUK_DB >= 2 * ss.TIMEOUT_DB  # asyncpg: timeout connect + command_timeout
     assert ss.UMUR_KUNCI_SEGAR.total_seconds() >= (ss.BATAS_SEBELUM_AUTH0 + ss.WAKTU_TERBURUK_AUTH0
                                                    + ss.WAKTU_TERBURUK_DB)
@@ -2547,3 +2596,518 @@ def test_s1_penyegar_tidak_memanggil_auth0_bila_sisa_sewa_tidak_cukup(bff, monke
     assert b.auth0.panggilan(grant="refresh_token") == []
     [baris] = b.store.sesi.values()
     assert baris.get("segar_sampai") is None  # sewa dilepas
+
+
+# --- cek ulang Clara (2026-11-19): N1-N6 dan info ------------------------------------------------
+
+GAGAL = (403, {"error": "invalid_grant"})
+
+
+def _kunci_penanda(b, username=USERNAME, ip=IP_ASLI):
+    return b.ss.jejak(f"kumulatif:gagal:username:{b.ab.normal_username(username)}|ip:{b.ab.kunci_ip(ip)}")
+
+
+def test_n1_hitungan_gagal_berumur_15_menit_lalu_naik_lengket_pada_gagal_ke_10(bff):
+    b = bff()
+    assert b.ab.UMUR_HITUNGAN_GAGAL == timedelta(minutes=15) and b.ab.UMUR_PENANDA == timedelta(days=30)
+    b.auth0.jawaban_token = GAGAL
+    for i in range(9):
+        assert masuk(b).json() == SALAH
+        assert b.store.penanda[_kunci_penanda(b)] == (i + 1, b.jam.waktu + timedelta(minutes=15))
+        b.jam.maju(seconds=4)
+    assert masuk(b).json() == SALAH  # kegagalan ke-10 masih sandi_salah, tetapi penanda naik menjadi lengket
+    assert b.store.penanda[_kunci_penanda(b)] == (10, b.jam.waktu + timedelta(days=30))
+    b.jam.maju(minutes=31)  # jauh melewati umur hitungan pendek dan jendela geser
+    assert masuk(b).json() == TERLALU_BANYAK
+    assert b.store.penanda[_kunci_penanda(b)] == (11, b.jam.waktu + timedelta(days=30))  # diperpanjang
+    # Login sukses dari IP itu memadamkan penanda.
+    b.auth0.jawaban_token = None
+    b.jam.maju(seconds=4)
+    assert masuk(b).status_code == 200 and _kunci_penanda(b) not in b.store.penanda
+
+
+def test_n1_gagal_sekali_banyak_username_tidak_membuat_baris_30_hari(bff):
+    b = bff()
+    b.auth0.jawaban_token = GAGAL
+    for i in range(40):
+        assert masuk(b, username=f"pengguna.{i}").json() == SALAH
+        b.jam.maju(seconds=4)
+    assert len(b.store.penanda) == 40
+    assert all(kedaluwarsa <= b.jam.waktu + timedelta(minutes=15) for _, kedaluwarsa in b.store.penanda.values())
+    assert all(v <= b.jam.waktu + timedelta(days=1) for v in b.store.kedaluwarsa_batas.values())
+    b.jam.maju(minutes=16)
+    asyncio.run(b.store.bersihkan_batas(b.jam.waktu))
+    assert b.store.penanda == {}
+
+
+def test_n1_batas_50_username_unik_gagal_per_ip_per_hari(bff):
+    b = bff()
+    assert b.ab.BATAS_USERNAME_UNIK_IP == (24 * 60 * 60, 50)
+    b.auth0.jawaban_token = GAGAL
+    for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1]):
+        assert masuk(b, username=f"pengguna.{i}").json() == SALAH
+        b.jam.maju(seconds=4)
+    ke_auth0, n_tidur = len(b.auth0.panggilan(path="/oauth/token")), len(b.tidur)
+    res = masuk(b, username="pengguna.baru")
+    assert res.status_code == 429 and res.json() == TERLALU_BANYAK and "retry-after" not in res.headers
+    assert b.tidur[n_tidur:] == [pytest.approx(b.ab.WAKTU_MINIMUM_GAGAL, abs=0.05)]  # tetap ditahan 700 ms
+    # S1: percobaan tetap diteruskan ke Auth0, tetapi kegagalannya tidak menulis hitungan per username.
+    assert len(b.auth0.panggilan(path="/oauth/token")) == ke_auth0 + 1
+    assert _kunci_penanda(b, "pengguna.baru") not in b.store.penanda
+    # Hanya slot geser 15 menit (berumur paling lama 30 menit) yang tertulis untuk username ini.
+    slot_baru = b.ss.jejak(f"900:gagal:username:pengguna.baru|ip:{IP_ASLI}")
+    umur_slot = [v - b.jam.waktu for k, v in b.store.kedaluwarsa_batas.items() if k[0] == slot_baru]
+    assert umur_slot and all(u <= timedelta(minutes=30) for u in umur_slot)
+    # Hitungan IP hari ini tidak bertambah lewat batas (satu baris, tetap 50).
+    kunci_ip_hari = b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}")
+    assert [v for k, v in b.store.batas.items() if k[0] == kunci_ip_hari] == [50]
+    # S1: pengguna lain di IP (NAT) yang sama dengan sandi benar tetap bisa masuk.
+    b.auth0.jawaban_token = None
+    b.jam.maju(seconds=4)
+    assert masuk(b, username="pengguna.lain").status_code == 200
+    # Username yang hitungan gagalnya masih hidup tetap dilayani (tidak menambah baris baru).
+    b.auth0.jawaban_token = GAGAL
+    b.jam.maju(seconds=4)
+    assert masuk(b, username="pengguna.3").json() == SALAH
+    b.jam.maju(seconds=4)
+    # IP lain tidak ikut tertahan; esok hari hitungan IP ini mulai lagi.
+    assert masuk(b, username="pengguna.baru", header={"x-vercel-forwarded-for": "203.0.113.5"}).json() == SALAH
+    b.jam.maju(days=1)
+    assert masuk(b, username="pengguna.baru").json() == SALAH
+
+
+def test_n1_batas_username_unik_identik_untuk_akun_ada_dan_tidak_ada(bff, monkeypatch):
+    def jalankan(b, u):
+        monkeypatch.setattr(b.ab, "_monoton", lambda: 100.0)  # durasi asli 0, jadi tahanan = waktu minimum
+        for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1]):
+            masuk(b, username=f"pengguna.{i}")
+            b.jam.maju(seconds=4)
+        n_tidur, n_auth0 = len(b.tidur), len(b.auth0.kiriman)
+        hasil = _jejak_respons(masuk(b, username=u))
+        return hasil, b.tidur[n_tidur:], len(b.auth0.kiriman) - n_auth0
+    ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan)
+    assert ada == kosong
+    (status, body, header), tidur, ke_auth0 = ada
+    assert status == 429 and json.loads(body) == TERLALU_BANYAK and header["retry-after"] is None
+    assert tidur == [0.7] and ke_auth0 == 1  # S1: tetap ke Auth0
+
+
+def test_s1_lewat_batas_username_unik_identik_termasuk_saat_auth0_memblokir(bff, monkeypatch):
+    """S1: setelah batas 50 username unik penuh, deret percobaan pada akun ada (Auth0 memblokir sesudah 10)
+    dan tidak ada tetap identik, dan tidak ada hitungan per username yang ditulis."""
+    def jalankan(b, u):
+        monkeypatch.setattr(b.ab, "_monoton", lambda: 100.0)
+        for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1]):
+            masuk(b, username=f"pengguna.{i}")
+            b.jam.maju(seconds=4)
+        n_tidur = len(b.tidur)
+        hasil = _deret(b, u, 12, 120)
+        b.jam.maju(minutes=31)
+        hasil += _deret(b, u, 3, 4)
+        assert _kunci_penanda(b, u) not in b.store.penanda
+        return hasil, b.tidur[n_tidur:]
+    ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan)
+    assert ada == kosong
+    assert _kode(ada[0]) == ["terlalu_banyak"] * 15
+
+
+def test_s2_kuota_harian_penanda_lengket_membatasi_baris_30_hari(bff, monkeypatch):
+    """S2: rotasi prefiks IPv6 /64 tidak bisa menambah penanda 30 hari melebihi kuota harian seluruh SAPA."""
+    b = bff()
+    assert b.ab.BATAS_PENANDA_LENGKET_HARIAN == (24 * 60 * 60, 1000)
+    monkeypatch.setattr(b.ab, "BATAS_PENANDA_LENGKET_HARIAN", (24 * 60 * 60, 2))
+    b.auth0.jawaban_token = GAGAL
+    ip6 = [f"2001:db8:0:{i:x}::1" for i in range(4)]  # empat /64 dalam satu /48
+    for ip in ip6:
+        for _ in range(10):
+            assert masuk(b, header={"x-vercel-forwarded-for": ip}).json() == SALAH
+            b.jam.maju(seconds=4)
+    umur = [b.store.penanda[_kunci_penanda(b, ip=ip)][1] - b.jam.waktu for ip in ip6]
+    lengket = [u for u in umur if u > timedelta(days=29)]
+    assert len(lengket) == 2 and all(u <= timedelta(minutes=15) for u in umur if u not in lengket)
+    # Hitungan yang mencapai ambang tetap menjawab terlalu_banyak selama hidup (fungsi hitungan SAPA saja).
+    for ip in ip6:
+        assert masuk(b, header={"x-vercel-forwarded-for": ip}).json() == TERLALU_BANYAK
+    # Perpanjangan selama kuota penuh juga tetap pendek; kuota global hanya satu baris per hari.
+    assert sum(1 for u in (b.store.penanda[_kunci_penanda(b, ip=ip)][1] - b.jam.waktu for ip in ip6)
+               if u > timedelta(days=29)) == 2
+    kunci_kuota = b.ss.jejak(f"86400:{b.ab.KUNCI_PENANDA_LENGKET_HARIAN}")
+    assert sum(1 for k in b.store.batas if k[0] == kunci_kuota) == 1
+    # Esok hari kuota mulai lagi.
+    b.jam.maju(days=1)
+    for _ in range(10):
+        masuk(b, username="pengguna.esok", header={"x-vercel-forwarded-for": ip6[0]})
+        b.jam.maju(seconds=4)
+    assert b.store.penanda[_kunci_penanda(b, "pengguna.esok", ip6[0])][1] - b.jam.waktu > timedelta(days=29)
+
+
+def test_s2_kuota_penanda_lengket_penuh_tetap_identik_untuk_akun_ada_dan_tidak_ada(bff, monkeypatch):
+    def jalankan(b, u):
+        monkeypatch.setattr(b.ab, "BATAS_PENANDA_LENGKET_HARIAN", (24 * 60 * 60, 0))  # kuota sudah penuh
+        hasil = _deret(b, u, 12, 4)
+        b.jam.maju(minutes=31)  # hitungan yang mencapai ambang hanya hidup 15 menit; slot geser juga bersih
+        return hasil + _deret(b, u, 2, 4)
+    ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan)
+    assert ada == kosong
+    assert _kode(ada) == ["sandi_salah"] * 10 + ["terlalu_banyak"] * 2 + ["sandi_salah"] * 2
+
+
+def test_n1_ukuran_sapa_batas_terbatas_saat_banjir_username_unik(bff, monkeypatch):
+    b = bff()
+    b.auth0.jawaban_token = GAGAL
+    monkeypatch.setattr(b.ss, "_acak", lambda: 0.0)  # pembersihan berjalan di setiap panggilan pembatas
+    ukuran = []
+    for i in range(600):  # 600 username unik dari satu IP dalam 5 jam
+        masuk(b, username=f"banjir.{i}")
+        b.jam.maju(seconds=30)
+        ukuran.append(len(b.store.batas) + len(b.store.penanda))
+    assert len(b.store.penanda) <= b.ab.BATAS_USERNAME_UNIK_IP[1]
+    # S1: lewat batas 50 percobaan tetap ke Auth0, tetapi hanya menulis baris berumur pendek: slot geser
+    # (paling lama 30 menit) dan hitungan peringatan per username (paling lama 2 jam). Jadi ukuran tabel
+    # dibatasi laju x umur terpanjang dan tidak tumbuh lagi sesudah 2 jam.
+    batas_atas = b.ab.BATAS_USERNAME_UNIK_IP[1] + (2 * 3600 + 2 * 900) // 30 + 10
+    assert max(ukuran) <= batas_atas, max(ukuran)
+    assert max(ukuran[300:]) <= max(ukuran[:300])  # tunak, tidak tumbuh terus
+    assert all(v <= b.jam.waktu + timedelta(days=1) for v in b.store.kedaluwarsa_batas.values())
+    harian = {b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}"), b.ss.jejak(f"86400:{b.ab.KUNCI_PENANDA_LENGKET_HARIAN}")}
+    assert all(v <= b.jam.waktu + timedelta(hours=2) for k, v in b.store.kedaluwarsa_batas.items() if k[0] not in harian)
+    kunci_ip_hari = b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}")
+    assert sum(1 for k in b.store.batas if k[0] == kunci_ip_hari) == 1  # satu baris hitungan per IP per hari
+
+
+def test_n1_peringatan_ukuran_sapa_batas_saat_pembersihan(bff, monkeypatch, caplog):
+    b = bff()
+    assert b.ss.AMBANG_PERINGATAN_BARIS_BATAS == 200_000
+    monkeypatch.setattr(b.ss, "_acak", lambda: 0.0)
+    caplog.set_level(logging.WARNING, logger="sapa-api")
+    masuk(b)
+    assert "sapa_batas" not in caplog.text
+    monkeypatch.setattr(b.ss, "AMBANG_PERINGATAN_BARIS_BATAS", 3)
+    b.jam.maju(seconds=4)
+    masuk(b)
+    assert "Peringatan: tabel sapa_batas berisi lebih dari 3 baris" in caplog.text
+
+
+def test_n1_penanda_tidak_naik_karena_blokir_auth0(bff, monkeypatch):
+    """Penanda lengket hanya dari hitungan SAPA. Bila blokir Auth0 (hanya untuk akun ada) ikut menaikkan
+    penanda, jeda sesudahnya akan membedakan akun ada (hitungan bertahan) dan tidak ada (mulai lagi). Jeda 31
+    menit supaya jendela geser 15 menit juga sudah bersih."""
+    def jalankan(b, u):
+        hasil = _deret(b, u, 9, 4)
+        b.jam.maju(minutes=31)
+        hasil += _deret(b, u, 2, 4)  # Auth0: kegagalan ke-10 dan ke-11, akun ada mulai diblokir
+        b.jam.maju(minutes=31)
+        return hasil + _deret(b, u, 9, 4)
+    ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan)
+    assert ada == kosong
+    assert _kode(ada) == ["sandi_salah"] * 20
+
+
+def test_n5_oracle_blokir_auth0_berbentuk_429_lain(bff, monkeypatch):
+    """N5: bila Auth0 memblokir akun dengan bentuk 429 yang lain, jawabannya tetap identik."""
+    def jalankan(b, u):
+        asli = b.ss._auth0_post  # Auth0 palsu kumulatif dari _bandingkan_akun
+
+        async def auth0(path, data, headers=None):
+            status, body = await asli(path, data, headers)
+            return (429, {"error": "too_many_requests"}) if status == 429 else (status, body)
+        monkeypatch.setattr(b.ss, "_auth0_post", auth0)
+        return _deret(b, u, 12, 120)
+    ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan, ambang=5)  # Auth0 memblokir mulai percobaan ke-6
+    assert ada == kosong
+    assert _kode(ada) == ["sandi_salah"] * 10 + ["terlalu_banyak"] * 2
+
+
+def test_n2_primitive_asyncio_hanya_dibuat_di_dalam_coroutine():
+    """N2: di Python 3.9 asyncio.Event/Lock/... yang dibuat di luar loop terikat ke loop lain."""
+    import ast
+    from pathlib import Path
+    akar = Path(__file__).resolve().parents[1]
+    primitif = {"Event", "Lock", "Semaphore", "BoundedSemaphore", "Condition", "Queue", "LifoQueue",
+                "PriorityQueue", "Barrier"}
+    temuan = []
+
+    def kunjungi(berkas, simpul, di_coroutine):
+        for anak in ast.iter_child_nodes(simpul):
+            if isinstance(anak, ast.AsyncFunctionDef):
+                kunjungi(berkas, anak, True)
+                continue
+            if isinstance(anak, (ast.FunctionDef, ast.Lambda, ast.ClassDef)):
+                kunjungi(berkas, anak, False)
+                continue
+            if (isinstance(anak, ast.Call) and isinstance(anak.func, ast.Attribute) and anak.func.attr in primitif
+                    and isinstance(anak.func.value, ast.Name) and anak.func.value.id == "asyncio" and not di_coroutine):
+                temuan.append(f"{berkas.relative_to(akar)}:{anak.lineno}")
+            kunjungi(berkas, anak, di_coroutine)
+    for berkas in sorted([*akar.glob("api/*.py"), *akar.glob("api/tests/*.py"), *akar.glob("tests/*.py")]):
+        kunjungi(berkas, ast.parse(berkas.read_text(encoding="utf-8")), False)
+    assert temuan == []
+
+
+# K1: semua jawaban sesudah Auth0 dipanggil yang tidak pasti ditolak dianggap hasil tidak diketahui.
+@pytest.mark.parametrize("jawaban", [(0, None), (502, None), (504, None), (200, None), (200, {"error": "x"}),
+                                     (200, {"access_token": None}), (500, None), (520, None), (524, None),
+                                     (302, None), (418, None)])
+def test_n3_sewa_tidak_dilepas_bila_hasil_refresh_tidak_diketahui(bff, monkeypatch, jawaban):
+    b = bff()
+    cookie = nilai_cookie(masuk(b, ingat=True))
+    b.jam.maju(hours=3)  # access token habis
+    b.auth0.jawaban_segar = jawaban
+
+    async def tunggu_palsu(detik):
+        pass
+    monkeypatch.setattr(b.ss, "_tunggu", tunggu_palsu)
+    with pytest.raises(b.ss.SesiBelumSiap):
+        asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI))
+    [baris] = b.store.sesi.values()
+    assert baris["segar_sampai"] == b.jam.waktu + b.ss.UMUR_KUNCI_SEGAR  # sewa dibiarkan sampai kedaluwarsa
+    # Selama sewa berjalan, refresh token yang sama tidak dipakai lagi.
+    b.jam.maju(seconds=10)
+    with pytest.raises(b.ss.SesiBelumSiap):
+        asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI))
+    assert len(b.auth0.panggilan(grant="refresh_token")) == 1
+    b.auth0.jawaban_segar = None
+    b.jam.maju(seconds=b.ss.UMUR_KUNCI_SEGAR.total_seconds())
+    assert asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI)) is not None
+    assert len(b.auth0.panggilan(grant="refresh_token")) == 2
+
+
+@pytest.mark.parametrize("jawaban", [(429, {"error": "too_many_requests"}), (503, None),
+                                     (400, {"error": "invalid_request"}), (401, {"error": "invalid_client"}),
+                                     (403, {"error": "unauthorized_client"}), (404, None)])
+def test_k1_sewa_dilepas_hanya_bila_auth0_pasti_tidak_memproses(bff, monkeypatch, jawaban):
+    b = bff()
+    cookie = nilai_cookie(masuk(b, ingat=True))
+    b.jam.maju(hours=3)
+    b.auth0.jawaban_segar = jawaban
+    with pytest.raises(b.ss.SesiBelumSiap):
+        asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI))
+    [baris] = b.store.sesi.values()
+    assert baris.get("segar_sampai") is None and len(b.store.sesi) == 1  # sewa dilepas, sesi tetap ada
+    assert b.ss._STATUS_PASTI_TIDAK_DIPROSES == {400, 401, 403, 404, 429, 503}
+
+
+def test_n3_sewa_tidak_dilepas_bila_panggilan_auth0_terputus(bff, monkeypatch):
+    b = bff()
+    cookie = nilai_cookie(masuk(b, ingat=True))
+    b.jam.maju(hours=3)
+
+    async def putus(path, data, headers=None):
+        raise ConnectionResetError("koneksi putus")
+    monkeypatch.setattr(b.ss, "_auth0_post", putus)
+    with pytest.raises(ConnectionResetError):
+        asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI))
+    [baris] = b.store.sesi.values()
+    assert baris["segar_sampai"] == b.jam.waktu + b.ss.UMUR_KUNCI_SEGAR
+
+
+def test_n3_sewa_dilepas_bila_gagal_sebelum_auth0_dipanggil(bff, monkeypatch):
+    b = bff()
+    cookie = nilai_cookie(masuk(b, ingat=True))
+    b.jam.maju(hours=3)
+
+    async def db_mati(*a, **k):
+        raise b.ss.SesiBelumSiap()
+    monkeypatch.setattr(b.ss, "batas", db_mati)
+    with pytest.raises(b.ss.SesiBelumSiap):
+        asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI))
+    [baris] = b.store.sesi.values()
+    assert baris.get("segar_sampai") is None and b.auth0.panggilan(grant="refresh_token") == []
+
+
+def _http_auth0_palsu(monkeypatch, ss, tunda, terkirim):
+    """Klien httpx Auth0 dengan transport palsu: menunggu `tunda` detik (DNS, connect lambat) lalu mencatat
+    kiriman dan menjawab 200. Pembatalan oleh tenggat menghentikannya seperti soket sungguhan."""
+    import httpx
+
+    async def tangani(permintaan):
+        await asyncio.sleep(tunda)
+        terkirim.append((permintaan.url.path, permintaan.content.decode(), time.monotonic()))
+        return httpx.Response(200, json={"access_token": "at-uji", "expires_in": 600})
+    monkeypatch.setattr(ss, "_klien_auth0", lambda: httpx.AsyncClient(transport=httpx.MockTransport(tangani)))
+
+
+def test_n4_tenggat_total_auth0_menjadi_hasil_tidak_diketahui(monkeypatch):
+    import sesi_service as ss
+    assert ss.TENGGAT_AUTH0 == ss.WAKTU_TERBURUK_AUTH0 == 16
+    monkeypatch.setenv("AUTH0_DOMAIN", "sapa.test.auth0.com")
+    _http_auth0_palsu(monkeypatch, ss, 0.3, [])
+    monkeypatch.setattr(ss, "TENGGAT_AUTH0", 0.05)
+
+    async def jalan():
+        mulai = time.monotonic()
+        hasil = await ss._auth0_post("/oauth/token", {})
+        return hasil, time.monotonic() - mulai
+    hasil, durasi = asyncio.run(jalan())
+    assert hasil == (0, None) and durasi < 0.25
+
+
+def test_k2_tidak_ada_kiriman_refresh_token_sesudah_tenggat(monkeypatch):
+    """K2: wait_for atas requests di thread hanya berhenti menunggu; thread tetap mengirim refresh token
+    sesudah tenggat. Klien async dibatalkan bersama tenggat, jadi tidak ada kiriman yang tertinggal."""
+    import sesi_service as ss
+    monkeypatch.setenv("AUTH0_DOMAIN", "sapa.test.auth0.com")
+    terkirim = []
+    _http_auth0_palsu(monkeypatch, ss, 0.6, terkirim)
+    monkeypatch.setattr(ss, "TENGGAT_AUTH0", 0.2)
+
+    async def jalan():
+        hasil = await ss._auth0_post("/oauth/token", {"grant_type": "refresh_token", "refresh_token": "RT-uji"})
+        await asyncio.sleep(0.8)  # loop tetap hidup jauh melewati waktu kiriman yang tertunda
+        return hasil
+    assert asyncio.run(jalan()) == (0, None)
+    assert terkirim == []
+
+
+def test_k2_auth0_post_memakai_httpx_dan_memetakan_jawaban(monkeypatch):
+    import sesi_service as ss
+    monkeypatch.setenv("AUTH0_DOMAIN", "sapa.test.auth0.com")
+    terkirim = []
+    _http_auth0_palsu(monkeypatch, ss, 0, terkirim)
+    hasil = asyncio.run(ss._auth0_post("/oauth/token", {"grant_type": "refresh_token", "refresh_token": "RT-uji"},
+                                       {"auth0-forwarded-for": IP_ASLI}))
+    assert hasil == (200, {"access_token": "at-uji", "expires_in": 600})
+    assert terkirim[0][0] == "/oauth/token" and "refresh_token=RT-uji" in terkirim[0][1]
+    import httpx
+
+    def gagal(permintaan):
+        raise httpx.ConnectError("putus", request=permintaan)
+    monkeypatch.setattr(ss, "_klien_auth0", lambda: httpx.AsyncClient(transport=httpx.MockTransport(gagal)))
+    assert asyncio.run(ss._auth0_post("/oauth/token", {})) == (0, None)
+    monkeypatch.setattr(ss, "_klien_auth0", lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda r: httpx.Response(500, content=b"<html>bukan json</html>"))))
+    assert asyncio.run(ss._auth0_post("/oauth/token", {})) == (500, None)
+
+
+def test_n4_tenggat_auth0_saat_masuk_menjadi_belum_siap(bff, monkeypatch):
+    import sesi_service
+    asli = sesi_service._auth0_post
+    b = bff()
+    assert b.ss is sesi_service
+    monkeypatch.setattr(b.ss, "_auth0_post", asli)
+    monkeypatch.setattr(b.ss, "TENGGAT_AUTH0", 0.05)
+    _http_auth0_palsu(monkeypatch, b.ss, 0.3, [])
+    res = masuk(b)
+    assert res.status_code == 503 and res.json()["kode"] == "belum_siap"
+    jendela = int(b.jam.waktu.timestamp() // 900)
+    assert b.store.batas[(b.ss.jejak(f"900:gagal:username:{USERNAME}|ip:{IP_ASLI}"), jendela)] == 0  # slot kembali
+
+
+def test_n4_tenggat_total_siteverify_503_tanpa_auth0(bff, monkeypatch):
+    b = bff()
+    assert b.ab.TENGGAT_SITEVERIFY == 5
+    cf = b.cf
+
+    def lambat(url, data=None, timeout=None):
+        time.sleep(0.3)
+        return cf(url, data=data, timeout=timeout)
+    monkeypatch.setattr(b.ts, "_kirim", lambat)
+    monkeypatch.setattr(b.ab, "TENGGAT_SITEVERIFY", 0.05)
+    res = masuk(b)
+    assert res.status_code == 503 and res.json()["kode"] == "belum_siap"
+    assert b.auth0.kiriman == []
+    # Jawaban tidak menunggu siteverify 0,3 detik: sisa tahanan 700 ms masih lebih dari 0,6 detik. (Durasi
+    # TestClient sendiri tidak bisa dipakai karena loop-nya menunggu thread yang tertinggal saat ditutup.)
+    assert b.tidur and b.tidur[-1] > 0.6
+
+
+def _surat_kontrol_palsu(b, monkeypatch):
+    from datetime import date
+    from test_surat_kontrol_api import FakeDrive
+    api = b.api
+    drive = FakeDrive()
+    monkeypatch.setattr(api, "_sk_drive_info", drive.info)
+    monkeypatch.setattr(api, "_sk_drive_unduh", drive.unduh)
+    monkeypatch.setattr(api, "_sk_drive_tulis", drive.tulis)
+    monkeypatch.setattr(api, "_sk_simpanan", {"versi": None, "isi": None})
+    monkeypatch.setattr(api, "_sk_hari_ini", lambda: date(2026, 11, 19))
+    monkeypatch.setattr(api.pengguna_service, "status_akun", lambda sub, segar=False: {
+        "wajib_ganti_sandi": False, "nonaktif": False, "diatur_ulang_pada": None, "kode_ppk": ""})
+    monkeypatch.setattr(api.pengguna_service, "get_client", lambda: None)
+    return drive
+
+
+@pytest.mark.parametrize("aksi", ["periksa", "integrasikan"])
+def test_n6_surat_kontrol_lewat_cookie_admin_wajib_csrf(bff, monkeypatch, aksi):
+    from test_surat_kontrol_service import kiriman, sepuluh
+    b = bff()
+    drive = _surat_kontrol_palsu(b, monkeypatch)
+    b.auth0.peran = ["admin"]
+    assert masuk(b).status_code == 200
+    alamat, isi, gz = f"/api/v1/surat-kontrol/{aksi}?bulan=2026-11", kiriman(sepuluh()), {"Content-Type": "application/gzip"}
+    for header in ({}, {"X-SAPA": "1", "Origin": "https://penyerang.example"}, {"Origin": ASAL}):
+        res = b.client.post(alamat, content=isi, headers={**gz, **header})
+        assert res.status_code == 403 and res.json()["kode"] == "asal_tidak_sah", header
+    assert drive.tulis_dipanggil == 0
+    sah = b.client.post(alamat, content=isi, headers={**gz, **ASAL_SENDIRI})
+    assert sah.status_code not in (401, 403), sah.text
+    assert sah.status_code == 200
+    assert drive.tulis_dipanggil == (1 if aksi == "integrasikan" else 0)
+
+
+def test_info_sewa_penyegaran_30_detik(bff):
+    ss = bff().ss
+    assert ss.UMUR_KUNCI_SEGAR == timedelta(seconds=30)
+    assert ss.BATAS_SEBELUM_AUTH0 + ss.WAKTU_TERBURUK_AUTH0 + ss.WAKTU_TERBURUK_DB == 30
+
+
+def test_info_menunggu_penyegar_memakai_backoff_dan_satu_koneksi(bff, monkeypatch):
+    b = bff()
+    tunggu, dibuka, ditutup, dibaca = [], [], [], []
+
+    async def tunggu_palsu(detik):
+        tunggu.append(detik)
+    monkeypatch.setattr(b.ss, "_tunggu", tunggu_palsu)
+    sekarang = b.jam.waktu
+    baris = {"id_hash": "id-uji", "sub": "auth0|uji", "ingat": True, "dibuat_pada": sekarang,
+             "terakhir_dipakai": sekarang, "kedaluwarsa": sekarang + timedelta(days=1), "token_enc": "v2.lama",
+             "token_exp": sekarang, "segar_sampai": sekarang + b.ss.UMUR_KUNCI_SEGAR}
+
+    class Koneksi:
+        async def fetchrow(self, sql, *args):
+            dibaca.append(args)
+            return dict(baris)
+
+        async def close(self):
+            ditutup.append(1)
+    pg = b.ss.PostgresSesiStore("postgresql://uji@db.invalid/sapa")
+    pg._skema_siap = True
+
+    async def sambung():
+        dibuka.append(1)
+        return Koneksi()
+    monkeypatch.setattr(pg, "_sambung", sambung)
+    monkeypatch.setattr(b.ss, "_store", pg)
+    sesi = b.ss.Sesi(id_hash="id-uji", sub="auth0|uji", ingat=True, dibuat_pada=sekarang, terakhir_dipakai=sekarang,
+                     kedaluwarsa=sekarang + timedelta(days=1), token_exp=sekarang, access_token="at",
+                     token_enc="v2.lama")
+    assert asyncio.run(b.ss._tunggu_penyegar(sesi)) is None
+    assert tunggu == pytest.approx([0.1, 0.2, 0.4, 0.5, 0.5, 0.3])
+    assert sum(tunggu) <= b.ss.MAKS_TUNGGU_SEGAR + 1e-9
+    assert dibuka == [1] and ditutup == [1] and len(dibaca) == len(tunggu)
+
+
+def test_k3_menunggu_penyegar_dibatasi_waktu_dinding_termasuk_baca_db(bff, monkeypatch):
+    """K3: MAKS_TUNGGU_SEGAR berlaku untuk waktu dinding, bukan hanya jumlah jeda tidur."""
+    b = bff()
+    cookie = nilai_cookie(masuk(b, ingat=True))
+    sesi_awal = asyncio.run(b.ss.ambil_sesi(cookie))
+    [baris] = b.store.sesi.values()
+    baris["segar_sampai"] = b.jam.waktu + b.ss.UMUR_KUNCI_SEGAR  # penyegar lain memegang sewa
+    monkeypatch.setattr(b.ss, "MAKS_TUNGGU_SEGAR", 0.5)
+    asli = b.store.ambil
+
+    async def ambil_lambat(id_hash):
+        await asyncio.sleep(0.2)  # latensi DB
+        return await asli(id_hash)
+    monkeypatch.setattr(b.store, "ambil", ambil_lambat)
+    mulai = time.monotonic()
+    assert asyncio.run(b.ss._tunggu_penyegar(sesi_awal)) is None
+    assert time.monotonic() - mulai < 0.5 + 0.15
+
+    async def ambil_macet(id_hash):
+        await asyncio.sleep(5)
+    monkeypatch.setattr(b.store, "ambil", ambil_macet)
+    mulai = time.monotonic()
+    assert asyncio.run(b.ss._tunggu_penyegar(sesi_awal)) is None
+    assert time.monotonic() - mulai < 0.5 + 0.15

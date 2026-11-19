@@ -16,9 +16,19 @@
   header auth0-forwarded-for, sama dengan login; di Vercel tanpa IP tepercaya tidak ada penyegaran
   (token yang masih berlaku dipakai, selain itu 503).
 - Single-flight per baris sesi (SES-6): hanya permintaan yang memenangi UPDATE bersyarat atas kolom
-  segar_sampai (kunci sewa UMUR_KUNCI_SEGAR) yang memanggil Auth0. Permintaan lain memakai token lama
-  bila masih berlaku, atau menunggu paling lama MAKS_TUNGGU_SEGAR lalu memakai token baru (503 bila
-  tetap belum ada). Bila Auth0 tetap menolak refresh token, baris dibaca ulang sebelum sesi diakhiri.
+  segar_sampai (kunci sewa UMUR_KUNCI_SEGAR, 30 detik) yang memanggil Auth0. Permintaan lain memakai token
+  lama bila masih berlaku, atau menunggu paling lama MAKS_TUNGGU_SEGAR waktu dinding, termasuk pembacaan DB
+  (satu koneksi DB, jeda bertambah dari JEDA_TUNGGU_SEGAR sampai JEDA_TUNGGU_SEGAR_MAKS), lalu memakai
+  token baru (503 bila tetap belum ada).
+  Bila Auth0 tetap menolak refresh token, baris dibaca ulang sebelum sesi diakhiri.
+- Sewa hanya dilepas bila Auth0 pasti tidak memproses refresh token (N3, K1): galat sebelum Auth0 dipanggil
+  atau jawaban penolakan yang jelas (_STATUS_PASTI_TIDAK_DIPROSES: 400, 401, 403, 404, 429, 503). Jawaban lain
+  (status 0 karena timeout, koneksi putus, atau tenggat total habis; 200 tanpa access_token atau body bukan
+  JSON; 500, 502, 504, 52x; galat apa pun sesudah Auth0 dipanggil) dianggap hasil tidak diketahui: sewa
+  dibiarkan sampai kedaluwarsa alami, supaya refresh token yang mungkin sudah dirotasi tidak dipakai dua kali.
+- Setiap panggilan Auth0 punya tenggat total TENGGAT_AUTH0 (N4, asyncio.wait_for), karena timeout httpx
+  berlaku per tahap (connect, read), bukan untuk seluruh panggilan. Tenggat habis dianggap status 0. Klien
+  httpx async bisa dibatalkan (K2), jadi tidak ada kiriman yang tertinggal sesudah tenggat.
   Semua penulisan token bersyarat (S1): tulis ulang rotasi kunci atau v1 adalah compare-and-swap atas
   token_enc yang dibaca (tanpa menyentuh segar_sampai), dan hasil penyegaran hanya disimpan oleh pemegang
   sewa atau selama baris masih berisi token sebelum penyegaran. Bila syarat gagal, baris dibaca ulang dan
@@ -30,9 +40,13 @@
   kedaluwarsa) ditolak pada permintaan berikutnya di instans mana pun, karena setiap permintaan membaca
   baris sesi dari DB. Batas atas yang disepakati bila kelak ada cache: 5 detik per instans.
 - Pembatas percobaan (batas) memakai tabel sapa_batas supaya tahan lintas instance serverless. Hitungan
-  gagal kumulatif per (username + IP) untuk penanda lengket (B1) memakai tabel yang sama dengan jendela -1
-  dan kedaluwarsa yang diperpanjang setiap kegagalan.
-  Baris kedaluwarsa dibersihkan sesekali (PELUANG_BERSIH per panggilan) dan saat login sukses.
+  gagal per (username + IP) untuk penanda lengket (B1) memakai tabel yang sama dengan jendela -1. Baris itu
+  berumur pendek (umur_pendek sejak gagal terakhir) dan baru menjadi penanda lengket (umur_lengket sejak
+  gagal terakhir) setelah hitungannya mencapai ambang (N1), jadi gagal sekali untuk banyak username tidak
+  meninggalkan baris berumur 30 hari.
+  Baris kedaluwarsa dibersihkan sesekali (PELUANG_BERSIH per panggilan) dan saat login sukses. Setiap
+  pembersihan juga menghitung baris sapa_batas (dibatasi LIMIT) dan mencatat peringatan di log bila
+  jumlahnya melewati AMBANG_PERINGATAN_BARIS_BATAS.
 - satu_koneksi(): semua operasi penyimpanan di dalam blok memakai satu koneksi Postgres.
   Kunci pembatas dan penanda log memakai HMAC dengan kunci turunan SAPA_SESI_KUNCI (HKDF,
   label "sapa-jejak"), jadi tidak bisa dibalik dengan kamus username atau ruang IPv4.
@@ -52,7 +66,6 @@ import hashlib
 import hmac
 import json
 import logging
-import math
 import os
 import random
 import re
@@ -62,8 +75,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional, Protocol
 
+import httpx
 import jwt
-import requests
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -85,22 +98,34 @@ BATAS_GLOBAL_LOGIN = (1, 3)
 KUNCI_GLOBAL_SEGAR = "global:oauth-refresh"
 BATAS_GLOBAL_SEGAR = (1, 2)
 _JEDA_SENTUH = timedelta(seconds=60)
-# Timeout satu panggilan: requests (connect dan read masing-masing TIMEOUT_AUTH0) dan asyncpg (connect dan
+# Timeout satu panggilan: httpx (connect dan read masing-masing TIMEOUT_AUTH0) dan asyncpg (connect dan
 # command masing-masing TIMEOUT_DB). Waktu terburuk satu panggilan = dua kali timeout-nya.
 TIMEOUT_AUTH0 = 8
 TIMEOUT_DB = 5
 WAKTU_TERBURUK_AUTH0 = 2 * TIMEOUT_AUTH0
 WAKTU_TERBURUK_DB = 2 * TIMEOUT_DB
+# N4: tenggat total satu panggilan Auth0 (16 detik); lewat dari itu hasilnya dianggap tidak diketahui (status 0).
+TENGGAT_AUTH0 = WAKTU_TERBURUK_AUTH0
 # Single-flight penyegaran (S1): sewa mencakup jatah sebelum Auth0 (kuota global), panggilan Auth0 terburuk,
 # dan simpanan token terburuk. Pemegang yang sudah melewati BATAS_SEBELUM_AUTH0 sebelum memanggil Auth0
 # berhenti tanpa memanggil Auth0, jadi refresh token tidak dipakai dua kali karena sewa basi diambil alih.
 BATAS_SEBELUM_AUTH0 = 4
+# Sewa = 4 + 16 + 10 = 30 detik.
 UMUR_KUNCI_SEGAR = timedelta(seconds=BATAS_SEBELUM_AUTH0 + WAKTU_TERBURUK_AUTH0 + WAKTU_TERBURUK_DB)
 MAKS_TUNGGU_SEGAR = 2.0
+# Jeda menunggu penyegar lain: 0,1 lalu berlipat dua sampai 0,5 detik (0,1 + 0,2 + 0,4 + 0,5 + ...).
 JEDA_TUNGGU_SEGAR = 0.1
+JEDA_TUNGGU_SEGAR_MAKS = 0.5
+# N3 (K1): status Auth0 yang pasti berarti refresh token TIDAK diproses (ditolak sebelum rotasi, kuota, atau
+# layanan tidak tersedia). Hanya untuk status ini sewa dilepas. Jawaban lain sesudah Auth0 dipanggil, termasuk
+# 200 tanpa access_token, body bukan JSON, 500, 502/504, 52x, status 0 (timeout, koneksi putus, tenggat habis),
+# dan status tak dikenal, dianggap hasil tidak diketahui: sewa dibiarkan sampai kedaluwarsa.
+_STATUS_PASTI_TIDAK_DIPROSES = {400, 401, 403, 404, 429, 503}
 # Peluang satu panggilan pembatas ikut membersihkan baris sapa_batas yang sudah kedaluwarsa.
 PELUANG_BERSIH = 0.01
 BATAS_BERSIH = 1000
+# N1: peringatan di log bila sapa_batas masih berisi lebih dari ini setelah pembersihan (kuota Neon).
+AMBANG_PERINGATAN_BARIS_BATAS = 200_000
 IDLE_ADMIN_ENV = "SAPA_SESI_IDLE_ADMIN_MENIT"
 IDLE_ADMIN_USULAN_MENIT = 30
 _COOKIE_RE = re.compile(r"^[A-Za-z0-9_-]{20,128}$")
@@ -205,14 +230,19 @@ def konfigurasi_auth0() -> Optional[dict]:
     return cfg if all(cfg.values()) else None
 
 
+def _klien_auth0() -> httpx.AsyncClient:
+    return httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_AUTH0), follow_redirects=False)
+
+
 async def _auth0_post(path: str, data: dict, headers: Optional[dict] = None) -> tuple[int, Optional[dict]]:
     """POST form ke Auth0; (0, None) bila tidak terjangkau. Body tidak pernah dicatat."""
     url = f"https://{domain_auth0()}{path}"
 
-    def kirim():
+    async def kirim():
         try:
-            res = requests.post(url, data=data, headers=headers or {}, timeout=TIMEOUT_AUTH0)
-        except requests.RequestException:
+            async with _klien_auth0() as klien:
+                res = await klien.post(url, data=data, headers=headers or {})
+        except (httpx.HTTPError, httpx.InvalidURL):
             return 0, None
         try:
             body = res.json()
@@ -220,7 +250,14 @@ async def _auth0_post(path: str, data: dict, headers: Optional[dict] = None) -> 
             body = None
         return res.status_code, body if isinstance(body, dict) else None
 
-    return await asyncio.to_thread(kirim)
+    # N4: timeout httpx hanya per tahap; tenggat total membatasi seluruh panggilan. Klien async (K2), bukan
+    # requests di thread: pembatalan oleh wait_for menghentikan DNS, connect, atau kiriman yang belum terjadi
+    # dan menutup soket, jadi refresh token tidak pernah terkirim sesudah tenggat (atau sesudah sewa habis).
+    try:
+        return await asyncio.wait_for(kirim(), TENGGAT_AUTH0)
+    except asyncio.TimeoutError:
+        logger.warning("Panggilan Auth0 %s melewati tenggat total %s detik", path, TENGGAT_AUTH0)
+        return 0, None
 
 
 # --- enkripsi token ----------------------------------------------------------------------------
@@ -335,11 +372,15 @@ class SesiStore(Protocol):
     async def tambah_batas(self, kunci_hash: str, jendela: int, kedaluwarsa: datetime) -> int: ...
     async def tambah_batas_geser(self, kunci_hash: str, jendela: int, kedaluwarsa: datetime) -> tuple[int, int]: ...
     async def kurangi_batas(self, kunci_hash: str, jendela: int) -> None: ...
+    async def baca_batas(self, kunci_hash: str, jendela: int) -> int: ...
     async def klaim_segar(self, id_hash: str, token_enc: str, sampai: datetime, sekarang: datetime) -> bool: ...
     async def lepas_segar(self, id_hash: str, sampai: datetime) -> None: ...
-    async def tambah_gagal_kumulatif(self, kunci_hash: str, kedaluwarsa: datetime, sekarang: datetime) -> int: ...
+    async def tambah_gagal_kumulatif(self, kunci_hash: str, sekarang: datetime, kedaluwarsa_pendek: datetime,
+                                     kedaluwarsa_lengket: datetime, ambang: int) -> int: ...
+    async def ada_gagal_kumulatif(self, kunci_hash: str, sekarang: datetime) -> bool: ...
     async def padamkan_penanda(self, kunci_hash: str) -> None: ...
     async def bersihkan_batas(self, sekarang: datetime) -> None: ...
+    async def hitung_baris_batas(self, batas: int) -> int: ...
     async def cek(self) -> None: ...
 
 
@@ -418,6 +459,9 @@ class MemorySesiStore:
         if self.batas.get(kunci, 0) > 0:
             self.batas[kunci] -= 1
 
+    async def baca_batas(self, kunci_hash, jendela):
+        return self.batas.get((kunci_hash, jendela), 0)
+
     async def bersihkan_batas(self, sekarang):
         for kunci in [k for k, v in self.kedaluwarsa_batas.items() if v < sekarang]:
             self.batas.pop(kunci, None)
@@ -425,11 +469,18 @@ class MemorySesiStore:
         for kunci in [k for k, (_, v) in self.penanda.items() if v < sekarang]:
             del self.penanda[kunci]
 
-    async def tambah_gagal_kumulatif(self, kunci_hash, kedaluwarsa, sekarang):
+    async def tambah_gagal_kumulatif(self, kunci_hash, sekarang, kedaluwarsa_pendek, kedaluwarsa_lengket, ambang):
         jumlah, lama = self.penanda.get(kunci_hash, (0, None))
         jumlah = jumlah + 1 if lama is not None and lama > sekarang else 1
-        self.penanda[kunci_hash] = (jumlah, kedaluwarsa)
+        self.penanda[kunci_hash] = (jumlah, kedaluwarsa_lengket if jumlah >= ambang else kedaluwarsa_pendek)
         return jumlah
+
+    async def ada_gagal_kumulatif(self, kunci_hash, sekarang):
+        _, kedaluwarsa = self.penanda.get(kunci_hash, (0, None))
+        return kedaluwarsa is not None and kedaluwarsa > sekarang
+
+    async def hitung_baris_batas(self, batas):
+        return min(len(self.batas) + len(self.penanda), batas)
 
     async def padamkan_penanda(self, kunci_hash):
         self.penanda.pop(kunci_hash, None)
@@ -496,11 +547,16 @@ class PostgresSesiStore:
             conn = wadah[id(self)] = await self._sambung()
         try:
             return await self._jalankan_di(conn, perintah)
-        except Exception:
+        except BaseException as exc:
             # Koneksi bisa sudah rusak; operasi berikutnya membuka koneksi baru.
             wadah.pop(id(self), None)
             try:
-                await conn.close()
+                if isinstance(exc, Exception):
+                    await conn.close()
+                else:
+                    # Dibatalkan di tengah perintah (mis. tenggat menunggu penyegar, K3): tutup paksa tanpa
+                    # menunggu server.
+                    conn.terminate()
             except Exception:
                 pass
             raise
@@ -595,16 +651,28 @@ class PostgresSesiStore:
             "execute", "UPDATE sapa_batas SET jumlah = GREATEST(jumlah - 1, 0) WHERE kunci_hash = $1 AND jendela = $2",
             kunci_hash, jendela)
 
-    # Hitungan gagal kumulatif (B1) memakai baris sapa_batas dengan jendela -1; kedaluwarsa diperpanjang setiap
-    # kegagalan, baris yang sudah kedaluwarsa mulai lagi dari 1, dan ikut dibersihkan bersihkan_batas.
-    async def tambah_gagal_kumulatif(self, kunci_hash, kedaluwarsa, sekarang):
+    async def baca_batas(self, kunci_hash, jendela):
+        return int(await self._jalankan(
+            "fetchval", "SELECT jumlah FROM sapa_batas WHERE kunci_hash = $1 AND jendela = $2", kunci_hash, jendela) or 0)
+
+    # Hitungan gagal (B1) memakai baris sapa_batas dengan jendela -1; baris yang sudah kedaluwarsa mulai lagi
+    # dari 1 dan ikut dibersihkan bersihkan_batas. N1: setiap kegagalan memperpanjang kedaluwarsa ke yang
+    # pendek ($2), atau ke yang lengket ($3) bila hitungan baru sudah mencapai ambang ($5). Ambang > 1, jadi
+    # baris baru (jumlah 1) selalu berumur pendek. Di DO UPDATE kedua CASE membaca nilai lama baris.
+    async def tambah_gagal_kumulatif(self, kunci_hash, sekarang, kedaluwarsa_pendek, kedaluwarsa_lengket, ambang):
+        lanjut = "CASE WHEN sapa_batas.kedaluwarsa > $4 THEN sapa_batas.jumlah + 1 ELSE 1 END"
         return int(await self._jalankan(
             "fetchval",
             "INSERT INTO sapa_batas (kunci_hash, jendela, jumlah, kedaluwarsa) VALUES ($1, -1, 1, $2) "
             "ON CONFLICT (kunci_hash, jendela) DO UPDATE SET "
-            "jumlah = CASE WHEN sapa_batas.kedaluwarsa > $3 THEN sapa_batas.jumlah + 1 ELSE 1 END, kedaluwarsa = $2 "
+            f"jumlah = {lanjut}, kedaluwarsa = CASE WHEN {lanjut} >= $5 THEN $3 ELSE $2 END "
             "RETURNING jumlah",
-            kunci_hash, kedaluwarsa, sekarang))
+            kunci_hash, kedaluwarsa_pendek, kedaluwarsa_lengket, sekarang, int(ambang)))
+
+    async def ada_gagal_kumulatif(self, kunci_hash, sekarang):
+        return bool(await self._jalankan(
+            "fetchval", "SELECT 1 FROM sapa_batas WHERE kunci_hash = $1 AND jendela = -1 AND kedaluwarsa > $2",
+            kunci_hash, sekarang))
 
     async def padamkan_penanda(self, kunci_hash):
         await self._jalankan("execute", "DELETE FROM sapa_batas WHERE kunci_hash = $1 AND jendela = -1", kunci_hash)
@@ -615,6 +683,11 @@ class PostgresSesiStore:
             "execute",
             "DELETE FROM sapa_batas WHERE ctid IN "
             f"(SELECT ctid FROM sapa_batas WHERE kedaluwarsa < $1 LIMIT {int(BATAS_BERSIH)})", sekarang)
+
+    async def hitung_baris_batas(self, batas):
+        # N1: dibatasi LIMIT, jadi murah walau tabel membengkak; cukup untuk tahu ambang sudah lewat.
+        return int(await self._jalankan(
+            "fetchval", "SELECT count(*) FROM (SELECT 1 FROM sapa_batas LIMIT $1) AS t", int(batas)))
 
     async def cek(self):
         await self._jalankan("fetchval", "SELECT 1")
@@ -792,7 +865,8 @@ def _monoton() -> float:
 
 
 _HABIS = object()  # penanda: baris sesi sudah dihapus permintaan lain
-_TANPA_TOKEN_BARU = object()  # penanda: penyegar tidak memperoleh token baru
+_TANPA_TOKEN_BARU = object()  # penanda: penyegar tidak memperoleh token baru (Auth0 pasti tidak memprosesnya)
+_HASIL_TIDAK_DIKETAHUI = object()  # penanda N3: Auth0 mungkin sudah memproses refresh token
 
 
 async def _tunggu_penyegar(sesi: Sesi):
@@ -802,15 +876,33 @@ async def _tunggu_penyegar(sesi: Sesi):
     None bila waktu tunggu habis atau penyegar melepas kunci tanpa token baru.
     """
     s = _store_wajib()
-    for _ in range(max(1, math.ceil(MAKS_TUNGGU_SEGAR / JEDA_TUNGGU_SEGAR))):
-        await _tunggu(JEDA_TUNGGU_SEGAR)
-        baris = await _aman(s.ambil(sesi.id_hash))
-        if not baris:
-            return _HABIS
-        if baris["token_enc"] != sesi.token_enc and baris["token_exp"] > _sekarang():
-            return _sesi_dari_baris(sesi, baris)
-        if baris.get("segar_sampai") is None and baris["token_enc"] == sesi.token_enc:
-            return None  # penyegar gagal dan sudah melepas kunci
+    sisa, jeda = MAKS_TUNGGU_SEGAR, JEDA_TUNGGU_SEGAR
+    # K3: tenggat waktu dinding, bukan hanya jumlah jeda tidur, supaya pembacaan DB yang lambat ikut dihitung.
+    batas_akhir = _monoton() + MAKS_TUNGGU_SEGAR
+    # Satu koneksi untuk seluruh penantian, dengan jeda yang bertambah, supaya tidak membuka koneksi
+    # Postgres baru setiap 100 ms.
+    async with satu_koneksi():
+        while sisa > 1e-9:
+            langkah = min(jeda, sisa, batas_akhir - _monoton())
+            if langkah <= 0:
+                break
+            await _tunggu(langkah)
+            sisa -= langkah
+            jeda = min(jeda * 2, JEDA_TUNGGU_SEGAR_MAKS)
+            tersisa = batas_akhir - _monoton()
+            if tersisa <= 0:
+                break
+            try:
+                baris = await asyncio.wait_for(_aman(s.ambil(sesi.id_hash)), tersisa)
+            except asyncio.TimeoutError:
+                logger.warning("Menunggu penyegar lain melewati %s detik saat membaca sesi", MAKS_TUNGGU_SEGAR)
+                break
+            if not baris:
+                return _HABIS
+            if baris["token_enc"] != sesi.token_enc and baris["token_exp"] > _sekarang():
+                return _sesi_dari_baris(sesi, baris)
+            if baris.get("segar_sampai") is None and baris["token_enc"] == sesi.token_enc:
+                return None  # penyegar gagal dan sudah melepas kunci
     return None
 
 
@@ -860,11 +952,18 @@ async def segarkan_bila_perlu(sesi: Sesi, ip: Optional[str] = None, ip_wajib: bo
             return terbaru
         logger.warning("Penyegaran token oleh permintaan lain belum selesai; permintaan ini 503")
         raise SesiBelumSiap()
+    keadaan = {"auth0_dipanggil": False}
     try:
-        hasil = await _segarkan_sebagai_pemegang_kunci(sesi, cfg, ip, sekarang, sampai, mulai)
+        hasil = await _segarkan_sebagai_pemegang_kunci(sesi, cfg, ip, sekarang, sampai, mulai, keadaan)
     except BaseException:
-        await _lepas_kunci(s, sesi.id_hash, sampai)
+        # N3: sesudah Auth0 dipanggil hasilnya tidak diketahui, jadi sewa dibiarkan habis sendiri.
+        if keadaan["auth0_dipanggil"]:
+            logger.warning("Sewa penyegaran dibiarkan sampai kedaluwarsa: galat sesudah Auth0 dipanggil")
+        else:
+            await _lepas_kunci(s, sesi.id_hash, sampai)
         raise
+    if hasil is _HASIL_TIDAK_DIKETAHUI:
+        return tanpa_token_baru()
     if hasil is _TANPA_TOKEN_BARU:
         await _lepas_kunci(s, sesi.id_hash, sampai)
         return tanpa_token_baru()
@@ -880,11 +979,13 @@ async def _lepas_kunci(s: SesiStore, id_hash: str, sampai: datetime) -> None:
 
 
 async def _segarkan_sebagai_pemegang_kunci(sesi: Sesi, cfg: dict, ip: Optional[str], sekarang: datetime,
-                                           sampai: datetime, mulai: float):
+                                           sampai: datetime, mulai: float, keadaan: dict):
     """Panggil Auth0 sebagai satu-satunya penyegar baris ini (sewa `sampai`, diklaim pada monoton `mulai`).
 
-    Kembalikan Sesi bertoken baru (kunci dilepas oleh simpan_hasil_segar), None bila sesi diakhiri, atau
-    _TANPA_TOKEN_BARU bila token baru tidak diperoleh.
+    Kembalikan Sesi bertoken baru (kunci dilepas oleh simpan_hasil_segar), None bila sesi diakhiri,
+    _TANPA_TOKEN_BARU bila token baru pasti tidak diperoleh (sewa dilepas), atau _HASIL_TIDAK_DIKETAHUI bila
+    Auth0 mungkin sudah memproses refresh token (sewa tidak dilepas, N3). `keadaan["auth0_dipanggil"]`
+    diset tepat sebelum Auth0 dipanggil.
     """
     s = _store_wajib()
     if not await batas(KUNCI_GLOBAL_SEGAR, *BATAS_GLOBAL_SEGAR):
@@ -895,6 +996,7 @@ async def _segarkan_sebagai_pemegang_kunci(sesi: Sesi, cfg: dict, ip: Optional[s
         # dan memakai refresh token yang sama. Lebih baik tidak memanggil Auth0 sama sekali.
         logger.warning("Penyegaran token dibatalkan: sisa sewa tidak cukup sebelum Auth0")
         return _TANPA_TOKEN_BARU
+    keadaan["auth0_dipanggil"] = True
     status, body = await _auth0_post("/oauth/token", {
         "grant_type": "refresh_token", "client_id": cfg["client_id"], "client_secret": cfg["client_secret"],
         "refresh_token": sesi.refresh_token,
@@ -924,8 +1026,14 @@ async def _segarkan_sebagai_pemegang_kunci(sesi: Sesi, cfg: dict, ip: Optional[s
         logger.info("Refresh token ditolak Auth0 (%s); sesi diakhiri", galat)
         await _aman(s.hapus(sesi.id_hash))
         return None
-    logger.warning("Penyegaran token Auth0 gagal: status %s", status)
-    return _TANPA_TOKEN_BARU
+    if status in _STATUS_PASTI_TIDAK_DIPROSES:
+        logger.warning("Penyegaran token Auth0 gagal: status %s", status)
+        return _TANPA_TOKEN_BARU
+    # K1: selain jawaban yang pasti tidak diproses, Auth0 mungkin sudah merotasi refresh token (mis. 200 tanpa
+    # access_token, body bukan JSON, 500, 52x, timeout). Sewa dibiarkan sampai kedaluwarsa.
+    logger.warning("Hasil penyegaran token Auth0 tidak diketahui (status %s); sewa dibiarkan sampai kedaluwarsa",
+                   status)
+    return _HASIL_TIDAK_DIKETAHUI
 
 
 async def ambil_sesi_segar(cookie, adalah_admin: Optional[Callable[[str], bool]] = None,
@@ -973,13 +1081,21 @@ def _acak() -> float:
 
 
 async def _bersihkan_kadang(s: SesiStore) -> None:
-    """Sesekali hapus baris sapa_batas kedaluwarsa, supaya banjir tanpa login sukses tidak menumbuhkan tabel."""
+    """Sesekali hapus baris sapa_batas kedaluwarsa, supaya banjir tanpa login sukses tidak menumbuhkan tabel.
+
+    Sesudahnya ukuran tabel diperiksa (N1); di atas AMBANG_PERINGATAN_BARIS_BATAS hanya dicatat di log.
+    """
     if _acak() >= PELUANG_BERSIH:
         return
     try:
         await s.bersihkan_batas(_sekarang())
+        jumlah = await s.hitung_baris_batas(AMBANG_PERINGATAN_BARIS_BATAS + 1)
     except Exception as exc:
         logger.warning("Pembersihan sapa_batas dilewati: %s", type(exc).__name__)
+        return
+    if jumlah > AMBANG_PERINGATAN_BARIS_BATAS:
+        logger.warning("Peringatan: tabel sapa_batas berisi lebih dari %d baris setelah pembersihan; "
+                       "periksa ukuran database Neon dan pola percobaan login", AMBANG_PERINGATAN_BARIS_BATAS)
 
 
 def _jendela(detik: float, jendela_detik: int, umur_jendela: int = 1) -> tuple[int, datetime]:
@@ -1025,18 +1141,34 @@ async def hitung_geser(kunci: str, jendela_detik: int) -> HitunganGeser:
     return HitunganGeser(ini=ini, lalu=lalu, lewat=lewat, jendela_detik=jendela_detik, tiket=(kunci_hash, jendela))
 
 
+async def baca_hitungan(kunci: str, jendela_detik: int) -> int:
+    """Hitungan jendela berjalan `kunci` tanpa menambahnya (0 bila belum ada); tidak membuat baris."""
+    jendela, _ = _jendela(_sekarang().timestamp(), jendela_detik)
+    return await _aman(_store_wajib().baca_batas(jejak(f"{jendela_detik}:{kunci}"), jendela))
+
+
 async def kembalikan(tiket: tuple) -> None:
     """Batalkan satu hitungan dari `hitung` (misalnya percobaan yang ternyata bukan kegagalan)."""
     await _aman(_store_wajib().kurangi_batas(*tiket))
 
 
-# --- hitungan gagal kumulatif per (username + IP), B1 ------------------------------------------
+# --- hitungan gagal per (username + IP), B1 dan N1 ------------------------------------------------
 
-async def tambah_gagal_kumulatif(kunci: str, umur: timedelta) -> int:
-    """Tambah satu kegagalan pada hitungan kumulatif `kunci` (berumur `umur` sejak gagal terakhir, mulai lagi
-    dari 1 bila sudah lewat); kembalikan jumlahnya termasuk kegagalan ini. Kunci disimpan sebagai HMAC."""
+async def tambah_gagal_kumulatif(kunci: str, umur_pendek: timedelta, umur_lengket: timedelta, ambang: int) -> int:
+    """Tambah satu kegagalan pada hitungan `kunci`; kembalikan jumlahnya termasuk kegagalan ini.
+
+    Hitungan berumur `umur_pendek` sejak gagal terakhir (mulai lagi dari 1 bila sudah lewat). Begitu jumlahnya
+    mencapai `ambang`, baris naik menjadi penanda lengket berumur `umur_lengket` sejak gagal terakhir (N1).
+    Kunci disimpan sebagai HMAC.
+    """
     sekarang = _sekarang()
-    return await _aman(_store_wajib().tambah_gagal_kumulatif(jejak(f"kumulatif:{kunci}"), sekarang + umur, sekarang))
+    return await _aman(_store_wajib().tambah_gagal_kumulatif(
+        jejak(f"kumulatif:{kunci}"), sekarang, sekarang + umur_pendek, sekarang + umur_lengket, ambang))
+
+
+async def ada_gagal_kumulatif(kunci: str) -> bool:
+    """True bila hitungan gagal `kunci` (pendek atau lengket) masih hidup."""
+    return await _aman(_store_wajib().ada_gagal_kumulatif(jejak(f"kumulatif:{kunci}"), _sekarang()))
 
 
 async def padamkan_penanda(kunci: str) -> None:
