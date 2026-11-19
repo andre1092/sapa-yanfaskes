@@ -56,10 +56,12 @@ TURNSTILE_SECRET_KEY, serta AUTH0_DOMAIN dan AUTH0_API_AUDIENCE yang sudah ada.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import ipaddress
 import json
 import logging
 import math
+import os
 import re
 import time
 import unicodedata
@@ -532,6 +534,10 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
     async def masuk(request: Request):
         mulai = _monoton()
         sesi_service.pasang_executor_dns()
+        if os.environ.get("VERCEL_ENV") == "preview":
+            # Sementara untuk uji staging: apakah loop dipakai ulang antar permintaan. Hapus sesudah uji.
+            jejak_loop = hashlib.sha256(str(id(asyncio.get_running_loop())).encode()).hexdigest()[:8]
+            logger.info("uji-staging loop=%s pid=%s", jejak_loop, os.getpid())
         catatan: dict = {}
         try:
             async with sesi_service.satu_koneksi():

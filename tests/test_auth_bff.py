@@ -3859,3 +3859,16 @@ def test_executor_dns_dipasang_saat_masuk_dan_tidak_saat_flag_mati(bff, monkeypa
         assert b.client.get(jalur).status_code == 200
     assert masuk(b).status_code == 404
     assert dipasang == []
+
+
+def test_log_loop_sementara_hanya_di_preview(bff, monkeypatch, caplog):
+    b = bff()
+    caplog.set_level(logging.INFO)
+    monkeypatch.delenv("VERCEL_ENV", raising=False)
+    masuk(b)
+    assert not [r for r in caplog.records if "uji-staging loop=" in r.getMessage()]
+    monkeypatch.setenv("VERCEL_ENV", "preview")
+    b.jam.maju(seconds=4)
+    masuk(b)
+    pesan = [r.getMessage() for r in caplog.records if "uji-staging loop=" in r.getMessage()]
+    assert len(pesan) == 1 and "pid=" in pesan[0]
