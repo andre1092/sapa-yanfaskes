@@ -1,21 +1,19 @@
 import { HEADER_SAPA, type IsiSesi, type ModeSesi } from './session';
 
 // Panggilan HTTP login satu halaman (mode bff). Semua same-origin: cookie sesi HttpOnly dikirim browser,
-// token tidak pernah dibaca atau disimpan di sini. Isian (username, sandi, identitas) hanya ada di body JSON.
+// token tidak pernah dibaca atau disimpan di sini. Isian (username, sandi) hanya ada di body JSON.
 
 export const ALAMAT_AUTH = {
   mode: '/api/v1/auth/mode',
   sesi: '/api/v1/auth/sesi',
   masuk: '/api/v1/auth/masuk',
   keluar: '/api/v1/auth/keluar',
-  lupaSandi: '/api/v1/auth/lupa-sandi',
 } as const;
 
 const PESAN_JARINGAN = 'Tidak dapat terhubung ke server SAPA. Periksa koneksi internet lalu coba lagi.';
 const PESAN_BELUM_ADA = 'Layanan ini belum tersedia. Hubungi administrator SAPA.';
 const PESAN_UMUM = 'Permintaan belum berhasil. Coba lagi beberapa saat lagi.';
 const PESAN_SESI_GAGAL = 'Sesi belum dapat dibaca. Coba muat ulang halaman.';
-export const PESAN_LUPA_DITERIMA = 'Jika akun terdaftar, tautan atur ulang dikirim ke email akun.';
 
 type IsiJson = Record<string, unknown> | null;
 export type Hasil = { ok: boolean; status: number; isi: IsiJson; kode?: string; pesan: string };
@@ -92,16 +90,6 @@ export async function ajukanMasuk(isian: IsianMasuk, widget?: PenyetelUlang): Pr
     username: isian.username, password: isian.password, ingat: isian.ingat, turnstile_token: isian.token,
   });
   if (hasil.ok && hasil.isi?.masuk === true) return hasil;
-  widget?.reset();
-  return hasil.ok ? { ...hasil, ok: false, pesan: PESAN_UMUM } : hasil;
-}
-
-export type IsianLupaSandi = { identitas: string; token: string };
-
-/** POST /api/v1/auth/lupa-sandi. Hanya 202 yang dianggap diterima; pesan server ditampilkan apa adanya. */
-export async function ajukanLupaSandi(isian: IsianLupaSandi, widget?: PenyetelUlang): Promise<Hasil> {
-  const hasil = await kirim(ALAMAT_AUTH.lupaSandi, { identitas: isian.identitas, turnstile_token: isian.token });
-  if (hasil.status === 202) return { ...hasil, ok: true, pesan: hasil.pesan.trim().slice(0, 300) || PESAN_LUPA_DITERIMA };
   widget?.reset();
   return hasil.ok ? { ...hasil, ok: false, pesan: PESAN_UMUM } : hasil;
 }

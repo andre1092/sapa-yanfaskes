@@ -315,53 +315,33 @@ test('widget Turnstile: skrip termuat tanpa window.turnstile tidak disimpan seba
   delete globalThis.document;
 });
 
-test('lupa password: panel di halaman yang sama dengan Turnstile action sapa_lupa_sandi', async () => {
-  const html = render(h(PanelLupaSandi, { identitasAwal: '', onKembali: () => {}, judul: { current: null } }));
+test('lupa password: panel di halaman yang sama hanya berisi petunjuk menghubungi Admin', async () => {
+  const html = render(h(PanelLupaSandi, { onKembali: () => {}, judul: { current: null } }));
+  assert.match(html, />Hubungi Admin KC Jember untuk atur ulang sandi\.</);
   assert.doesNotMatch(html, /auth0/i);
+  assert.doesNotMatch(html, /email|tautan/i, 'tidak menjanjikan email selama reset lewat Admin');
   assert.equal(tag(html, 'a').length, 0);
-  const input = tag(html, 'input');
-  assert.equal(input.length, 1);
-  assert.match(input[0], /name="identitas"/);
-  assert.match(html, />Username atau email</);
-  assert.deepEqual(teksTombol(html), ['Kirim tautan', 'Kembali ke halaman masuk']);
-  const widget = tag(html, 'div').filter(t => t.includes('data-turnstile-aksi'));
-  assert.equal(widget.length, 1);
-  assert.match(widget[0], /data-turnstile-aksi="sapa_lupa_sandi"/);
+  assert.equal(tag(html, 'form').length, 0);
+  assert.equal(tag(html, 'input').length, 0);
+  assert.equal(tag(html, 'div').filter(t => t.includes('data-turnstile-aksi')).length, 0);
+  assert.deepEqual(teksTombol(html), ['Kembali ke halaman masuk']);
 
-  // Satu panel (dan satu widget) tampil pada satu waktu.
-  for (const [panel, aksi, kolom] of [['masuk', 'login', 'username'], ['lupa', 'sapa_lupa_sandi', 'identitas']]) {
-    const isi = render(h(FormMasuk, { panelAwal: panel }));
-    const w = tag(isi, 'div').filter(t => t.includes('data-turnstile-aksi'));
-    assert.equal(w.length, 1, panel);
-    assert.match(w[0], new RegExp(`data-turnstile-aksi="${aksi}"`));
-    assert.match(tag(isi, 'input')[0], new RegExp(`name="${kolom}"`));
-  }
+  // Satu panel tampil pada satu waktu; hanya panel masuk yang memasang widget.
+  const masuk = render(h(FormMasuk, { panelAwal: 'masuk' }));
+  const w = tag(masuk, 'div').filter(t => t.includes('data-turnstile-aksi'));
+  assert.equal(w.length, 1);
+  assert.match(w[0], /data-turnstile-aksi="login"/);
+  const lupa = render(h(FormMasuk, { panelAwal: 'lupa' }));
+  assert.equal(tag(lupa, 'div').filter(t => t.includes('data-turnstile-aksi')).length, 0);
+  assert.equal(tag(lupa, 'input').length, 0);
 });
 
-test('lupa password: 202 menampilkan pesan server, gagal menyetel ulang widget', async () => {
-  const panggilan = fetchPalsu({ status: 202, isi: { diterima: true, pesan: 'Jika akun terdaftar, tautan dikirim.' } });
-  const widget = widgetPalsu();
-  const ok = await bff.ajukanLupaSandi({ identitas: 'petugas.uji', token: 'token-palsu' }, widget);
-  assert.equal(ok.ok, true);
-  assert.equal(ok.pesan, 'Jika akun terdaftar, tautan dikirim.');
-  assert.equal(widget.jumlahReset, 0);
-  assert.equal(panggilan[0].url, '/api/v1/auth/lupa-sandi');
-  assert.equal(panggilan[0].method, 'POST');
-  assert.equal(panggilan[0].headers['X-SAPA'], '1');
-  assert.deepEqual(panggilan[0].body, { identitas: 'petugas.uji', turnstile_token: 'token-palsu' });
-
-  for (const [status, isi, pesan] of [
-    [403, { kode: 'turnstile_gagal', pesan: 'Verifikasi keamanan gagal. Ulangi centang.' }, 'Verifikasi keamanan gagal. Ulangi centang.'],
-    [429, { kode: 'terlalu_banyak', detail: 'Terlalu banyak percobaan.' }, 'Terlalu banyak percobaan.'],
-    [404, { detail: 'Not Found' }, 'Layanan ini belum tersedia. Hubungi administrator SAPA.'],
-    [200, { diterima: true }, 'Permintaan belum berhasil. Coba lagi beberapa saat lagi.'],
-  ]) {
-    fetchPalsu({ status, isi });
-    const w = widgetPalsu();
-    const hasil = await bff.ajukanLupaSandi({ identitas: 'petugas.uji', token: 'token-palsu' }, w);
-    assert.equal(hasil.ok, false, String(status));
-    assert.equal(hasil.pesan, pesan);
-    assert.equal(w.jumlahReset, 1);
+test('lupa password tidak memanggil server', async () => {
+  assert.equal(bff.ajukanLupaSandi, undefined);
+  assert.equal(Object.values(bff.ALAMAT_AUTH).some(a => a.includes('lupa')), false);
+  for (const berkas of ['../src/components/FormMasuk.tsx', '../src/auth/bff.ts']) {
+    const isi = await readFile(new URL(berkas, import.meta.url), 'utf8');
+    assert.doesNotMatch(isi, /lupa-sandi/, berkas);
   }
 });
 

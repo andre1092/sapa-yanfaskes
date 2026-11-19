@@ -2,17 +2,17 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type R
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
 import { kirimMasuk } from '../auth/alurMasuk';
-import { ajukanLupaSandi } from '../auth/bff';
 import { useSession } from '../auth/useSession';
 import type { KendaliWidget } from '../lib/turnstile';
-import { ALERT_GALAT, ALERT_SUKSES, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
+import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
 import { WidgetTurnstile } from './WidgetTurnstile';
 
 // Login satu halaman (mode bff): Username, Password, Ingat saya, Lupa password, dan Turnstile dalam satu
-// kartu. Lupa password dibuka di kartu yang sama tanpa berpindah alamat. Isian hanya ada di memori komponen.
+// kartu. Lupa password dibuka di kartu yang sama tanpa berpindah alamat: sandi diatur ulang oleh Admin, jadi
+// panel itu hanya berisi petunjuk, tanpa isian dan tanpa panggilan ke server. Isian hanya ada di memori komponen.
 
 export const AKSI_MASUK = 'login';
-export const AKSI_LUPA_SANDI = 'sapa_lupa_sandi';
+export const PESAN_LUPA_SANDI = 'Hubungi Admin KC Jember untuk atur ulang sandi.';
 
 const KOLOM = {
   '& .MuiOutlinedInput-root': { bgcolor: WARNA.kartu, color: WARNA.teks },
@@ -50,7 +50,7 @@ export function FormMasuk({ panelAwal = 'masuk' }: { panelAwal?: Panel }) {
   const ganti = (tujuan: Panel) => { pindahPanel.current = true; setPanel(tujuan); };
   return panel === 'masuk'
     ? <PanelMasuk username={username} onUsername={setUsername} onLupa={() => ganti('lupa')} tombolLupa={tombolLupa} />
-    : <PanelLupaSandi identitasAwal={username} onKembali={() => ganti('masuk')} judul={judulLupa} />;
+    : <PanelLupaSandi onKembali={() => ganti('masuk')} judul={judulLupa} />;
 }
 
 type PropsMasuk = { username: string; onUsername: (nilai: string) => void; onLupa: () => void; tombolLupa: RefObject<HTMLButtonElement | null> };
@@ -126,59 +126,14 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
   </Stack>;
 }
 
-type PropsLupa = { identitasAwal: string; onKembali: () => void; judul: RefObject<HTMLHeadingElement | null> };
+type PropsLupa = { onKembali: () => void; judul: RefObject<HTMLHeadingElement | null> };
 
-export function PanelLupaSandi({ identitasAwal, onKembali, judul }: PropsLupa) {
-  const [identitas, setIdentitas] = useState(identitasAwal);
-  const [token, setToken] = useState<string | null>(null);
-  const [mengirim, setMengirim] = useState(false);
-  const [galat, setGalat] = useState<string | null>(null);
-  const [diterima, setDiterima] = useState<string | null>(null);
-  const widget = useRef<KendaliWidget | null>(null);
-  const kotakDiterima = useRef<HTMLDivElement>(null);
-  const idGalat = useId();
-  const siap = Boolean(identitas.trim() && token) && !mengirim;
-  const terimaToken = useCallback((nilai: string | null) => setToken(nilai), []);
-
-  useEffect(() => { if (diterima) kotakDiterima.current?.focus(); }, [diterima]);
-
-  const kirim = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!siap || !token) return;
-    setMengirim(true);
-    setGalat(null);
-    const hasil = await ajukanLupaSandi({ identitas: identitas.trim(), token }, widget.current);
-    setMengirim(false);
-    setToken(null);
-    if (!hasil.ok) { setGalat(hasil.pesan); return; }
-    setIdentitas('');
-    setDiterima(hasil.pesan);
-  };
-
-  const kembali = <Button type="button" variant="text" fullWidth onClick={onKembali} sx={TOMBOL_TEKS}>Kembali ke halaman masuk</Button>;
+export function PanelLupaSandi({ onKembali, judul }: PropsLupa) {
   return <Stack spacing={2.5} sx={{ width: '100%' }}>
     <Box sx={{ textAlign: 'center' }}>
       <Typography ref={judul} tabIndex={-1} id="lupa-title" component="h1" variant="h2" sx={JUDUL}>Lupa password</Typography>
-      <Typography sx={{ color: WARNA.redup }}>Tautan atur ulang password dikirim ke email akun Anda.</Typography>
+      <Typography role="status" sx={{ color: WARNA.teks }}>{PESAN_LUPA_SANDI}</Typography>
     </Box>
-    {diterima
-      ? <Stack spacing={2}>
-          <Alert ref={kotakDiterima} tabIndex={-1} role="status" severity="success" sx={{ ...ALERT_SUKSES, outline: 'none' }}>{diterima}</Alert>
-          {kembali}
-        </Stack>
-      : <Box component="form" method="post" noValidate onSubmit={kirim} aria-labelledby="lupa-title" aria-busy={mengirim} sx={{ width: '100%' }}>
-          <Stack spacing={2}>
-            <Galat id={idGalat} pesan={galat} />
-            <TextField label="Username atau email" name="identitas" value={identitas} onChange={event => setIdentitas(event.target.value)}
-              autoComplete="username" required fullWidth sx={KOLOM}
-              slotProps={{ htmlInput: { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, maxLength: 254, 'aria-describedby': galat ? idGalat : undefined } }} />
-            <WidgetTurnstile ref={widget} aksi={AKSI_LUPA_SANDI} onToken={terimaToken} />
-            <Button fullWidth size="large" variant="contained" type="submit" disabled={!siap}
-              startIcon={mengirim ? <CircularProgress size={18} color="inherit" aria-hidden="true" /> : undefined} sx={TOMBOL}>
-              {mengirim ? 'Mengirim…' : 'Kirim tautan'}
-            </Button>
-            {kembali}
-          </Stack>
-        </Box>}
+    <Button type="button" variant="text" fullWidth onClick={onKembali} sx={TOMBOL_TEKS}>Kembali ke halaman masuk</Button>
   </Stack>;
 }

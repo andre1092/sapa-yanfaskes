@@ -13,4 +13,3 @@ export const TOMBOL = {
 } as const;
 
 export const ALERT_GALAT = { bgcolor: WARNA.merahLatar, color: WARNA.merah, '& .MuiAlert-icon': { color: WARNA.merah } } as const;
-export const ALERT_SUKSES = { bgcolor: WARNA.hijauLatar, color: WARNA.hijauTua, '& .MuiAlert-icon': { color: WARNA.hijau } } as const;
