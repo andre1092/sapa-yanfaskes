@@ -118,3 +118,5 @@
 /* QA Kim #4: panel status sempit (±520 px pada layar 1076–1200) memakai susunan 2 + 1 seperti HP. */
 .sk-panel-status { container-type: inline-size; }
 @container (max-width: 600px) { .sk-kpi.sk-n3 { grid-template-columns: 1fr 1fr; } .sk-kpi.sk-n3 .sk-gt { grid-column: 1 / -1; } }
+/* Cadangan (QA Kim): tabel ekspor JPEG tanpa animasi atau transisi apa pun saat ditangkap html-to-image. */
+#jpeg-export-surat-kontrol, #jpeg-export-surat-kontrol * { animation: none !important; transition: none !important; opacity: 1 !important; }
