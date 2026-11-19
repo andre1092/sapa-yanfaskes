@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Typography, useMediaQuery } from '@mui/material';
@@ -33,6 +33,11 @@ const CATATAN_BELUM_LENGKAP = 'Surkon > SEP untuk tanggal-tanggal terakhir masih
 function useLebar<T extends HTMLElement>(awal: number) {
   const ref = useRef<T>(null);
   const [lebar, setLebar] = useState(awal);
+  // Lebar awal diukur sinkron (tidak bergantung pada ResizeObserver yang ditahan saat tab di latar).
+  useLayoutEffect(() => {
+    const w = ref.current?.getBoundingClientRect().width;
+    if (w) setLebar(Math.max(240, Math.round(w)));
+  }, []);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
