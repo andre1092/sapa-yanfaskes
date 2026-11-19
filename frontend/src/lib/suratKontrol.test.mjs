@@ -78,20 +78,31 @@ test('jumlah status mengikuti jenis: RJ dua, RI dan Semua tiga', () => {
   assert.deepEqual(s.statusJenis('semua'), ['lt', 'eq', 'gt']);
 });
 
-test('label total cabang lebih rinci saat filter RS atau Status aktif', () => {
-  assert.equal(s.labelTotalCabang(false, false), 'Total cabang');
-  assert.equal(s.labelTotalCabang(true, false), 'Total cabang (semua faskes, semua status)');
-  assert.equal(s.labelTotalCabang(false, true), 'Total cabang (semua faskes, semua status)');
+test('label total cabang hanya saat satu faskes dipilih atau untuk Petugas RS', () => {
+  assert.equal(s.labelTotalCabang(false), '');
+  assert.equal(s.labelTotalCabang(true), 'Total cabang (semua faskes)');
 });
 
-test('poli teratas menggabungkan sisanya menjadi Poli lain dengan jumlah poli', () => {
+test('urutan bar faskes mengikuti jumlah status yang tampil', () => {
+  const faskes = [{ kode: 'A', nama: 'A', ...j(100, 1, 0) }, { kode: 'B', nama: 'B', ...j(10, 50, 0) }, { kode: 'C', nama: 'C', ...j(0, 0, 0) }];
+  assert.deepEqual(s.urutFaskes(faskes, 'semua').map(f => f.kode), ['A', 'B']);
+  assert.deepEqual(s.urutFaskes(faskes, 'eq').map(f => [f.kode, f.lt, f.eq]), [['B', 0, 50], ['A', 0, 1]]);
+});
+
+test('poli diurutkan menurun dan mengikuti filter status, semua poli tetap ada', () => {
   const poli = Array.from({ length: 12 }, (_, i) => ({ nama: `POLI ${i + 1}`, ...j(100 - i * 5, i, 0) }));
-  const atas = s.poliTeratas(poli, 10);
-  assert.equal(atas.length, 11);
-  assert.equal(atas[10].nama, 'Poli lain (2 poli)');
-  assert.equal(atas[10].lt + atas[10].eq, 50 + 10 + 45 + 11);
-  assert.deepEqual(atas.slice(0, 2).map(p => p.nama), ['POLI 1', 'POLI 2']);
-  assert.equal(s.poliTeratas(poli.slice(0, 3), 10).length, 3);
+  const semua = s.urutPoli(poli, 'semua');
+  assert.equal(semua.length, 12);
+  assert.deepEqual(semua.slice(0, 2).map(p => p.nama), ['POLI 1', 'POLI 2']);
+  const eq = s.urutPoli(poli, 'eq');
+  assert.deepEqual(eq.slice(0, 2).map(p => [p.nama, p.lt]), [['POLI 12', 0], ['POLI 11', 0]]);
+  assert.equal(eq.length, 11);
+});
+
+test('data belum lengkap bila tanggal sampai sebelum akhir bulan', () => {
+  assert.equal(s.dataBelumLengkap('2026-11-12'), true);
+  assert.equal(s.dataBelumLengkap('2026-11-30'), false);
+  assert.equal(s.dataBelumLengkap(''), false);
 });
 
 test('treemap mengisi kotak penuh dengan luas sebanding nilai', () => {
@@ -124,7 +135,7 @@ test('sheet dikenali dari baris judul seperti di server', () => {
   assert.equal(s.kenaliSheet(''), null);
 });
 
-test('daftar periksa area: ditemukan, belum ada, dua kali, dan tidak dikenali', () => {
+test('daftar periksa area: ditemukan, belum ada, dua kali; berkas asing tidak menghalangi tetapi tidak dikirim', () => {
   const area = s.periksaArea(['Tren', 'Poli', 'Poli', null, 'Header Surkon']);
   assert.equal(area.sheet.Tren, 'ada');
   assert.equal(area.sheet.Poli, 'ganda');
@@ -133,6 +144,9 @@ test('daftar periksa area: ditemukan, belum ada, dua kali, dan tidak dikenali', 
   assert.equal(area.asing, 1);
   assert.equal(area.lengkap, false);
   assert.equal(s.periksaArea(['Tren', 'Poli', 'Header Surkon', 'Faskes Surkon']).lengkap, true);
+  // Sheet Data Detail (berisi Nomor SEP) tidak dikenali: daftar tetap lengkap, berkasnya tidak ikut dikirim.
+  assert.equal(s.periksaArea(['Tren', 'Poli', 'Header Surkon', 'Faskes Surkon', null]).lengkap, true);
+  assert.deepEqual(s.berkasDikirim([{ sheet: 'Tren', n: 1 }, { sheet: null, n: 2 }, { sheet: 'Poli', n: 3 }]).map(b => b.n), [1, 3]);
 });
 
 test('pilihan bulan unggah dari Nov 2026 sampai bulan berjalan, terbaru di atas', () => {

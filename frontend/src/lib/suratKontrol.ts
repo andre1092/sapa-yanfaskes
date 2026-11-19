@@ -84,17 +84,28 @@ export function statusJenis(jenis: PilihanJenis): Kunci[] {
   return jenis === 'RJ' ? ['lt', 'eq'] : ['lt', 'eq', 'gt'];
 }
 
-export function labelTotalCabang(rsAktif: boolean, statusAktif: boolean): string {
-  return rsAktif || statusAktif ? 'Total cabang (semua faskes, semua status)' : 'Total cabang';
+/** Revisi v1.1 #1: Tren dan Poli mengikuti Status dan Jenis; label hanya bila faskes dipilih atau Petugas RS. */
+export function labelTotalCabang(cakupanFaskes: boolean): string {
+  return cakupanFaskes ? 'Total cabang (semua faskes)' : '';
 }
 
-/** Poli selalu total cabang: 10 terbesar, sisanya "Poli lain ({n} poli)". */
-export function poliTeratas(poli: BarisPoli[], n = 10): BarisPoli[] {
-  const urut = poli.filter(p => totalOf(p) > 0).map((p, i) => [p, i] as const)
+/** Revisi v1.1 #4: bar faskes menurun menurut jumlah status yang tampil; faskes tanpa nilai dibuang. */
+export function urutFaskes(faskes: BarisFaskes[], status: PilihanStatus): BarisFaskes[] {
+  return faskes.map((f, i) => [{ ...f, ...saringStatus(f, status) }, i] as const).filter(([f]) => totalOf(f) > 0)
+    .sort((a, b) => urutTotal(a[0], b[0]) || a[1] - b[1]).map(([f]) => f);
+}
+
+/** Revisi v1.1 #7: semua poli (tanpa "Poli lain"), menurun, mengikuti filter status. */
+export function urutPoli(poli: BarisPoli[], status: PilihanStatus): BarisPoli[] {
+  return poli.map((p, i) => [{ nama: p.nama, ...saringStatus(p, status) }, i] as const).filter(([p]) => totalOf(p) > 0)
     .sort((a, b) => urutTotal(a[0], b[0]) || a[1] - b[1]).map(([p]) => p);
-  if (urut.length <= n) return urut;
-  const sisa = urut.slice(n);
-  return [...urut.slice(0, n), { nama: `Poli lain (${sisa.length} poli)`, ...sisa.reduce<Jumlah>((acc, p) => tambah(acc, p), nol()) }];
+}
+
+/** Revisi v1.1 #5: "Data SEP sampai" sebelum hari terakhir bulan, jadi Surkon > SEP masih bisa bertambah. */
+export function dataBelumLengkap(sampai: string): boolean {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(sampai || '');
+  if (!m) return false;
+  return Number(m[3]) < new Date(Date.UTC(Number(m[1]), Number(m[2]), 0)).getUTCDate();
 }
 
 export type Kotak = { id: string; nilai: number; x: number; y: number; w: number; h: number };
@@ -167,8 +178,14 @@ export function periksaArea(sheet: (Sheet | null)[]) {
   for (const s of sheet) if (s) hitung.set(s, (hitung.get(s) ?? 0) + 1);
   const keadaan = Object.fromEntries(SHEET.map(s => [s, (hitung.get(s) ?? 0) === 0 ? 'belum' : hitung.get(s) === 1 ? 'ada' : 'ganda'])) as Record<Sheet, KeadaanSheet>;
   const asing = sheet.filter(s => !s).length;
-  const lengkap = SHEET_WAJIB.every(s => keadaan[s] === 'ada') && keadaan.Keterangan !== 'ganda' && asing === 0;
+  // Berkas tidak dikenali (mis. Data Detail berisi Nomor SEP) tidak menghalangi, tetapi tidak dikirim (v1.1 #17).
+  const lengkap = SHEET_WAJIB.every(s => keadaan[s] === 'ada') && keadaan.Keterangan !== 'ganda';
   return { sheet: keadaan, asing, lengkap };
+}
+
+/** Hanya berkas yang dikenali sebagai sheet Surat Kontrol yang dikirim ke server (v1.1 #17). */
+export function berkasDikirim<T extends { sheet: Sheet | null }>(daftar: T[]): T[] {
+  return daftar.filter(b => b.sheet !== null);
 }
 
 /** Bulan yang boleh diunggah: Nov 2026 (awal riwayat) sampai bulan berjalan, terbaru di atas. */

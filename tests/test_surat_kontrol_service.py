@@ -239,12 +239,12 @@ def test_cross_check_mismatch_is_refused_with_totals_only():
     berkas = ganti(sepuluh(), 4, tren({LT: 3599, EQ: 12}))
     with pytest.raises(sk.BerkasDitolak, match="rawat jalan") as err:
         sk.periksa_bulan("2026-11", berkas)
-    assert "tidak cocok" in err.value.pesan and "MAWAR" not in err.value.pesan
+    assert "berbeda" in err.value.pesan and "Fasilitas Kesehatan = (All)" in err.value.pesan and "MAWAR" not in err.value.pesan
 
 
 def test_unknown_status_is_refused():
     berkas = ganti(sepuluh(), 3, poli({"Surkon ? SEP": 3600, EQ: 12}))
-    with pytest.raises(sk.BerkasDitolak, match="status yang tidak dikenal"):
+    with pytest.raises(sk.BerkasDitolak, match="memuat status selain Surkon < SEP"):
         sk.periksa_bulan("2026-11", berkas)
 
 
@@ -339,7 +339,7 @@ def test_hospital_absent_this_month_gets_empty_rows():
 
 def test_current_month_cannot_have_days_after_today():
     from datetime import date
-    with pytest.raises(sk.BerkasDitolak, match="melewati hari ini"):
+    with pytest.raises(sk.BerkasDitolak, match="tanggal yang belum terjadi"):
         sk.periksa_bulan("2026-11", sepuluh(), hari_ini=date(2026, 11, 10))
     assert sk.periksa_bulan("2026-11", sepuluh(), hari_ini=date(2026, 11, 12)).data["sampai"] == "2026-11-12"
     assert sk.periksa_bulan("2026-10", sepuluh(), hari_ini=date(2026, 11, 1)).data["sampai"] == "2026-10-12"
