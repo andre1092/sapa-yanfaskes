@@ -362,3 +362,21 @@ def test_reference_failure_does_not_break_data(env, monkeypatch):
     unggah(call)
     res = call("GET", "/api/v1/surat-kontrol/data")
     assert res.status_code == 200 and res.json()["kabupaten"] == {}
+
+
+def test_kabupaten_falls_back_to_ppk_prefix_when_missing_in_reference(env, monkeypatch):
+    api, _, call, _ = env
+    monkeypatch.setattr(api.kepatuhan_service, "get_ref_lookup", lambda: {"0101R001": {"kabupaten": "KAB. JEMBER"}})
+    monkeypatch.setattr(api, "_SK_KAB_PREFIX", {"0202": "LUMAJANG"})
+    unggah(call)
+    kab = call("GET", "/api/v1/surat-kontrol/data").json()["kabupaten"]
+    assert kab == {"0101R001": "KAB. JEMBER", "0202R002": "LUMAJANG"}  # 0303S003 tidak dikenal: tetap kosong
+
+
+def test_ppk_prefix_table_matches_cinta_reference():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api"))
+    import index
+    assert index._SK_KAB_PREFIX == {"0188": "LUMAJANG", "1330": "LUMAJANG", "0189": "JEMBER", "1329": "JEMBER",
+                                    "0191": "BONDOWOSO", "1332": "BONDOWOSO"}
