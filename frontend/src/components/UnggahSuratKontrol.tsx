@@ -218,7 +218,7 @@ export function UnggahSuratKontrol() {
         {hasil?.faskes_tak_dikenal && hasil.faskes_tak_dikenal.length > 0 && tahap !== 'berhasil' && (
           <p className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
             <strong>{angka(hasil.faskes_tak_dikenal.length)} kode faskes belum ada di tabel padanan SAPA:</strong> {hasil.faskes_tak_dikenal.join('; ')}.
-            {' '}Datanya tetap tersimpan dan terlihat oleh Admin, tetapi Petugas RS faskes ini belum bisa melihatnya. Minta tim teknis SAPA menambahkan kode ini ke padanan faskes.
+            {' '}Datanya tetap tersimpan dan tampil, termasuk untuk Petugas RS yang akunnya memakai kode PPK itu. Minta tim teknis SAPA menambahkan kode ini ke padanan faskes supaya nama faskesnya juga dikenali di menu lain.
           </p>
         )}
         {hasil?.ada && bisaIntegrasi && <p className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
