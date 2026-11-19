@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
 import { HeroUIAgent, createToolHelper, useAgent, type GetAuthToken } from '@heroui/agent';
 import { z } from '@heroui/agent/zod';
 import { useMediaQuery, useTheme } from '@mui/material';
 import { useAuthStore } from '../store/authStore';
 import { resolveAssistantReport } from '../lib/assistantNavigation';
-import { getSessionToken } from '../auth/session';
+import { getSessionToken, pastikanSesi } from '../auth/session';
+import { useSession } from '../auth/useSession';
 
 type AssistantContext = {
   openReport: (report: unknown) => Promise<{ path: string; label: string }>;
@@ -25,17 +25,20 @@ const tools = [tool({
 /** Mounted within the Auth0 session; the workspace key stays on the server. */
 export function HeroUIAssistant({ onNavigate }: { onNavigate: (menu: string) => void }) {
   const agentId = import.meta.env.VITE_HEROUI_AGENT_ID?.trim();
-  if (!agentId) return null;
+  const { mode } = useSession();
+  // Sesi cookie (mode bff) tidak punya token di browser, dan /api/heroui-agent/auth-token baru menerima
+  // Bearer. Asisten disembunyikan di mode ini sampai endpoint itu menerima cookie sesi.
+  if (!agentId || mode !== 'auth0') return null;
   return <ConnectedAssistant agentId={agentId} onNavigate={onNavigate} />;
 }
 
 function ConnectedAssistant({ agentId, onNavigate }: { agentId: string; onNavigate: (menu: string) => void }) {
-  const { getAccessTokenSilently } = useAuth0();
   const { shutdown } = useAgent(agentId);
   const theme = useTheme();
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const getAuthToken = useCallback<GetAuthToken>(async ({ agentId: requestedAgentId, signal }) => {
-    const accessToken = await getAccessTokenSilently();
+    // Token dari penyedia sesi Auth0 (getAccessTokenSilently yang didaftarkan lewat registerAuthSession).
+    const accessToken = await getSessionToken();
     const response = await fetch('/api/heroui-agent/auth-token', {
       method: 'POST', signal, credentials: 'omit',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -55,7 +58,7 @@ function ConnectedAssistant({ agentId, onNavigate }: { agentId: string; onNaviga
       throw new Error('Kredensial asisten tidak valid. Silakan coba kembali.');
     }
     return { token: credential.token, expiresAt: credential.expiresAt };
-  }, [getAccessTokenSilently]);
+  }, []);
 
   useEffect(() => useAuthStore.subscribe((state, previous) => {
     if (!state.isAuthenticated || state.user?.sub !== previous.user?.sub) shutdown();
@@ -64,7 +67,7 @@ function ConnectedAssistant({ agentId, onNavigate }: { agentId: string; onNaviga
   const context = useMemo<AssistantContext>(() => ({
     page: () => ({ route: window.location.pathname }),
     openReport: async (report) => {
-      await getSessionToken();
+      await pastikanSesi();
       const target = resolveAssistantReport(report, useAuthStore.getState());
       onNavigate(target.menu);
       if (window.location.pathname !== target.path) throw new Error('Laporan belum terbuka. Coba kembali.');
