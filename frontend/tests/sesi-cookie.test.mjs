@@ -7,6 +7,7 @@ globalThis.window = { location: { origin: 'https://sapa.example', pathname: '/lo
 
 const { buatSesiCookie } = await muat('auth/intiSesiCookie.ts');
 const { buatPembacaMode } = await muat('auth/pembacaMode.ts');
+const bff = await muat('auth/bff.ts');
 const { perluAlamatMasuk, pilihTampilan } = await muat('auth/tampilanSesi.ts');
 const { alamatHalamanMasuk } = await muat('lib/halamanAwal.ts');
 const sesi = await muat('auth/session.ts');
@@ -225,6 +226,23 @@ test('mode login: gagal dibaca menjadi galat, Coba lagi membaca ulang, jawaban l
   jawaban.shift().gagal(new Error('mode'));
   await tunggu();
   assert.equal(lain.ambil(), 'memeriksa');
+  sesi.aturModeSesi(null);
+});
+
+test('mode login: server yang tidak menjawab berakhir di galat (Coba lagi), bukan pemuat tanpa akhir', async () => {
+  globalThis.fetch = () => new Promise(() => {});
+  const pembaca = buatPembacaMode(() => bff.bacaMode(20));
+  pembaca.muat();
+  assert.equal(pembaca.ambil(), 'memeriksa');
+  await new Promise(r => setTimeout(r, 60));
+  await tunggu();
+  assert.equal(pembaca.ambil(), 'galat');
+  assert.equal(sesi.modeSesi(), null, 'mode tidak ditebak');
+
+  globalThis.fetch = async () => new Response(JSON.stringify({ bff: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  pembaca.muat();
+  await tunggu();
+  assert.equal(pembaca.ambil(), 'bff', 'Coba lagi membaca ulang');
   sesi.aturModeSesi(null);
 });
 

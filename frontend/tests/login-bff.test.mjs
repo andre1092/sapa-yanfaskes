@@ -21,7 +21,7 @@ const { renderToString } = await import('react-dom/server');
 const { createElement: h } = await import('react');
 const { LayarKeluar, LoginPage } = await muat('components/LoginPage.tsx');
 const { FormMasuk, PanelLupaSandi } = await muat('components/FormMasuk.tsx');
-const { kirimMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
+const { buatPengirimMasuk, kirimMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
 const { Context } = await muat('auth/useSession.ts');
 const bff = await muat('auth/bff.ts');
 const sesi = await muat('auth/session.ts');
@@ -174,6 +174,7 @@ function formPalsu() {
   return {
     log,
     kosongkanPassword: () => log.push('kosongkan-password'),
+    sembunyikanPassword: () => log.push('sembunyikan-password'),
     buangToken: () => log.push('buang-token'),
     tampilkanGalat: pesan => log.push(['galat', pesan]),
     fokusPassword: () => log.push('fokus-password'),
@@ -181,7 +182,7 @@ function formPalsu() {
 }
 const isianUji = { username: 'petugas.uji', password: SANDI_PALSU, ingat: false, token: 'token-palsu' };
 
-test('kirim masuk gagal: password dikosongkan, token dibuang, galat tampil, fokus ke password', async () => {
+test('kirim masuk gagal: password dikosongkan dan disembunyikan, token dibuang, galat tampil, fokus ke password', async () => {
   fetchPalsu({ status: 401, isi: { kode: 'sandi_salah', pesan: 'Nama pengguna atau kata sandi salah.' } });
   Object.assign(lokasi, { pathname: '/login', search: '?kembali=%2Fkepatuhanfkrtl', hash: '' });
   riwayat.log = [];
@@ -190,7 +191,7 @@ test('kirim masuk gagal: password dikosongkan, token dibuang, galat tampil, foku
   let dimuat = 0;
   const masuk = await kirimMasuk(isianUji, widget, async () => { dimuat += 1; return true; }, form);
   assert.equal(masuk, false);
-  assert.deepEqual(form.log, ['kosongkan-password', 'buang-token', ['galat', 'Nama pengguna atau kata sandi salah.'], 'fokus-password']);
+  assert.deepEqual(form.log, ['kosongkan-password', 'sembunyikan-password', 'buang-token', ['galat', 'Nama pengguna atau kata sandi salah.'], 'fokus-password']);
   assert.equal(widget.jumlahReset, 1, 'widget disetel ulang, token lama tidak dipakai lagi');
   assert.equal(dimuat, 0, 'sesi tidak dibaca');
   assert.deepEqual(riwayat.log, [], 'alamat tidak berubah');
@@ -205,7 +206,7 @@ test('kirim masuk berhasil: alamat tujuan dipasang sebelum sesi dibaca', async (
   const masuk = await kirimMasuk(isianUji, widgetPalsu(), async () => { alamatSaatDimuat = `${lokasi.pathname}${lokasi.search}`; return true; }, form);
   assert.equal(masuk, true);
   assert.equal(alamatSaatDimuat, '/kepatuhanfkrtl?x=1');
-  assert.deepEqual(form.log, ['kosongkan-password'], 'password tetap dikosongkan setelah berhasil');
+  assert.deepEqual(form.log, ['kosongkan-password', 'sembunyikan-password'], 'password tetap dikosongkan setelah berhasil');
 
   Object.assign(lokasi, { pathname: '/login', search: '?kembali=%2F%2Fevil.example', hash: '' });
   await kirimMasuk(isianUji, widgetPalsu(), async () => true, formPalsu());
@@ -221,8 +222,90 @@ test('kirim masuk: sesi belum terbuka setelah /masuk mengembalikan alamat /login
   assert.equal(await kirimMasuk(isianUji, widget, async () => false, form), false);
   assert.deepEqual(riwayat.log, ['/kepatuhanfkrtl', '/login?kembali=%2Fkepatuhanfkrtl']);
   assert.equal(widget.jumlahReset, 1);
-  assert.deepEqual(form.log, ['kosongkan-password', 'buang-token', ['galat', PESAN_SESI_BELUM_TERBUKA]]);
+  assert.deepEqual(form.log, ['kosongkan-password', 'sembunyikan-password', 'buang-token', ['galat', PESAN_SESI_BELUM_TERBUKA]]);
   Object.assign(lokasi, { pathname: '/login', search: '' });
+});
+
+const PESAN_429 = 'Terlalu banyak percobaan. Coba lagi beberapa saat lagi.';
+const PESAN_503 = 'Layanan SAPA sedang tidak tersedia. Coba beberapa saat lagi.';
+
+test('masuk 429 dan 503: pesan sesuai dengan atau tanpa kode/pesan/detail, widget disetel ulang', async () => {
+  for (const [status, isi, pesan] of [
+    [429, { kode: 'terlalu_banyak', detail: 'Terlalu banyak percobaan. Coba lagi beberapa saat lagi.' }, PESAN_429],
+    [429, { kode: 'terlalu_banyak', pesan: 'Tunggu sebentar lalu coba lagi.' }, 'Tunggu sebentar lalu coba lagi.'],
+    [429, { kode: 'terlalu_banyak' }, PESAN_429],
+    [429, { detail: 'Too Many Requests' }, PESAN_429],
+    [429, '<html>Too Many Requests</html>', PESAN_429],
+    [429, '', PESAN_429],
+    [503, { kode: 'belum_siap', detail: 'Layanan masuk sedang tidak tersedia. Coba beberapa saat lagi.' }, 'Layanan masuk sedang tidak tersedia. Coba beberapa saat lagi.'],
+    [503, { pesan: 'Pemeliharaan terjadwal.' }, 'Pemeliharaan terjadwal.'],
+    [503, { kode: 'belum_siap' }, PESAN_503],
+    [503, { detail: 'Layanan masuk belum dikonfigurasi' }, PESAN_503],
+    [503, '<html>Service Unavailable</html>', PESAN_503],
+    [503, '', PESAN_503],
+  ]) {
+    const label = `${status} ${JSON.stringify(isi)}`;
+    globalThis.fetch = async () => new Response(typeof isi === 'string' ? isi : JSON.stringify(isi), {
+      status, headers: { 'Content-Type': typeof isi === 'string' ? 'text/html' : 'application/json' },
+    });
+    const widget = widgetPalsu();
+    const form = formPalsu();
+    assert.equal(await kirimMasuk(isianUji, widget, async () => true, form), false, label);
+    assert.deepEqual(form.log, ['kosongkan-password', 'sembunyikan-password', 'buang-token', ['galat', pesan], 'fokus-password'], label);
+    assert.equal(widget.jumlahReset, 1, label);
+  }
+});
+
+test('kirim dua kali cepat (klik ganda atau Enter berulang) hanya mengirim satu permintaan', async () => {
+  const antre = [];
+  globalThis.fetch = (url, opsi = {}) => new Promise((ok, gagal) => antre.push({
+    url,
+    jawab: (status, isi) => ok(new Response(JSON.stringify(isi), { status, headers: { 'Content-Type': 'application/json' } })),
+    putus: () => gagal(new TypeError('jaringan')),
+  }));
+  const pengirim = buatPengirimMasuk();
+  const widget = widgetPalsu();
+  assert.equal(pengirim.sibuk(), false);
+  const pertama = pengirim.kirim(isianUji, widget, async () => true, formPalsu());
+  assert.equal(pengirim.sibuk(), true);
+  const formKedua = formPalsu();
+  assert.equal(await pengirim.kirim(isianUji, widget, async () => true, formKedua), null, 'kiriman kedua diabaikan');
+  assert.deepEqual(formKedua.log, [], 'form tidak disentuh kiriman kedua');
+  assert.equal(antre.length, 1, 'hanya satu POST /masuk');
+  antre[0].jawab(401, { kode: 'sandi_salah', detail: 'Nama pengguna atau kata sandi salah.' });
+  assert.equal(await pertama, false);
+  assert.equal(pengirim.sibuk(), false, 'setelah jawaban, form boleh dikirim lagi');
+
+  // Sesi gagal dibaca dengan pengecualian pun tidak mengunci form selamanya.
+  const ketiga = pengirim.kirim(isianUji, widget, async () => { throw new Error('muat'); }, formPalsu());
+  assert.equal(antre.length, 2);
+  antre[1].jawab(200, { masuk: true, peran: 'admin' });
+  await assert.rejects(ketiga);
+  assert.equal(pengirim.sibuk(), false);
+  Object.assign(lokasi, { pathname: '/login', search: '', hash: '' });
+
+  const form = await sumber('components/FormMasuk.tsx');
+  assert.match(form, /buatPengirimMasuk\(\)/, 'komponen memakai pengirim tunggal');
+  assert.match(form, /pengirim\.sibuk\(\)/, 'kirim kedua ditolak sebelum keadaan form diubah');
+});
+
+test('ingat dikirim sebagai boolean di body JSON', async () => {
+  for (const [ingat, diharapkan] of [[true, true], [false, false], ['on', false], [1, false], [undefined, false]]) {
+    const mentah = [];
+    globalThis.fetch = async (_url, opsi = {}) => {
+      mentah.push(opsi.body);
+      return new Response(JSON.stringify({ kode: 'sandi_salah', detail: 'x' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    };
+    await kirimMasuk({ ...isianUji, ingat }, widgetPalsu(), async () => true, formPalsu());
+    const body = JSON.parse(mentah[0]);
+    assert.equal(body.ingat, diharapkan, String(ingat));
+    assert.equal(typeof body.ingat, 'boolean', String(ingat));
+  }
+});
+
+test('tombol lihat password kembali tersembunyi setelah setiap jawaban /masuk', async () => {
+  const form = await sumber('components/FormMasuk.tsx');
+  assert.match(form, /sembunyikanPassword: \(\) => setLihat\(false\)/);
 });
 
 test('form masuk tidak menyimpan isian di browser', async () => {
@@ -371,6 +454,49 @@ test('mode dan sesi dibaca dari server; keluar memakai POST dengan X-SAPA', asyn
   assert.equal(k[0].headers['X-SAPA'], '1');
 });
 
+const tungguGiliran = async () => { for (let i = 0; i < 5; i += 1) await new Promise(r => setImmediate(r)); };
+
+test('mode: GET /auth/mode yang tidak pernah selesai menjadi galat dalam batas waktu', async () => {
+  assert.equal(bff.BATAS_MODE_MS, 10_000, 'batas bawaan sekitar 10 detik');
+  let sinyal;
+  globalThis.fetch = (_url, opsi = {}) => { sinyal = opsi.signal; return new Promise(() => {}); };
+  const mulai = Date.now();
+  await assert.rejects(bff.bacaMode(30));
+  assert.ok(Date.now() - mulai < 2000, 'tidak menunggu tanpa akhir');
+  assert.ok(sinyal instanceof AbortSignal, 'fetch menerima sinyal pembatalan');
+  assert.equal(sinyal.aborted, true, 'permintaan dibatalkan');
+
+  // Badan jawaban yang macet juga dibatasi.
+  globalThis.fetch = async () => ({ ok: true, json: () => new Promise(() => {}) });
+  await assert.rejects(bff.bacaMode(30));
+});
+
+test('mode: tanpa AbortSignal.timeout, batas memakai AbortController dan setTimeout', async () => {
+  const asli = AbortSignal.timeout;
+  AbortSignal.timeout = undefined;
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    let sinyal;
+    globalThis.fetch = (_url, opsi = {}) => { sinyal = opsi.signal; return new Promise(() => {}); };
+    let galat = null;
+    const dibaca = bff.bacaMode().catch(e => { galat = e; });
+    await tungguGiliran();
+    mock.timers.tick(bff.BATAS_MODE_MS - 1);
+    await tungguGiliran();
+    assert.equal(galat, null, 'belum lewat batas');
+    mock.timers.tick(1);
+    await dibaca;
+    assert.ok(galat instanceof Error, 'lewat batas menjadi galat');
+    assert.equal(sinyal.aborted, true);
+
+    fetchPalsu({ status: 200, isi: { bff: true } });
+    assert.equal(await bff.bacaMode(), 'bff', 'jawaban tepat waktu tetap dipakai');
+  } finally {
+    mock.timers.reset();
+    AbortSignal.timeout = asli;
+  }
+});
+
 function adapterPalsu(status = 200) {
   const diterima = [];
   apiClient.defaults.adapter = async config => {
@@ -393,6 +519,17 @@ test('apiClient mode bff: tanpa Authorization, dengan X-SAPA, hanya ke asal send
   assert.equal(config.headers.get('X-SAPA'), '1');
   assert.equal(config.baseURL, '', 'VITE_API_URL tidak dipakai saat cookie sesi berlaku');
   lepas();
+});
+
+test('apiClient mode bff: 401 di /login tidak mengalihkan lagi (tanpa loop)', async () => {
+  sesi.aturModeSesi('bff');
+  for (const [pathname, search, hash] of [['/login', '', ''], ['/login', '?kembali=%2Fkepatuhanfkrtl', ''], ['/login/', '', ''], ['/login', '', '#x']]) {
+    Object.assign(lokasi, { pathname, search, hash, dialihkan: [] });
+    adapterPalsu(401);
+    for (let i = 0; i < 3; i += 1) await assert.rejects(apiClient.get('/api/v1/akun/status'));
+    assert.deepEqual(lokasi.dialihkan, [], `${pathname}${search}${hash}`);
+  }
+  Object.assign(lokasi, { pathname: '/login', search: '', hash: '' });
 });
 
 test('apiClient mode bff: 401 membawa ke /login dengan tujuan semula yang aman', async () => {

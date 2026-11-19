@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
-import { kirimMasuk } from '../auth/alurMasuk';
+import { buatPengirimMasuk } from '../auth/alurMasuk';
 import { useSession } from '../auth/useSession';
 import type { KendaliWidget } from '../lib/turnstile';
 import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
@@ -66,6 +66,8 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
   // Galat dari penyedia sesi (misalnya layanan sesi bermasalah) tampil sampai pengguna mencoba masuk.
   const [sudahMencoba, setSudahMencoba] = useState(false);
   const widget = useRef<KendaliWidget | null>(null);
+  // Satu pengirim per form: kiriman kedua sebelum jawaban pertama datang tidak membuat POST kedua.
+  const [pengirim] = useState(() => buatPengirimMasuk());
   const kolomPassword = useRef<HTMLInputElement>(null);
   const idGalat = useId();
   const idIngat = useId();
@@ -75,17 +77,18 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
 
   const kirim = async (event: FormEvent) => {
     event.preventDefault();
-    if (!siap || !token) return;
+    if (!siap || !token || pengirim.sibuk()) return;
     setMengirim(true);
     setGalat(null);
     setSudahMencoba(true);
-    const masuk = await kirimMasuk({ username, password, ingat, token }, widget.current, session.muatUlang, {
+    const masuk = await pengirim.kirim({ username, password, ingat, token }, widget.current, session.muatUlang, {
       kosongkanPassword: () => setPassword(''),
+      sembunyikanPassword: () => setLihat(false),
       buangToken: () => setToken(null),
       tampilkanGalat: setGalat,
       fokusPassword: () => kolomPassword.current?.focus(),
     });
-    if (!masuk) setMengirim(false);
+    if (masuk === false) setMengirim(false);
   };
 
   const tombolLihat = <InputAdornment position="end">
