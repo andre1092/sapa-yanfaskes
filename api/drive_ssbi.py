@@ -1,4 +1,6 @@
-"""Satu berkas tetap di Google Drive untuk data SSBI Kesesuaian Jadwal Praktik Dokter FKRTL.
+"""Berkas tetap di Google Drive: data SSBI Kesesuaian Jadwal Praktik Dokter FKRTL dan Surat Kontrol.
+
+Setiap data punya env ID berkasnya sendiri (parameter `env`).
 
 Berkas dibuat CEO dan hanya berkas itu yang dibagikan ke akun layanan. Server tidak pernah membuat
 berkas baru (akun layanan tidak punya kuota My Drive); integrasi menimpa isi berkas lewat files.update,
@@ -20,6 +22,7 @@ from typing import Any, Dict, Optional, Tuple
 logger = logging.getLogger("sapa-api")
 
 ENV_FILE_ID = "SSBI_JADWAL_DRIVE_FILE_ID"
+ENV_SURAT_KONTROL = "SURAT_KONTROL_DRIVE_FILE_ID"  # menu Monitoring Penerbitan Surat Kontrol
 ENV_KUNCI_TULIS = "GCP_SA_DRIVE_TULIS_BASE64"
 _ENV_KUNCI_BACA = ("GCP_SA_CREDENTIALS_BASE64", "GCP_SA_CREDENTIALS_JSON")
 SCOPE_BACA = ("https://www.googleapis.com/auth/drive.readonly",)
@@ -42,8 +45,8 @@ class DriveGagal(Exception):
     """Drive menjawab selain 200."""
 
 
-def file_id() -> str:
-    nilai = (os.environ.get(ENV_FILE_ID) or "").strip()
+def file_id(env: str = ENV_FILE_ID) -> str:
+    nilai = (os.environ.get(env) or "").strip()
     if not _FILE_ID.fullmatch(nilai):
         raise DriveBelumSiap()
     return nilai
@@ -91,24 +94,24 @@ def _cek(resp, apa: str):
     return resp
 
 
-def info() -> dict:
+def info(env: str = ENV_FILE_ID) -> dict:
     """Metadata berkas: versi (md5/modifiedTime), ukuran, dan properti ringkasan unggahan."""
-    fid = file_id()
+    fid = file_id(env)
     data = _cek(_session("baca").get(f"{API}/{fid}", params={"fields": _FIELDS, "supportsAllDrives": "true"},
                                      timeout=_TIMEOUT), "info").json()
     return {"versi": data.get("md5Checksum") or data.get("modifiedTime") or "", "ukuran": int(data.get("size") or 0),
             "properti": data.get("properties") or {}}
 
 
-def unduh() -> bytes:
-    fid = file_id()
+def unduh(env: str = ENV_FILE_ID) -> bytes:
+    fid = file_id(env)
     return _cek(_session("baca").get(f"{API}/{fid}", params={"alt": "media", "supportsAllDrives": "true"},
                                      timeout=_TIMEOUT), "unduh").content
 
 
-def tulis(isi: bytes, properti: Dict[str, str]) -> Tuple[str, dict]:
+def tulis(isi: bytes, properti: Dict[str, str], env: str = ENV_FILE_ID) -> Tuple[str, dict]:
     """Menimpa isi berkas tetap sekaligus propertinya dalam satu permintaan multipart."""
-    fid = file_id()
+    fid = file_id(env)
     batas = uuid.uuid4().hex
     meta = json.dumps({"mimeType": "application/gzip", "properties": properti}).encode("utf-8")
     body = b"".join([
