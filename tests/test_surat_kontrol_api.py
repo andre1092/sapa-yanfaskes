@@ -4,6 +4,7 @@ Drive diganti tiruan di memori; tes tidak memakai jaringan. Nama RS samaran.
 """
 import contextlib
 import gzip
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -38,9 +39,14 @@ class FakeDrive:
         return self.versi, dict(properti)
 
 
+# N6: tanggal "hari ini" dikunci supaya tes tidak bergantung pada jam nyata (data uji sampai 12 November 2026).
+HARI_INI_UJI = date(2026, 11, 19)
+
+
 @pytest.fixture
 def env(monkeypatch):
     api = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com")
+    monkeypatch.setattr(api, "_sk_hari_ini", lambda: HARI_INI_UJI)
     drive = FakeDrive()
     monkeypatch.setattr(api, "_sk_drive_info", drive.info)
     monkeypatch.setattr(api, "_sk_drive_unduh", drive.unduh)

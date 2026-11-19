@@ -1,0 +1,4 @@
+-r requirements.txt
+# Hanya untuk tes lokal dan CI; Vercel hanya memasang requirements.txt.
+pytest>=9.2.0
+openpyxl>=3.1.5

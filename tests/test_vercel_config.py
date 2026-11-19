@@ -99,3 +99,10 @@ def test_every_public_file_is_served_as_itself():
     for name in sorted(p.name for p in public.iterdir() if p.is_file()):
         first = next(r for r in CONFIG["rewrites"] if vercel_regex(r["source"]).match("/" + name))
         assert first["destination"] == "/frontend/" + name, name
+
+
+def test_versi_python_resmi_sama_dengan_runtime_vercel():
+    """N2: versi Python resmi repo. Tanpa berkas versi Vercel memakai bawaannya (3.12), jadi .python-version
+    mengunci versi yang sudah dipakai deployment. Vercel saat ini mendukung 3.12, 3.13, dan 3.14."""
+    versi = (Path(__file__).resolve().parents[1] / ".python-version").read_text(encoding="utf-8").strip()
+    assert versi == "3.12"
