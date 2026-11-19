@@ -18,6 +18,7 @@ import { GantiSandiWajib } from './GantiSandiWajib';
 
 const ROUTE_MAP: Record<string, string> = {
   '/monitoring-laras': 'Monitoring LARAS',
+  '/monitoring-surat-kontrol': 'Monitoring Surat Kontrol',
   '/laras': 'Monitoring LARAS',
   '/kepatuhanfkrtl': 'Capaian Kepatuhan FKRTL',
   '/kepatuhan-fkrtl': 'Capaian Kepatuhan FKRTL',
@@ -35,6 +36,7 @@ const ROUTE_MAP: Record<string, string> = {
 
 const MENU_TO_ROUTE: Record<string, string> = {
   'Monitoring LARAS': '/monitoring-laras',
+  'Monitoring Surat Kontrol': '/monitoring-surat-kontrol',
   'Capaian Kepatuhan FKRTL': '/kepatuhanfkrtl',
   'Pemanfaatan Antrol FKRTL': '/antrolfkrtl',
   'Capaian Kepatuhan FKTP': '/kepatuhanfktp',
@@ -57,7 +59,7 @@ const getMenuFromCurrentPath = (): string => {
 
 
 const sections = [
-  { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Capaian Kepatuhan FKTP', 'Antrean online FKTP'], ['Monitoring LARAS', 'Monitoring LARAS']] },
+  { label: 'Pemantauan', items: [['Home', 'Beranda'], ['Pemanfaatan Antrol FKRTL', 'Antrean online FKRTL'], ['Capaian Kepatuhan FKTP', 'Antrean online FKTP'], ['Monitoring LARAS', 'Monitoring LARAS'], ['Monitoring Surat Kontrol', 'Monitoring Surat Kontrol']] },
   { label: 'Laporan', items: [['Capaian Kepatuhan FKRTL', 'Kepatuhan FKRTL']] },
   { label: 'Administrasi', items: [['Integration', 'Integrasi data'], ['Logs', 'Log aktivitas'], ['Pengguna FKRTL', 'Pengguna FKRTL'], ['Validation Rules', 'Pengaturan']] },
 ];
@@ -65,6 +67,7 @@ const labelFor = (menu: string) => sections.flatMap(section => section.items).fi
 
 const navPaths: Record<string, string> = {
   'Monitoring LARAS': 'M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+  'Monitoring Surat Kontrol': 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm4 11 2 2 4-4',
   Home: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z',
   'Pemanfaatan Antrol FKRTL': 'M4 6h16M4 12h10M4 18h6m7-4 4 4-4 4',
   'Capaian Kepatuhan FKRTL': 'M4 21V7h16v14M9 7V3h6v4M9 12h6m-3-3v6M8 21v-3h8v3',
@@ -80,6 +83,7 @@ const LaporanKepatuhanDashboard = resilientLazy(() => import('./LaporanKepatuhan
 const PemanfaatanAntrolDashboard = resilientLazy(() => import('./PemanfaatanAntrolDashboard').then(m => ({ default: m.PemanfaatanAntrolDashboard })));
 const FktpAntrolDashboard = resilientLazy(() => import('./FktpAntrolDashboard').then(m => ({ default: m.FktpAntrolDashboard })));
 const MonitoringLarasDashboard = resilientLazy(() => import('./MonitoringLarasDashboard').then(m => ({ default: m.MonitoringLarasDashboard })));
+const MonitoringSuratKontrolDashboard = resilientLazy(() => import('./MonitoringSuratKontrolDashboard').then(m => ({ default: m.MonitoringSuratKontrolDashboard })));
 const AuditLogView = resilientLazy(() => import('./AuditLogView').then(m => ({ default: m.AuditLogView })));
 const DataIntegrationView = resilientLazy(() => import('./DataIntegrationView').then(m => ({ default: m.DataIntegrationView })));
 const AdminSettings = resilientLazy(() => import('./AdminSettings').then(m => ({ default: m.AdminSettings })));
@@ -205,7 +209,7 @@ export const InsightTracerDashboard: React.FC = () => {
       <Box sx={{ mb: 2.5 }}><Typography variant="caption" component="p" color="text.secondary">Ruang kerja / {sections.find(section => section.items.some(([key]) => key === activeMenu))?.label || 'Modul'} / {labelFor(activeMenu)}</Typography></Box>
       <main id="workspace-content" tabIndex={-1} key={activeMenu} className="berry-canvas">
         <Suspense fallback={<KerangkaMemuat label={`Memuat ${labelFor(activeMenu)}`} />}>
-        {!menuBoleh(activeMenu, user?.role) ? <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography color="text.secondary">Akun Anda tidak memiliki izin untuk membuka menu ini.</Typography></Paper> : activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Logs' ? <AuditLogView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Pengguna FKRTL' ? <PenggunaFkrtlView /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
+        {!menuBoleh(activeMenu, user?.role) ? <Paper component="section" elevation={0} sx={{ p: 4, borderRadius: 3 }}><Typography variant="h2" component="h1" sx={{ mb: 2 }}>{labelFor(activeMenu)}</Typography><Typography color="text.secondary">Akun Anda tidak memiliki izin untuk membuka menu ini.</Typography></Paper> : activeMenu === 'Monitoring LARAS' ? <MonitoringLarasDashboard /> : activeMenu === 'Monitoring Surat Kontrol' ? <MonitoringSuratKontrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKRTL' ? <LaporanKepatuhanDashboard /> : activeMenu === 'Pemanfaatan Antrol FKRTL' ? <PemanfaatanAntrolDashboard /> : activeMenu === 'Capaian Kepatuhan FKTP' ? <FktpAntrolDashboard /> : activeMenu === 'Logs' ? <AuditLogView /> : activeMenu === 'Integration' ? <DataIntegrationView /> : activeMenu === 'Validation Rules' ? <AdminSettings /> : activeMenu === 'Pengguna FKRTL' ? <PenggunaFkrtlView /> : activeMenu === 'Home' ? <Box className="sapa-page berry-home">
           <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, mb: 3, borderRadius: 3, bgcolor: 'secondary.dark', color: 'common.white' }}>
             <Typography variant="overline" sx={{ color: 'inherit', opacity: 0.85 }}>Ruang kendali layanan</Typography>
             <Typography variant="h1" component="h1" sx={{ color: 'inherit', my: 2, maxWidth: '24ch', overflowWrap: 'anywhere' }}>Selamat datang, {nama.split(' ')[0]}</Typography>

@@ -49,10 +49,11 @@ try:
 except ImportError:
     import verifikasi_service
 try:
-    from . import drive_ssbi, ssbi_jadwal_service
+    from . import drive_ssbi, ssbi_jadwal_service, surat_kontrol_service
 except ImportError:
     import drive_ssbi
     import ssbi_jadwal_service
+    import surat_kontrol_service
 try:
     from .sheets_source import read_sheet_csv
 except ImportError:
@@ -3609,7 +3610,7 @@ def _ssbi_nama_admin(claims) -> str:
 
 
 @contextlib.asynccontextmanager
-async def _ssbi_kunci():
+async def _ssbi_kunci(kunci: int = _SSBI_KUNCI):
     """Kunci advisory tingkat transaksi di Postgres audit; aman di pooler mode transaksi."""
     dsn = os.environ.get(audit_log.DSN_ENV)
     if not dsn:
@@ -3625,7 +3626,7 @@ async def _ssbi_kunci():
         raise HTTPException(status_code=503, detail="Integrasi belum bisa dijalankan. Coba lagi sebentar.", headers=_NO_STORE)
     try:
         async with conn.transaction():
-            yield bool(await conn.fetchval("SELECT pg_try_advisory_xact_lock($1)", _SSBI_KUNCI))
+            yield bool(await conn.fetchval("SELECT pg_try_advisory_xact_lock($1)", kunci))
     finally:
         await conn.close()
 
@@ -3717,6 +3718,219 @@ def ssbi_detail(request: Request, bulan: str = "", cakupan=Depends(require_ssbi_
     nama = ssbi_jadwal_service.nama_berkas(bulan, cakupan["rs"], (r["Periode Data"][:7] for r in pilihan))
     return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
+
+
+# ==============================================================================
+# --- MONITORING PENERBITAN SURAT KONTROL (Crosstab BI agregat, keputusan CEO 2026-11-19) ---
+# Unggah/integrasikan per bulan: Admin ke atas. Lihat: semua peran; Petugas RS hanya baris RS-nya
+# (kode PPK dari akun, gagal tertutup bila kosong). Satu berkas tetap Drive per env, ganti per bulan.
+# ==============================================================================
+_SK_KUNCI = 0x55B1_0002
+_SK_BELUM_SIAP = "Penyimpanan data Surat Kontrol belum disiapkan. Hubungi tim teknis SAPA."
+_SK_DRIVE_GAGAL = "Penyimpanan data Surat Kontrol sedang bermasalah. Data lama tetap dipakai. Coba lagi sebentar."
+_SK_TANPA_RS = "Akun Anda belum terhubung ke kode PPK rumah sakit. Hubungi admin SAPA."
+_sk_simpanan: Dict[str, Any] = {"versi": None, "isi": None}
+_sk_simpanan_lock = threading.Lock()
+
+
+def _sk_drive_info() -> dict:
+    return drive_ssbi.info(drive_ssbi.ENV_SURAT_KONTROL)
+
+
+def _sk_drive_unduh() -> bytes:
+    return drive_ssbi.unduh(drive_ssbi.ENV_SURAT_KONTROL)
+
+
+def _sk_drive_tulis(isi: bytes, properti: Dict[str, str]):
+    return drive_ssbi.tulis(isi, properti, drive_ssbi.ENV_SURAT_KONTROL)
+
+
+def _sk_hari_ini():
+    return datetime.now(WIB).date()
+
+
+def _sk_kunci():
+    return _ssbi_kunci(_SK_KUNCI)
+
+
+def _sk_drive(fungsi, *args):
+    try:
+        return fungsi(*args)
+    except drive_ssbi.DriveBelumSiap:
+        raise HTTPException(status_code=503, detail=_SK_BELUM_SIAP, headers=_NO_STORE)
+    except Exception as exc:
+        logger.error("Data Surat Kontrol di Drive tidak bisa dipakai: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail=_SK_DRIVE_GAGAL, headers=_NO_STORE)
+
+
+def _sk_isi(segar: bool = False) -> dict:
+    """Semua bulan tersimpan; di-cache per instans dengan penanda versi berkas Drive."""
+    info = _sk_drive_info()
+    if not segar:
+        with _sk_simpanan_lock:
+            if _sk_simpanan["versi"] == info["versi"] and _sk_simpanan["isi"] is not None:
+                return _sk_simpanan["isi"]
+    if info["ukuran"] > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5: tolak sebelum diunduh
+        raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
+    isi = surat_kontrol_service.baca_simpanan(_sk_drive_unduh() if info["ukuran"] else b"")
+    with _sk_simpanan_lock:
+        _sk_simpanan.update(versi=info["versi"], isi=isi)
+    return isi
+
+
+def _sk_bulan_param(bulan: str) -> str:
+    try:
+        return surat_kontrol_service.cek_bulan(bulan)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Pilihan bulan tidak dikenali. Pilih satu bulan data.", headers=_NO_STORE)
+
+
+def _sk_ringkas_bulan(bulan: str, isi: dict) -> dict:
+    meta = isi.get("meta") or {}
+    return {"bulan": bulan, "sampai": isi.get("sampai", ""), "diunggah_pada": meta.get("diunggah_pada", ""),
+            "diunggah_oleh": meta.get("diunggah_oleh", "")}
+
+
+def require_sk_lihat(request: Request) -> dict:
+    """Semua peran boleh melihat; Petugas RS dikunci ke kode PPK akunnya (bukan dari parameter)."""
+    claims = require_viewer(request)
+    if not petugas_rs_saja(claims):
+        return {"claims": claims, "kode": None}
+    kode = (_status_petugas(claims).get("kode_ppk") or "").strip()
+    if not kode:
+        logger.warning("Data Surat Kontrol ditolak: akun petugas tanpa kode PPK")
+        raise HTTPException(status_code=403, detail=_SK_TANPA_RS, headers=_NO_STORE)
+    return {"claims": claims, "kode": kode}
+
+
+async def _sk_terima(request: Request, bulan: str):
+    from starlette.concurrency import run_in_threadpool
+
+    if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
+        raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
+    bulan = _sk_bulan_param(bulan)
+    request.state.audit_detail = f"bulan={bulan}"  # review Clara R3: unggahan yang ditolak tetap tercatat
+    batas = surat_kontrol_service.BATAS_KOMPRES
+    terlalu_besar = HTTPException(status_code=413, detail="Kiriman terlalu besar (batas 1 MB setelah dikompres).", headers=_NO_STORE)
+    try:
+        panjang = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        panjang = 0
+    if panjang > batas:
+        raise terlalu_besar
+    data = bytearray()
+    async for potong in request.stream():
+        data.extend(potong)
+        if len(data) > batas:
+            raise terlalu_besar
+
+    request.state.audit_detail = f"bulan={bulan} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
+
+    def olah():
+        berkas = surat_kontrol_service.baca_kiriman(bytes(data))
+        return surat_kontrol_service.periksa_bulan(bulan, berkas, hari_ini=_sk_hari_ini())
+
+    try:
+        hasil = await run_in_threadpool(olah)
+    except surat_kontrol_service.BerkasDitolak as exc:
+        raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
+    request.state.audit_detail = f"bulan={bulan} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
+    return bulan, hasil
+
+
+def _sk_tak_dikenal(data: dict) -> Optional[List[str]]:
+    try:
+        dikenal = set(_ssbi_peta().kode)
+    except Exception as exc:
+        logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
+        return None
+    # Hanya kode PPK yang ditampilkan ke admin (desain Kim); nama dan isi sel tidak.
+    return [kode for kode, _ in surat_kontrol_service.kode_faskes(data) if kode not in dikenal]
+
+
+@app.post("/api/v1/surat-kontrol/periksa")
+async def surat_kontrol_periksa(request: Request, bulan: str = "", user=Depends(require_admin)):
+    from starlette.concurrency import run_in_threadpool
+
+    bulan, hasil = await _sk_terima(request, bulan)
+    try:
+        isi = await run_in_threadpool(_sk_isi)
+        ada = _sk_ringkas_bulan(bulan, isi["bulan"][bulan]) if bulan in isi["bulan"] else None
+        # Syarat Clara (f): isi identik dengan bulan lain = kemungkinan salah pilih bulan (peringatan saja).
+        for lain in surat_kontrol_service.bulan_kembar(isi, bulan, hasil.data):
+            hasil.ringkasan["peringatan"].append(f"Isi sama persis dengan data {surat_kontrol_service.label_bulan(lain)}; "
+                                                 "pastikan bulan yang dipilih benar.")
+    except Exception:
+        ada = None
+    return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "ada": ada,
+                                                    "faskes_tak_dikenal": _sk_tak_dikenal(hasil.data)})
+
+
+@app.post("/api/v1/surat-kontrol/integrasikan")
+async def surat_kontrol_integrasikan(request: Request, bulan: str = "", user=Depends(require_admin)):
+    from starlette.concurrency import run_in_threadpool
+
+    bulan, hasil = await _sk_terima(request, bulan)
+    meta = {"diunggah_pada": datetime.now(WIB).strftime("%Y-%m-%dT%H:%M:%S+07:00"),
+            "diunggah_oleh": await run_in_threadpool(_ssbi_nama_admin, user)}
+    async with _sk_kunci() as dapat:
+        if not dapat:
+            raise HTTPException(status_code=409, detail="Admin lain sedang mengintegrasikan data. Coba lagi setelah selesai.", headers=_NO_STORE)
+
+        def ganti():
+            ukuran = _sk_drive_info()["ukuran"]
+            if ukuran > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5
+                raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
+            lama = _sk_drive_unduh() if ukuran else b""
+            baru = surat_kontrol_service.simpanan_baru(lama, bulan, hasil.data, meta)
+            isi = surat_kontrol_service.baca_simpanan(baru)
+            urutan = list(isi["bulan"])
+            properti = {"bulan_awal": urutan[0], "bulan_akhir": urutan[-1], "jumlah_bulan": str(len(urutan)),
+                        "diperbarui": meta["diunggah_pada"], "bulan_terakhir_diunggah": bulan}
+            versi, _ = _sk_drive_tulis(baru, properti)
+            return versi, isi
+
+        versi, isi = await run_in_threadpool(_sk_drive, ganti)
+    with _sk_simpanan_lock:
+        _sk_simpanan.update(versi=versi, isi=isi)
+    return JSONResponse(headers=_NO_STORE, content={
+        "status": "success", "bulan": [_sk_ringkas_bulan(b, v) for b, v in isi["bulan"].items()]})
+
+
+@app.get("/api/v1/surat-kontrol/status")
+def surat_kontrol_status(user=Depends(require_admin)):
+    isi = _sk_drive(_sk_isi)
+    return JSONResponse(headers=_NO_STORE, content={"bulan": [_sk_ringkas_bulan(b, v) for b, v in isi["bulan"].items()]})
+
+
+@app.get("/api/v1/surat-kontrol/data")
+def surat_kontrol_data(bulan: str = "", cakupan=Depends(require_sk_lihat)):
+    isi = _sk_drive(_sk_isi)
+    tersedia = list(isi["bulan"])
+    kode = cakupan["kode"]
+    if bulan:
+        bulan = _sk_bulan_param(bulan)
+        if bulan not in isi["bulan"]:
+            raise HTTPException(status_code=404, detail="Data bulan ini belum diunggah.", headers=_NO_STORE)
+    elif tersedia:
+        bulan = tersedia[-1]
+    rs = None
+    if kode:
+        nama = next((f["nama"] for b in reversed(tersedia) for j in surat_kontrol_service.JENIS
+                     for f in isi["bulan"][b][j]["faskes"] if f["kode"] == kode), None)
+        if nama is None:
+            try:
+                nama = next(iter(_ssbi_peta().untuk_kode(kode) or ()), None)
+            except Exception:
+                nama = None
+        rs = {"kode": kode, "nama": nama or kode}
+    data, diunggah = None, ""
+    if bulan:
+        mentah = {k: v for k, v in isi["bulan"][bulan].items() if k != "meta"}
+        data = surat_kontrol_service.untuk_petugas(mentah, kode) if kode else mentah
+        diunggah = (isi["bulan"][bulan].get("meta") or {}).get("diunggah_pada", "")
+    return JSONResponse(headers=_NO_STORE, content={"bulan_tersedia": tersedia, "bulan": bulan or None, "data": data,
+                                                    "rs": rs, "terkunci": bool(kode), "diunggah_pada": diunggah})
 
 
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)

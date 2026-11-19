@@ -7,6 +7,7 @@ import {
   BATAS_MENTAH_MB, angka, bulanHilang, cekBerkas, cekHasilKompres, labelBulan, rentangBulan, tanggalData, ukuranMb,
 } from '../lib/ssbiJadwal';
 import type { InfoAktif, Ringkasan } from '../lib/ssbiJadwal';
+import { UnggahSuratKontrol } from './UnggahSuratKontrol';
 
 const TAUTAN_SSBI = 'https://ssbi.bpjs-kesehatan.go.id/views/07_Kesesuaian_Jadwal/FKRTL.csv';
 const KOLOM = ['Kabupaten', 'Nama Faskes', 'Tipe Faskes', 'Nama Poli', 'Nama Dokter', 'Waktu SIMRS', 'Jam Buka HFIS',
@@ -139,7 +140,8 @@ export function DataIntegrationView() {
         <h1 className="text-2xl font-bold text-[var(--text-main)]">Integrasi data</h1>
         <p className="mt-1 max-w-3xl text-sm text-[var(--text-muted)]">
           Unggah data SSBI Kesesuaian Jadwal Praktik Dokter FKRTL, lalu integrasikan. Setelah itu pengguna bisa mengunduh
-          detailnya, per bulan atau semua bulan, di menu Kepatuhan FKRTL.
+          detailnya, per bulan atau semua bulan, di menu Kepatuhan FKRTL. Di bawahnya, unggah Crosstab BI untuk menu
+          Monitoring Surat Kontrol.
         </p>
       </header>
 
@@ -284,6 +286,8 @@ export function DataIntegrationView() {
           <button type="button" className="sapa-button sapa-button-secondary mt-4" onClick={batal}>Unggah berkas lain</button>
         )}
       </section>
+
+      <UnggahSuratKontrol />
 
       <Dialog open={dialog} onClose={() => setDialog(false)} aria-labelledby="ssbi-dialog-judul">
         <DialogTitle id="ssbi-dialog-judul">Ganti data SSBI?</DialogTitle>
