@@ -111,3 +111,8 @@ def test_versi_python_resmi_sama_dengan_runtime_vercel():
 def test_function_berjalan_di_satu_region_singapura():
     """Keputusan CEO 2026-11-19: function di sin1, satu region dengan DB sesi; pengguna di Indonesia."""
     assert CONFIG.get("regions") == ["sin1"]
+
+
+def test_versi_python_dicatat_sekali_saat_proses_mulai():
+    sumber = (Path(__file__).resolve().parents[1] / "api" / "index.py").read_text(encoding="utf-8")
+    assert sumber.count('logger.info("runtime python=%s", platform.python_version())') == 1
