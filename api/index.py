@@ -3745,6 +3745,10 @@ def _sk_drive_tulis(isi: bytes, properti: Dict[str, str]):
     return drive_ssbi.tulis(isi, properti, drive_ssbi.ENV_SURAT_KONTROL)
 
 
+def _sk_hari_ini():
+    return datetime.now(WIB).date()
+
+
 def _sk_kunci():
     return _ssbi_kunci(_SK_KUNCI)
 
@@ -3819,7 +3823,7 @@ async def _sk_terima(request: Request, bulan: str):
 
     def olah():
         berkas = surat_kontrol_service.baca_kiriman(bytes(data))
-        return surat_kontrol_service.periksa_bulan(bulan, berkas)
+        return surat_kontrol_service.periksa_bulan(bulan, berkas, hari_ini=_sk_hari_ini())
 
     try:
         hasil = await run_in_threadpool(olah)
@@ -3847,6 +3851,10 @@ async def surat_kontrol_periksa(request: Request, bulan: str = "", user=Depends(
     try:
         isi = await run_in_threadpool(_sk_isi)
         ada = _sk_ringkas_bulan(bulan, isi["bulan"][bulan]) if bulan in isi["bulan"] else None
+        # Syarat Clara (f): isi identik dengan bulan lain = kemungkinan salah pilih bulan (peringatan saja).
+        for lain in surat_kontrol_service.bulan_kembar(isi, bulan, hasil.data):
+            hasil.ringkasan["peringatan"].append(f"Isi sama persis dengan data {surat_kontrol_service.label_bulan(lain)}; "
+                                                 "pastikan bulan yang dipilih benar.")
     except Exception:
         ada = None
     return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "ada": ada,

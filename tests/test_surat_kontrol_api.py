@@ -286,3 +286,19 @@ def test_admin_status_lists_stored_months(env):
     bulan = call("GET", "/api/v1/surat-kontrol/status").json()["bulan"]
     assert bulan == [{"bulan": "2026-11", "sampai": "2026-11-12", "diunggah_pada": bulan[0]["diunggah_pada"],
                       "diunggah_oleh": "Admin"}]
+
+
+def test_check_warns_when_content_equals_another_stored_month(env):
+    _, _, call, _ = env
+    unggah(call, "2026-11")
+    body = unggah(call, "2026-10", aksi="periksa").json()
+    assert any("Isi sama persis dengan data November 2026" in p for p in body["ringkasan"]["peringatan"])
+    assert unggah(call, "2026-11", aksi="periksa").json()["ringkasan"]["peringatan"] == []
+
+
+def test_current_month_with_future_days_is_refused(env, monkeypatch):
+    api, drive, call, _ = env
+    from datetime import date
+    monkeypatch.setattr(api, "_sk_hari_ini", lambda: date(2026, 11, 5))
+    res = unggah(call, "2026-11")
+    assert res.status_code == 400 and "melewati hari ini" in res.json()["detail"] and drive.tulis_dipanggil == 0

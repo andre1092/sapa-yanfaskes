@@ -333,3 +333,24 @@ def test_hospital_absent_this_month_gets_empty_rows():
     milik = sk.untuk_petugas(data, "0303S003")
     assert milik["RJ"]["faskes"] == [] and milik["RJ"]["total"] == {"lt": 0, "eq": 0, "gt": 0}
     assert milik["RI"]["total"]["eq"] == 15
+
+
+# --- pengaman bulan salah (syarat Clara e, f) --------------------------------
+
+def test_current_month_cannot_have_days_after_today():
+    from datetime import date
+    with pytest.raises(sk.BerkasDitolak, match="melewati hari ini"):
+        sk.periksa_bulan("2026-11", sepuluh(), hari_ini=date(2026, 11, 10))
+    assert sk.periksa_bulan("2026-11", sepuluh(), hari_ini=date(2026, 11, 12)).data["sampai"] == "2026-11-12"
+    assert sk.periksa_bulan("2026-10", sepuluh(), hari_ini=date(2026, 11, 1)).data["sampai"] == "2026-10-12"
+
+
+def test_identical_content_in_another_month_is_found():
+    nov = sk.periksa_bulan("2026-11", sepuluh()).data
+    simpan = sk.baca_simpanan(sk.simpanan_baru(None, "2026-11", nov, {"diunggah_oleh": "Admin"}))
+    des_sama = sk.periksa_bulan("2026-12", sepuluh()).data
+    assert sk.bulan_kembar(simpan, "2026-12", des_sama) == ["2026-11"]
+    # Bulan yang sama (unggah ulang) tidak dihitung kembar.
+    assert sk.bulan_kembar(simpan, "2026-11", nov) == []
+    lain = sk.periksa_bulan("2026-12", satu_jenis("RJ", angka={LT: {RS[0]: 10}}) + satu_jenis("RI", angka={EQ: {RS[1]: 5}})).data
+    assert sk.bulan_kembar(simpan, "2026-12", lain) == []

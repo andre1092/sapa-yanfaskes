@@ -17,8 +17,10 @@ import gzip
 import io
 import json
 import re
+import hashlib
 import zlib
 from dataclasses import dataclass
+from datetime import date
 from typing import Dict, List, Optional, Tuple
 
 BATAS_KOMPRES = 1 * 1024 * 1024
@@ -302,7 +304,7 @@ def kenali_sheet(raw: bytes) -> Optional[str]:
     return None
 
 
-def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]]) -> HasilPeriksa:
+def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]], hari_ini: Optional[date] = None) -> HasilPeriksa:
     try:
         cek_bulan(bulan)
     except ValueError:
@@ -344,12 +346,28 @@ def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]]) -> HasilPeriksa:
                             "selisih_poli": sum(total.values()) - sum(_jumlah(poli).values())}
     hari_akhir = max((t["hari"] for j in JENIS for t in data[j]["tren"]), default=1)
     data["sampai"] = f"{bulan}-{hari_akhir:02d}"
+    if hari_ini is not None and hari_ini.strftime("%Y-%m") == bulan and hari_akhir > hari_ini.day:
+        # Syarat Clara (e): bulan berjalan tidak mungkin punya data setelah hari ini.
+        raise BerkasDitolak(f"Sheet Tren memuat tanggal {hari_akhir}, melewati hari ini ({hari_ini.day} {label_bulan(bulan)}). "
+                            "Berkas ini kemungkinan dari bulan lain. Periksa bulan yang dipilih.")
     peringatan = []
     if sum(data["RI"]["total"].values()) > sum(data["RJ"]["total"].values()):
         peringatan.append("Total rawat inap lebih besar dari rawat jalan. Pastikan berkas rawat jalan dan rawat inap "
                           "tidak tertukar antar-area.")
     ringkasan = {"bulan": bulan, "sampai": data["sampai"], "jenis": ringkas_jenis, "peringatan": peringatan}
     return HasilPeriksa(data, ringkasan)
+
+
+def sidik(data: dict) -> str:
+    """sha256 bentuk ternormalisasi RJ + RI satu bulan (tanpa meta), untuk mendeteksi isi kembar."""
+    inti = {j: data[j] for j in JENIS}
+    return hashlib.sha256(json.dumps(inti, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def bulan_kembar(isi: dict, bulan: str, data: dict) -> List[str]:
+    """Bulan lain tersimpan yang isinya identik (syarat Clara f); hanya untuk peringatan."""
+    target = sidik(data)
+    return [b for b, v in isi["bulan"].items() if b != bulan and all(j in v for j in JENIS) and sidik(v) == target]
 
 
 def kode_faskes(data: dict) -> List[Tuple[str, str]]:
