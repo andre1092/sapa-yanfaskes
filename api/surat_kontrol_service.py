@@ -121,7 +121,8 @@ def baca_kiriman(data: bytes) -> List[Tuple[str, bytes]]:
     return hasil
 
 
-_PESAN_BESAR = "Berkas terlalu besar (batas 200 KB per berkas, 2 MB total)."
+_PESAN_BESAR = ("Ada berkas yang melebihi 200 KB, atau totalnya melebihi 2 MB. Pastikan berkasnya Crosstab CSV dari BI, "
+                "bukan Data Detail.")
 
 
 # --- baca satu CSV Crosstab ------------------------------------------------
@@ -165,7 +166,8 @@ def _tata_letak(apa: str) -> BerkasDitolak:
 def _status(label: str, apa: str) -> str:
     kunci = STATUS.get(label)
     if kunci is None:
-        raise BerkasDitolak(f"Berkas {apa} memuat status yang tidak dikenal.")
+        raise BerkasDitolak(f"Berkas {apa} memuat status selain Surkon < SEP, Surkon = SEP, dan Surkon > SEP. Unduh ulang "
+                            "dari BI. Bila pesan ini tetap muncul, tampilan BI mungkin berubah; hubungi administrator SAPA.")
     return kunci
 
 
@@ -317,7 +319,7 @@ def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]], hari_ini: Optiona
             asing[jenis] = asing.get(jenis, 0) + 1
             continue
         if (jenis, sheet) in dikenal:
-            raise BerkasDitolak(f"Sheet {sheet} {JENIS[jenis]} terpilih dua kali. Hapus salah satu.")
+            raise BerkasDitolak(f"Berkas {sheet} {JENIS[jenis]} terpilih dua kali. Hapus salah satu di daftar berkas.")
         dikenal[(jenis, sheet)] = isi
     for jenis, n in asing.items():
         raise BerkasDitolak(f"{n} berkas di area {JENIS[jenis].capitalize()} tidak dikenali sebagai sheet Surat Kontrol.")
@@ -338,8 +340,9 @@ def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]], hari_ini: Optiona
         if not (total == _jumlah(faskes) == _jumlah(tren)):
             rinci = "; ".join(f"{n} {sum(v.values()):,}".replace(",", ".")
                               for n, v in (("Header", total), ("Tren", _jumlah(tren)), ("Faskes", _jumlah(faskes))))
-            raise BerkasDitolak(f"Total Header, Tren, dan Faskes {nama_jenis} tidak cocok ({rinci}). Unduh ulang dari BI "
-                                "dengan filter yang sama untuk semua sheet.")
+            raise BerkasDitolak(f"Jumlah di berkas Header Surkon, Tren, dan Faskes Surkon {nama_jenis} berbeda ({rinci}). Di BI, "
+                                f"pastikan Tgl SEP, Fasilitas Kesehatan = (All), Status = (All), dan Jenis Pelayanan = "
+                                f"{nama_jenis.title()} sama untuk kelima sheet, lalu unduh ulang.")
         data[j] = {"total": total, "faskes": sorted(faskes, key=lambda f: -sum(f[k] for k in KUNCI)),
                    "poli": poli, "tren": tren}
         ringkas_jenis[j] = {"total": total, "faskes": len(faskes), "poli": len(poli),
@@ -348,8 +351,7 @@ def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]], hari_ini: Optiona
     data["sampai"] = f"{bulan}-{hari_akhir:02d}"
     if hari_ini is not None and hari_ini.strftime("%Y-%m") == bulan and hari_akhir > hari_ini.day:
         # Syarat Clara (e): bulan berjalan tidak mungkin punya data setelah hari ini.
-        raise BerkasDitolak(f"Sheet Tren memuat tanggal {hari_akhir}, melewati hari ini ({hari_ini.day} {label_bulan(bulan)}). "
-                            "Berkas ini kemungkinan dari bulan lain. Periksa bulan yang dipilih.")
+        raise BerkasDitolak("Sheet Tren memuat tanggal yang belum terjadi. Periksa bulan yang dipilih.")
     peringatan = []
     if sum(data["RI"]["total"].values()) > sum(data["RJ"]["total"].values()):
         peringatan.append("Total rawat inap lebih besar dari rawat jalan. Pastikan berkas rawat jalan dan rawat inap "

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 import { apiClient } from '../lib/apiClient';
 import { tanggalData } from '../lib/ssbiJadwal';
-import { BATAS_BERKAS_KB, SHEET, STATUS, angka, bulanUnggah, kenaliSheet, labelBulan, periksaArea, statusJenis, tanggalSampai } from '../lib/suratKontrol';
+import { BATAS_BERKAS_KB, SHEET, STATUS, angka, berkasDikirim, bulanUnggah, kenaliSheet, labelBulan, periksaArea, statusJenis, tanggalSampai } from '../lib/suratKontrol';
 import type { Jumlah, KeadaanSheet, Sheet } from '../lib/suratKontrol';
 import './suratKontrol.css';
 
@@ -17,7 +17,7 @@ type HasilPeriksa = {
   faskes_tak_dikenal: string[] | null;
 };
 type Area = 'RJ' | 'RI';
-type Pilihan = { berkas: File; sheet: Sheet | null };
+type Pilihan = { id: number; berkas: File; sheet: Sheet | null; besar: boolean };
 type Tahap = 'pilih' | 'memeriksa' | 'cocok' | 'galat' | 'mengirim' | 'berhasil' | 'gagal' | 'sibuk';
 
 const AREA: Record<Area, string> = { RJ: 'Rawat jalan', RI: 'Rawat inap' };
@@ -28,6 +28,8 @@ const pesanGalat = (error: unknown, cadangan: string) => {
   return typeof detail === 'string' ? detail : cadangan;
 };
 const statusHttp = (error: unknown) => (error as { response?: { status?: number } })?.response?.status;
+
+let urutBerkas = 0;
 
 async function bacaSheet(berkas: File): Promise<Sheet | null> {
   if (berkas.size > BATAS_BERKAS_KB * 1024) return null;
@@ -48,14 +50,15 @@ async function bungkus(pilihan: Record<Area, Pilihan[]>): Promise<Blob> {
   if (typeof CompressionStream === 'undefined') {
     throw new Error('Browser ini belum bisa mengompres berkas. Pakai Chrome, Edge, atau Firefox versi terbaru.');
   }
-  const daftar = await Promise.all((['RJ', 'RI'] as Area[]).flatMap(j => pilihan[j].map(async p => ({ jenis: j, isi: await base64(p.berkas) }))));
+  // v1.1 #17: berkas tidak dikenali atau melebihi batas (mis. Data Detail berisi Nomor SEP) tidak pernah dikirim.
+  const daftar = await Promise.all((['RJ', 'RI'] as Area[]).flatMap(j => berkasDikirim(pilihan[j]).map(async p => ({ jenis: j, isi: await base64(p.berkas) }))));
   return new Response(new Blob([JSON.stringify({ berkas: daftar })]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
 }
 
 const kirim = (aksi: 'periksa' | 'integrasikan', bulan: string, gz: Blob) =>
   apiClient.post(`/api/v1/surat-kontrol/${aksi}`, gz, { params: { bulan }, headers: { 'Content-Type': 'application/gzip' }, timeout: 60000 });
 
-function ZonaUnggah({ area, pilihan, onPilih, nonaktif }: { area: Area; pilihan: Pilihan[]; onPilih: (files: File[]) => void; nonaktif: boolean }) {
+function ZonaUnggah({ area, pilihan, onPilih, onHapus, onKosongkan, nonaktif }: { area: Area; pilihan: Pilihan[]; onPilih: (files: File[]) => void; onHapus: (id: number) => void; onKosongkan: () => void; nonaktif: boolean }) {
   const [seret, setSeret] = useState(false);
   const cek = periksaArea(pilihan.map(p => p.sheet));
   const onDrop = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setSeret(false); if (!nonaktif) onPilih(Array.from(e.dataTransfer.files ?? [])); };
@@ -63,15 +66,25 @@ function ZonaUnggah({ area, pilihan, onPilih, nonaktif }: { area: Area; pilihan:
     <h3>{AREA[area]}</h3>
     <p>Seret 5 berkas CSV ke sini, atau</p>
     <label className={`sapa-button sapa-button-secondary focus-within:outline focus-within:outline-2 ${nonaktif ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
-      Pilih berkas<span className="sr-only"> {AREA[area].toLowerCase()}</span>
-      <input type="file" multiple accept=".csv,text/csv" className="sr-only" disabled={nonaktif}
+      Pilih berkas
+      <input type="file" multiple accept=".csv,text/csv" className="sr-only" disabled={nonaktif} aria-label={`Pilih berkas ${AREA[area]}`}
         onChange={(e: ChangeEvent<HTMLInputElement>) => { onPilih(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
     </label>
     <ul className="sk-cek" aria-label={`Sheet ${AREA[area].toLowerCase()}`}>
       {SHEET.map(s => <li key={s} data-k={cek.sheet[s]}><span className="sk-tanda" aria-hidden="true">{TANDA[cek.sheet[s]][0]}</span>
         <span><strong>{s}</strong>{s === 'Keterangan' ? ' (opsional)' : ''}: {TANDA[cek.sheet[s]][1]}</span></li>)}
     </ul>
-    {cek.asing > 0 && <p className="sk-catatan" role="alert">{cek.asing} berkas tidak dikenali sebagai sheet Surat Kontrol.</p>}
+    {pilihan.length > 0 && <>
+      <ul className="sk-berkas" aria-label={`Berkas terpilih ${AREA[area].toLowerCase()}`}>
+        {pilihan.map(p => <li key={p.id}>
+          <span className="sk-berkas-nama">{p.berkas.name}</span>
+          <span className="sk-berkas-info">{(p.berkas.size / 1024).toLocaleString('id-ID', { maximumFractionDigits: 1 })} KB · {p.sheet ?? (p.besar ? 'Melebihi 200 KB, tidak dikirim' : 'Tidak dikenali, tidak dikirim')}</span>
+          <button type="button" className="sk-tautan" disabled={nonaktif} onClick={() => onHapus(p.id)} aria-label={`Hapus ${p.berkas.name}`}>Hapus</button>
+        </li>)}
+      </ul>
+      <button type="button" className="sk-tautan" disabled={nonaktif} onClick={onKosongkan} aria-label={`Kosongkan berkas ${AREA[area]}`}>Kosongkan</button>
+    </>}
+    {cek.asing > 0 && <p className="sk-catatan" role="status">{cek.asing} berkas tidak dikenali sebagai sheet Surat Kontrol dan tidak akan dikirim.</p>}
   </div>;
 }
 
@@ -85,7 +98,7 @@ export function UnggahSuratKontrol() {
   });
   const tersimpan = status.data?.bulan ?? [];
   const pilihanBulan = bulanUnggah(new Date());
-  const [bulan, setBulan] = useState(pilihanBulan[0]);
+  const [bulan, setBulan] = useState('');
   const [pilihan, setPilihan] = useState<Record<Area, Pilihan[]>>({ RJ: [], RI: [] });
   const [gz, setGz] = useState<Blob | null>(null);
   const [hasil, setHasil] = useState<HasilPeriksa | null>(null);
@@ -100,7 +113,7 @@ export function UnggahSuratKontrol() {
 
   const ulang = () => { setHasil(null); setGz(null); setGalat(''); setTahap('pilih'); };
   const tambah = async (area: Area, files: File[]) => {
-    const baru = await Promise.all(files.map(async berkas => ({ berkas, sheet: await bacaSheet(berkas).catch(() => null) })));
+    const baru = await Promise.all(files.map(async berkas => ({ id: ++urutBerkas, berkas, besar: berkas.size > BATAS_BERKAS_KB * 1024, sheet: await bacaSheet(berkas).catch(() => null) })));
     setPilihan(p => ({ ...p, [area]: [...p[area], ...baru] }));
     ulang();
   };
@@ -127,13 +140,18 @@ export function UnggahSuratKontrol() {
       queryClient.invalidateQueries({ queryKey: ['surat-kontrol'] });
       setTahap('berhasil');
     } catch (error) {
-      if (statusHttp(error) === 409) { setTahap('sibuk'); return; }
-      setGalat(pesanGalat(error, 'koneksi terputus')); setTahap('gagal');
+      const kode = statusHttp(error);
+      if (kode === 409) { setTahap('sibuk'); return; }
+      // v1.1 #19: pemetaan tetap untuk jaringan dan galat penyimpanan.
+      setGalat(kode === undefined ? `Data ${labelBulan(bulan)} belum tersimpan karena koneksi terputus. Data lama tetap dipakai. Coba lagi.`
+        : kode >= 500 ? `Data ${labelBulan(bulan)} belum tersimpan karena penyimpanan SAPA sedang bermasalah. Data lama tetap dipakai. Coba lagi beberapa menit lagi.`
+        : pesanGalat(error, 'Integrasi gagal. Data lama tetap dipakai.'));
+      setTahap('gagal');
     }
   };
 
   const bersihkan = () => { setPilihan({ RJ: [], RI: [] }); ulang(); };
-  const langkahAktif = tahap === 'berhasil' ? 4 : hasil ? 3 : lengkap ? 2 : 1;
+  const langkahAktif = tahap === 'berhasil' ? 4 : hasil ? 3 : bulan ? 2 : 1;
   const bisaIntegrasi = !!hasil && (tahap === 'cocok' || tahap === 'gagal' || tahap === 'sibuk');
 
   return (
@@ -159,13 +177,16 @@ export function UnggahSuratKontrol() {
         Bulan data
         <select id="sk-bulan-unggah" value={bulan} disabled={sibuk} onChange={e => { setBulan(e.target.value); ulang(); }}
           className="min-h-[44px] max-w-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface)] px-3 font-normal">
+          <option value="" disabled>Pilih bulan</option>
           {pilihanBulan.map(b => <option key={b} value={b}>{labelBulan(b)}</option>)}
         </select>
         <span className="text-xs font-normal text-[var(--text-muted)]">Pilih bulan yang sama dengan filter Tgl SEP di BI.</span>
       </label>
 
       <div className="sk-dua mt-4">
-        {(['RJ', 'RI'] as Area[]).map(a => <ZonaUnggah key={a} area={a} pilihan={pilihan[a]} nonaktif={sibuk} onPilih={files => void tambah(a, files)} />)}
+        {(['RJ', 'RI'] as Area[]).map(a => <ZonaUnggah key={a} area={a} pilihan={pilihan[a]} nonaktif={sibuk} onPilih={files => void tambah(a, files)}
+          onHapus={id => { setPilihan(p => ({ ...p, [a]: p[a].filter(x => x.id !== id) })); ulang(); }}
+          onKosongkan={() => { setPilihan(p => ({ ...p, [a]: [] })); ulang(); }} />)}
       </div>
 
       <details className="mt-3 text-sm">
@@ -173,9 +194,10 @@ export function UnggahSuratKontrol() {
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
           <li>Buka dashboard BI Monitoring Penerbitan Surat Kontrol (Cabang) di Chrome dan login.</li>
           <li>Atur filter: Tgl SEP = bulan yang dipilih di atas, Fasilitas Kesehatan = (All), Status = (All), Jenis Pelayanan = Rawat Jalan.</li>
-          <li>Pilih Download → Crosstab, pilih satu sheet, format CSV, lalu Download. Ulangi untuk kelima sheet: Header Surkon, Faskes Surkon, Tren, Poli, Keterangan.</li>
-          <li>Ganti Jenis Pelayanan ke Rawat Inap, lalu ulangi langkah 3.</li>
-          <li>Unggah berkasnya tanpa dibuka atau diubah di Excel. Nama berkas tidak perlu diganti.</li>
+          <li>Pilih Download → Crosstab, pilih satu sheet, format CSV, lalu Download. Ulangi untuk Header Surkon, Faskes Surkon, Tren, Poli, dan Keterangan.</li>
+          <li>Seret kelima berkas itu ke area Rawat jalan sekarang, karena nama berkas Rawat inap nanti sama.</li>
+          <li>Ganti Jenis Pelayanan ke Rawat Inap, ulangi langkah 3, lalu seret ke area Rawat inap. Jangan unduh sheet Data Detail, karena berisi Nomor SEP.</li>
+          <li>Unggah tanpa membuka atau mengubah berkas di Excel.</li>
         </ol>
       </details>
 
@@ -195,8 +217,8 @@ export function UnggahSuratKontrol() {
         {hasil?.ringkasan.peringatan.map(p => <p key={p} className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">{p}</p>)}
         {hasil?.faskes_tak_dikenal && hasil.faskes_tak_dikenal.length > 0 && tahap !== 'berhasil' && (
           <p className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
-            <strong>{angka(hasil.faskes_tak_dikenal.length)} faskes belum dikenali SAPA:</strong> {hasil.faskes_tak_dikenal.join('; ')}.
-            {' '}Datanya tetap tersimpan dan terlihat oleh Admin, tetapi Petugas RS-nya belum bisa melihatnya. Kabari tim teknis SAPA.
+            <strong>{angka(hasil.faskes_tak_dikenal.length)} kode faskes belum ada di tabel padanan SAPA:</strong> {hasil.faskes_tak_dikenal.join('; ')}.
+            {' '}Datanya tetap tersimpan dan terlihat oleh Admin, tetapi Petugas RS faskes ini belum bisa melihatnya. Minta tim teknis SAPA menambahkan kode ini ke padanan faskes.
           </p>
         )}
         {hasil?.ada && bisaIntegrasi && <p className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
@@ -206,13 +228,13 @@ export function UnggahSuratKontrol() {
           Data {labelBulan(bulan)} tersimpan. Data SEP sampai {tanggalSampai(hasil.ringkasan.sampai)}.{' '}
           <a className="tautan-kalimat underline text-[var(--action-primary)]" href="/monitoring-surat-kontrol">Buka Monitoring Surat Kontrol</a></div>}
         {tahap === 'gagal' && <div ref={hasilRef} tabIndex={-1} role="alert" className="rounded-lg border border-[var(--danger)] p-3 text-[var(--danger)]">
-          Integrasi gagal: {galat.charAt(0).toLowerCase() + galat.slice(1).replace(/\.$/, '')}. Data lama tetap dipakai, tidak ada yang berubah.</div>}
+          {galat}</div>}
         {tahap === 'sibuk' && <p role="alert" className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-[var(--text-main)]">
           Admin lain sedang mengintegrasikan data Surat Kontrol. Coba lagi setelah selesai.</p>}
       </div>
 
       {tahap !== 'berhasil' ? <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" className="sapa-button sapa-button-secondary" disabled={!lengkap || sibuk} aria-busy={tahap === 'memeriksa'} onClick={() => void periksa()}>
+        <button type="button" className="sapa-button sapa-button-secondary" disabled={!lengkap || !bulan || sibuk} aria-busy={tahap === 'memeriksa'} onClick={() => void periksa()}>
           {tahap === 'memeriksa' ? 'Memeriksa…' : 'Periksa'}</button>
         <button type="button" className="sapa-button sapa-button-primary" disabled={!bisaIntegrasi} aria-busy={tahap === 'mengirim'}
           onClick={() => (hasil?.ada ? setDialog(true) : void integrasikan())}>

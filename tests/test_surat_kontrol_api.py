@@ -301,4 +301,4 @@ def test_current_month_with_future_days_is_refused(env, monkeypatch):
     from datetime import date
     monkeypatch.setattr(api, "_sk_hari_ini", lambda: date(2026, 11, 5))
     res = unggah(call, "2026-11")
-    assert res.status_code == 400 and "melewati hari ini" in res.json()["detail"] and drive.tulis_dipanggil == 0
+    assert res.status_code == 400 and "tanggal yang belum terjadi" in res.json()["detail"] and drive.tulis_dipanggil == 0

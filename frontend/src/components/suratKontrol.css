@@ -34,31 +34,33 @@
 .sk-kpi.sk-n2 { grid-template-columns: 1fr 1fr; } .sk-kpi.sk-n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .sk-ubin { border: 1px solid var(--panel-border); border-radius: 10px; padding: 12px; min-width: 0; }
 .sk-ubin.sk-gt { border-left: 4px solid var(--sk-isi-gt); }
-.sk-ubin[data-redup='true'] { opacity: .55; }
+.sk-ubin[data-redup='true'] { background: var(--surface-subtle); border-style: dashed; }
+.sk-ubin[data-redup='true'] .sk-ubin-angka, .sk-ubin[data-redup='true'] .sk-ubin-persen { color: var(--text-muted); }
+.sk-ubin[data-redup='true'] .sk-sw { filter: grayscale(1); }
 .sk-ubin-nama { font-weight: 700; font-size: 13px; display: flex; align-items: center; color: var(--text-main); }
 .sk-ubin-angka { font-size: 28px; font-weight: 800; line-height: 1.15; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .sk-ubin-persen { font-style: italic; color: var(--text-muted); font-size: 13px; }
 .sk-ubin-def { margin-top: 6px; font-size: 12px; color: var(--text-muted); line-height: 1.45; }
-.sk-ubin-tidak { margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.sk-ubin-tidak { margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--text-main); }
 .sk-catatan { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
-.sk-tren svg { display: block; width: 100%; height: auto; overflow: visible; }
-.sk-tren .sk-sumbu { font-size: 10px; fill: var(--text-muted); }
-.sk-tren .sk-garis { stroke: var(--sk-grid); stroke-width: 1; }
+.sk-tren svg { display: block; overflow: visible; }
+.sk-tren .sk-sumbu { font-size: 11px; fill: var(--text-muted); }
 .sk-tren .sk-titik:focus { outline: none; } .sk-tren .sk-titik:focus-visible rect { stroke: var(--text-main); stroke-width: 2; }
 .sk-bar-daftar { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
 .sk-bar-daftar.sk-gulir { max-height: 300px; overflow-y: auto; padding: 3px 8px 3px 3px; }
 .sk-bar { display: grid; grid-template-columns: 150px minmax(0, 1fr) 60px; gap: 10px; align-items: center; font-size: 12px; min-height: 22px; color: var(--text-main); }
 .sk-bar-nama { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sk-batang { display: flex; gap: 2px; height: 14px; }
-.sk-batang span { height: 100%; border-radius: 2px; min-width: 0; }
+.sk-batang-jalur { display: block; min-width: 0; }
+.sk-batang { display: flex; gap: 2px; height: 14px; min-width: 2px; }
+.sk-batang span { height: 100%; border-radius: 2px; min-width: 2px; }
 .sk-bar-total { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.sk-bar[data-sorot='true'] { font-weight: 700; outline: 2px solid var(--text-main); outline-offset: 3px; border-radius: 2px; }
+.sk-bar[data-sorot='true'] { font-weight: 700; background: var(--surface-subtle); box-shadow: inset 0 0 0 2px var(--text-main); border-radius: 4px; padding: 2px 4px; }
 .sk-treemap { position: relative; height: 300px; }
 .sk-tm { position: absolute; padding: 1px; box-sizing: border-box; }
 .sk-tm-isi { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 2px; overflow: hidden; border-radius: 3px; position: relative; }
-.sk-tm-isi > span { flex: 0 0 auto; }
-.sk-tm-label { position: absolute; left: 6px; top: 5px; right: 6px; color: #fff; font-size: 11px; font-weight: 700; line-height: 1.25; text-shadow: 0 1px 2px rgb(0 0 0 / 55%); overflow: hidden; pointer-events: none; }
-.sk-tm-label b { display: block; font-size: 12px; }
+.sk-tm-isi > span { min-height: 2px; flex-basis: 0; }
+.sk-tm-label { position: absolute; left: 4px; top: 4px; max-width: calc(100% - 8px); background: var(--panel-bg, #fff); color: var(--text-main); font-size: 11px; font-weight: 600; line-height: 1.25; padding: 2px 5px; border-radius: 4px; overflow: hidden; pointer-events: none; font-variant-numeric: tabular-nums; }
+.sk-tm-label b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11px; font-weight: 700; }
 .sk-tm:focus { outline: none; } .sk-tm:focus-visible .sk-tm-isi { outline: 2px solid var(--text-main); outline-offset: 1px; }
 .sk-info { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; background: var(--sk-info-soft); color: var(--sk-info); }
 .sk-info a { color: inherit; font-weight: 700; text-decoration: underline; }
@@ -93,8 +95,23 @@
   .sk-panel { padding: 14px; }
   .sk-kpi.sk-n3 { grid-template-columns: 1fr 1fr; } .sk-kpi.sk-n3 .sk-gt { grid-column: 1 / -1; }
   .sk-ubin-angka, .sk-besar { font-size: 24px; }
-  .sk-bar { grid-template-columns: 110px minmax(0, 1fr) 52px; gap: 8px; }
+  .sk-dua-tingkat .sk-bar { grid-template-columns: minmax(0, 1fr) 52px; gap: 4px 8px; }
+  .sk-dua-tingkat .sk-bar-nama { grid-column: 1 / -1; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .sk-dua { grid-template-columns: 1fr; }
   .sk-tabel-bulan thead { display: none; } .sk-tabel-bulan tr { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
   .sk-tabel-bulan td { border: 0; padding: 0; }
 }
+
+/* v1.1 #14: simpul ekspor JPEG, 1280 px, tema terang, di luar layar */
+.sk-ekspor-wadah { position: fixed; left: -20000px; top: 0; pointer-events: none; }
+.sk-ekspor { width: 1280px; padding: 24px; background: #fff; color: #111827;
+  --text-main: #111827; --text-muted: #4b5563; --panel-border: #e3e8ef; --panel-bg: #fff; --surface-subtle: #f3f5f8; --border-color: #e3e8ef;
+  --sk-teks-lt: #3d7a35; --sk-teks-eq: #3b6593; --sk-teks-gt: #a85200; --sk-aksen: #b42318; }
+.sk-ekspor .berry-main-card { background: #fff !important; color: #111827 !important; border: 1px solid #e3e8ef; box-shadow: none; }
+.sk-ekspor .sk-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.sk-ekspor-judul { font-size: 14px; margin-bottom: 14px; }
+.sk-berkas { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12px; color: var(--text-main); }
+.sk-berkas li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; align-items: center; border-top: 1px solid var(--border-color); padding-top: 4px; }
+.sk-berkas-nama { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.sk-berkas-info { grid-column: 1; color: var(--text-muted); }
+.sk-berkas .sk-tautan { grid-column: 2; grid-row: 1 / span 2; min-width: 44px; }
