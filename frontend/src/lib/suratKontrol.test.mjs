@@ -153,3 +153,37 @@ test('pilihan bulan unggah dari Nov 2026 sampai bulan berjalan, terbaru di atas'
   assert.deepEqual(s.bulanUnggah(new Date(2027, 1, 3)), ['2027-02', '2027-01', '2026-12', '2026-11']);
   assert.deepEqual(s.bulanUnggah(new Date(2026, 10, 19)), ['2026-11']);
 });
+
+// --- tabel JPEG (perintah CEO 2026-11-19) ----------------------------------
+
+test('skor kepatuhan berjenjang cocok dengan titik data asli sheet Kris', () => {
+  // Titik nyata dari 1.459 baris 07_surkon_terbit (persentase → capaian).
+  for (const [pct, skor] of [[0, 0], [50, 0], [51.35, 25], [56.27, 25], [62.03, 50], [80, 50], [80.06, 75], [88.59, 75], [95.58, 100], [100, 100]]) {
+    assert.equal(s.skorKepatuhan(pct / 100), skor, `${pct}%`);
+  }
+  // Batas usulan (menunggu konfirmasi CEO): 90% → 100, 60% → 50.
+  assert.equal(s.skorKepatuhan(0.9), 100);
+  assert.equal(s.skorKepatuhan(0.8999), 75);
+  assert.equal(s.skorKepatuhan(0.6), 50);
+  assert.equal(s.skorKepatuhan(0.5999), 25);
+});
+
+test('baris tabel: sesuai = <, tidak sesuai = = dan >, skor hanya RJ, kuning bila ada tidak sesuai', () => {
+  const kab = { '0101R001': 'KAB. JEMBER' };
+  const rj = s.barisTabel(DATA.RJ, kab, 'RJ');
+  assert.deepEqual(rj.map(b => b.kode), ['0101R001', '0202R002']);
+  assert.deepEqual(rj[0], { kode: '0101R001', nama: 'RSD MAWAR', kabupaten: 'KAB. JEMBER', sesuai: 3513, tidak: 9, total: 3522,
+    pctSesuai: 3513 / 3522, pctTidak: 9 / 3522, capaian: 100, kuning: true });
+  assert.equal(rj[1].kabupaten, '-');
+  const ri = s.barisTabel(DATA.RI, kab, 'RI');
+  const mawar = ri.find(b => b.kode === '0101R001');
+  assert.deepEqual([mawar.sesuai, mawar.tidak, mawar.total, mawar.capaian], [2, 858 + 159, 1019, null]);
+  assert.equal(s.barisTabel(s.gabungJenis(DATA, 'semua'), kab, 'semua')[0].capaian, null);
+  const tanpa = s.barisTabel({ ...DATA.RJ, faskes: [{ kode: 'X', nama: 'X', ...j(10, 0, 0) }, { kode: 'Y', nama: 'Y', ...j(0, 0, 0) }] }, {}, 'RJ');
+  assert.deepEqual(tanpa.map(b => [b.kode, b.kuning]), [['X', false]]);
+});
+
+test('baris tabel urut menurut persen sesuai menurun', () => {
+  const d = { ...DATA.RJ, faskes: [{ kode: 'A', nama: 'A', ...j(50, 50, 0) }, { kode: 'B', nama: 'B', ...j(99, 1, 0) }, { kode: 'C', nama: 'C', ...j(10, 0, 0) }] };
+  assert.deepEqual(s.barisTabel(d, {}, 'RJ').map(b => b.kode), ['C', 'B', 'A']);
+});
