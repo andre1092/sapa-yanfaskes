@@ -40,6 +40,16 @@ TIMEOUT_SITEVERIFY_TAHAP = httpx.Timeout(connect=2.0, read=4.0, write=4.0, pool=
 
 ALASAN_KEDALUWARSA = "kedaluwarsa"
 
+# SEMENTARA, hanya di branch staging untuk uji backend: secret uji publik Cloudflare ("selalu lolos") menjawab
+# hostname example.com tanpa action dan cdata. Diterima hanya di preview dengan secret persis ini; produksi
+# menolak secret ini. Dihapus sebelum F2.
+SECRET_UJI_CLOUDFLARE = "1x0000000000000000000000000000000AA"
+HOST_UJI_CLOUDFLARE = "example.com"
+
+
+def _mode_kunci_uji() -> bool:
+    return os.environ.get("VERCEL_ENV") == "preview" and kunci_rahasia() == SECRET_UJI_CLOUDFLARE
+
 
 class TurnstileGagal(Exception):
     """status 403: jawaban ditolak (alasan "kedaluwarsa" untuk timeout-or-duplicate);
@@ -75,6 +85,11 @@ def _data_siteverify(token: str, ip: str | None, idempotency_key: str | None) ->
     if not rahasia:
         logger.error("Turnstile belum dikonfigurasi (%s kosong)", SECRET_ENV)
         raise TurnstileGagal(503, "belum dikonfigurasi")
+    if rahasia == SECRET_UJI_CLOUDFLARE:
+        if os.environ.get("VERCEL_ENV") != "preview":
+            logger.error("Kunci uji Turnstile terpasang di luar preview; ditolak")
+            raise TurnstileGagal(503, "kunci uji")
+        logger.warning("Kunci uji Turnstile aktif (hanya preview); cabut sesudah uji")
     data = {"secret": rahasia, "response": token}
     if ip:
         data["remoteip"] = ip
@@ -91,6 +106,9 @@ def _periksa_jawaban(hasil, aksi_diharapkan: str, cdata: str | None) -> dict:
 
     cocok = (hasil.get("success") is True and hasil.get("hostname") in host_diizinkan()
              and hasil.get("action") == aksi_diharapkan and (cdata is None or hasil.get("cdata") == cdata))
+    if (not cocok and _mode_kunci_uji() and hasil.get("success") is True
+            and hasil.get("hostname") == HOST_UJI_CLOUDFLARE and not hasil.get("action")):
+        return hasil
     if not cocok:
         # Hanya kode galat Cloudflare yang dicatat; jawaban dan token tidak.
         kode = [str(k) for k in (hasil.get("error-codes") or []) if isinstance(k, (str, int))]
