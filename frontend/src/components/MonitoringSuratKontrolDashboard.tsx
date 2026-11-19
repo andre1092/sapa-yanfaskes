@@ -279,6 +279,9 @@ export function MonitoringSuratKontrolDashboard() {
     const t = window.setTimeout(async () => {
       const node = eksporRef.current;
       if (!node || batal) return;
+      // Dua frame supaya tata letak dan gaya tabel selesai sebelum ditangkap.
+      await new Promise(selesai => requestAnimationFrame(() => requestAnimationFrame(() => selesai(null))));
+      if (batal) return;
       try {
         // Perintah CEO 2026-11-19: JPEG berupa tabel per faskes, bukan tangkapan panel.
         const url = await toJpeg(node, { quality: 0.95, backgroundColor: '#ffffff', pixelRatio: node.scrollHeight > 3000 ? 1 : 2, skipFonts: true });
@@ -353,7 +356,9 @@ export function MonitoringSuratKontrolDashboard() {
     ) : <div aria-busy={query.isFetching}><Isi {...props} penuh={false} /></div>}
 
     {/* Simpul ekspor di luar layar: tabel per faskes mengikuti Bulan dan Jenis pelayanan (keputusan CEO). */}
-    {jpeg === 'menyiapkan' && props && <div className="sk-ekspor-wadah" aria-hidden="true">
+    {/* id jpeg-export-* mengecualikan tabel dari animasi baris masuk global (index.css), yang membuat baris 8–12
+        masih transparan saat ditangkap (temuan Cinta di staging). */}
+    {jpeg === 'menyiapkan' && props && <div id="jpeg-export-surat-kontrol" className="sk-ekspor-wadah" aria-hidden="true">
       <div ref={eksporRef}>
         <TabelJpegSuratKontrol baris={barisTabel(props.d, r?.kabupaten ?? {}, jenis)} bulan={bulanAktif} jenis={jenis} sampai={props.sampai} namaRs={namaRs} kodeTerpilih={kodeRs} petugas={terkunci} />
       </div>

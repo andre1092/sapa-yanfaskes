@@ -3904,6 +3904,12 @@ def surat_kontrol_status(user=Depends(require_admin)):
     return JSONResponse(headers=_NO_STORE, content={"bulan": [_sk_ringkas_bulan(b, v) for b, v in isi["bulan"].items()]})
 
 
+# Cadangan bila kode PPK tidak ada di REF_FASKES (mis. 0188S002, 0191R006): awalan kode PPK per kabupaten di
+# KC Jember, dicocokkan Cinta dengan REF_FASKES untuk semua faskes Nov 2026.
+_SK_KAB_PREFIX = {"0188": "LUMAJANG", "1330": "LUMAJANG", "0189": "JEMBER", "1329": "JEMBER",
+                  "0191": "BONDOWOSO", "1332": "BONDOWOSO"}
+
+
 def _sk_kabupaten(data: Optional[dict]) -> Dict[str, str]:
     """Kabupaten per kode PPK dari referensi faskes (sumber yang sama dengan tab Kepatuhan), hanya untuk
     faskes yang ikut dikirim. Referensi gagal dibaca = peta kosong, data tetap tampil."""
@@ -3914,10 +3920,10 @@ def _sk_kabupaten(data: Optional[dict]) -> Dict[str, str]:
         ref = kepatuhan_service.get_ref_lookup()
     except Exception as exc:
         logger.warning("Referensi faskes tidak terbaca untuk Surat Kontrol: %s", type(exc).__name__)
-        return {}
+        ref = {}
     hasil = {}
     for k in sorted(kode):
-        kab = str((ref.get(k) or {}).get("kabupaten") or "").strip()
+        kab = str((ref.get(k) or {}).get("kabupaten") or "").strip() or _SK_KAB_PREFIX.get(k[:4], "")
         if kab:
             hasil[k] = kab[:60]
     return hasil
