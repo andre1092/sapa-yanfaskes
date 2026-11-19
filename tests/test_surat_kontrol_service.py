@@ -322,7 +322,7 @@ def test_hospital_officer_sees_only_own_row_and_totals_but_branch_trend():
     assert [f["kode"] for f in milik["RJ"]["faskes"]] == ["0202R002"]
     assert milik["RJ"]["total"] == {"lt": 87, "eq": 3, "gt": 0}
     assert milik["RI"]["total"] == {"lt": 0, "eq": 627, "gt": 112}
-    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b, disetujui Clara); tanpa nama RS.
+    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b); tanpa nama RS.
     assert milik["RJ"]["poli"] == data["RJ"]["poli"] and milik["RJ"]["tren"] == data["RJ"]["tren"]
     assert "MAWAR" not in json.dumps(milik)
     assert milik["sampai"] == data["sampai"]
@@ -335,7 +335,7 @@ def test_hospital_absent_this_month_gets_empty_rows():
     assert milik["RI"]["total"]["eq"] == 15
 
 
-# --- pengaman bulan salah (syarat Clara e, f) --------------------------------
+# --- pengaman bulan salah ---------------------------------------------------
 
 def test_current_month_cannot_have_days_after_today():
     from datetime import date
@@ -356,7 +356,7 @@ def test_identical_content_in_another_month_is_found():
     assert sk.bulan_kembar(simpan, "2026-12", lain) == []
 
 
-# --- review Clara PR #79 (S1, R1, R2, R4) ------------------------------------
+# --- digit ASCII, batas ukuran, dan skema berkas ---------------------------
 
 @pytest.mark.parametrize("bulan", ["２０２６-11", "\u0662\u0660\u0662\u0666-11", "2026-１1"])
 def test_unicode_digits_in_month_are_refused(bulan):

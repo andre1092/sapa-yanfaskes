@@ -107,7 +107,7 @@ def test_session_token_dari_auth0_yang_tidak_sah_ditolak_tanpa_memanggil_cloudfl
     assert cf.kiriman == []
 
 
-@pytest.mark.parametrize("ubah", [{"state": "state-lain"}, {"iss": "https://penyerang.example/"}])
+@pytest.mark.parametrize("ubah", [{"state": "state-lain"}, {"iss": "https://asing.example/"}])
 def test_klaim_state_atau_iss_yang_tidak_cocok_ditolak(ubah):
     with pytest.raises(vs.VerifikasiGagal) as err:
         vs.verifikasi(STATE, token_masuk(**ubah), "jawaban", None, post=Cloudflare())

@@ -39,7 +39,7 @@ class FakeDrive:
         return self.versi, dict(properti)
 
 
-# N6: tanggal "hari ini" dikunci supaya tes tidak bergantung pada jam nyata (data uji sampai 12 November 2026).
+# Tanggal "hari ini" dikunci supaya tes tidak bergantung pada jam nyata (data uji sampai 12 November 2026).
 HARI_INI_UJI = date(2026, 11, 19)
 
 
@@ -252,9 +252,9 @@ def test_petugas_sees_only_own_hospital_and_parameter_is_ignored(env):
     assert body["terkunci"] is True and body["rs"] == {"kode": "0101R001", "nama": "RSD MAWAR"}
     assert [f["kode"] for f in body["data"]["RJ"]["faskes"]] == ["0101R001"]
     assert body["data"]["RJ"]["total"]["lt"] == 3513
-    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b, disetujui Clara).
+    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b).
     assert body["data"]["RJ"]["poli"] and body["data"]["RJ"]["tren"]
-    # Syarat Clara C: tidak ada baris atau kode RS lain di mana pun dalam JSON.
+    # Tidak ada baris atau kode RS lain di mana pun dalam JSON.
     for lain in ("MELATI", "KENANGA", "0202R002", "0303S003"):
         assert lain not in res.text
 

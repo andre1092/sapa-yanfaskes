@@ -1,21 +1,13 @@
-polars>=1.0.0
-fastapi>=0.110.0
-mangum>=0.17.0
-uvicorn>=0.28.0
-requests>=2.33.0
-httpx>=0.27.0
-python-multipart>=0.0.31
+# Satu sumber dependensi (tindak lanjut insiden httpx 2026-11-19).
+# Paket API (yang dipasang Vercel untuk api/index.py) HANYA dicatat di api/requirements.txt.
+# Berkas ini = paket API + paket yang tidak dipakai jalur produksi api/.
+-r api/requirements.txt
+
+# Belum ditemukan pemakai di kode yang dilacak git (PR login BFF 1b). Dipertahankan sampai diputuskan
+# dihapus; jangan dipakai kode api/ tanpa memindahkannya ke api/requirements.txt.
 fastexcel>=0.11.0
-google-api-python-client>=2.130.0
-google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.2.0
-PyJWT[crypto]>=2.15.0
-cryptography>=41.0.0
-SQLAlchemy>=2.0.31
-asyncpg>=0.29.0
 alembic>=1.13.2
 gunicorn>=22.0.0
 passlib[argon2]>=1.7.4
 argon2-cffi>=23.1.0
-google-auth>=2.30.0
-xlsxwriter>=3.2.0

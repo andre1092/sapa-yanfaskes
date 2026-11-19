@@ -187,7 +187,6 @@ def test_unreadable_source_returns_no_data_instead_of_sample_data(monkeypatch):
     api = load_index()
     api._SHEETS_CACHE.clear()
     monkeypatch.setattr(api, "read_sheet_csv", lambda *a, **k: None)
-    monkeypatch.setattr(api, "get_sheets_service", lambda: None)
     assert not hasattr(api, "generate_mock_multi_sheets")
     data = api.fetch_multiple_sheets(api.FKRTL_ANTROL_SPREADSHEET_ID, ["DB_FASKES!A:Z"], force_refresh=True)
     assert all(frame.is_empty() for frame in data.values())

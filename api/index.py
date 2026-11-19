@@ -69,12 +69,6 @@ import jwt
 import uuid
 from jwt import PyJWKClient
 try:
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    HAS_GOOGLE_CLIENT = True
-except (ImportError, ModuleNotFoundError):
-    HAS_GOOGLE_CLIENT = False
-try:
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy import text
 except Exception:
@@ -138,8 +132,6 @@ TERIMA_BEARER = not (LOGIN_BFF and os.environ.get("SAPA_TERIMA_BEARER", "1").str
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
 # Klaim peran yang ditambahkan Action login Auth0 ke token akses.
 ROLES_CLAIM = os.environ.get("AUTH0_ROLES_CLAIM", "https://sapa-yanfaskes.com/roles")
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 # Domain Normalization & Sanitization
 # Strip whitespace, https://, http://, and trailing slashes
@@ -262,7 +254,7 @@ def ip_pengguna(request) -> Optional[str]:
 
 
 def ip_klien(request) -> Optional[str]:
-    """BF-1, satu sumber IP untuk login BFF (siteverify remoteip, auth0-forwarded-for, pembatas).
+    """Satu sumber IP untuk login BFF (siteverify remoteip, auth0-forwarded-for, pembatas).
 
     Di Vercel hanya header yang ditulis Vercel (x-vercel-forwarded-for, lalu x-real-ip); alamat koneksi
     tidak dipakai karena itu IP infrastruktur yang sama untuk semua pengguna. None berarti login 503.
@@ -469,7 +461,7 @@ async def audit_middleware(request: Request, call_next):
         if audit_log.should_record(request.method, path, response.status_code, query):
             claims = getattr(request.state, "audit_claims", None)
             if LOGIN_BFF:
-                # Sumber IP sama dengan login (ip_klien, BF-1); tanpa IP tepercaya dicatat kosong,
+                # Sumber IP sama dengan login (ip_klien); tanpa IP tepercaya dicatat kosong,
                 # bukan IP infrastruktur Vercel.
                 ip_diteruskan, ip_koneksi = ip_klien(request) or "", None
             else:
@@ -524,7 +516,7 @@ if LOGIN_BFF:
         cookie = request.cookies.get(sesi_service.NAMA_COOKIE)
         if cookie and request.url.path.startswith("/api/") and request.url.path != "/api/v1/auth/masuk":
             try:
-                # BF-2: di Vercel penyegaran hanya dengan IP tepercaya (auth0-forwarded-for).
+                # Di Vercel penyegaran hanya dengan IP tepercaya (auth0-forwarded-for).
                 request.state.sapa_sesi = await sesi_service.ambil_sesi_segar(
                     cookie, adalah_admin=_token_admin, ip=ip_klien(request), ip_wajib=_di_vercel())
             except sesi_service.SesiBelumSiap:
@@ -603,8 +595,7 @@ class VerifikasiManusia(BaseModel):
 def verifikasi_manusia(body: VerifikasiManusia, request: Request):
     """Dipanggil halaman /verifikasi di tengah login Auth0, jadi tanpa token SAPA.
 
-    Pengerasan yang disengaja dan berlaku juga saat flag 0 (BF-1 meminta kedua pembacaan
-    x-forwarded-for mentah diganti): remoteip memakai ip_pengguna, dan hostname localhost ditolak
+    Berlaku juga saat flag 0 (kedua pembacaan x-forwarded-for mentah diganti): remoteip memakai ip_pengguna, dan hostname localhost ditolak
     turnstile.cek_turnstile di Production. Di Vercel x-forwarded-for sudah ditulis ulang Vercel, jadi
     IP yang dikirim ke Cloudflare sama dengan sebelumnya.
     """
@@ -1042,28 +1033,6 @@ def format_timestamp_standard(ts_str: Any) -> str:
     return s
 
 
-def get_sheets_service():
-    if not HAS_GOOGLE_CLIENT:
-        return None
-    gcp_creds = os.environ.get("GCP_SA_CREDENTIALS_BASE64") or os.environ.get("GCP_SA_CREDENTIALS_JSON")
-    if not gcp_creds:
-        return None
-    try:
-        import base64
-        try:
-            creds_str = base64.b64decode(gcp_creds).decode('utf-8')
-            creds_info = json.loads(creds_str)
-        except Exception:
-            creds_info = json.loads(gcp_creds)
-            
-        credentials = service_account.Credentials.from_service_account_info(
-            creds_info, scopes=SCOPES
-        )
-        return build('sheets', 'v4', credentials=credentials, cache_discovery=False)
-    except Exception as e:
-        logger.error(f"Failed to initialize Google Sheets service: {e}")
-        return None
-
 # Satu-satunya spreadsheet antrean FKRTL; tidak bisa diganti dari permintaan.
 FKRTL_ANTROL_SPREADSHEET_ID = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY"
 
@@ -1131,61 +1100,17 @@ def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_ref
     if force_refresh:
         invalidate_sheets_cache(spreadsheet_id)
 
-    # 1. Sheets API lewat akun layanan (sheets_source), per tab.
+    # Sheets API lewat akun layanan (sheets_source), per tab di SHEET_GIDS (DB_FASKES, DB_LAP_ANTROL_FKRTL,
+    # per_poli: seluruh tab, jadi mencakup range_names pemanggil). range_names dipertahankan untuk kompatibilitas.
     live_dfs = fetch_live_google_sheets(spreadsheet_id, force_refresh=force_refresh)
     if any(live_dfs.get(name) is not None and not live_dfs[name].is_empty() for name in ("DB_LAP_ANTROL_FKRTL", "per_poli")):
         return live_dfs
 
-    # 2. Cadangan: batchGet lewat klien Google API dengan akun layanan yang sama.
-    service = get_sheets_service()
-    if not service:
-        logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
-        return {}
-        
-    try:
-        sheet = service.spreadsheets()
-        result = sheet.values().batchGet(spreadsheetId=spreadsheet_id, ranges=range_names).execute()
-        value_ranges = result.get('valueRanges', [])
-        
-        dfs: Dict[str, pl.DataFrame] = {}
-        for vr in value_ranges:
-            range_key = vr.get('range', '').split('!')[0].replace("'", "")
-            rows = vr.get('values', [])
-            if not rows or len(rows) < 1:
-                dfs[range_key] = pl.DataFrame()
-                continue
-                
-            headers = [str(h).strip() for h in rows[0]]
-            data = rows[1:] if len(rows) > 1 else []
-            
-            seen = {}
-            unique_headers = []
-            for h in headers:
-                if h in seen:
-                    seen[h] += 1
-                    unique_headers.append(f"{h}_{seen[h]}")
-                else:
-                    seen[h] = 1
-                    unique_headers.append(h)
-            
-            normalized_data = []
-            for r in data:
-                row_list = list(r)
-                if len(row_list) < len(unique_headers):
-                    row_list.extend([""] * (len(unique_headers) - len(row_list)))
-                elif len(row_list) > len(unique_headers):
-                    row_list = row_list[:len(unique_headers)]
-                normalized_data.append(row_list)
-                
-            if normalized_data:
-                dfs[range_key] = pl.DataFrame(normalized_data, schema=unique_headers, orient="row")
-            else:
-                dfs[range_key] = pl.DataFrame(schema=unique_headers)
-                
-        return dfs
-    except Exception as e:
-        logger.error(f"Sumber antrean FKRTL tidak terbaca ({type(e).__name__}); data kosong dikembalikan")
-        return {}
+    # Jalur cadangan batchGet lewat googleapiclient dihapus (2026-11-19): paket itu tidak pernah ada di
+    # api/requirements.txt, jadi jalur itu selalu mati di Vercel, dan memakai akun layanan yang sama dengan
+    # sheets_source sehingga tidak menolong saat jalur utama gagal.
+    logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
+    return {}
 
 # --- FKRTL PEMANFAATAN ANTROL ANALYTICS ENDPOINT ---
 @app.get("/api/v1/fkrtl-antrol-stats")
@@ -3685,7 +3610,7 @@ async def get_fktp_antrol_stats(
 # ==============================================================================
 # --- DATA SSBI KESESUAIAN JADWAL PRAKTIK DOKTER FKRTL (Integrasi data + Download Detail) ---
 # Unggah/integrasikan: Admin ke atas. Unduh: Admin ke atas (semua RS) atau Petugas RS (RS sendiri,
-# lewat tabel padanan; gagal tertutup). Viewer ditolak. Syarat keamanan: laporan Clara 2026-11-16.
+# lewat tabel padanan; gagal tertutup). Viewer ditolak.
 # ==============================================================================
 _SSBI_JENIS = "application/gzip"
 _SSBI_KUNCI = 0x55B1_0001  # kunci advisory Postgres: satu integrasi pada satu waktu
@@ -3983,7 +3908,7 @@ def _sk_isi(segar: bool = False) -> dict:
         with _sk_simpanan_lock:
             if _sk_simpanan["versi"] == info["versi"] and _sk_simpanan["isi"] is not None:
                 return _sk_simpanan["isi"]
-    if info["ukuran"] > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5: tolak sebelum diunduh
+    if info["ukuran"] > surat_kontrol_service.BATAS_SIMPANAN:  # tolak sebelum diunduh
         raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
     isi = surat_kontrol_service.baca_simpanan(_sk_drive_unduh() if info["ukuran"] else b"")
     with _sk_simpanan_lock:
@@ -4022,7 +3947,7 @@ async def _sk_terima(request: Request, bulan: str):
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
         raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
     bulan = _sk_bulan_param(bulan)
-    request.state.audit_detail = f"bulan={bulan}"  # review Clara R3: unggahan yang ditolak tetap tercatat
+    request.state.audit_detail = f"bulan={bulan}"  # unggahan yang ditolak tetap tercatat
     batas = surat_kontrol_service.BATAS_KOMPRES
     terlalu_besar = HTTPException(status_code=413, detail="Kiriman terlalu besar (batas 1 MB setelah dikompres).", headers=_NO_STORE)
     try:
@@ -4057,7 +3982,7 @@ def _sk_tak_dikenal(data: dict) -> Optional[List[str]]:
     except Exception as exc:
         logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
         return None
-    # Hanya kode PPK yang ditampilkan ke admin (desain Kim); nama dan isi sel tidak.
+    # Hanya kode PPK yang ditampilkan ke admin; nama dan isi sel tidak.
     return [kode for kode, _ in surat_kontrol_service.kode_faskes(data) if kode not in dikenal]
 
 
@@ -4069,7 +3994,7 @@ async def surat_kontrol_periksa(request: Request, bulan: str = "", user=Depends(
     try:
         isi = await run_in_threadpool(_sk_isi)
         ada = _sk_ringkas_bulan(bulan, isi["bulan"][bulan]) if bulan in isi["bulan"] else None
-        # Syarat Clara (f): isi identik dengan bulan lain = kemungkinan salah pilih bulan (peringatan saja).
+        # Isi identik dengan bulan lain = kemungkinan salah pilih bulan (peringatan saja).
         for lain in surat_kontrol_service.bulan_kembar(isi, bulan, hasil.data):
             hasil.ringkasan["peringatan"].append(f"Isi sama persis dengan data {surat_kontrol_service.label_bulan(lain)}; "
                                                  "pastikan bulan yang dipilih benar.")
@@ -4092,7 +4017,7 @@ async def surat_kontrol_integrasikan(request: Request, bulan: str = "", user=Dep
 
         def ganti():
             ukuran = _sk_drive_info()["ukuran"]
-            if ukuran > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5
+            if ukuran > surat_kontrol_service.BATAS_SIMPANAN:  # tolak simpanan terlalu besar
                 raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
             lama = _sk_drive_unduh() if ukuran else b""
             baru = surat_kontrol_service.simpanan_baru(lama, bulan, hasil.data, meta)
