@@ -115,8 +115,8 @@ test('treemap mengisi kotak penuh dengan luas sebanding nilai', () => {
 });
 
 test('nama berkas JPEG mengikuti filter tanpa karakter aneh', () => {
-  assert.equal(s.namaBerkasJpeg('2026-11', 'RJ', ''), 'Monitoring_Surat_Kontrol_November_2026_RJ');
-  assert.equal(s.namaBerkasJpeg('2026-11', 'semua', 'MELATI LUMAJANG, RSUD'), 'Monitoring_Surat_Kontrol_November_2026_Semua_MELATI_LUMAJANG_RSUD');
+  assert.equal(s.namaBerkasJpeg('2026-11', 'RJ', ''), 'Monitoring_Surat_Kontrol_Tabel_November_2026_RJ');
+  assert.equal(s.namaBerkasJpeg('2026-11', 'semua', 'MELATI LUMAJANG, RSUD'), 'Monitoring_Surat_Kontrol_Tabel_November_2026_Semua_MELATI_LUMAJANG_RSUD');
 });
 
 // Tata letak meniru Crosstab asli (baris pertama), nama samaran.
@@ -186,4 +186,20 @@ test('baris tabel: sesuai = <, tidak sesuai = = dan >, skor hanya RJ, kuning bil
 test('baris tabel urut menurut persen sesuai menurun', () => {
   const d = { ...DATA.RJ, faskes: [{ kode: 'A', nama: 'A', ...j(50, 50, 0) }, { kode: 'B', nama: 'B', ...j(99, 1, 0) }, { kode: 'C', nama: 'C', ...j(10, 0, 0) }] };
   assert.deepEqual(s.barisTabel(d, {}, 'RJ').map(b => b.kode), ['C', 'B', 'A']);
+});
+
+test('label kabupaten tanpa awalan KAB., huruf kapital awal; kosong jadi tanda hubung', () => {
+  assert.equal(s.labelKabupaten('KAB. JEMBER'), 'Jember');
+  assert.equal(s.labelKabupaten('Kab Lumajang'), 'Lumajang');
+  assert.equal(s.labelKabupaten('BONDOWOSO'), 'Bondowoso');
+  assert.equal(s.labelKabupaten('-'), '-');
+  assert.equal(s.labelKabupaten(''), '-');
+});
+
+test('baris Total cabang menjumlahkan semua faskes dan memakai rumus skor yang sama', () => {
+  const rj = s.totalTabel(s.barisTabel(DATA.RJ, {}, 'RJ'), 'RJ');
+  assert.deepEqual([rj.sesuai, rj.tidak, rj.total, rj.capaian], [3600, 12, 3612, 100]);
+  assert.equal(rj.pctSesuai, 3600 / 3612);
+  assert.equal(s.totalTabel(s.barisTabel(DATA.RI, {}, 'RI'), 'RI').capaian, null);
+  assert.equal(s.totalTabel([], 'RJ').total, 0);
 });

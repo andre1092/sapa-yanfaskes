@@ -152,7 +152,7 @@ export function treemap(items: { id: string; nilai: number }[], w: number, h: nu
 const aman = (teks: string) => teks.normalize('NFKD').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 export function namaBerkasJpeg(bulan: string, jenis: PilihanJenis, rs: string): string {
-  return ['Monitoring_Surat_Kontrol', aman(labelBulan(bulan)), jenis === 'semua' ? 'Semua' : jenis, rs ? aman(rs) : '']
+  return ['Monitoring_Surat_Kontrol_Tabel', aman(labelBulan(bulan)), jenis === 'semua' ? 'Semua' : jenis, rs ? aman(rs) : '']
     .filter(Boolean).join('_');
 }
 
@@ -229,4 +229,20 @@ export function barisTabel(d: DataJenis, kabupaten: Record<string, string>, jeni
       capaian: jenis === 'RJ' && total ? skorKepatuhan(f.lt / total) : null, kuning: tidak > 0,
     };
   }).filter(b => b.total > 0).sort((a, b) => b.pctSesuai - a.pctSesuai || b.total - a.total);
+}
+
+/** "KAB. JEMBER" → "Jember" (spek Kim); kosong → "-". */
+export function labelKabupaten(kab: string): string {
+  const inti = (kab || '').replace(/^kab(upaten)?\.?\s*/i, '').trim();
+  if (!inti || inti === '-') return '-';
+  return inti.toLowerCase().replace(/(^|\s)\S/g, h => h.toUpperCase());
+}
+
+/** Baris Total cabang (tidak dipakai untuk Petugas RS); capaian memakai rumus yang sama. */
+export function totalTabel(baris: BarisTabel[], jenis: PilihanJenis) {
+  const sesuai = baris.reduce((a, b) => a + b.sesuai, 0);
+  const tidak = baris.reduce((a, b) => a + b.tidak, 0);
+  const total = sesuai + tidak;
+  return { sesuai, tidak, total, pctSesuai: total ? sesuai / total : 0, pctTidak: total ? tidak / total : 0,
+    capaian: jenis === 'RJ' && total ? skorKepatuhan(sesuai / total) : null };
 }

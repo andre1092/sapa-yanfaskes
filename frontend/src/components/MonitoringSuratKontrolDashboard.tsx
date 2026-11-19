@@ -355,7 +355,7 @@ export function MonitoringSuratKontrolDashboard() {
     {/* Simpul ekspor di luar layar: tabel per faskes mengikuti Bulan dan Jenis pelayanan (keputusan CEO). */}
     {jpeg === 'menyiapkan' && props && <div className="sk-ekspor-wadah" aria-hidden="true">
       <div ref={eksporRef}>
-        <TabelJpegSuratKontrol baris={barisTabel(props.d, r?.kabupaten ?? {}, jenis)} bulan={bulanAktif} jenis={jenis} sampai={props.sampai} namaRs={namaRs} />
+        <TabelJpegSuratKontrol baris={barisTabel(props.d, r?.kabupaten ?? {}, jenis)} bulan={bulanAktif} jenis={jenis} sampai={props.sampai} namaRs={namaRs} kodeTerpilih={kodeRs} petugas={terkunci} />
       </div>
     </div>}
   </div>;
