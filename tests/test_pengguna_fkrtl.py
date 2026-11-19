@@ -215,7 +215,7 @@ def test_tindakan_akun_tercatat_di_audit_log(api):
         assert api.audit_log.should_record("POST", path, 200, ""), path
 
 
-# --- Temuan review keamanan Agen Clara (2026-11-13) ---
+# --- status akun, atur ulang sandi, dan sesi browser lama ---
 def test_ganti_sandi_ditolak_bila_tidak_wajib_ganti(api):
     # Token curian atau browser yang ditinggal terbuka tidak bisa mengganti sandi lewat SAPA.
     res = call(api, "POST", "/api/v1/akun/ganti-sandi", PETUGAS, sub="auth0|petugas", body={"sandi_baru": "SandiBaruKuat2026"})
@@ -256,7 +256,7 @@ def test_atur_ulang_memasang_wajib_ganti_sebelum_sandi_baru(api):
 
 
 def test_token_lama_tidak_bisa_menetapkan_sandi_setelah_atur_ulang(api):
-    # Sisa risiko dari cek ulang Clara: token yang terbit sebelum atur ulang ditolak.
+    # Token yang terbit sebelum atur ulang ditolak.
     import time as _time
     lama = int(_time.time()) - 600
     assert call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"]).status_code == 200
@@ -273,7 +273,7 @@ def test_token_lama_tidak_bisa_menetapkan_sandi_setelah_atur_ulang(api):
 
 
 def test_atur_ulang_mengakhiri_sesi_lama_petugas(api):
-    # Catatan Clara setelah merge PR #51: browser lama tidak boleh diam-diam mendapat token baru.
+    # Browser lama tidak boleh diam-diam mendapat token baru.
     res = call(api, "POST", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas/atur-ulang-sandi", ["super_admin"])
     assert res.status_code == 200 and res.json()["sesi_dihapus"] is True
     hapus = [c[1] for c in api.fake.calls if c[0] == "DELETE"]
@@ -314,7 +314,7 @@ def test_variabel_auth0_dirapikan_dari_spasi_dan_baris_baru(monkeypatch):
 
 
 def test_nonaktifkan_juga_mengakhiri_sesi_lama(api):
-    # Saran Clara: sesi browser lama tidak boleh hidup kembali saat akun diaktifkan lagi.
+    # Sesi browser lama tidak boleh hidup kembali saat akun diaktifkan lagi.
     res = call(api, "PATCH", "/api/v1/pengguna-fkrtl/auth0%7Cpetugas", ["super_admin"], body={"aktif": False})
     assert res.status_code == 200 and res.json()["sesi_dihapus"] is True
     assert [c[1] for c in api.fake.calls if c[0] == "DELETE"] == [

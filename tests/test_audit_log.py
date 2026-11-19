@@ -10,7 +10,7 @@ import audit_log  # noqa: E402  (api/ ditambahkan ke sys.path oleh test_api_auth
 
 @pytest.fixture
 def setup(monkeypatch):
-    # VERCEL=1: header IP Vercel hanya dipercaya di Vercel (flag 1 memakai ip_klien, BF-1).
+    # VERCEL=1: header IP Vercel hanya dipercaya di Vercel (flag 1 memakai ip_klien).
     api = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com", VERCEL="1")
     written = []
 
@@ -42,7 +42,7 @@ def test_admin_action_is_recorded_without_email_or_token(setup):
     entry = written[0]
     assert entry["actor"] == "auth0|ceo" and entry["role"] == "super_admin"
     assert entry["action"] == "GET /api/v1/fktp-antrol-stats" and entry["status"] == 200
-    # Flag 0: perilaku lama (X-Forwarded-For). Flag 1 (BF-1): X-Forwarded-For mentah tidak dipercaya,
+    # Flag 0: perilaku lama (X-Forwarded-For). Flag 1: X-Forwarded-For mentah tidak dipercaya,
     # hanya header yang ditulis Vercel.
     assert entry["ip"] == ("198.51.100.0" if api.LOGIN_BFF else "203.0.113.0")
     blob = json.dumps(entry)

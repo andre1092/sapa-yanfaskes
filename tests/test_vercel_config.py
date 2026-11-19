@@ -102,7 +102,7 @@ def test_every_public_file_is_served_as_itself():
 
 
 def test_versi_python_resmi_sama_dengan_runtime_vercel():
-    """N2: versi Python resmi repo. Tanpa berkas versi Vercel memakai bawaannya (3.12), jadi .python-version
+    """Versi Python resmi repo. Tanpa berkas versi Vercel memakai bawaannya (3.12), jadi .python-version
     mengunci versi yang sudah dipakai deployment. Vercel saat ini mendukung 3.12, 3.13, dan 3.14."""
     versi = (Path(__file__).resolve().parents[1] / ".python-version").read_text(encoding="utf-8").strip()
     assert versi == "3.12"

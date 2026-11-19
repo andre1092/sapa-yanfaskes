@@ -76,10 +76,9 @@ api = Path(sys.argv[1])
 sys.path.insert(0, str(api))
 # Gagal yang sudah diketahui dan diterima, dengan alasannya. Bila salah satunya mulai berhasil, hapus dari sini.
 DIKETAHUI = {
-    # SQLAlchemy 2.1 memasang greenlet hanya lewat extra [asyncio]. Tanpa greenlet, db.get_db di index.py jatuh
-    # ke stub (SCIM stub menjawab "Database not configured"), sama seperti main. Menambah extra mengubah
-    # perilaku produksi endpoint SCIM, jadi menunggu keputusan (docs/runbook-login-bff.md bagian 8).
-    "sqlalchemy.ext.asyncio": "greenlet belum terpasang (keputusan terbuka)",
+    # SQLAlchemy 2.1 memasang greenlet hanya lewat extra [asyncio]; extra itu belum dipasang di
+    # api/requirements.txt.
+    "sqlalchemy.ext.asyncio": "greenlet belum terpasang",
 }
 lokal = {p.stem for p in api.glob("*.py")} | {p.name for p in api.iterdir() if (p / "__init__.py").exists()}
 lokal.add("api")  # impor paket api.* dari tes di dalam api/

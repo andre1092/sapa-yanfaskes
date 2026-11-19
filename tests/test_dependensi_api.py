@@ -7,8 +7,10 @@ Yang tidak terlihat di sini: dependensi lewat extra paket (mis. greenlet untuk s
 diperiksa scripts/uji-impor-bersih.sh dengan mengimpor setiap modul di venv bersih.
 """
 import ast
+import importlib.util
 import re
 import sys
+import sysconfig
 from pathlib import Path
 
 import pytest
@@ -64,10 +66,31 @@ def berkas_produksi() -> list:
     return sorted(p for p in API.glob("*.py") if not p.name.startswith("test_"))
 
 
+# Modul tingkat atas pustaka standar Python 3.9 (termasuk modul khusus Windows dan Linux), dipakai bila
+# sys.stdlib_module_names belum ada (baru sejak 3.10). Hanya nama publik; impor bernama _x tidak dipakai api/.
+STDLIB_CADANGAN = frozenset("""
+__future__ abc aifc antigravity argparse array ast asynchat asyncio asyncore atexit audioop base64 bdb
+binascii binhex bisect builtins bz2 cProfile calendar cgi cgitb chunk cmath cmd code codecs codeop collections
+colorsys compileall concurrent configparser contextlib contextvars copy copyreg crypt csv ctypes curses
+dataclasses datetime dbm decimal difflib dis distutils doctest email encodings ensurepip enum errno
+faulthandler fcntl filecmp fileinput fnmatch formatter fractions ftplib functools gc genericpath getopt getpass
+gettext glob graphlib grp gzip hashlib heapq hmac html http imaplib imghdr imp importlib inspect io ipaddress
+itertools json keyword lib2to3 linecache locale logging lzma mailbox mailcap marshal math mimetypes mmap
+modulefinder msilib msvcrt multiprocessing netrc nis nntplib nt ntpath nturl2path numbers opcode operator
+optparse os ossaudiodev parser pathlib pdb pickle pickletools pipes pkgutil platform plistlib poplib posix
+posixpath pprint profile pstats pty pwd py_compile pyclbr pydoc pydoc_data pyexpat queue quopri random re
+readline reprlib resource rlcompleter runpy sched secrets select selectors shelve shlex shutil signal site
+smtpd smtplib sndhdr socket socketserver spwd sqlite3 sre_compile sre_constants sre_parse ssl stat statistics
+string stringprep struct subprocess sunau symbol symtable sys sysconfig syslog tabnanny tarfile telnetlib
+tempfile termios textwrap this threading time timeit tkinter token tokenize trace traceback tracemalloc tty
+turtle turtledemo types typing unicodedata unittest urllib uu uuid venv warnings wave weakref webbrowser
+winreg winsound wsgiref xdrlib xml xmlrpc xxlimited xxsubtype zipapp zipfile zipimport zlib zoneinfo
+""".split())
+
+
 def stdlib() -> set:
-    if not hasattr(sys, "stdlib_module_names"):
-        pytest.skip("butuh Python 3.10+ (runtime resmi 3.12)")
-    return set(sys.stdlib_module_names)
+    """Nama modul pustaka standar: dari runtime (3.10+), atau STDLIB_CADANGAN untuk Python 3.9."""
+    return set(getattr(sys, "stdlib_module_names", ())) or set(STDLIB_CADANGAN)
 
 
 def nama_impor(sumber: str) -> set:
@@ -132,7 +155,7 @@ def test_pemeriksa_menangkap_impor_di_fungsi_try_dan_nama_paket_berbeda(tmp_path
 
 
 def test_satu_sumber_dependensi_requirements_akar_dan_dev_memuat_api():
-    """D1: tes lokal dan Vercel memasang paket API dari berkas yang sama."""
+    """Tes lokal dan Vercel memasang paket API dari berkas yang sama."""
     for nama in ("requirements.txt", "requirements-dev.txt"):
         baris = [b.strip() for b in (AKAR / nama).read_text(encoding="utf-8").splitlines()]
         assert "-r api/requirements.txt" in baris, nama
@@ -145,8 +168,41 @@ def test_satu_sumber_dependensi_requirements_akar_dan_dev_memuat_api():
 
 
 def test_index_tidak_lagi_memakai_googleapiclient():
-    """D3: jalur cadangan batchGet (googleapiclient) dihapus; paketnya tidak pernah terpasang di Vercel."""
+    """Jalur cadangan batchGet (googleapiclient) dihapus; paketnya tidak pernah terpasang di Vercel."""
     sumber = (API / "index.py").read_text(encoding="utf-8")
     assert not any(m.split(".")[0] == "googleapiclient" for m in nama_impor(sumber))
     nama = {s.name for s in ast.walk(ast.parse(sumber)) if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef))}
     assert "get_sheets_service" not in nama
+
+
+def _modul_stdlib_diimpor_api() -> set:
+    """Nama tingkat atas yang diimpor api/*.py dan ada di pustaka standar runtime ini (lewat find_spec)."""
+    pustaka = Path(sysconfig.get_paths()["stdlib"]).resolve()
+    nama = set()
+    for path in berkas_produksi():
+        for modul in nama_impor(path.read_text(encoding="utf-8")):
+            akar = modul.split(".")[0]
+            spec = importlib.util.find_spec(akar)
+            if spec is None:
+                continue
+            asal = spec.origin or ""
+            if asal in ("built-in", "frozen") or (asal and pustaka in Path(asal).resolve().parents):
+                nama.add(akar)
+    return nama
+
+
+def test_stdlib_cadangan_mencakup_modul_bawaan_yang_diimpor_api():
+    """Daftar cadangan (Python 3.9) mencakup setiap modul pustaka standar yang diimpor api/*.py."""
+    diimpor = _modul_stdlib_diimpor_api()
+    assert {"asyncio", "json", "os"} <= diimpor
+    assert diimpor <= STDLIB_CADANGAN
+    if hasattr(sys, "stdlib_module_names"):
+        assert diimpor <= set(sys.stdlib_module_names)
+
+
+def test_pemeriksa_dengan_stdlib_cadangan_sama_dengan_runtime(monkeypatch):
+    teks = REQ_API.read_text(encoding="utf-8")
+    runtime = paket_hilang(teks)
+    monkeypatch.delattr(sys, "stdlib_module_names", raising=False)
+    assert stdlib() == set(STDLIB_CADANGAN)
+    assert paket_hilang(teks) == runtime == {}
