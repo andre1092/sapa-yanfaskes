@@ -1094,12 +1094,22 @@ def test_audit_flag_hidup_tidak_memakai_x_forwarded_for(bff, monkeypatch):
 
 # --- penyimpanan Postgres ----------------------------------------------------------------------
 
-def test_postgres_store_menyimpan_hash_dan_menutup_setiap_koneksi(bff, monkeypatch):
+class KoneksiPalsuDasar:
+    """Bagian asyncpg.Connection yang dipakai daftar koneksi siaga: is_closed() dan terminate()."""
+    tertutup = False
+
+    def is_closed(self):
+        return self.tertutup
+
+    def terminate(self):
+        self.tertutup = True
+
+def test_postgres_store_menyimpan_hash_dan_tidak_meninggalkan_koneksi_terbuka(bff, monkeypatch):
     b = bff()
     dsn = "postgresql://uji@db.invalid/sapa"
     kueri, dibuka, ditutup = [], [], []
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         async def execute(self, sql, *args):
             kueri.append((sql, args))
             return "DELETE 3" if "WHERE sub" in sql else "INSERT 0 1"
@@ -1757,7 +1767,7 @@ def _postgres_palsu(b, monkeypatch):
     dsn = "postgresql://uji@db.invalid/sapa"
     dibuka, ditutup, baris = [], [], {}
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         async def execute(self, sql, *args):
             if sql.startswith("UPDATE sapa_batas"):
                 baris[args] = max(baris.get(args, 0) - 1, 0)
@@ -1817,7 +1827,8 @@ def test_satu_koneksi_dibuka_ulang_setelah_galat(bff, monkeypatch):
                 await b.ss.batas("k", 60, 5)
             assert await b.ss.batas("k", 60, 5)
     asyncio.run(jalan())
-    assert len(dibuka) == 2 and len(ditutup) == 2
+    # Koneksi pertama dihentikan karena galat; yang kedua kembali ke daftar siaga dan ditutup saat loop berakhir.
+    assert len(dibuka) == 2 and len(ditutup) == 1
 
 
 def test_hitungan_geser(bff):
@@ -2174,7 +2185,7 @@ def test_postgres_klaim_segar_memakai_update_bersyarat(bff, monkeypatch):
     b = bff()
     kueri = []
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         def __init__(self, hasil):
             self.hasil = hasil
 
@@ -2425,7 +2436,7 @@ def test_postgres_hitungan_kumulatif_reset_bila_kedaluwarsa(bff, monkeypatch):
     b = bff()
     kueri = []
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         async def fetchval(self, sql, *args):
             kueri.append((sql, args))
             return 3
@@ -2615,7 +2626,7 @@ def test_postgres_tulis_token_bersyarat(bff, monkeypatch):
     b = bff()
     kueri = []
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         async def execute(self, sql, *args):
             kueri.append((sql, args))
             return "UPDATE 0"
@@ -3237,10 +3248,10 @@ def test_surat_kontrol_lewat_cookie_admin_wajib_csrf(bff, monkeypatch, aksi):
     assert drive.tulis_dipanggil == (1 if aksi == "integrasikan" else 0)
 
 
-def test_info_sewa_penyegaran_30_detik(bff):
+def test_info_sewa_penyegaran_32_detik(bff):
     ss = bff().ss
-    assert ss.UMUR_KUNCI_SEGAR == timedelta(seconds=30)
-    assert ss.BATAS_SEBELUM_AUTH0 + ss.WAKTU_TERBURUK_AUTH0 + ss.WAKTU_TERBURUK_DB == 30
+    assert ss.UMUR_KUNCI_SEGAR == timedelta(seconds=32)
+    assert ss.BATAS_SEBELUM_AUTH0 + ss.WAKTU_TERBURUK_AUTH0 + ss.WAKTU_TERBURUK_DB == 32
 
 
 def test_info_menunggu_penyegar_memakai_backoff_dan_satu_koneksi(bff, monkeypatch):
@@ -3255,7 +3266,7 @@ def test_info_menunggu_penyegar_memakai_backoff_dan_satu_koneksi(bff, monkeypatc
              "terakhir_dipakai": sekarang, "kedaluwarsa": sekarang + timedelta(days=1), "token_enc": "v2.lama",
              "token_exp": sekarang, "segar_sampai": sekarang + b.ss.UMUR_KUNCI_SEGAR}
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         async def fetchrow(self, sql, *args):
             dibaca.append(args)
             return dict(baris)
@@ -3590,7 +3601,7 @@ def _postgres_koneksi_macet(b, monkeypatch, baris, tutup="macet", operasi_gagal=
     """PostgresSesiStore dengan koneksi palsu yang menutup lambat (atau galat); terminate() dicatat."""
     tercatat = {"dibuka": 0, "close": 0, "terminate": 0}
 
-    class Koneksi:
+    class Koneksi(KoneksiPalsuDasar):
         async def fetchrow(self, sql, *args):
             return dict(baris) if baris else None
 
@@ -3610,6 +3621,7 @@ def _postgres_koneksi_macet(b, monkeypatch, baris, tutup="macet", operasi_gagal=
 
         def terminate(self):
             tercatat["terminate"] += 1
+            self.tertutup = True
     pg = b.ss.PostgresSesiStore("postgresql://uji@db.invalid/sapa")
     pg._skema_siap = True
 
@@ -3621,8 +3633,9 @@ def _postgres_koneksi_macet(b, monkeypatch, baris, tutup="macet", operasi_gagal=
     return tercatat
 
 
-def test_tutup_koneksi_menunggu_penyegar_ikut_tenggat_dinding(bff, monkeypatch):
-    """Penutupan koneksi di akhir satu_koneksi() tidak boleh menambah waktu di atas tenggat dinding."""
+def test_akhir_menunggu_penyegar_tidak_menambah_waktu_di_atas_tenggat_dinding(bff, monkeypatch):
+    """Di akhir satu_koneksi() koneksi kembali ke daftar siaga tanpa menunggu server; koneksi siaga baru ditutup
+    saat loop berakhir, juga dalam TENGGAT_TUTUP_DB."""
     b = bff()
     sekarang = b.jam.waktu
     baris = {"id_hash": "id-uji", "sub": "auth0|uji", "ingat": True, "dibuat_pada": sekarang,
@@ -3633,10 +3646,33 @@ def test_tutup_koneksi_menunggu_penyegar_ikut_tenggat_dinding(bff, monkeypatch):
     sesi = b.ss.Sesi(id_hash="id-uji", sub="auth0|uji", ingat=True, dibuat_pada=sekarang, terakhir_dipakai=sekarang,
                      kedaluwarsa=sekarang + timedelta(days=1), token_exp=sekarang, access_token="at",
                      token_enc="v2.lama")
-    mulai = time.monotonic()
-    assert asyncio.run(b.ss._tunggu_penyegar(sesi)) is None
-    assert time.monotonic() - mulai < 0.3 + 0.15
-    assert tercatat["dibuka"] == 1 and tercatat["terminate"] == 1
+    monkeypatch.setattr(b.ss, "TENGGAT_TUTUP_DB", 0.1)
+
+    async def jalan():
+        mulai = time.monotonic()
+        assert await b.ss._tunggu_penyegar(sesi) is None
+        assert time.monotonic() - mulai < 0.3 + 0.15
+        assert tercatat == {"dibuka": 1, "close": 0, "terminate": 0}
+    asyncio.run(jalan())
+    assert tercatat == {"dibuka": 1, "close": 1, "terminate": 1}  # close() macet dihentikan sesudah 0,1 detik
+
+
+def test_koneksi_lebih_dari_daftar_siaga_di_akhir_blok_ditutup_dalam_tenggat_dinding(bff, monkeypatch):
+    b = bff()
+    tercatat = _postgres_koneksi_macet(b, monkeypatch, None)
+    monkeypatch.setattr(b.ss, "TENGGAT_TUTUP_DB", 3)
+
+    async def jalan():
+        kolam = b.ss._kolam_loop()
+        penuh = [await b.ss.store()._sambung() for _ in range(b.ss.MAKS_KONEKSI_SIAGA)]
+        async with b.ss.satu_koneksi(b.ss._monoton() + 0.1):
+            await b.ss.store().cek()
+            for conn in penuh:  # permintaan serentak lain lebih dulu mengembalikan koneksinya
+                await kolam.kembalikan(conn, b.ss.store().dsn, 1)
+            mulai = time.monotonic()
+        return time.monotonic() - mulai
+    assert asyncio.run(jalan()) < 0.1 + 0.15
+    assert tercatat["dibuka"] == b.ss.MAKS_KONEKSI_SIAGA + 1 and tercatat["terminate"] >= 1
 
 
 @pytest.mark.parametrize("tutup", ["macet", "galat"])
@@ -3657,8 +3693,8 @@ def test_tutup_koneksi_tanpa_tenggat_dibatasi_tenggat_tutup(bff, monkeypatch, tu
 
 @pytest.mark.parametrize("batas_akhir", [None, 0.1])
 def test_tutup_koneksi_rusak_di_tengah_blok_ikut_tenggat(bff, monkeypatch, batas_akhir):
-    """Koneksi yang rusak di tengah satu_koneksi() dibuang oleh _urutan; penutupannya juga dibatasi
-    TENGGAT_TUTUP_DB (atau sisa tenggat dinding), tidak menunggu command_timeout asyncpg."""
+    """Koneksi yang rusak di tengah satu_koneksi() dibuang oleh _urutan dan langsung dihentikan, tanpa menunggu
+    close() maupun command_timeout asyncpg."""
     b = bff()
     tercatat = _postgres_koneksi_macet(b, monkeypatch, None, operasi_gagal=True)
     monkeypatch.setattr(b.ss, "TENGGAT_TUTUP_DB", 0.1 if batas_akhir is None else 3)
@@ -3671,7 +3707,7 @@ def test_tutup_koneksi_rusak_di_tengah_blok_ikut_tenggat(bff, monkeypatch, batas
     mulai = time.monotonic()
     asyncio.run(jalan())
     assert time.monotonic() - mulai < 0.1 + 0.15
-    assert tercatat == {"dibuka": 1, "close": 1, "terminate": 1}
+    assert tercatat == {"dibuka": 1, "close": 0, "terminate": 1}
 
 
 def test_tutup_koneksi_normal_tidak_dihentikan_paksa(bff, monkeypatch):
@@ -3708,7 +3744,7 @@ def test_tutup_koneksi_tanpa_wadah_saat_operasi_galat_bertenggat(bff, monkeypatc
     with pytest.raises(b.ss.SesiBelumSiap):
         asyncio.run(b.ss.batas("k", 60, 5))
     assert time.monotonic() - mulai < 0.1 + 0.15
-    assert tercatat == {"dibuka": 1, "close": 1, "terminate": 1}
+    assert tercatat == {"dibuka": 1, "close": 0, "terminate": 1}  # galat koneksi: langsung dihentikan
 
 
 def test_tutup_koneksi_tanpa_wadah_saat_dibatalkan_dihentikan_tanpa_close(bff, monkeypatch):
