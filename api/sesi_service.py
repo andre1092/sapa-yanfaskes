@@ -16,7 +16,7 @@
   header auth0-forwarded-for, sama dengan login; di Vercel tanpa IP tepercaya tidak ada penyegaran
   (token yang masih berlaku dipakai, selain itu 503).
 - Single-flight per baris sesi: hanya permintaan yang memenangi UPDATE bersyarat atas kolom
-  segar_sampai (kunci sewa UMUR_KUNCI_SEGAR, 30 detik) yang memanggil Auth0. Permintaan lain memakai token
+  segar_sampai (kunci sewa UMUR_KUNCI_SEGAR, 32 detik) yang memanggil Auth0. Permintaan lain memakai token
   lama bila masih berlaku, atau menunggu paling lama MAKS_TUNGGU_SEGAR waktu dinding, termasuk pembacaan DB
   (satu koneksi DB, jeda bertambah dari JEDA_TUNGGU_SEGAR sampai JEDA_TUNGGU_SEGAR_MAKS), lalu memakai
   token baru (503 bila tetap belum ada).
@@ -27,7 +27,7 @@
   400, 401, 403, 404, 429, 503). Jawaban lain (status 0 karena timeout baca atau tulis, koneksi putus sesudah
   tersambung, atau tenggat total habis; 200 tanpa access_token atau body bukan JSON; 500, 502, 504, 52x; galat
   apa pun sesudah Auth0 dipanggil) dianggap hasil tidak diketahui: sewa dibiarkan sampai kedaluwarsa alami
-  (UMUR_KUNCI_SEGAR, 30 detik), supaya refresh token yang sama tidak dipakai dua kali. Selama sewa berjalan,
+  (UMUR_KUNCI_SEGAR, 32 detik), supaya refresh token yang sama tidak dipakai dua kali. Selama sewa berjalan,
   sesi yang access token-nya sudah habis menjawab 503.
 - Setiap panggilan Auth0 punya tenggat total TENGGAT_AUTH0 (asyncio.wait_for), karena timeout httpx berlaku
   per tahap (connect, read), bukan untuk seluruh panggilan. Tenggat habis dianggap status 0. Tenggat per tahap
@@ -51,10 +51,19 @@
   Baris kedaluwarsa dibersihkan sesekali (PELUANG_BERSIH per panggilan) dan saat login sukses. Setiap
   pembersihan juga menghitung baris sapa_batas (dibatasi LIMIT) dan mencatat peringatan di log bila
   jumlahnya melewati AMBANG_PERINGATAN_BARIS_BATAS.
-- satu_koneksi(): semua operasi penyimpanan di dalam blok memakai satu koneksi Postgres. Penutupan di akhir
-  blok, dan koneksi yang dibuang karena galat di tengah blok, ikut tenggat: sisa tenggat dinding pemanggil
-  (batas_akhir) atau TENGGAT_TUTUP_DB, lalu terminate() bila habis atau galat. Di luar satu_koneksi() koneksi
-  per operasi juga ditutup dengan tenggat TENGGAT_TUTUP_DB.
+- Koneksi Postgres dipakai ulang lintas permintaan dalam instans yang sama. Setiap event loop punya daftar
+  koneksi siaga sendiri (koneksi asyncpg terikat ke loop pembuatnya, paling banyak MAKS_KONEKSI_SIAGA). Satu
+  operasi meminjam koneksi siaga, atau membuka koneksi baru bila tidak ada, lalu mengembalikannya; satu koneksi
+  hanya dipakai satu operasi pada satu waktu dan operasi serentak tidak saling menunggu. Koneksi siaga yang
+  menganggur lebih dari AMBANG_PERIKSA diperiksa dulu (SELECT 1, BATAS_PERIKSA detik), yang lebih dari
+  MAKS_MENGANGGUR dibuang. Koneksi siaga ditutup saat loop pemiliknya diakhiri.
+  Koneksi dibuang bila galat koneksi, batas waktu, pembatalan, atau galat yang bukan penolakan biasa dari server.
+  Perintah baca pada koneksi siaga yang ternyata putus dicoba sekali lagi dengan koneksi baru. Perintah tulis
+  tidak diulang, karena bisa sudah dieksekusi (mis. hitungan pembatas bertambah dua kali).
+- satu_koneksi(): semua operasi penyimpanan di dalam blok memakai satu koneksi Postgres, dikembalikan ke
+  daftar siaga di akhir blok. Koneksi yang ditutup (daftar siaga penuh, atau dibuang karena galat) ikut
+  tenggat: sisa tenggat dinding pemanggil (batas_akhir) atau TENGGAT_TUTUP_DB, lalu terminate() bila habis
+  atau galat.
 - Jalur login BFF memasang executor bawaan loop berukuran MAKS_THREAD_DNS sekali per loop
   (pasang_executor_dns); resolusi DNS loop.getaddrinfo (httpx dan asyncpg) memakai executor itu.
   Kunci pembatas dan penanda log memakai HMAC dengan kunci turunan SAPA_SESI_KUNCI (HKDF,
@@ -79,6 +88,7 @@ import os
 import random
 import re
 import secrets
+import threading
 import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
@@ -119,15 +129,23 @@ TIMEOUT_AUTH0_POOL = 5
 TIMEOUT_DB = 5
 # Tenggat menutup koneksi Postgres bila pemanggil tidak memberi tenggat dinding (mis. /masuk).
 TENGGAT_TUTUP_DB = 2
+# Koneksi siaga yang menganggur lebih lama dari AMBANG_PERIKSA detik diperiksa dulu dengan SELECT 1 (batas
+# BATAS_PERIKSA detik); yang menganggur lebih dari MAKS_MENGANGGUR detik dibuang tanpa diperiksa.
+AMBANG_PERIKSA = 30
+BATAS_PERIKSA = 2
+MAKS_MENGANGGUR = 240
+# Jumlah koneksi siaga per event loop; koneksi lebih dari ini ditutup setelah dipakai.
+MAKS_KONEKSI_SIAGA = 4
 WAKTU_TERBURUK_AUTH0 = 2 * TIMEOUT_AUTH0
-WAKTU_TERBURUK_DB = 2 * TIMEOUT_DB
+# Satu operasi tulis terburuk: memeriksa koneksi siaga yang ternyata putus, lalu connect dan command koneksi baru.
+WAKTU_TERBURUK_DB = BATAS_PERIKSA + 2 * TIMEOUT_DB
 # Tenggat total satu panggilan Auth0 (16 detik); lewat dari itu hasilnya dianggap tidak diketahui (status 0).
 TENGGAT_AUTH0 = WAKTU_TERBURUK_AUTH0
 # Single-flight penyegaran: sewa mencakup jatah sebelum Auth0 (kuota global), panggilan Auth0 terburuk,
 # dan simpanan token terburuk. Pemegang yang sudah melewati BATAS_SEBELUM_AUTH0 sebelum memanggil Auth0
 # berhenti tanpa memanggil Auth0, jadi refresh token tidak dipakai dua kali karena sewa basi diambil alih.
 BATAS_SEBELUM_AUTH0 = 4
-# Sewa = 4 + 16 + 10 = 30 detik.
+# Sewa = 4 + 16 + 12 = 32 detik.
 UMUR_KUNCI_SEGAR = timedelta(seconds=BATAS_SEBELUM_AUTH0 + WAKTU_TERBURUK_AUTH0 + WAKTU_TERBURUK_DB)
 MAKS_TUNGGU_SEGAR = 2.0
 # Jeda menunggu penyegar lain: 0,1 lalu berlipat dua sampai 0,5 detik (0,1 + 0,2 + 0,4 + 0,5 + ...).
@@ -557,7 +575,7 @@ class MemorySesiStore:
         return None
 
 
-# Wadah koneksi milik satu permintaan (lihat satu_koneksi); None = satu koneksi per operasi.
+# Wadah koneksi milik satu permintaan (lihat satu_koneksi); None = satu pinjaman per operasi.
 _wadah_koneksi: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar("sapa_wadah_koneksi", default=None)
 # Tenggat dinding blok satu_koneksi() yang sedang berjalan (waktu _monoton); None = tanpa tenggat dinding.
 _batas_akhir_koneksi: contextvars.ContextVar[Optional[float]] = contextvars.ContextVar(
@@ -590,12 +608,122 @@ def _hentikan(conn) -> None:
         logger.warning("Koneksi penyimpanan sesi tidak dapat dihentikan: %s", type(exc).__name__)
 
 
+def _jam() -> tuple:
+    """Waktu monoton dan waktu dinding. Lama menganggur memakai yang terbesar dari keduanya supaya instans yang
+    dibekukan lalu dilanjutkan tetap terhitung lama menganggur walau jam monotonnya tidak maju."""
+    return time.monotonic(), time.time()
+
+
+def _lama_menganggur(sejak: tuple) -> float:
+    monoton, dinding = _jam()
+    return max(monoton - sejak[0], dinding - sejak[1])
+
+
+def _galat_koneksi() -> tuple:
+    """Galat yang menandakan koneksi tidak bisa dipakai lagi (putus, ditutup server, soket galat, atau batas
+    waktu perintah)."""
+    from asyncpg import exceptions as e
+
+    return (OSError, asyncio.TimeoutError, e.InterfaceError, e.PostgresConnectionError, e.AdminShutdownError,
+            e.CrashShutdownError, e.CannotConnectNowError)
+
+
+def _koneksi_masih_layak(conn, exc: Exception) -> bool:
+    """True bila galat adalah penolakan biasa dari server (mis. pelanggaran constraint): koneksinya tetap
+    sehat dan boleh dikembalikan. Galat koneksi, batas waktu, dan galat lain membuang koneksi."""
+    from asyncpg import exceptions as e
+
+    return (isinstance(exc, e.PostgresError) and not isinstance(exc, _galat_koneksi())
+            and not conn.is_closed())
+
+
+class _KolamLoop:
+    """Koneksi siaga penyimpanan sesi milik satu event loop."""
+
+    def __init__(self):
+        self.siaga = []  # (koneksi, dsn, waktu mulai menganggur), yang terakhir dikembalikan di ujung
+        self.ditutup = False
+        self.penjaga = None
+
+    async def pinjam(self, dsn: str, sambung):
+        """Koneksi siaga yang masih layak (dipakai_ulang=True) atau koneksi baru dari `sambung()`
+        (dipakai_ulang=False). Paling banyak satu pemeriksaan SELECT 1 per pinjaman."""
+        while self.siaga:
+            conn, dsn_conn, sejak = self.siaga.pop()
+            menganggur = _lama_menganggur(sejak)
+            if dsn_conn != dsn or conn.is_closed() or menganggur > MAKS_MENGANGGUR:
+                _hentikan(conn)
+                continue
+            if menganggur > AMBANG_PERIKSA:
+                try:
+                    await conn.fetchval("SELECT 1", timeout=BATAS_PERIKSA)
+                except Exception:
+                    # Koneksi siaga lain lebih lama menganggur: kemungkinan bernasib sama, jadi ikut dibuang.
+                    _hentikan(conn)
+                    self.buang_semua()
+                    break
+                except BaseException:
+                    _hentikan(conn)
+                    raise
+                if conn.is_closed():
+                    break
+            return conn, True
+        return await sambung(), False
+
+    async def kembalikan(self, conn, dsn: str, sisa_tutup: float) -> None:
+        if conn.is_closed():
+            return
+        if self.ditutup or len(self.siaga) >= MAKS_KONEKSI_SIAGA:
+            await _tutup_koneksi(conn, sisa_tutup)
+            return
+        self.siaga.append((conn, dsn, _jam()))
+
+    def buang_semua(self) -> None:
+        siaga, self.siaga = self.siaga, []
+        for conn, _, _ in siaga:
+            _hentikan(conn)
+
+
+# Kolam koneksi per event loop. Entri dilepas oleh penjaga loop saat loop diakhiri; entri loop yang sudah
+# ditutup atau tidak berjalan lagi tanpa penjaga sempat jalan dilepas saat registri diakses berikutnya.
+_kolam_per_loop: dict = {}
+_registri_kunci = threading.Lock()
+
+
+async def _penjaga(loop, kolam: _KolamLoop) -> None:
+    """Menunggu sampai loop diakhiri (asyncio.run membatalkan tugas yang tersisa), lalu menutup koneksi siaga
+    loop itu supaya tidak tertinggal terbuka di server."""
+    try:
+        await loop.create_future()
+    finally:
+        kolam.ditutup = True
+        with _registri_kunci:
+            if _kolam_per_loop.get(loop) is kolam:
+                del _kolam_per_loop[loop]
+        siaga, kolam.siaga = kolam.siaga, []
+        await asyncio.gather(*(_tutup_koneksi(conn, TENGGAT_TUTUP_DB) for conn, _, _ in siaga),
+                             return_exceptions=True)
+
+
+def _kolam_loop() -> _KolamLoop:
+    """Kolam koneksi untuk loop yang sedang berjalan; dibuat (beserta penjaganya) saat pertama dipakai."""
+    loop = asyncio.get_running_loop()
+    with _registri_kunci:
+        for lain in [l for l in _kolam_per_loop if l is not loop and (l.is_closed() or not l.is_running())]:
+            del _kolam_per_loop[lain]
+        kolam = _kolam_per_loop.get(loop)
+        if kolam is None:
+            kolam = _kolam_per_loop[loop] = _KolamLoop()
+            kolam.penjaga = loop.create_task(_penjaga(loop, kolam))
+    return kolam
+
+
 @contextlib.asynccontextmanager
 async def satu_koneksi(batas_akhir: Optional[float] = None):
-    """Semua operasi penyimpanan Postgres di dalam blok memakai satu koneksi, dibuka saat pertama dipakai
-    dan ditutup di akhir blok. Operasi di dalam blok harus berurutan (bukan asyncio.gather).
+    """Semua operasi penyimpanan Postgres di dalam blok memakai satu koneksi, dipinjam saat pertama dipakai
+    dan dikembalikan ke daftar siaga di akhir blok. Operasi di dalam blok harus berurutan (bukan asyncio.gather).
 
-    `batas_akhir` (waktu _monoton) adalah tenggat dinding pemanggil; penutupan koneksi ikut tenggat itu.
+    `batas_akhir` (waktu _monoton) adalah tenggat dinding pemanggil; koneksi yang ditutup ikut tenggat itu.
     Tanpa batas_akhir, penutupan paling lama TENGGAT_TUTUP_DB detik. Lewat dari itu koneksi dihentikan paksa.
     """
     wadah: dict = {}
@@ -606,17 +734,26 @@ async def satu_koneksi(batas_akhir: Optional[float] = None):
     finally:
         _batas_akhir_koneksi.reset(token_batas)
         _wadah_koneksi.reset(token)
-        for conn in wadah.values():
-            await _tutup_koneksi(conn, _sisa_tutup(batas_akhir))
+        for pinjaman in wadah.values():
+            await pinjaman.kolam.kembalikan(pinjaman.conn, pinjaman.dsn, _sisa_tutup(batas_akhir))
+
+
+@dataclass
+class _Pinjaman:
+    """Koneksi yang sedang dipinjam satu operasi atau satu blok satu_koneksi()."""
+    conn: object
+    kolam: _KolamLoop
+    dsn: str
+    dipakai_ulang: bool  # berasal dari daftar siaga dan belum terbukti sehat di pinjaman ini
+    dibuang: bool = False  # sudah dihentikan atau ditutup karena galat; tidak boleh dikembalikan
 
 
 class PostgresSesiStore:
     """Tabel sapa_sesi dan sapa_batas di Postgres (Neon), DSN dari SAPA_SESI_DATABASE_URL.
 
-    Di luar satu_koneksi(): satu koneksi asyncpg per operasi lalu ditutup, sama dengan audit_log:
-    runtime serverless bisa membuat event loop baru per permintaan, jadi pool yang terikat ke loop lama
-    tidak bisa ditutup rapi. Di dalam satu_koneksi(): satu koneksi untuk seluruh permintaan.
-    Skema dibuat dengan CREATE TABLE IF NOT EXISTS (aman maju-mundur).
+    Koneksi dipinjam dari daftar siaga event loop yang sedang berjalan dan dikembalikan sesudah operasi (atau di
+    akhir blok satu_koneksi()); lihat docstring modul. Skema dibuat dengan CREATE TABLE IF NOT EXISTS (aman
+    maju-mundur).
     """
 
     def __init__(self, dsn: Optional[str] = None):
@@ -635,39 +772,90 @@ class PostgresSesiStore:
             self._skema_siap = True
         return [await getattr(conn, cara)(sql, *args) for cara, sql, args in perintah]
 
-    async def _urutan(self, perintah: list):
+    async def _pinjam(self) -> _Pinjaman:
+        kolam = _kolam_loop()
+        conn, dipakai_ulang = await kolam.pinjam(self.dsn, self._sambung)
+        return _Pinjaman(conn, kolam, self.dsn, dipakai_ulang)
+
+    async def _coba(self, pinjaman: _Pinjaman, perintah: list, sisa_tutup: Callable[[], float]):
+        """Jalankan perintah pada pinjaman. Bila galat, koneksi dibuang kecuali galatnya penolakan biasa dari
+        server (koneksi yang belum dibuang dikembalikan oleh pemanggil)."""
+        conn = pinjaman.conn
+        try:
+            hasil = await self._jalankan_di(conn, perintah)
+        except Exception as exc:
+            if isinstance(exc, _galat_koneksi()):
+                pinjaman.dibuang = True
+                _hentikan(conn)  # koneksi sudah pasti rusak: tidak menunggu server
+            elif not _koneksi_masih_layak(conn, exc):
+                # Keadaan koneksi tidak pasti: tutup rapi dalam tenggat pemanggil, lalu terminate().
+                pinjaman.dibuang = True
+                await _tutup_koneksi(conn, sisa_tutup())
+            raise
+        except BaseException:
+            # Dibatalkan di tengah perintah (mis. tenggat menunggu penyegar): tutup paksa tanpa menunggu server.
+            pinjaman.dibuang = True
+            _hentikan(conn)
+            raise
+        pinjaman.dipakai_ulang = False
+        return hasil
+
+    @staticmethod
+    def _boleh_ulang(pinjaman: _Pinjaman, exc: BaseException, baca: bool) -> bool:
+        """Perintah baca pada koneksi siaga yang ternyata putus boleh dicoba sekali dengan koneksi baru. Perintah
+        tulis, batas waktu, dan koneksi baru tidak diulang."""
+        return (baca and pinjaman.dipakai_ulang and isinstance(exc, _galat_koneksi())
+                and not isinstance(exc, asyncio.TimeoutError))
+
+    async def _urutan(self, perintah: list, baca: bool = False):
         wadah = _wadah_koneksi.get()
         if wadah is None:
-            conn = await self._sambung()
-            try:
-                hasil = await self._jalankan_di(conn, perintah)
-            except BaseException as exc:
-                if isinstance(exc, Exception):
-                    await _tutup_koneksi(conn, TENGGAT_TUTUP_DB)
-                else:
-                    _hentikan(conn)  # dibatalkan di tengah perintah: tutup paksa tanpa menunggu server
-                raise
-            await _tutup_koneksi(conn, TENGGAT_TUTUP_DB)
-            return hasil
-        conn = wadah.get(id(self))
-        if conn is None:
-            conn = wadah[id(self)] = await self._sambung()
+            return await self._urutan_sendiri(perintah, baca)
+        sisa_tutup = lambda: _sisa_tutup(_batas_akhir_koneksi.get())  # noqa: E731
+        pinjaman = wadah.get(id(self))
+        if pinjaman is None:
+            pinjaman = wadah[id(self)] = await self._pinjam()
         try:
-            return await self._jalankan_di(conn, perintah)
+            return await self._coba(pinjaman, perintah, sisa_tutup)
         except BaseException as exc:
-            # Koneksi bisa sudah rusak; operasi berikutnya membuka koneksi baru.
-            wadah.pop(id(self), None)
-            if isinstance(exc, Exception):
-                # Penutupan koneksi rusak ikut tenggat yang sama dengan akhir blok, lalu terminate().
-                await _tutup_koneksi(conn, _sisa_tutup(_batas_akhir_koneksi.get()))
-            else:
-                # Dibatalkan di tengah perintah (mis. tenggat menunggu penyegar): tutup paksa tanpa
-                # menunggu server.
-                _hentikan(conn)
+            if pinjaman.dibuang:
+                wadah.pop(id(self), None)  # operasi berikutnya di blok ini membuka koneksi baru
+            if not isinstance(exc, Exception) or not self._boleh_ulang(pinjaman, exc, baca):
+                raise
+        pinjaman = wadah[id(self)] = _Pinjaman(await self._sambung(), pinjaman.kolam, self.dsn, False)
+        try:
+            return await self._coba(pinjaman, perintah, sisa_tutup)
+        except BaseException:
+            if pinjaman.dibuang:
+                wadah.pop(id(self), None)
             raise
 
-    async def _jalankan(self, cara: str, sql: str, *args):
-        return (await self._urutan([(cara, sql, args)]))[0]
+    async def _urutan_sendiri(self, perintah: list, baca: bool):
+        sisa_tutup = lambda: TENGGAT_TUTUP_DB  # noqa: E731
+        pinjaman = await self._pinjam()
+        try:
+            hasil = await self._coba(pinjaman, perintah, sisa_tutup)
+        except BaseException as exc:
+            await self._kembalikan_bila_layak(pinjaman)
+            if not isinstance(exc, Exception) or not self._boleh_ulang(pinjaman, exc, baca):
+                raise
+        else:
+            await self._kembalikan_bila_layak(pinjaman)
+            return hasil
+        pinjaman = _Pinjaman(await self._sambung(), pinjaman.kolam, self.dsn, False)
+        try:
+            hasil = await self._coba(pinjaman, perintah, sisa_tutup)
+        finally:
+            await self._kembalikan_bila_layak(pinjaman)
+        return hasil
+
+    @staticmethod
+    async def _kembalikan_bila_layak(pinjaman: _Pinjaman) -> None:
+        if not pinjaman.dibuang:
+            await pinjaman.kolam.kembalikan(pinjaman.conn, pinjaman.dsn, TENGGAT_TUTUP_DB)
+
+    async def _jalankan(self, cara: str, sql: str, *args, baca: bool = False):
+        return (await self._urutan([(cara, sql, args)], baca=baca))[0]
 
     async def simpan(self, baris):
         # Satu koneksi: sisipkan sesi, lalu bersih-bersih ringan sesi dan hitungan pembatas yang sudah lewat.
@@ -685,7 +873,7 @@ class PostgresSesiStore:
         baris = await self._jalankan(
             "fetchrow",
             "SELECT id_hash, sub, ingat, dibuat_pada, terakhir_dipakai, kedaluwarsa, token_enc, token_exp, segar_sampai "
-            "FROM sapa_sesi WHERE id_hash = $1", id_hash)
+            "FROM sapa_sesi WHERE id_hash = $1", id_hash, baca=True)
         return dict(baris) if baris else None
 
     async def sentuh(self, id_hash, waktu):
@@ -758,7 +946,8 @@ class PostgresSesiStore:
 
     async def baca_batas(self, kunci_hash, jendela):
         return int(await self._jalankan(
-            "fetchval", "SELECT jumlah FROM sapa_batas WHERE kunci_hash = $1 AND jendela = $2", kunci_hash, jendela) or 0)
+            "fetchval", "SELECT jumlah FROM sapa_batas WHERE kunci_hash = $1 AND jendela = $2", kunci_hash, jendela,
+            baca=True) or 0)
 
     # Hitungan gagal memakai baris sapa_batas dengan jendela -1; baris yang sudah kedaluwarsa mulai lagi
     # dari 1 dan ikut dibersihkan bersihkan_batas. Setiap kegagalan memperpanjang kedaluwarsa ke yang
@@ -777,7 +966,7 @@ class PostgresSesiStore:
     async def ada_gagal_kumulatif(self, kunci_hash, sekarang):
         return bool(await self._jalankan(
             "fetchval", "SELECT 1 FROM sapa_batas WHERE kunci_hash = $1 AND jendela = -1 AND kedaluwarsa > $2",
-            kunci_hash, sekarang))
+            kunci_hash, sekarang, baca=True))
 
     async def padamkan_penanda(self, kunci_hash):
         await self._jalankan("execute", "DELETE FROM sapa_batas WHERE kunci_hash = $1 AND jendela = -1", kunci_hash)
@@ -792,10 +981,10 @@ class PostgresSesiStore:
     async def hitung_baris_batas(self, batas):
         # Dibatasi LIMIT; cukup untuk tahu ambang sudah lewat.
         return int(await self._jalankan(
-            "fetchval", "SELECT count(*) FROM (SELECT 1 FROM sapa_batas LIMIT $1) AS t", int(batas)))
+            "fetchval", "SELECT count(*) FROM (SELECT 1 FROM sapa_batas LIMIT $1) AS t", int(batas), baca=True))
 
     async def cek(self):
-        await self._jalankan("fetchval", "SELECT 1")
+        await self._jalankan("fetchval", "SELECT 1", baca=True)
 
 
 _store: Optional[SesiStore] = None

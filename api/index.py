@@ -12,6 +12,7 @@ import ipaddress
 import threading
 from urllib.parse import quote, urlparse
 import logging
+import platform
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Tuple
@@ -114,6 +115,8 @@ except Exception:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("sapa-api")
+# Satu baris saat proses mulai (cold start), supaya versi runtime terlihat di log tanpa bergantung pada log build.
+logger.info("runtime python=%s", platform.python_version())
 
 # Environment & Config
 RAW_AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN", "")
