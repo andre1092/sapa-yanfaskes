@@ -4,6 +4,7 @@ Drive diganti tiruan di memori; tes tidak memakai jaringan. Nama RS samaran.
 """
 import contextlib
 import gzip
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -38,9 +39,14 @@ class FakeDrive:
         return self.versi, dict(properti)
 
 
+# Tanggal "hari ini" dikunci supaya tes tidak bergantung pada jam nyata (data uji sampai 12 November 2026).
+HARI_INI_UJI = date(2026, 11, 19)
+
+
 @pytest.fixture
 def env(monkeypatch):
     api = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com")
+    monkeypatch.setattr(api, "_sk_hari_ini", lambda: HARI_INI_UJI)
     drive = FakeDrive()
     monkeypatch.setattr(api, "_sk_drive_info", drive.info)
     monkeypatch.setattr(api, "_sk_drive_unduh", drive.unduh)
@@ -247,9 +253,9 @@ def test_petugas_sees_only_own_hospital_and_parameter_is_ignored(env):
     assert body["terkunci"] is True and body["rs"] == {"kode": "0101R001", "nama": "RSD MAWAR"}
     assert [f["kode"] for f in body["data"]["RJ"]["faskes"]] == ["0101R001"]
     assert body["data"]["RJ"]["total"]["lt"] == 3513
-    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b, disetujui Clara).
+    # Tren dan Poli = total cabang berlabel (keputusan CEO 2b).
     assert body["data"]["RJ"]["poli"] and body["data"]["RJ"]["tren"]
-    # Syarat Clara C: tidak ada baris atau kode RS lain di mana pun dalam JSON.
+    # Tidak ada baris atau kode RS lain di mana pun dalam JSON.
     for lain in ("MELATI", "KENANGA", "0202R002", "0303S003"):
         assert lain not in res.text
 

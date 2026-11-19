@@ -8,8 +8,9 @@ import re
 import traceback
 import hashlib
 import contextlib
+import ipaddress
 import threading
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
@@ -49,6 +50,12 @@ try:
 except ImportError:
     import verifikasi_service
 try:
+    from . import auth_bff, sesi_service, turnstile
+except ImportError:
+    import auth_bff
+    import sesi_service
+    import turnstile
+try:
     from . import drive_ssbi, kepatuhan_service, ssbi_jadwal_service, surat_kontrol_service
 except ImportError:
     import drive_ssbi
@@ -62,12 +69,6 @@ except ImportError:
 import jwt
 import uuid
 from jwt import PyJWKClient
-try:
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    HAS_GOOGLE_CLIENT = True
-except (ImportError, ModuleNotFoundError):
-    HAS_GOOGLE_CLIENT = False
 try:
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy import text
@@ -119,13 +120,19 @@ RAW_AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN", "")
 AUTH0_API_AUDIENCE = os.environ.get("AUTH0_API_AUDIENCE", "https://api.sapa-yanfaskes.com")
 # Asal aplikasi yang dipercaya untuk CORS dan tautan verifikasi email.
 APP_ORIGINS = [o.strip().rstrip("/") for o in os.environ.get("APP_ORIGINS", "https://sapa-yanfaskes.vercel.app,http://localhost:3000").split(",") if o.strip()]
+# Asal yang diterima penjaga CSRF login BFF: sama dengan APP_ORIGINS, tetapi tanpa localhost di Production
+# (sama dengan turnstile.host_diizinkan). CORS tetap memakai APP_ORIGINS supaya flag 0 tidak berubah.
+ASAL_BFF = [o for o in APP_ORIGINS if os.environ.get("VERCEL_ENV") != "production"
+            or urlparse(o).hostname not in turnstile.HOST_LOKAL]
 # Hanya untuk pengembangan lokal tanpa Auth0; ditolak di deployment Vercel mana pun.
 DEV_AUTH_BYPASS = os.environ.get("SAPA_DEV_AUTH_BYPASS") == "1" and not os.environ.get("VERCEL_ENV")
+# Login satu halaman (BFF): 0 (bawaan) = perilaku lama, tanpa rute /api/v1/auth/{masuk,sesi,keluar,siap}.
+LOGIN_BFF = os.environ.get("SAPA_LOGIN_BFF", "0").strip() == "1"
+# Selama transisi Bearer Auth0 tetap diterima; SAPA_TERIMA_BEARER=0 hanya berlaku bila LOGIN_BFF aktif.
+TERIMA_BEARER = not (LOGIN_BFF and os.environ.get("SAPA_TERIMA_BEARER", "1").strip() == "0")
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
 # Klaim peran yang ditambahkan Action login Auth0 ke token akses.
 ROLES_CLAIM = os.environ.get("AUTH0_ROLES_CLAIM", "https://sapa-yanfaskes.com/roles")
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 # Domain Normalization & Sanitization
 # Strip whitespace, https://, http://, and trailing slashes
@@ -169,9 +176,17 @@ def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
-def verify_auth0_token(token: str):
+def _galat_infrastruktur_jwks(exc: Exception) -> bool:
+    """True bila galat verifikasi berasal dari JWKS/jaringan, bukan dari token itu sendiri."""
+    return isinstance(exc, (jwt.PyJWKClientError, jwt.PyJWKSetError)) or not isinstance(exc, jwt.PyJWTError)
+
+
+def verify_auth0_token(token: str, galat_infra_503: bool = False):
     """
     Verifies the RS256 JWT signature using Auth0's public keys.
+
+    galat_infra_503 (hanya jalur sesi cookie BFF): galat JWKS atau jaringan menjadi 503, bukan 401, supaya
+    sesi yang masih sah tidak diakhiri saat JWKS Auth0 tidak terjangkau. Jalur Bearer tetap seperti lama.
     """
     if not jwk_client:
         logger.error("AUTH0_DOMAIN is not configured; rejecting authenticated request")
@@ -194,6 +209,9 @@ def verify_auth0_token(token: str):
         logger.warning(f"Token rejected: {type(e).__name__}")
         raise HTTPException(status_code=401, detail="Token tidak valid")
     except Exception as e:
+        if galat_infra_503 and _galat_infrastruktur_jwks(e):
+            logger.error(f"JWKS Auth0 tidak dapat dipakai: {type(e).__name__}")
+            raise HTTPException(status_code=503, detail="Layanan masuk sedang tidak tersedia")
         logger.warning(f"Token validation error: {type(e).__name__}")
         raise HTTPException(status_code=401, detail="Token tidak valid")
 
@@ -204,17 +222,125 @@ def _remember_claims(request, claims):
         state.audit_claims = claims
 
 
+def _ip_sah(nilai) -> Optional[str]:
+    try:
+        return str(ipaddress.ip_address((nilai or "").split(",")[0].strip()))
+    except ValueError:
+        return None
+
+
+def _di_vercel() -> bool:
+    return bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
+
+
+def _ip_tepercaya(request) -> Optional[str]:
+    """IP dari header yang ditulis Vercel sendiri; x-forwarded-for mentah tidak dipercaya.
+
+    Di luar Vercel (dev lokal, proxy lain) kedua header bisa dipalsukan klien, jadi diabaikan.
+    """
+    if not _di_vercel():
+        return None
+    headers = getattr(request, "headers", None) or {}
+    for nama in ("x-vercel-forwarded-for", "x-real-ip"):
+        ip = _ip_sah(headers.get(nama))
+        if ip:
+            return ip
+    return None
+
+
+def ip_pengguna(request) -> Optional[str]:
+    """IP pengguna: x-vercel-forwarded-for, lalu x-real-ip, lalu alamat koneksi. None bila tidak sah."""
+    client = getattr(request, "client", None)
+    return _ip_tepercaya(request) or _ip_sah(client.host if client else None)
+
+
+def ip_klien(request) -> Optional[str]:
+    """Satu sumber IP untuk login BFF (siteverify remoteip, auth0-forwarded-for, pembatas).
+
+    Di Vercel hanya header yang ditulis Vercel (x-vercel-forwarded-for, lalu x-real-ip); alamat koneksi
+    tidak dipakai karena itu IP infrastruktur yang sama untuk semua pengguna. None berarti login 503.
+    Di luar Vercel (dev lokal) alamat koneksi.
+    """
+    if _di_vercel():
+        return _ip_tepercaya(request)
+    client = getattr(request, "client", None)
+    return _ip_sah(client.host if client else None)
+
+
+_METODE_AMAN = {"GET", "HEAD", "OPTIONS"}
+
+
+class GalatSesi(HTTPException):
+    """HTTPException dengan field `kode` stabil di body (hanya dipakai saat LOGIN_BFF aktif)."""
+
+    def __init__(self, status_code: int, detail: str, kode: str, headers: Optional[dict] = None):
+        super().__init__(status_code=status_code, detail=detail, headers=headers)
+        self.kode = kode
+
+
+def _bawa_cookie_sesi(request) -> bool:
+    return bool((getattr(request, "cookies", None) or {}).get(sesi_service.NAMA_COOKIE))
+
+
+def _sesi_berakhir() -> GalatSesi:
+    return GalatSesi(401, auth_bff.PESAN_SESI_BERAKHIR, "sesi_berakhir", headers={"WWW-Authenticate": "Bearer"})
+
+
+def _klaim_dari_sesi(request):
+    """Klaim dari cookie __Host-sapa_sesi (sesi dibaca middleware); None bila tidak ada sesi."""
+    sesi = getattr(getattr(request, "state", None), "sapa_sesi", None)
+    if sesi is None:
+        return None
+    # Cookie dikirim browser otomatis, jadi permintaan yang mengubah data wajib membawa penanda CSRF.
+    if request.method not in _METODE_AMAN and not auth_bff.permintaan_sah(request, ASAL_BFF):
+        logger.warning("Permintaan bercookie ditolak (CSRF): %s %s", request.method, request.url.path)
+        raise GalatSesi(403, auth_bff.PESAN_DITOLAK, "asal_tidak_sah")
+    try:
+        claims = dict(verify_auth0_token(sesi.access_token, galat_infra_503=True))
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            raise _sesi_berakhir() from None
+        # JWKS tidak terjangkau atau auth belum dikonfigurasi: sesi tidak diakhiri, cukup 503.
+        raise GalatSesi(503, auth_bff.PESAN_BELUM_SIAP, "belum_siap") from None
+    # Access token disegarkan server sehingga iat selalu baru; waktu login yang benar adalah pembuatan sesi.
+    claims[_KLAIM_SESI_DIBUAT] = int(sesi.dibuat_pada.timestamp())
+    return claims
+
+
+_KLAIM_SESI_DIBUAT = "sapa_sesi_dibuat"
+
+
+def _bearer(request) -> str:
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header[7:].strip() if auth_header.startswith("Bearer ") and TERIMA_BEARER else ""
+    return "" if token in ("undefined", "null") else token
+
+
 def require_auth(request: Request):
     _remember_claims(request, None)
     """Kembalikan klaim token Auth0 yang sah; selain itu tolak dengan 401/503."""
     if DEV_AUTH_BYPASS:
         return {"sub": "local-dev", ROLES_CLAIM: ["viewer"], "tenant_id": "00000000-0000-0000-0000-000000000001"}
 
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
-    if not token or token in ("undefined", "null"):
+    token = _bearer(request)
+    # Bearer yang dikirim eksplisit didahulukan: header Authorization tidak bisa dipasang lintas situs tanpa
+    # preflight, jadi bukan sasaran CSRF. Pemeriksaan CSRF hanya berlaku bila identitas berasal dari cookie.
+    if LOGIN_BFF and not token:
+        claims = _klaim_dari_sesi(request)
+        if claims is not None:
+            _remember_claims(request, claims)
+            return claims
+
+    if not token:
+        if LOGIN_BFF and getattr(getattr(request, "state", None), "sapa_sesi_galat", None):
+            raise GalatSesi(503, "Sesi belum dapat diperiksa. Coba lagi sebentar.", "belum_siap")
+        if LOGIN_BFF and _bawa_cookie_sesi(request):
+            # Cookie dibawa tetapi sesinya tidak berlaku lagi (kedaluwarsa, keluar, dicabut).
+            raise _sesi_berakhir()
         raise HTTPException(status_code=401, detail="Silakan masuk terlebih dahulu", headers={"WWW-Authenticate": "Bearer"})
     claims = verify_auth0_token(token)
+    if LOGIN_BFF and isinstance(claims, dict):
+        claims.pop(_KLAIM_SESI_DIBUAT, None)  # hanya boleh diisi jalur sesi, tidak dari token
     _remember_claims(request, claims)
     return claims
 
@@ -335,15 +461,86 @@ async def audit_middleware(request: Request, call_next):
         path, query = request.url.path, request.url.query
         if audit_log.should_record(request.method, path, response.status_code, query):
             claims = getattr(request.state, "audit_claims", None)
+            if LOGIN_BFF:
+                # Sumber IP sama dengan login (ip_klien); tanpa IP tepercaya dicatat kosong,
+                # bukan IP infrastruktur Vercel.
+                ip_diteruskan, ip_koneksi = ip_klien(request) or "", None
+            else:
+                # Flag 0: perilaku lama.
+                ip_diteruskan = request.headers.get("x-forwarded-for")
+                ip_koneksi = request.client.host if request.client else None
             entry = audit_log.build_entry(
-                request.method, path, response.status_code, claims, role_label(claims),
-                request.headers.get("x-forwarded-for"), request.client.host if request.client else None,
+                request.method, path, response.status_code, claims, role_label(claims), ip_diteruskan, ip_koneksi,
                 detail=str(getattr(request.state, "audit_detail", "") or ""),
             )
             await audit_log.record(entry)
     except Exception as exc:
         logger.error("Audit log dilewati: %s", type(exc).__name__)
     return response
+
+
+@app.get("/api/v1/auth/mode")
+def mode_login():
+    """Selalu ada (juga saat flag 0): frontend membaca mode login dari sini, tanpa VITE_LOGIN_BFF."""
+    return JSONResponse(headers=_NO_STORE, content={"bff": LOGIN_BFF})
+
+
+def _token_admin(access_token: str) -> bool:
+    """Untuk batas menganggur khusus admin (sesi_service.batas_menganggur_admin, nonaktif bila env kosong).
+
+    Token berasal dari penyimpanan sesi terenkripsi dan sudah diverifikasi saat diperoleh; tanda tangan
+    tidak diperiksa ulang di sini karena hasilnya hanya bisa memperketat. Token yang tidak terbaca
+    diperlakukan sebagai admin (lebih ketat).
+    """
+    try:
+        klaim = jwt.decode(access_token, options={"verify_signature": False})
+    except jwt.PyJWTError:
+        return True
+    return role_rank(klaim) >= ROLE_RANK["admin"]
+
+
+def _klaim_opsional(request):
+    try:
+        return require_auth(request)
+    except HTTPException:
+        return None
+
+
+if LOGIN_BFF:
+    from fastapi.exceptions import RequestValidationError
+
+    @app.middleware("http")
+    async def sesi_middleware(request: Request, call_next):
+        """Baca sesi dari cookie __Host-sapa_sesi (dan segarkan token) sebelum dependency auth berjalan."""
+        request.state.sapa_sesi = None
+        request.state.sapa_sesi_galat = None
+        cookie = request.cookies.get(sesi_service.NAMA_COOKIE)
+        if cookie and request.url.path.startswith("/api/") and request.url.path != "/api/v1/auth/masuk":
+            try:
+                # Di Vercel penyegaran hanya dengan IP tepercaya (auth0-forwarded-for).
+                request.state.sapa_sesi = await sesi_service.ambil_sesi_segar(
+                    cookie, adalah_admin=_token_admin, ip=ip_klien(request), ip_wajib=_di_vercel())
+            except sesi_service.SesiBelumSiap:
+                request.state.sapa_sesi_galat = 503
+        return await call_next(request)
+
+    @app.exception_handler(GalatSesi)
+    async def galat_sesi(request: Request, exc: GalatSesi):
+        """401/403/503 jalur sesi cookie dengan field kode stabil (sesi_berakhir, asal_tidak_sah, belum_siap)."""
+        return JSONResponse(status_code=exc.status_code, headers={**(exc.headers or {}), **_NO_STORE},
+                            content={"detail": exc.detail, "kode": exc.kode})
+
+    @app.exception_handler(RequestValidationError)
+    async def galat_validasi(request: Request, exc: RequestValidationError):
+        """Galat 422 tanpa memantulkan isian pengguna (bawaan Pydantic menyertakan field input)."""
+        rincian = [{"loc": list(e.get("loc", ())), "msg": e.get("msg", ""), "type": e.get("type", "")} for e in exc.errors()]
+        return JSONResponse(status_code=422, headers=_NO_STORE, content={"detail": rincian})
+
+    app.include_router(auth_bff.buat_router(
+        verifikasi_token=lambda t: verify_auth0_token(t, galat_infra_503=True), ip_pengguna=ip_klien,
+        label_peran=role_label, klaim_opsional=_klaim_opsional, asal_diizinkan=ASAL_BFF,
+        audience=AUTH0_API_AUDIENCE,
+    ))
 
 
 @app.get("/api/v1/audit-log")
@@ -397,8 +594,13 @@ class VerifikasiManusia(BaseModel):
 
 @app.post("/api/v1/verifikasi-manusia")
 def verifikasi_manusia(body: VerifikasiManusia, request: Request):
-    """Dipanggil halaman /verifikasi di tengah login Auth0, jadi tanpa token SAPA."""
-    ip = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() or (request.client.host if request.client else None)
+    """Dipanggil halaman /verifikasi di tengah login Auth0, jadi tanpa token SAPA.
+
+    Berlaku juga saat flag 0 (kedua pembacaan x-forwarded-for mentah diganti): remoteip memakai ip_pengguna, dan hostname localhost ditolak
+    turnstile.cek_turnstile di Production. Di Vercel x-forwarded-for sudah ditulis ulang Vercel, jadi
+    IP yang dikirim ke Cloudflare sama dengan sebelumnya.
+    """
+    ip = ip_pengguna(request)
     try:
         hasil = verifikasi_service.verifikasi(body.state, body.session_token, body.turnstile_token, ip)
     except verifikasi_service.VerifikasiGagal as exc:
@@ -562,7 +764,9 @@ def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in)):
     if not status["wajib_ganti_sandi"]:
         raise HTTPException(status_code=403, detail=pengguna_service.PESAN_SUDAH_DIGANTI)
     diatur = status.get("diatur_ulang_pada")
-    if diatur and not (isinstance(user.get("iat"), int) and user["iat"] >= diatur):
+    # Sesi cookie: pembandingnya waktu sesi dibuat, karena iat access token berganti setiap penyegaran.
+    masuk_pada = user.get(_KLAIM_SESI_DIBUAT, user.get("iat"))
+    if diatur and not (isinstance(masuk_pada, int) and masuk_pada >= diatur):
         raise HTTPException(status_code=403, detail=pengguna_service.PESAN_SESI_LAMA)
     pesan = pengguna_service.cek_sandi(body.sandi_baru)
     if pesan:
@@ -830,28 +1034,6 @@ def format_timestamp_standard(ts_str: Any) -> str:
     return s
 
 
-def get_sheets_service():
-    if not HAS_GOOGLE_CLIENT:
-        return None
-    gcp_creds = os.environ.get("GCP_SA_CREDENTIALS_BASE64") or os.environ.get("GCP_SA_CREDENTIALS_JSON")
-    if not gcp_creds:
-        return None
-    try:
-        import base64
-        try:
-            creds_str = base64.b64decode(gcp_creds).decode('utf-8')
-            creds_info = json.loads(creds_str)
-        except Exception:
-            creds_info = json.loads(gcp_creds)
-            
-        credentials = service_account.Credentials.from_service_account_info(
-            creds_info, scopes=SCOPES
-        )
-        return build('sheets', 'v4', credentials=credentials, cache_discovery=False)
-    except Exception as e:
-        logger.error(f"Failed to initialize Google Sheets service: {e}")
-        return None
-
 # Satu-satunya spreadsheet antrean FKRTL; tidak bisa diganti dari permintaan.
 FKRTL_ANTROL_SPREADSHEET_ID = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY"
 
@@ -919,61 +1101,17 @@ def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_ref
     if force_refresh:
         invalidate_sheets_cache(spreadsheet_id)
 
-    # 1. Sheets API lewat akun layanan (sheets_source), per tab.
+    # Sheets API lewat akun layanan (sheets_source), per tab di SHEET_GIDS (DB_FASKES, DB_LAP_ANTROL_FKRTL,
+    # per_poli: seluruh tab, jadi mencakup range_names pemanggil). range_names dipertahankan untuk kompatibilitas.
     live_dfs = fetch_live_google_sheets(spreadsheet_id, force_refresh=force_refresh)
     if any(live_dfs.get(name) is not None and not live_dfs[name].is_empty() for name in ("DB_LAP_ANTROL_FKRTL", "per_poli")):
         return live_dfs
 
-    # 2. Cadangan: batchGet lewat klien Google API dengan akun layanan yang sama.
-    service = get_sheets_service()
-    if not service:
-        logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
-        return {}
-        
-    try:
-        sheet = service.spreadsheets()
-        result = sheet.values().batchGet(spreadsheetId=spreadsheet_id, ranges=range_names).execute()
-        value_ranges = result.get('valueRanges', [])
-        
-        dfs: Dict[str, pl.DataFrame] = {}
-        for vr in value_ranges:
-            range_key = vr.get('range', '').split('!')[0].replace("'", "")
-            rows = vr.get('values', [])
-            if not rows or len(rows) < 1:
-                dfs[range_key] = pl.DataFrame()
-                continue
-                
-            headers = [str(h).strip() for h in rows[0]]
-            data = rows[1:] if len(rows) > 1 else []
-            
-            seen = {}
-            unique_headers = []
-            for h in headers:
-                if h in seen:
-                    seen[h] += 1
-                    unique_headers.append(f"{h}_{seen[h]}")
-                else:
-                    seen[h] = 1
-                    unique_headers.append(h)
-            
-            normalized_data = []
-            for r in data:
-                row_list = list(r)
-                if len(row_list) < len(unique_headers):
-                    row_list.extend([""] * (len(unique_headers) - len(row_list)))
-                elif len(row_list) > len(unique_headers):
-                    row_list = row_list[:len(unique_headers)]
-                normalized_data.append(row_list)
-                
-            if normalized_data:
-                dfs[range_key] = pl.DataFrame(normalized_data, schema=unique_headers, orient="row")
-            else:
-                dfs[range_key] = pl.DataFrame(schema=unique_headers)
-                
-        return dfs
-    except Exception as e:
-        logger.error(f"Sumber antrean FKRTL tidak terbaca ({type(e).__name__}); data kosong dikembalikan")
-        return {}
+    # Jalur cadangan batchGet lewat googleapiclient dihapus (2026-11-19): paket itu tidak pernah ada di
+    # api/requirements.txt, jadi jalur itu selalu mati di Vercel, dan memakai akun layanan yang sama dengan
+    # sheets_source sehingga tidak menolong saat jalur utama gagal.
+    logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
+    return {}
 
 # --- FKRTL PEMANFAATAN ANTROL ANALYTICS ENDPOINT ---
 @app.get("/api/v1/fkrtl-antrol-stats")
@@ -3473,7 +3611,7 @@ async def get_fktp_antrol_stats(
 # ==============================================================================
 # --- DATA SSBI KESESUAIAN JADWAL PRAKTIK DOKTER FKRTL (Integrasi data + Download Detail) ---
 # Unggah/integrasikan: Admin ke atas. Unduh: Admin ke atas (semua RS) atau Petugas RS (RS sendiri,
-# lewat tabel padanan; gagal tertutup). Viewer ditolak. Syarat keamanan: laporan Clara 2026-11-16.
+# lewat tabel padanan; gagal tertutup). Viewer ditolak.
 # ==============================================================================
 _SSBI_JENIS = "application/gzip"
 _SSBI_KUNCI = 0x55B1_0001  # kunci advisory Postgres: satu integrasi pada satu waktu
@@ -3771,7 +3909,7 @@ def _sk_isi(segar: bool = False) -> dict:
         with _sk_simpanan_lock:
             if _sk_simpanan["versi"] == info["versi"] and _sk_simpanan["isi"] is not None:
                 return _sk_simpanan["isi"]
-    if info["ukuran"] > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5: tolak sebelum diunduh
+    if info["ukuran"] > surat_kontrol_service.BATAS_SIMPANAN:  # tolak sebelum diunduh
         raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
     isi = surat_kontrol_service.baca_simpanan(_sk_drive_unduh() if info["ukuran"] else b"")
     with _sk_simpanan_lock:
@@ -3810,7 +3948,7 @@ async def _sk_terima(request: Request, bulan: str):
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
         raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
     bulan = _sk_bulan_param(bulan)
-    request.state.audit_detail = f"bulan={bulan}"  # review Clara R3: unggahan yang ditolak tetap tercatat
+    request.state.audit_detail = f"bulan={bulan}"  # unggahan yang ditolak tetap tercatat
     batas = surat_kontrol_service.BATAS_KOMPRES
     terlalu_besar = HTTPException(status_code=413, detail="Kiriman terlalu besar (batas 1 MB setelah dikompres).", headers=_NO_STORE)
     try:
@@ -3845,7 +3983,7 @@ def _sk_tak_dikenal(data: dict) -> Optional[List[str]]:
     except Exception as exc:
         logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
         return None
-    # Hanya kode PPK yang ditampilkan ke admin (desain Kim); nama dan isi sel tidak.
+    # Hanya kode PPK yang ditampilkan ke admin; nama dan isi sel tidak.
     return [kode for kode, _ in surat_kontrol_service.kode_faskes(data) if kode not in dikenal]
 
 
@@ -3857,7 +3995,7 @@ async def surat_kontrol_periksa(request: Request, bulan: str = "", user=Depends(
     try:
         isi = await run_in_threadpool(_sk_isi)
         ada = _sk_ringkas_bulan(bulan, isi["bulan"][bulan]) if bulan in isi["bulan"] else None
-        # Syarat Clara (f): isi identik dengan bulan lain = kemungkinan salah pilih bulan (peringatan saja).
+        # Isi identik dengan bulan lain = kemungkinan salah pilih bulan (peringatan saja).
         for lain in surat_kontrol_service.bulan_kembar(isi, bulan, hasil.data):
             hasil.ringkasan["peringatan"].append(f"Isi sama persis dengan data {surat_kontrol_service.label_bulan(lain)}; "
                                                  "pastikan bulan yang dipilih benar.")
@@ -3880,7 +4018,7 @@ async def surat_kontrol_integrasikan(request: Request, bulan: str = "", user=Dep
 
         def ganti():
             ukuran = _sk_drive_info()["ukuran"]
-            if ukuran > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5
+            if ukuran > surat_kontrol_service.BATAS_SIMPANAN:  # tolak simpanan terlalu besar
                 raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
             lama = _sk_drive_unduh() if ukuran else b""
             baru = surat_kontrol_service.simpanan_baru(lama, bulan, hasil.data, meta)

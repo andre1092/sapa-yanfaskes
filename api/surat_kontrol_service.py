@@ -1,9 +1,9 @@
 """Monitoring Penerbitan Surat Kontrol: Crosstab BI agregat (keputusan CEO 2026-11-19, opsi b).
 
 Per bulan admin mengunggah 10 CSV Crosstab (Faskes Surkon, Header Surkon, Keterangan, Poli, Tren untuk
-Rawat Jalan dan Rawat Inap, semua RS) lewat dua area unggah (desain Kim). Jenis pelayanan diambil dari area,
+Rawat Jalan dan Rawat Inap, semua RS) lewat dua area unggah. Jenis pelayanan diambil dari area,
 bulan dari pilihan admin, dan sheet dikenali dari isi header; nama berkas tidak dikirim dan tidak dipakai.
-Header = Faskes = Tren per status wajib sama; selisih Poli hanya dilaporkan (syarat Clara B).
+Header = Faskes = Tren per status wajib sama; selisih Poli hanya dilaporkan.
 Satu galat = seluruh unggahan ditolak.
 
 Simpanan: satu JSON gzip berisi semua bulan; unggah ulang mengganti bulan itu saja. Tidak ada data
@@ -42,7 +42,7 @@ SHEET = SHEET_WAJIB + ("Keterangan",)
 BULAN_ID = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September",
             "Oktober", "November", "Desember")
 
-# Hanya digit ASCII: \d di Python juga cocok dengan digit Unicode (review Clara S1).
+# Hanya digit ASCII: \d di Python juga cocok dengan digit Unicode.
 _RE_BULAN = re.compile(r"[0-9]{4}-(0[1-9]|1[0-2])")
 _RE_ANGKA = re.compile(r"[0-9]{1,3}(,[0-9]{3})*|[0-9]+")
 _RE_RS = re.compile(r"([0-9]{4}[A-Z][0-9]{3}) - (.+)")
@@ -352,7 +352,7 @@ def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]], hari_ini: Optiona
     data["sampai"] = f"{bulan}-{hari_akhir:02d}"
     if hari_ini is not None and (bulan > hari_ini.strftime("%Y-%m")
                                  or (hari_ini.strftime("%Y-%m") == bulan and hari_akhir > hari_ini.day)):
-        # Syarat Clara (e): bulan berjalan tidak mungkin punya data setelah hari ini.
+        # Bulan berjalan tidak mungkin punya data setelah hari ini.
         raise BerkasDitolak("Sheet Tren memuat tanggal yang belum terjadi. Periksa bulan yang dipilih.")
     peringatan = []
     if sum(data["RI"]["total"].values()) > sum(data["RJ"]["total"].values()):
@@ -369,7 +369,7 @@ def sidik(data: dict) -> str:
 
 
 def bulan_kembar(isi: dict, bulan: str, data: dict) -> List[str]:
-    """Bulan lain tersimpan yang isinya identik (syarat Clara f); hanya untuk peringatan."""
+    """Bulan lain tersimpan yang isinya identik; hanya untuk peringatan."""
     target = sidik(data)
     return [b for b, v in isi["bulan"].items() if b != bulan and all(j in v for j in JENIS) and sidik(v) == target]
 
@@ -386,7 +386,7 @@ def kode_faskes(data: dict) -> List[Tuple[str, str]]:
 # --- simpanan --------------------------------------------------------------
 
 def baca_simpanan(isi: bytes) -> dict:
-    """Isi berkas Drive, dibuka dengan batas ukuran lalu dicek skemanya (syarat Clara E)."""
+    """Isi berkas Drive, dibuka dengan batas ukuran lalu dicek skemanya."""
     if not isi:
         return {"versi": 1, "bulan": {}}
     pembuka = zlib.decompressobj(16 + zlib.MAX_WBITS)
@@ -411,8 +411,8 @@ def simpanan_baru(lama: Optional[bytes], bulan: str, data: dict, meta: Dict[str,
 
 def untuk_petugas(data: dict, kode: str) -> dict:
     """Petugas RS: baris Faskes hanya RS sendiri dan KPI dari baris itu. Tren dan Poli tetap total cabang
-    (keputusan CEO 2b, disetujui Clara), karena tidak memuat angka per RS."""
-    hasil = {"sampai": data.get("sampai", "")}  # daftar izin, bukan daftar tolak (catatan Clara)
+    (keputusan CEO 2b), karena tidak memuat angka per RS."""
+    hasil = {"sampai": data.get("sampai", "")}  # daftar izin, bukan daftar tolak
     for j in JENIS:
         milik = [f for f in data[j]["faskes"] if f["kode"] == kode]
         hasil[j] = {"total": _jumlah(milik), "faskes": milik, "poli": data[j]["poli"], "tren": data[j]["tren"]}
