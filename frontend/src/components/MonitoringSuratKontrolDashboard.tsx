@@ -295,7 +295,7 @@ export function MonitoringSuratKontrolDashboard() {
   }, [jpeg, bulanAktif, jenis, namaRs]);
 
   const filter = [
-    { id: 'bulan', label: 'Bulan SEP', value: bulanAktif, onChange: setBulan, disabled: !r?.bulan_tersedia.length,
+    { id: 'bulan', label: 'Bulan SEP', value: bulanAktif, onChange: (v: string) => { setBulan(v); setRs(''); }, disabled: !r?.bulan_tersedia.length,
       opsi: (r?.bulan_tersedia || []).slice().reverse().map(b => ({ value: b, label: labelBulan(b) })) },
     { id: 'rs', label: 'Fasilitas kesehatan', value: terkunci ? kodeRs : rs, onChange: setRs, disabled: terkunci,
       opsi: terkunci ? [{ value: kodeRs, label: `🔒 ${namaRs}` }] : [{ value: '', label: 'Semua faskes' }, ...daftarRs.map(f => ({ value: f.kode, label: f.nama }))] },

@@ -3770,6 +3770,8 @@ def _sk_isi(segar: bool = False) -> dict:
         with _sk_simpanan_lock:
             if _sk_simpanan["versi"] == info["versi"] and _sk_simpanan["isi"] is not None:
                 return _sk_simpanan["isi"]
+    if info["ukuran"] > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5: tolak sebelum diunduh
+        raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
     isi = surat_kontrol_service.baca_simpanan(_sk_drive_unduh() if info["ukuran"] else b"")
     with _sk_simpanan_lock:
         _sk_simpanan.update(versi=info["versi"], isi=isi)
@@ -3807,6 +3809,7 @@ async def _sk_terima(request: Request, bulan: str):
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
         raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
     bulan = _sk_bulan_param(bulan)
+    request.state.audit_detail = f"bulan={bulan}"  # review Clara R3: unggahan yang ditolak tetap tercatat
     batas = surat_kontrol_service.BATAS_KOMPRES
     terlalu_besar = HTTPException(status_code=413, detail="Kiriman terlalu besar (batas 1 MB setelah dikompres).", headers=_NO_STORE)
     try:
@@ -3820,6 +3823,8 @@ async def _sk_terima(request: Request, bulan: str):
         data.extend(potong)
         if len(data) > batas:
             raise terlalu_besar
+
+    request.state.audit_detail = f"bulan={bulan} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
 
     def olah():
         berkas = surat_kontrol_service.baca_kiriman(bytes(data))
@@ -3873,7 +3878,10 @@ async def surat_kontrol_integrasikan(request: Request, bulan: str = "", user=Dep
             raise HTTPException(status_code=409, detail="Admin lain sedang mengintegrasikan data. Coba lagi setelah selesai.", headers=_NO_STORE)
 
         def ganti():
-            lama = _sk_drive_unduh() if _sk_drive_info()["ukuran"] else b""
+            ukuran = _sk_drive_info()["ukuran"]
+            if ukuran > surat_kontrol_service.BATAS_SIMPANAN:  # review Clara R5
+                raise ValueError("berkas simpanan Surat Kontrol melebihi batas")
+            lama = _sk_drive_unduh() if ukuran else b""
             baru = surat_kontrol_service.simpanan_baru(lama, bulan, hasil.data, meta)
             isi = surat_kontrol_service.baca_simpanan(baru)
             urutan = list(isi["bulan"])

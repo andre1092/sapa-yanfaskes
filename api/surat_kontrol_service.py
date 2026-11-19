@@ -42,9 +42,11 @@ SHEET = SHEET_WAJIB + ("Keterangan",)
 BULAN_ID = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September",
             "Oktober", "November", "Desember")
 
-_RE_BULAN = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
-_RE_ANGKA = re.compile(r"\d{1,3}(,\d{3})*|\d+")
-_RE_RS = re.compile(r"(\d{4}[A-Z]\d{3}) - (.+)")
+# Hanya digit ASCII: \d di Python juga cocok dengan digit Unicode (review Clara S1).
+_RE_BULAN = re.compile(r"[0-9]{4}-(0[1-9]|1[0-2])")
+_RE_ANGKA = re.compile(r"[0-9]{1,3}(,[0-9]{3})*|[0-9]+")
+_RE_RS = re.compile(r"([0-9]{4}[A-Z][0-9]{3}) - (.+)")
+_RE_HARI = re.compile(r"[0-9]{1,2}")
 
 
 class BerkasDitolak(Exception):
@@ -97,7 +99,7 @@ def baca_kiriman(data: bytes) -> List[Tuple[str, bytes]]:
     rusak = BerkasDitolak("Kiriman tidak terbaca. Muat ulang halaman lalu coba lagi.")
     try:
         isi = json.loads(_buka_gzip(data).decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+    except (UnicodeDecodeError, ValueError, RecursionError):
         raise rusak from None
     if not isinstance(isi, dict) or set(isi) != {"berkas"} or not isinstance(isi["berkas"], list) or not isi["berkas"]:
         raise rusak
@@ -106,7 +108,8 @@ def baca_kiriman(data: bytes) -> List[Tuple[str, bytes]]:
         raise BerkasDitolak(f"Pilih paling banyak {BATAS_JUMLAH_BERKAS} berkas untuk satu bulan (5 per jenis pelayanan).")
     hasil, total = [], 0
     for b in daftar:
-        if not isinstance(b, dict) or set(b) != {"jenis", "isi"} or b["jenis"] not in JENIS or not isinstance(b["isi"], str):
+        if (not isinstance(b, dict) or set(b) != {"jenis", "isi"} or not isinstance(b["jenis"], str)
+                or b["jenis"] not in JENIS or not isinstance(b["isi"], str)):
             raise rusak
         if len(b["isi"]) > (BATAS_BERKAS * 4) // 3 + 4:
             raise BerkasDitolak(_PESAN_BESAR)
@@ -252,15 +255,13 @@ def _baca_tren(raw, apa, bulan):
     rows = _grid(raw, apa)
     if len(rows) < 2 or rows[0][0] != "Status":
         raise _tata_letak(apa)
-    try:
-        hari = [int(h) for h in rows[0][1:]]
-    except ValueError:
-        raise _tata_letak(apa) from None
+    if not all(_RE_HARI.fullmatch(h) for h in rows[0][1:]):
+        raise _tata_letak(apa)
+    hari = [int(h) for h in rows[0][1:]]
     tahun, nomor = map(int, bulan.split("-"))
     maks = calendar.monthrange(tahun, nomor)[1]
     if any(h < 1 or h > maks for h in hari) or len(set(hari)) != len(hari):
-        nama = BULAN_ID[nomor - 1]
-        raise BerkasDitolak(f"Sheet Tren memuat tanggal {max(hari)}, padahal {nama} hanya {maks} hari. Periksa bulan yang dipilih.")
+        raise BerkasDitolak(f"Sheet Tren memuat tanggal di luar {label_bulan(bulan)}. Periksa bulan yang dipilih.")
     _, per = _status_di_baris(rows[1:], "", apa)
     return sorted(({"hari": h, **{k: (per[k][i] if k in per else 0) for k in KUNCI}} for i, h in enumerate(hari)),
                   key=lambda t: t["hari"])
@@ -293,7 +294,7 @@ def kenali_sheet(raw: bytes) -> Optional[str]:
     if len(rows) < 2 or len(rows[0]) < 2:
         return None
     judul = rows[0]
-    if judul[0] == "Status" and all(c.isdigit() for c in judul[1:]):
+    if judul[0] == "Status" and all(_RE_HARI.fullmatch(c) for c in judul[1:]):
         return "Tren"
     if judul[0]:
         return None
@@ -349,7 +350,8 @@ def periksa_bulan(bulan: str, berkas: List[Tuple[str, bytes]], hari_ini: Optiona
                             "selisih_poli": sum(total.values()) - sum(_jumlah(poli).values())}
     hari_akhir = max((t["hari"] for j in JENIS for t in data[j]["tren"]), default=1)
     data["sampai"] = f"{bulan}-{hari_akhir:02d}"
-    if hari_ini is not None and hari_ini.strftime("%Y-%m") == bulan and hari_akhir > hari_ini.day:
+    if hari_ini is not None and (bulan > hari_ini.strftime("%Y-%m")
+                                 or (hari_ini.strftime("%Y-%m") == bulan and hari_akhir > hari_ini.day)):
         # Syarat Clara (e): bulan berjalan tidak mungkin punya data setelah hari ini.
         raise BerkasDitolak("Sheet Tren memuat tanggal yang belum terjadi. Periksa bulan yang dipilih.")
     peringatan = []
@@ -410,7 +412,7 @@ def simpanan_baru(lama: Optional[bytes], bulan: str, data: dict, meta: Dict[str,
 def untuk_petugas(data: dict, kode: str) -> dict:
     """Petugas RS: baris Faskes hanya RS sendiri dan KPI dari baris itu. Tren dan Poli tetap total cabang
     (keputusan CEO 2b, disetujui Clara), karena tidak memuat angka per RS."""
-    hasil = {k: v for k, v in data.items() if k not in JENIS}
+    hasil = {"sampai": data.get("sampai", "")}  # daftar izin, bukan daftar tolak (catatan Clara)
     for j in JENIS:
         milik = [f for f in data[j]["faskes"] if f["kode"] == kode]
         hasil[j] = {"total": _jumlah(milik), "faskes": milik, "poli": data[j]["poli"], "tren": data[j]["tren"]}
