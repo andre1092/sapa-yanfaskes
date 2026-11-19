@@ -39,7 +39,7 @@ CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON audit_log
     FOR EACH STATEMENT EXECUTE FUNCTION audit_log_append_only();
 """
 
-_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-export|ssbi-jadwal/(periksa|integrasikan|detail)|auth/(send-verification-email|masuk|keluar)|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
+_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-export|ssbi-jadwal/(periksa|integrasikan|detail)|surat-kontrol/(periksa|integrasikan)|auth/(send-verification-email|masuk|keluar)|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
 # Rute login satu halaman hanya ada bila SAPA_LOGIN_BFF=1; 404/405 (rute tidak ada, metode salah) tidak dicatat.
 _AUTH_BFF_PATHS = re.compile(r"^/api/v1/auth/(masuk|keluar)$")
 _schema_ready = False
