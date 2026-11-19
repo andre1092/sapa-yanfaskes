@@ -84,8 +84,9 @@ def test_every_data_route_requires_a_role(api):
     guarded = {"require_viewer", "require_admin", "require_super_admin", "require_viewer_fktp", "require_fkrtl_export", "require_signed_in", "require_ssbi_unduh"}
     # /api/v1/verifikasi-manusia dipanggil di tengah login, sebelum ada token SAPA. Penjaganya
     # session_token bertanda tangan dari Action Auth0 (tes di test_verifikasi_manusia.py).
+    # /api/v1/auth/mode hanya menjawab mode login ({"bff": bool}) dan dibaca sebelum pengguna masuk.
     open_routes = {"/", "/api", "/api/index.py", "/api/v1/health", "/health", "/api/v2/tenants/{tenant_id}/Users",
-                   "/api/v1/verifikasi-manusia"}
+                   "/api/v1/verifikasi-manusia", "/api/v1/auth/mode"}
     for route in api.app.routes:
         if not isinstance(route, APIRoute) or route.path in open_routes:
             continue
