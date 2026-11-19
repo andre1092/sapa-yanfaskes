@@ -263,7 +263,7 @@ def test_hospital_without_ppk_code_is_refused():
 
 def test_day_beyond_month_length_is_refused():
     berkas = satu_jenis("RJ", hari=31) + satu_jenis("RI")
-    with pytest.raises(sk.BerkasDitolak, match="tanggal 31, padahal November hanya 30 hari"):
+    with pytest.raises(sk.BerkasDitolak, match="tanggal di luar November 2026"):
         sk.periksa_bulan("2026-11", berkas)
 
 
@@ -354,3 +354,60 @@ def test_identical_content_in_another_month_is_found():
     assert sk.bulan_kembar(simpan, "2026-11", nov) == []
     lain = sk.periksa_bulan("2026-12", satu_jenis("RJ", angka={LT: {RS[0]: 10}}) + satu_jenis("RI", angka={EQ: {RS[1]: 5}})).data
     assert sk.bulan_kembar(simpan, "2026-12", lain) == []
+
+
+# --- review Clara PR #79 (S1, R1, R2, R4) ------------------------------------
+
+@pytest.mark.parametrize("bulan", ["２０２６-11", "\u0662\u0660\u0662\u0666-11", "2026-１1"])
+def test_unicode_digits_in_month_are_refused(bulan):
+    with pytest.raises(ValueError):
+        sk.cek_bulan(bulan)
+
+
+@pytest.mark.parametrize("nilai", ["３,５１３", "\u0663513"])
+def test_unicode_digits_in_counts_are_refused(nilai):
+    isi = faskes(ANGKA["RJ"]).decode("utf-16").replace("3,513", nilai).encode("utf-16")
+    with pytest.raises(sk.BerkasDitolak, match="angka"):
+        sk.periksa_bulan("2026-11", ganti(sepuluh(), 0, isi))
+
+
+def test_unicode_digit_day_or_ppk_code_is_not_recognised():
+    isi = tren({LT: 3600, EQ: 12}).decode("utf-16").replace("\t1\t", "\t１\t", 1).encode("utf-16")
+    assert sk.kenali_sheet(isi) is None
+    kode = faskes(ANGKA["RJ"]).decode("utf-16").replace("0101R001", "０101R001").encode("utf-16")
+    with pytest.raises(sk.BerkasDitolak, match="kode PPK"):
+        sk.periksa_bulan("2026-11", ganti(sepuluh(), 0, kode))
+
+
+def test_storage_with_unicode_month_key_is_rejected():
+    with pytest.raises(ValueError):
+        sk.baca_simpanan(gzip.compress(json.dumps({"versi": 1, "bulan": {"２０２６-11": {}}}).encode()))
+
+
+@pytest.mark.parametrize("data", [
+    gzip.compress(("[" * 5000 + "]" * 5000).encode()),
+    gzip.compress(json.dumps({"berkas": [{"jenis": ["RJ"], "isi": ""}]}).encode()),
+    gzip.compress(json.dumps({"berkas": [{"jenis": {"RJ": 1}, "isi": ""}]}).encode()),
+])
+def test_deep_json_or_non_string_type_is_refused_cleanly(data):
+    with pytest.raises(sk.BerkasDitolak):
+        sk.baca_kiriman(data)
+
+
+def test_future_month_is_refused():
+    from datetime import date
+    with pytest.raises(sk.BerkasDitolak, match="belum terjadi"):
+        sk.periksa_bulan("2026-12", sepuluh(), hari_ini=date(2026, 11, 19))
+
+
+def test_day_message_does_not_echo_cell_value():
+    berkas = satu_jenis("RJ", hari=31) + satu_jenis("RI")
+    with pytest.raises(sk.BerkasDitolak) as err:
+        sk.periksa_bulan("2026-11", berkas)
+    assert "31" not in err.value.pesan
+
+
+def test_officer_payload_uses_allowlist():
+    data = sk.periksa_bulan("2026-11", sepuluh()).data
+    data["rahasia"] = "jangan"
+    assert set(sk.untuk_petugas(data, "0101R001")) == {"RJ", "RI", "sampai"}

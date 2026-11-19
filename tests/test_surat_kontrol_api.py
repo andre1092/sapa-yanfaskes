@@ -137,18 +137,18 @@ def test_check_reports_month_that_will_be_replaced(env):
 def test_reupload_replaces_only_that_month(env):
     api, drive, call, written = env
     unggah(call, "2026-11")
-    unggah(call, "2026-12")
+    unggah(call, "2026-10")
     baru = satu_jenis("RJ", angka={LT: {RS[0]: 10}}) + satu_jenis("RI")
     res = unggah(call, "2026-11", berkas=baru, roles=["super_admin"])
     assert res.status_code == 200
     isi = isi_drive(api, drive)
-    assert sorted(isi["bulan"]) == ["2026-11", "2026-12"]
+    assert sorted(isi["bulan"]) == ["2026-10", "2026-11"]
     assert isi["bulan"]["2026-11"]["RJ"]["total"]["lt"] == 10
     assert isi["bulan"]["2026-11"]["meta"]["diunggah_oleh"] == "Super Admin"
-    assert isi["bulan"]["2026-12"]["RJ"]["total"]["lt"] == 3600
-    assert drive.properti["bulan_awal"] == "2026-11" and drive.properti["bulan_akhir"] == "2026-12"
+    assert isi["bulan"]["2026-10"]["RJ"]["total"]["lt"] == 3600
+    assert drive.properti["bulan_awal"] == "2026-10" and drive.properti["bulan_akhir"] == "2026-11"
     assert all(len(k) + len(v) <= 124 for k, v in drive.properti.items()) and "MAWAR" not in str(drive.properti)
-    assert [b["bulan"] for b in res.json()["bulan"]] == ["2026-11", "2026-12"]
+    assert [b["bulan"] for b in res.json()["bulan"]] == ["2026-10", "2026-11"]
     assert written[-1]["action"] == "POST /api/v1/surat-kontrol/integrasikan"
 
 
@@ -219,11 +219,11 @@ def test_no_data_yet(env):
 def test_latest_month_is_shown_by_default(env):
     _, _, call, _ = env
     unggah(call, "2026-11")
-    unggah(call, "2026-12")
+    unggah(call, "2026-10")
     res = call("GET", "/api/v1/surat-kontrol/data", roles=["viewer"])
     body = res.json()
     assert res.headers["cache-control"] == "no-store"
-    assert body["bulan_tersedia"] == ["2026-11", "2026-12"] and body["bulan"] == "2026-12"
+    assert body["bulan_tersedia"] == ["2026-10", "2026-11"] and body["bulan"] == "2026-11"
     assert body["terkunci"] is False and body["rs"] is None
     assert len(body["data"]["RJ"]["faskes"]) == 2 and body["data"]["RJ"]["tren"]
     assert "meta" not in body["data"] and body["diunggah_pada"]
@@ -302,3 +302,28 @@ def test_current_month_with_future_days_is_refused(env, monkeypatch):
     monkeypatch.setattr(api, "_sk_hari_ini", lambda: date(2026, 11, 5))
     res = unggah(call, "2026-11")
     assert res.status_code == 400 and "tanggal yang belum terjadi" in res.json()["detail"] and drive.tulis_dipanggil == 0
+
+
+
+@pytest.mark.parametrize("bulan", ["２０２６-11", "\u0662\u0660\u0662\u0666-11"])
+def test_unicode_digit_month_is_refused_by_api(env, bulan):
+    _, drive, call, _ = env
+    assert unggah(call, bulan).status_code == 400 and drive.tulis_dipanggil == 0
+    assert call("GET", "/api/v1/surat-kontrol/data", params={"bulan": bulan}).status_code == 400
+
+
+def test_refused_upload_is_still_audited_with_month_and_hash(env):
+    _, _, call, written = env
+    res = unggah(call, data=kiriman(sepuluh()[:-1]))
+    assert res.status_code == 400
+    assert "bulan=2026-11" in written[-1]["target"] and "sha256=" in written[-1]["target"]
+
+
+def test_oversized_drive_file_is_not_downloaded(env, monkeypatch):
+    api, drive, call, _ = env
+    unggah(call)
+    monkeypatch.setattr(api, "_sk_simpanan", {"versi": None, "isi": None})
+    monkeypatch.setattr(api.surat_kontrol_service, "BATAS_SIMPANAN", 10)
+    sebelum = drive.unduh_dipanggil
+    assert call("GET", "/api/v1/surat-kontrol/data").status_code == 502
+    assert drive.unduh_dipanggil == sebelum
