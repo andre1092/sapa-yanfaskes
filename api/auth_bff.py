@@ -84,8 +84,9 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 try:
-    from . import sesi_service, turnstile
+    from . import audit_log, sesi_service, turnstile
 except ImportError:
+    import audit_log
     import sesi_service
     import turnstile
 
@@ -352,9 +353,21 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
             raise _Gagal("belum_siap") from None
         if jumlah > maks:
             await _kembalikan_slot(tiket)
-            logger.warning("Batas username unik yang gagal per IP tercapai; kegagalan tidak dihitung per username")
+            await _peringatkan_batas_username_unik(ip, jendela)
             return None, True
         return tiket, False
+
+    async def _peringatkan_batas_username_unik(ip: str, jendela: int) -> None:
+        """Satu peringatan per IP (/64) per hari saat batas username unik tercapai (OPS-6). IP disamarkan dan
+        tanpa username. Satu baris penanda per IP per hari, jadi sapa_batas tetap terbatas."""
+        try:
+            jumlah, _ = await sesi_service.hitung(f"peringatan-unik:ip:{kunci_ip(ip)}", jendela)
+        except sesi_service.SesiBelumSiap:
+            raise _Gagal("belum_siap") from None
+        if jumlah == 1:
+            logger.warning("Batas %d username unik yang gagal per IP tercapai untuk IP %s; kegagalan berikutnya "
+                           "hari ini dijawab terlalu_banyak", BATAS_USERNAME_UNIK_IP[1],
+                           audit_log.mask_ip(ip, None) or "tidak-diketahui")
 
     async def _padamkan_penanda(kunci: str) -> None:
         try:
@@ -480,8 +493,10 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
                 # ada, termasuk operasi DB-nya, supaya jawaban dan waktu setara.
                 diblokir_auth0 = status == 429
                 if diblokir_auth0 and galat != "too_many_attempts":
-                    logger.warning("Auth0 menjawab 429 untuk /oauth/token (galat %s); dihitung sebagai kegagalan",
-                                   galat or "-")
+                    # OPS-6: 429 selain blokir brute-force dianggap batas tenant Auth0. Pengguna tetap menerima
+                    # sandi_salah; log ini (tanpa username) yang membedakannya untuk pemantauan.
+                    logger.warning("Auth0 429 batas tenant pada /oauth/token (galat %s); dijawab sandi_salah dan "
+                                   "dihitung sebagai kegagalan", galat or "-")
                 if not diblokir_auth0 and (status == 0 or status >= 500 or galat in _GALAT_KONFIG or status == 200):
                     logger.error("Auth0 /oauth/token bermasalah: status %s, galat %s", status, galat or "-")
                     raise _Gagal("belum_siap")

@@ -2711,9 +2711,10 @@ def test_s1_lewat_batas_username_unik_identik_termasuk_saat_auth0_memblokir(bff,
     assert _kode(ada[0]) == ["terlalu_banyak"] * 15
 
 
-def test_s2_kuota_harian_penanda_lengket_membatasi_baris_30_hari(bff, monkeypatch):
+def test_s2_kuota_harian_penanda_lengket_membatasi_baris_30_hari(bff, monkeypatch, caplog):
     """S2: rotasi prefiks IPv6 /64 tidak bisa menambah penanda 30 hari melebihi kuota harian seluruh SAPA."""
     b = bff()
+    caplog.set_level(logging.INFO)
     assert b.ab.BATAS_PENANDA_LENGKET_HARIAN == (24 * 60 * 60, 1000)
     monkeypatch.setattr(b.ab, "BATAS_PENANDA_LENGKET_HARIAN", (24 * 60 * 60, 2))
     b.auth0.jawaban_token = GAGAL
@@ -2725,6 +2726,10 @@ def test_s2_kuota_harian_penanda_lengket_membatasi_baris_30_hari(bff, monkeypatc
     umur = [b.store.penanda[_kunci_penanda(b, ip=ip)][1] - b.jam.waktu for ip in ip6]
     lengket = [u for u in umur if u > timedelta(days=29)]
     assert len(lengket) == 2 and all(u <= timedelta(minutes=15) for u in umur if u not in lengket)
+    # Syarat Clara: kuota penuh dicatat sebagai peringatan (OPS-6), tanpa username.
+    kuota = [r.getMessage() for r in caplog.records
+             if r.levelno == logging.WARNING and "Kuota penanda lengket harian penuh" in r.getMessage()]
+    assert len(kuota) == 2 and not any(USERNAME in m or b.ab.ringkas_username(USERNAME) in m for m in kuota)
     # Hitungan yang mencapai ambang tetap menjawab terlalu_banyak selama hidup (fungsi hitungan SAPA saja).
     for ip in ip6:
         assert masuk(b, header={"x-vercel-forwarded-for": ip}).json() == TERLALU_BANYAK
@@ -2769,10 +2774,13 @@ def test_n1_ukuran_sapa_batas_terbatas_saat_banjir_username_unik(bff, monkeypatc
     assert max(ukuran) <= batas_atas, max(ukuran)
     assert max(ukuran[300:]) <= max(ukuran[:300])  # tunak, tidak tumbuh terus
     assert all(v <= b.jam.waktu + timedelta(days=1) for v in b.store.kedaluwarsa_batas.values())
-    harian = {b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}"), b.ss.jejak(f"86400:{b.ab.KUNCI_PENANDA_LENGKET_HARIAN}")}
+    harian = {b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}"), b.ss.jejak(f"86400:{b.ab.KUNCI_PENANDA_LENGKET_HARIAN}"),
+              b.ss.jejak(f"86400:peringatan-unik:ip:{IP_ASLI}")}
     assert all(v <= b.jam.waktu + timedelta(hours=2) for k, v in b.store.kedaluwarsa_batas.items() if k[0] not in harian)
     kunci_ip_hari = b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}")
     assert sum(1 for k in b.store.batas if k[0] == kunci_ip_hari) == 1  # satu baris hitungan per IP per hari
+    kunci_peringatan = b.ss.jejak(f"86400:peringatan-unik:ip:{IP_ASLI}")
+    assert sum(1 for k in b.store.batas if k[0] == kunci_peringatan) == 1  # penanda peringatan juga satu per hari
 
 
 def test_n1_peringatan_ukuran_sapa_batas_saat_pembersihan(bff, monkeypatch, caplog):
@@ -3111,3 +3119,48 @@ def test_k3_menunggu_penyegar_dibatasi_waktu_dinding_termasuk_baca_db(bff, monke
     mulai = time.monotonic()
     assert asyncio.run(b.ss._tunggu_penyegar(sesi_awal)) is None
     assert time.monotonic() - mulai < 0.5 + 0.15
+
+
+def test_clara_peringatan_batas_username_unik_sekali_per_ip_per_hari_tanpa_username(bff, caplog):
+    """Syarat Clara untuk S1: tiap kali batas 50 username unik tercapai, satu peringatan per /64 per hari,
+    dengan IP tersamar dan tanpa username."""
+    b = bff()
+    caplog.set_level(logging.INFO)
+    b.auth0.jawaban_token = GAGAL
+    for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1]):
+        masuk(b, username=f"pengguna.{i}")
+        b.jam.maju(seconds=4)
+
+    def peringatan():
+        return [r.getMessage() for r in caplog.records
+                if r.levelno == logging.WARNING and "username unik" in r.getMessage()]
+
+    assert peringatan() == []
+    for j in range(3):
+        assert masuk(b, username=f"lewat.{j}").json() == TERLALU_BANYAK
+        b.jam.maju(seconds=4)
+    pesan = peringatan()
+    assert len(pesan) == 1
+    assert "198.51.100.0" in pesan[0] and IP_ASLI not in pesan[0]
+    assert "lewat." not in pesan[0] and "pengguna." not in pesan[0]
+    b.jam.maju(days=1)
+    for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1] + 1):
+        masuk(b, username=f"esok.{i}")
+        b.jam.maju(seconds=4)
+    assert len(peringatan()) == 2
+
+
+@pytest.mark.parametrize("jawaban, tenant", [((429, {"error": "too_many_requests"}), True),
+                                             ((429, None), True),
+                                             ((429, {"error": "too_many_attempts"}), False)])
+def test_clara_429_batas_tenant_dibedakan_di_log_tanpa_username(bff, caplog, jawaban, tenant):
+    """Syarat Clara untuk N5: 429 batas tenant Auth0 dicatat terpisah (untuk OPS-6), tanpa username, sementara
+    jawaban ke pengguna tetap sandi_salah."""
+    b = bff()
+    caplog.set_level(logging.INFO)
+    b.auth0.jawaban_token = jawaban
+    assert masuk(b).json() == SALAH
+    pesan = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING and "tenant" in r.getMessage()]
+    assert len(pesan) == (1 if tenant else 0)
+    blob = "\n".join(r.getMessage() for r in caplog.records)
+    assert USERNAME not in blob and b.ab.ringkas_username(USERNAME) not in "\n".join(pesan)
