@@ -18,7 +18,7 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-// UI projection only. Auth0 owns session authority and keeps tokens in memory.
+// UI projection only. Session authority stays with the provider: Auth0 (legacy, tokens in memory) or the server cookie session (bff).
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   isAuthenticated: false,

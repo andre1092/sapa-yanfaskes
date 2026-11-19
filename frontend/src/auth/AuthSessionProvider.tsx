@@ -1,42 +1,47 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
-import { useAuthStore } from '../store/authStore';
-import { mapAuth0User, registerAuthSession, safeReturnTo } from './session';
-import { alamatSetelahMasuk, tujuanSetelahMasuk } from '../lib/halamanAwal';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { bacaMode } from './bff';
+import { aturModeSesi } from './session';
+import { SesiCookie } from './SesiCookie';
+import { Context, type ModeHalaman } from './useSession';
 
-import { Context } from './useSession';
+const PESAN_MODE = 'Layanan masuk belum dapat dihubungi. Periksa koneksi internet lalu coba lagi.';
 
-function SessionBridge({ children }: { children: ReactNode }) {
-  const { isLoading, isAuthenticated, user, error, loginWithRedirect, getAccessTokenSilently, logout } = useAuth0();
-  const [loginError, setLoginError] = useState<string | null>(null);
-  useEffect(() => {
-    const mappedUser = !isLoading && isAuthenticated && user ? mapAuth0User(user, import.meta.env.VITE_AUTH0_ROLES_CLAIM || 'https://sapa-yanfaskes.com/roles') : null;
-    useAuthStore.getState().syncSession(mappedUser);
-    if (!mappedUser) return;
-    return registerAuthSession(() => getAccessTokenSilently(), () => {
-      void logout({ logoutParams: { returnTo: window.location.origin } }).catch(() => {
-        setLoginError('Gagal mengakhiri sesi. Coba masuk lalu keluar kembali.');
-      });
-    });
-  }, [isLoading, isAuthenticated, user, getAccessTokenSilently, logout]);
-  const login = async () => {
-    setLoginError(null);
-    try {
-      await loginWithRedirect({ appState: { returnTo: safeReturnTo(tujuanSetelahMasuk(`${window.location.pathname}${window.location.search}${window.location.hash}`)) } });
-    } catch { setLoginError('Tidak dapat membuka layanan masuk. Periksa koneksi lalu coba kembali.'); }
-  };
-  return <Context.Provider value={{ ready: !isLoading, authenticated: isAuthenticated && Boolean(user?.sub), configured: true, error: loginError || (error ? 'Sesi masuk tidak dapat diverifikasi. Silakan coba masuk kembali.' : null), login }}>{children}</Context.Provider>;
+function SesiGagalDimuat({ children }: { children: ReactNode }) {
+  return <Context.Provider value={{
+    ready: true, authenticated: false, configured: false, error: PESAN_MODE,
+    login: async () => { window.location.reload(); }, mode: 'galat', muatUlang: async () => false, profil: null,
+  }}>{children}</Context.Provider>;
 }
 
+// SDK Auth0 hanya untuk mode lama dan dimuat terpisah; mode bff tidak pernah mengunduhnya.
+const SesiAuth0 = lazy(() => import('./SesiAuth0').catch(() => ({ default: SesiGagalDimuat })));
+
+const MEMERIKSA = {
+  ready: false, authenticated: false, configured: true, error: null, login: async () => {},
+  mode: 'memeriksa' as const, muatUlang: async () => false, profil: null,
+};
+
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
-  const domain = import.meta.env.VITE_AUTH0_DOMAIN?.trim();
-  const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID?.trim();
-  const audience = import.meta.env.VITE_AUTH0_AUDIENCE?.trim();
+  const [mode, setMode] = useState<ModeHalaman>('memeriksa');
+  const [percobaan, setPercobaan] = useState(0);
   useEffect(() => {
     try { localStorage.removeItem('auth-session'); } catch { /* Storage may be disabled; legacy state is never restored. */ }
   }, []);
-  if (!domain || !clientId || !audience) return <Context.Provider value={{ ready: true, authenticated: false, configured: false, error: 'Layanan masuk belum dikonfigurasi. Hubungi administrator SAPA.', login: async () => {} }}>{children}</Context.Provider>;
-  return <Auth0Provider domain={domain} clientId={clientId} cacheLocation="memory" authorizationParams={{ redirect_uri: window.location.origin, audience, scope: 'openid profile email' }} onRedirectCallback={state => {
-    window.history.replaceState({}, document.title, alamatSetelahMasuk(safeReturnTo(state?.returnTo)));
-  }}><SessionBridge>{children}</SessionBridge></Auth0Provider>;
+  // Mode dibaca dari server setiap kali halaman dimuat (bukan dari variabel build), dan tidak ditebak bila gagal.
+  useEffect(() => {
+    let batal = false;
+    bacaMode().then(
+      hasil => { if (!batal) { aturModeSesi(hasil); setMode(hasil); } },
+      () => { if (!batal) { aturModeSesi(null); setMode('galat'); } },
+    );
+    return () => { batal = true; };
+  }, [percobaan]);
+
+  if (mode === 'bff') return <SesiCookie>{children}</SesiCookie>;
+  if (mode === 'auth0') return <Suspense fallback={<Context.Provider value={MEMERIKSA}>{children}</Context.Provider>}><SesiAuth0>{children}</SesiAuth0></Suspense>;
+  if (mode === 'galat') return <Context.Provider value={{
+    ...MEMERIKSA, ready: true, configured: false, error: PESAN_MODE, mode: 'galat',
+    login: async () => { setMode('memeriksa'); setPercobaan(n => n + 1); },
+  }}>{children}</Context.Provider>;
+  return <Context.Provider value={MEMERIKSA}>{children}</Context.Provider>;
 }

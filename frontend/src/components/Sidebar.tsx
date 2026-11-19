@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useSession } from '../auth/useSession';
 import { useLanguageStore } from '../store/languageStore';
 import { useAuthStore } from '../store/authStore';
 import { useUserStore } from '../store/userStore';
@@ -35,7 +35,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile = false,
   onCloseMobile,
 }) => {
-  const { user, logout } = useAuth0();
+  // Profil dari penyedia sesi (Auth0 lama atau sesi cookie); SDK Auth0 tidak dipanggil langsung di sini.
+  const { profil } = useSession();
   const { user: authUser, logoutUser } = useAuthStore();
   const { profile } = useUserStore();
   const { t } = useLanguageStore();
@@ -190,21 +191,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  // Keluar lewat penyedia sesi: Auth0 lama memanggil logout SDK, sesi cookie memanggil /api/v1/auth/keluar.
   const handleLogout = () => {
     logoutUser();
-    try {
-      logout({ logoutParams: { returnTo: window.location.origin } });
-    } catch (e) {
-      // ignore
-    }
   };
 
   const userDisplayName =
-    user?.name ||
-    user?.nickname ||
+    profil?.nama ||
     authUser?.name ||
     profile?.name ||
-    (user?.email ? user.email.split('@')[0] : 'Petugas BPJS');
+    (profil?.email ? profil.email.split('@')[0] : 'Petugas BPJS');
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
   return (
@@ -447,9 +443,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="p-3 border-t border-[#afbade]/30 dark:border-slate-800/80 bg-white/40 dark:bg-slate-950/50 backdrop-blur-md space-y-2.5 transition-all duration-300 px-4">
             {/* User Profile Card */}
             <div className="flex items-center rounded-xl bg-white/80 dark:bg-slate-800/60 border border-[#afbade]/30 dark:border-emerald-500/20 shadow-sm transition-all gap-3 px-3 py-2.5 w-full">
-              {user?.picture ? (
+              {profil?.foto ? (
                 <img
-                  src={user.picture}
+                  src={profil.foto}
                   alt={userDisplayName}
                   className="w-8 h-8 rounded-full object-cover border border-[#44853b]/40 shrink-0"
                 />
@@ -463,8 +459,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-xs font-bold text-[#2b4390] dark:text-slate-200 truncate" title={userDisplayName}>
                   {userDisplayName}
                 </span>
-                <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-medium truncate" title={user?.email || ''}>
-                  {user?.email || t('user_role')}
+                <span className="text-[10px] text-[#6573a1] dark:text-slate-400 font-medium truncate" title={profil?.email || ''}>
+                  {profil?.email || t('user_role')}
                 </span>
               </div>
               <div className="w-2 h-2 rounded-full bg-[#44853b] ring-4 ring-[#44853b]/20 shrink-0" title={t('user_status')} />

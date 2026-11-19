@@ -1,34 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import { alamatContinue, alamatLanjutSah, bacaParameter, keadaanDariStatus, ringkasState, type Keadaan } from '../lib/verifikasi';
+import { skripTurnstile } from '../lib/turnstile';
 
 // Halaman /verifikasi: Cloudflare Turnstile setelah sandi benar di Auth0 (desain Kim,
 // agents/kim/desain/login-auth0/verifikasi-turnstile.md). Tampil tanpa sesi SAPA.
 
-type Turnstile = {
-  render: (el: HTMLElement, opsi: Record<string, unknown>) => string;
-  reset: (id?: string) => void;
-  remove: (id?: string) => void;
-};
-declare global { interface Window { turnstile?: Turnstile } }
-
-const SKRIP = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 const HIJAU = '#007a43';
 const BIRU = '#0060a0';
-
-let muatSkrip: Promise<Turnstile> | null = null;
-function skripTurnstile(): Promise<Turnstile> {
-  if (window.turnstile) return Promise.resolve(window.turnstile);
-  muatSkrip ??= new Promise((ok, gagal) => {
-    const s = document.createElement('script');
-    s.src = SKRIP;
-    s.async = true;
-    s.onload = () => (window.turnstile ? ok(window.turnstile) : gagal(new Error('turnstile')));
-    s.onerror = () => { muatSkrip = null; gagal(new Error('turnstile')); };
-    document.head.appendChild(s);
-  });
-  return muatSkrip;
-}
 
 function kirimKeAuth0(alamat: string, state: string, token: string) {
   // Navigasi GET supaya cookie transaksi Auth0 ikut terkirim (POST lintas situs ditolak Auth0).
