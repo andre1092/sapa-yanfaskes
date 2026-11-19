@@ -1,0 +1,42 @@
+import { alamatHalamanMasuk, alamatSetelahMasuk, tujuanSetelahMasuk } from '../lib/halamanAwal';
+import { ajukanMasuk, type IsianMasuk, type PenyetelUlang } from './bff';
+import { safeReturnTo } from './session';
+
+// Alur kirim form masuk (mode bff), terpisah dari komponen supaya bisa diuji tanpa DOM.
+
+const lokasiSekarang = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+/** Kendali form yang disentuh alur kirim: isian sandi, token Turnstile, pesan galat, dan fokus. */
+export type KendaliForm = {
+  kosongkanPassword: () => void;
+  buangToken: () => void;
+  tampilkanGalat: (pesan: string) => void;
+  fokusPassword: () => void;
+};
+
+export const PESAN_SESI_BELUM_TERBUKA = 'Sesi belum dapat dibuka. Coba masuk kembali.';
+
+/**
+ * Alur kirim form masuk. Sandi dikosongkan setelah setiap jawaban. Bila gagal, token lama dibuang
+ * (widget sudah disetel ulang oleh ajukanMasuk) dan fokus kembali ke kolom password. Bila berhasil,
+ * alamat tujuan dipasang sebelum sesi dimuat, supaya dasbor langsung terbuka di halaman yang benar.
+ * Mengembalikan true bila sesi sudah terbuka.
+ */
+export async function kirimMasuk(isian: IsianMasuk, widget: PenyetelUlang, muatUlang: () => Promise<boolean>, form: KendaliForm): Promise<boolean> {
+  const hasil = await ajukanMasuk(isian, widget);
+  form.kosongkanPassword();
+  if (!hasil.ok) {
+    form.buangToken();
+    form.tampilkanGalat(hasil.pesan);
+    form.fokusPassword();
+    return false;
+  }
+  const tujuan = alamatSetelahMasuk(safeReturnTo(tujuanSetelahMasuk(lokasiSekarang())));
+  window.history.replaceState(null, '', tujuan);
+  if (await muatUlang()) return true;
+  window.history.replaceState(null, '', alamatHalamanMasuk(tujuan));
+  widget?.reset();
+  form.buangToken();
+  form.tampilkanGalat(PESAN_SESI_BELUM_TERBUKA);
+  return false;
+}

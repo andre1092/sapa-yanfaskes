@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Alert, Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material';
 import { useSession } from '../auth/useSession';
 import { FormMasuk } from './FormMasuk';
-import { ALERT_GALAT, TOMBOL, WARNA } from './gayaMasuk';
+import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
 
 // Adapted from Berry Free React's authentication/Login and AuthLogin layout.
 // Satu kartu untuk semua mode: mode bff memakai form login satu halaman (FormMasuk), mode lama
@@ -21,12 +21,31 @@ function Kartu({ children, kaki = false }: { children: ReactNode; kaki?: boolean
   );
 }
 
+function Menunggu({ teks }: { teks: string }) {
+  return <Stack spacing={1.5} alignItems="center" role="status" aria-busy="true"><CircularProgress size={28} sx={{ color: WARNA.hijau }} aria-hidden="true" /><Typography sx={{ color: WARNA.redup }}>{teks}</Typography></Stack>;
+}
+
 export function LoginPage() {
   const session = useSession();
-  if (session.mode === 'bff') return <Kartu><FormMasuk /></Kartu>;
-  if (session.mode === 'memeriksa') return <Kartu><Stack spacing={1.5} alignItems="center" role="status" aria-busy="true"><CircularProgress size={28} sx={{ color: WARNA.hijau }} aria-hidden="true" /><Typography sx={{ color: WARNA.redup }}>Memeriksa sesi…</Typography></Stack></Kartu>;
+  // Mode bff: form (dan widget Turnstile) baru tampil setelah sesi selesai dibaca.
+  if (session.mode === 'bff') return <Kartu>{session.ready ? <FormMasuk /> : <Menunggu teks="Memeriksa sesi…" />}</Kartu>;
+  if (session.mode === 'memeriksa') return <Kartu><Menunggu teks="Memeriksa sesi…" /></Kartu>;
   if (session.mode === 'galat') return <Kartu><GalatMode /></Kartu>;
   return <HalamanMasukLama />;
+}
+
+/** Mode bff: keluar sedang diproses, atau gagal sehingga sesi di perangkat ini masih aktif. */
+export function LayarKeluar() {
+  const { keluar } = useSession();
+  if (!keluar?.galat) return <Kartu><Menunggu teks="Mengakhiri sesi…" /></Kartu>;
+  return <Kartu>
+    <Stack spacing={2.5} sx={{ width: '100%' }}>
+      <Typography component="h1" variant="h2" sx={{ color: WARNA.judul, textAlign: 'center' }}>Keluar belum berhasil</Typography>
+      <Box role="alert"><Alert role="presentation" severity="error" sx={ALERT_GALAT}>Sesi masih aktif di perangkat ini. {keluar.galat}</Alert></Box>
+      <Button fullWidth size="large" variant="contained" onClick={keluar.ulangi} sx={TOMBOL}>Coba keluar lagi</Button>
+      <Button fullWidth variant="text" onClick={keluar.batal} sx={{ color: WARNA.biru, textTransform: 'none', fontWeight: 600, minHeight: 44, ...FOKUS }}>Kembali ke dasbor</Button>
+    </Stack>
+  </Kartu>;
 }
 
 function GalatMode() {

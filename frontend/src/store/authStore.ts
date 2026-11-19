@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { logoutSession } from '../auth/session';
+import { logoutSession, modeSesi } from '../auth/session';
 
 export interface AuthUser {
   id: string;
@@ -24,7 +24,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
   isAuthenticated: false,
   syncSession: (user) => set({ user, isAuthenticated: Boolean(user) }),
   logoutUser: () => {
-    set({ user: null, isAuthenticated: false });
+    // Mode bff: proyeksi baru dikosongkan setelah server mengakhiri sesi (halaman dimuat ulang).
+    // Bila keluar gagal, cookie masih berlaku, jadi halaman masuk tidak boleh tampil seolah sudah keluar.
+    if (modeSesi() !== 'bff') set({ user: null, isAuthenticated: false });
     logoutSession();
   },
   clearAuth: () => set({ user: null, isAuthenticated: false }),

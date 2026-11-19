@@ -81,6 +81,7 @@ export function mapSesiBff(isi: IsiSesi | null | undefined): AuthUser | null {
   if (!isi || isi.masuk !== true) return null;
   const peran = typeof isi.peran === 'string' && Object.hasOwn(PERAN_SESI, isi.peran) ? PERAN_SESI[isi.peran] : 'viewer';
   const nama = typeof isi.nama === 'string' && isi.nama.trim() ? isi.nama.trim().slice(0, 100) : 'Pengguna SAPA';
-  // Sesi tidak mengirim sub atau email; id tetap per sesi, dan keluar selalu memuat ulang halaman.
+  // Sesi tidak mengirim sub atau email, jadi id sama untuk semua sesi. Karena itu penyedia sesi cookie
+  // mengosongkan cache kueri setiap kali pengguna berganti, dan keluar yang berhasil memuat ulang halaman.
   return { id: 'sesi', sub: 'sesi', username: nama, name: nama, email: '', role: peran };
 }

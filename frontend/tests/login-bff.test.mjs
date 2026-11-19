@@ -1,21 +1,31 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import { muat } from './muat-modul.mjs';
 
 // Login satu halaman (mode bff) dan mode lama. Semua nilai di sini palsu dan hanya untuk tes.
 globalThis.__VITE_ENV__ = { VITE_TURNSTILE_SITE_KEY: 'kunci-situs-uji', VITE_API_URL: 'https://api-lain.example' };
 const lokasi = { origin: 'https://sapa.example', pathname: '/login', search: '', hash: '', dialihkan: [], replace(url) { this.dialihkan.push(url); } };
-globalThis.window = { location: lokasi, innerWidth: 1024 };
+// replaceState meniru browser: alamat bilah ikut berubah, dan setiap perubahan dicatat.
+const riwayat = {
+  log: [],
+  replaceState(_s, _j, url) {
+    this.log.push(url);
+    const u = new URL(url, lokasi.origin);
+    Object.assign(lokasi, { pathname: u.pathname, search: u.search, hash: u.hash });
+  },
+};
+globalThis.window = { location: lokasi, history: riwayat, innerWidth: 1024 };
 
 const { renderToString } = await import('react-dom/server');
 const { createElement: h } = await import('react');
-const { LoginPage } = await muat('components/LoginPage.tsx');
-const { PanelLupaSandi } = await muat('components/FormMasuk.tsx');
+const { LayarKeluar, LoginPage } = await muat('components/LoginPage.tsx');
+const { FormMasuk, PanelLupaSandi } = await muat('components/FormMasuk.tsx');
+const { kirimMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
 const { Context } = await muat('auth/useSession.ts');
 const bff = await muat('auth/bff.ts');
 const sesi = await muat('auth/session.ts');
-const { pasangWidget } = await muat('lib/turnstile.ts');
+const { pasangWidget, TENGGAT_MUAT_MS } = await muat('lib/turnstile.ts');
 const { apiClient } = await muat('lib/apiClient.ts');
 
 const SANDI_PALSU = 'sandi-palsu-uji';
@@ -91,6 +101,27 @@ test('label terhubung dan wadah galat diumumkan', () => {
   assert.ok(tag(galat, 'input').some(t => t.includes(`aria-describedby="${idGalat}"`)), 'kolom merujuk pesan galat');
 });
 
+test('mode bff: form dan widget Turnstile baru tampil setelah sesi selesai dibaca', () => {
+  const html = render(h(LoginPage), { ready: false });
+  assert.match(html, /role="status"[^>]*aria-busy="true"[\s\S]*Memeriksa sesi…/);
+  assert.equal(tag(html, 'input').length, 0, 'tanpa kolom isian');
+  assert.doesNotMatch(html, /data-turnstile-aksi/, 'widget belum dipasang');
+});
+
+test('keluar gagal: layar keluar menjelaskan sesi masih aktif dan menyediakan tombol ulang', () => {
+  const keluar = { menunggu: false, galat: 'Sesi belum dapat diakhiri. Coba lagi.', ulangi: () => {}, batal: () => {} };
+  const html = render(h(LayarKeluar), { authenticated: true, keluar });
+  assert.match(html, /<h1[^>]*>Keluar belum berhasil<\/h1>/);
+  assert.match(html, /role="alert"[^>]*>[\s\S]*Sesi masih aktif di perangkat ini\.[\s\S]*Sesi belum dapat diakhiri\. Coba lagi\./);
+  assert.deepEqual(teksTombol(html), ['Coba keluar lagi', 'Kembali ke dasbor']);
+  assert.equal(tag(html, 'input').length, 0, 'bukan form masuk');
+  assert.doesNotMatch(html, /data-turnstile-aksi/);
+
+  const menunggu = render(h(LayarKeluar), { authenticated: true, keluar: { ...keluar, menunggu: true, galat: null } });
+  assert.match(menunggu, /role="status"[^>]*aria-busy="true"[\s\S]*Mengakhiri sesi…/);
+  assert.deepEqual(teksTombol(menunggu), []);
+});
+
 test('mode lama tetap: tombol Masuk ke layanan masuk, tanpa form isian', () => {
   const html = render(h(LoginPage), { mode: 'auth0' });
   assert.equal(tag(html, 'input').length, 0);
@@ -138,12 +169,66 @@ test('masuk gagal: pesan server ditampilkan dan widget Turnstile disetel ulang',
   assert.equal(widget.jumlahReset, 1);
 });
 
-test('form masuk mengosongkan password setelah gagal dan tidak menyimpan isian di browser', async () => {
-  const kode = await sumber('components/FormMasuk.tsx');
-  const kirim = kode.match(/const kirim = async \(event: FormEvent\) => \{[\s\S]*?\n  \};/)[0];
-  assert.match(kirim, /event\.preventDefault\(\);/);
-  assert.match(kirim, /await ajukanMasuk\([^)]*widget\.current\);\s*setPassword\(''\);\s*if \(!hasil\.ok\)/);
-  assert.doesNotMatch(kode, /localStorage|sessionStorage|indexedDB|document\.cookie|URLSearchParams|pushState|location\.(assign|href)/);
+function formPalsu() {
+  const log = [];
+  return {
+    log,
+    kosongkanPassword: () => log.push('kosongkan-password'),
+    buangToken: () => log.push('buang-token'),
+    tampilkanGalat: pesan => log.push(['galat', pesan]),
+    fokusPassword: () => log.push('fokus-password'),
+  };
+}
+const isianUji = { username: 'petugas.uji', password: SANDI_PALSU, ingat: false, token: 'token-palsu' };
+
+test('kirim masuk gagal: password dikosongkan, token dibuang, galat tampil, fokus ke password', async () => {
+  fetchPalsu({ status: 401, isi: { kode: 'sandi_salah', pesan: 'Nama pengguna atau kata sandi salah.' } });
+  Object.assign(lokasi, { pathname: '/login', search: '?kembali=%2Fkepatuhanfkrtl', hash: '' });
+  riwayat.log = [];
+  const widget = widgetPalsu();
+  const form = formPalsu();
+  let dimuat = 0;
+  const masuk = await kirimMasuk(isianUji, widget, async () => { dimuat += 1; return true; }, form);
+  assert.equal(masuk, false);
+  assert.deepEqual(form.log, ['kosongkan-password', 'buang-token', ['galat', 'Nama pengguna atau kata sandi salah.'], 'fokus-password']);
+  assert.equal(widget.jumlahReset, 1, 'widget disetel ulang, token lama tidak dipakai lagi');
+  assert.equal(dimuat, 0, 'sesi tidak dibaca');
+  assert.deepEqual(riwayat.log, [], 'alamat tidak berubah');
+});
+
+test('kirim masuk berhasil: alamat tujuan dipasang sebelum sesi dibaca', async () => {
+  fetchPalsu({ status: 200, isi: { masuk: true, peran: 'petugas_rs' } });
+  Object.assign(lokasi, { pathname: '/login', search: '?kembali=%2Fkepatuhanfkrtl%3Fx%3D1', hash: '' });
+  riwayat.log = [];
+  const form = formPalsu();
+  let alamatSaatDimuat = null;
+  const masuk = await kirimMasuk(isianUji, widgetPalsu(), async () => { alamatSaatDimuat = `${lokasi.pathname}${lokasi.search}`; return true; }, form);
+  assert.equal(masuk, true);
+  assert.equal(alamatSaatDimuat, '/kepatuhanfkrtl?x=1');
+  assert.deepEqual(form.log, ['kosongkan-password'], 'password tetap dikosongkan setelah berhasil');
+
+  Object.assign(lokasi, { pathname: '/login', search: '?kembali=%2F%2Fevil.example', hash: '' });
+  await kirimMasuk(isianUji, widgetPalsu(), async () => true, formPalsu());
+  assert.equal(riwayat.log.at(-1), '/home', 'tujuan berbahaya jatuh ke Beranda');
+});
+
+test('kirim masuk: sesi belum terbuka setelah /masuk mengembalikan alamat /login dan meminta token baru', async () => {
+  fetchPalsu({ status: 200, isi: { masuk: true, peran: 'admin' } });
+  Object.assign(lokasi, { pathname: '/login', search: '?kembali=%2Fkepatuhanfkrtl', hash: '' });
+  riwayat.log = [];
+  const widget = widgetPalsu();
+  const form = formPalsu();
+  assert.equal(await kirimMasuk(isianUji, widget, async () => false, form), false);
+  assert.deepEqual(riwayat.log, ['/kepatuhanfkrtl', '/login?kembali=%2Fkepatuhanfkrtl']);
+  assert.equal(widget.jumlahReset, 1);
+  assert.deepEqual(form.log, ['kosongkan-password', 'buang-token', ['galat', PESAN_SESI_BELUM_TERBUKA]]);
+  Object.assign(lokasi, { pathname: '/login', search: '' });
+});
+
+test('form masuk tidak menyimpan isian di browser', async () => {
+  for (const jalur of ['components/FormMasuk.tsx', 'auth/alurMasuk.ts']) {
+    assert.doesNotMatch(await sumber(jalur), /localStorage|sessionStorage|indexedDB|document\.cookie|URLSearchParams|pushState|location\.(assign|href)/, jalur);
+  }
 });
 
 test('widget Turnstile: render eksplisit, aman di StrictMode, reset dan hapus memakai id widget', async () => {
@@ -178,6 +263,58 @@ test('widget Turnstile: render eksplisit, aman di StrictMode, reset dan hapus me
   delete window.turnstile;
 });
 
+function dokumenPalsu() {
+  const skrip = [];
+  globalThis.document = {
+    createElement: () => { const s = { dilepas: false, remove() { s.dilepas = true; } }; skrip.push(s); return s; },
+    head: { appendChild() {} },
+  };
+  return skrip;
+}
+const opsiWidget = galat => ({ siteKey: 'kunci-situs-uji', aksi: 'login', onToken: () => {}, onGalat: jenis => galat.push(jenis) });
+const tunggu = () => new Promise(r => setImmediate(r));
+
+test('widget Turnstile: skrip yang tidak menjawab menampilkan galat muat setelah tenggat, lalu bisa dicoba lagi', async () => {
+  const skrip = dokumenPalsu();
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const galat = [];
+    pasangWidget({ clientWidth: 400, dataset: {} }, opsiWidget(galat));
+    mock.timers.tick(TENGGAT_MUAT_MS - 1);
+    await tunggu();
+    assert.deepEqual(galat, [], 'belum lewat tenggat');
+    mock.timers.tick(1);
+    await tunggu();
+    assert.deepEqual(galat, ['muat']);
+    assert.equal(skrip[0].dilepas, true, 'elemen skrip yang macet dilepas');
+    pasangWidget({ clientWidth: 400, dataset: {} }, opsiWidget([]));
+    assert.equal(skrip.length, 2, 'percobaan berikutnya memuat skrip lagi');
+    skrip[1].onerror();
+  } finally {
+    mock.timers.reset();
+  }
+  await tunggu();
+});
+
+test('widget Turnstile: skrip termuat tanpa window.turnstile tidak disimpan sebagai gagal permanen', async () => {
+  const skrip = dokumenPalsu();
+  const galat = [];
+  pasangWidget({ clientWidth: 400, dataset: {} }, opsiWidget(galat));
+  skrip[0].onload();
+  await tunggu();
+  assert.deepEqual(galat, ['muat']);
+  const log = [];
+  pasangWidget({ clientWidth: 400, dataset: {} }, opsiWidget(galat));
+  assert.equal(skrip.length, 2, 'skrip dimuat ulang');
+  window.turnstile = { render: () => { log.push('render'); return 'w1'; }, reset() {}, remove() {} };
+  skrip[1].onload();
+  await tunggu();
+  assert.deepEqual(log, ['render']);
+  assert.deepEqual(galat, ['muat'], 'tanpa galat baru');
+  delete window.turnstile;
+  delete globalThis.document;
+});
+
 test('lupa password: panel di halaman yang sama dengan Turnstile action sapa_lupa_sandi', async () => {
   const html = render(h(PanelLupaSandi, { identitasAwal: '', onKembali: () => {}, judul: { current: null } }));
   assert.doesNotMatch(html, /auth0/i);
@@ -191,10 +328,14 @@ test('lupa password: panel di halaman yang sama dengan Turnstile action sapa_lup
   assert.equal(widget.length, 1);
   assert.match(widget[0], /data-turnstile-aksi="sapa_lupa_sandi"/);
 
-  const kode = await sumber('components/FormMasuk.tsx');
-  assert.match(kode, /export const AKSI_LUPA_SANDI = 'sapa_lupa_sandi';/);
-  // Panel berganti lewat state; satu panel (dan satu widget) tampil pada satu waktu.
-  assert.match(kode, /return panel === 'masuk'\s*\? <PanelMasuk[\s\S]*: <PanelLupaSandi/);
+  // Satu panel (dan satu widget) tampil pada satu waktu.
+  for (const [panel, aksi, kolom] of [['masuk', 'login', 'username'], ['lupa', 'sapa_lupa_sandi', 'identitas']]) {
+    const isi = render(h(FormMasuk, { panelAwal: panel }));
+    const w = tag(isi, 'div').filter(t => t.includes('data-turnstile-aksi'));
+    assert.equal(w.length, 1, panel);
+    assert.match(w[0], new RegExp(`data-turnstile-aksi="${aksi}"`));
+    assert.match(tag(isi, 'input')[0], new RegExp(`name="${kolom}"`));
+  }
 });
 
 test('lupa password: 202 menampilkan pesan server, gagal menyetel ulang widget', async () => {

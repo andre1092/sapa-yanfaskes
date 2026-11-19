@@ -1,8 +1,7 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { bacaMode } from './bff';
-import { aturModeSesi } from './session';
+import { lazy, Suspense, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { buatPembacaMode } from './pembacaMode';
 import { SesiCookie } from './SesiCookie';
-import { Context, type ModeHalaman } from './useSession';
+import { Context } from './useSession';
 
 const PESAN_MODE = 'Layanan masuk belum dapat dihubungi. Periksa koneksi internet lalu coba lagi.';
 
@@ -22,26 +21,19 @@ const MEMERIKSA = {
 };
 
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ModeHalaman>('memeriksa');
-  const [percobaan, setPercobaan] = useState(0);
+  const [pembaca] = useState(() => buatPembacaMode());
+  const mode = useSyncExternalStore(pembaca.langganan, pembaca.ambil);
   useEffect(() => {
     try { localStorage.removeItem('auth-session'); } catch { /* Storage may be disabled; legacy state is never restored. */ }
   }, []);
   // Mode dibaca dari server setiap kali halaman dimuat (bukan dari variabel build), dan tidak ditebak bila gagal.
-  useEffect(() => {
-    let batal = false;
-    bacaMode().then(
-      hasil => { if (!batal) { aturModeSesi(hasil); setMode(hasil); } },
-      () => { if (!batal) { aturModeSesi(null); setMode('galat'); } },
-    );
-    return () => { batal = true; };
-  }, [percobaan]);
+  useEffect(() => pembaca.muat(), [pembaca]);
 
   if (mode === 'bff') return <SesiCookie>{children}</SesiCookie>;
   if (mode === 'auth0') return <Suspense fallback={<Context.Provider value={MEMERIKSA}>{children}</Context.Provider>}><SesiAuth0>{children}</SesiAuth0></Suspense>;
   if (mode === 'galat') return <Context.Provider value={{
     ...MEMERIKSA, ready: true, configured: false, error: PESAN_MODE, mode: 'galat',
-    login: async () => { setMode('memeriksa'); setPercobaan(n => n + 1); },
+    login: async () => { pembaca.muat(); },
   }}>{children}</Context.Provider>;
   return <Context.Provider value={MEMERIKSA}>{children}</Context.Provider>;
 }

@@ -4,12 +4,16 @@ import { createContext, useContext } from 'react';
 export type ModeHalaman = 'memeriksa' | 'auth0' | 'bff' | 'galat';
 /** Profil untuk tampilan saja (nama, email, foto); bukan sumber hak akses. */
 export type ProfilSesi = { nama?: string; email?: string; foto?: string };
-type SessionContext = {
+/** Keluar mode bff: menunggu jawaban server, atau gagal dengan sesi yang masih berlaku. */
+export type KeadaanKeluar = { menunggu: boolean; galat: string | null };
+export type SessionContext = {
   ready: boolean; authenticated: boolean; configured: boolean; error: string | null; login: () => Promise<void>;
   mode: ModeHalaman;
   /** Baca ulang sesi dari server; true bila sudah masuk. */
   muatUlang: () => Promise<boolean>;
   profil: ProfilSesi | null;
+  /** Hanya mode bff: keadaan keluar, ulangi keluar, dan tutup pesan keluar gagal. */
+  keluar?: KeadaanKeluar & { ulangi: () => void; batal: () => void };
 };
 export const Context = createContext<SessionContext>({
   ready: false, authenticated: false, configured: false, error: null, login: async () => {},

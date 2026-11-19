@@ -10,15 +10,32 @@ declare global { interface Window { turnstile?: Turnstile } }
 
 export const SKRIP_TURNSTILE = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
+/**
+ * Batas tunggu skrip. Jaringan yang membuang paket ke challenges.cloudflare.com (bukan menolak) baru
+ * memicu onerror setelah batas waktu browser; tanpa tenggat ini halaman diam tanpa pesan.
+ */
+export const TENGGAT_MUAT_MS = 15_000;
+
 let muatSkrip: Promise<Turnstile> | null = null;
 export function skripTurnstile(): Promise<Turnstile> {
   if (window.turnstile) return Promise.resolve(window.turnstile);
   muatSkrip ??= new Promise((ok, gagal) => {
     const s = document.createElement('script');
+    // Setiap jalur gagal melepas janji tersimpan, supaya widget berikutnya mencoba memuat lagi.
+    const selesai = (ts: Turnstile | undefined) => {
+      clearTimeout(tenggat);
+      s.onload = null;
+      s.onerror = null;
+      if (ts) { ok(ts); return; }
+      muatSkrip = null;
+      s.remove();
+      gagal(new Error('turnstile'));
+    };
+    const tenggat = setTimeout(() => selesai(undefined), TENGGAT_MUAT_MS);
     s.src = SKRIP_TURNSTILE;
     s.async = true;
-    s.onload = () => (window.turnstile ? ok(window.turnstile) : gagal(new Error('turnstile')));
-    s.onerror = () => { muatSkrip = null; gagal(new Error('turnstile')); };
+    s.onload = () => selesai(window.turnstile);
+    s.onerror = () => selesai(undefined);
     document.head.appendChild(s);
   });
   return muatSkrip;

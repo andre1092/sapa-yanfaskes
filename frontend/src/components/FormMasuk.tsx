@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
-import { ajukanLupaSandi, ajukanMasuk } from '../auth/bff';
-import { safeReturnTo } from '../auth/session';
+import { kirimMasuk } from '../auth/alurMasuk';
+import { ajukanLupaSandi } from '../auth/bff';
 import { useSession } from '../auth/useSession';
-import { alamatHalamanMasuk, alamatSetelahMasuk, tujuanSetelahMasuk } from '../lib/halamanAwal';
 import type { KendaliWidget } from '../lib/turnstile';
 import { ALERT_GALAT, ALERT_SUKSES, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
 import { WidgetTurnstile } from './WidgetTurnstile';
@@ -14,8 +13,6 @@ import { WidgetTurnstile } from './WidgetTurnstile';
 
 export const AKSI_MASUK = 'login';
 export const AKSI_LUPA_SANDI = 'sapa_lupa_sandi';
-
-const lokasiSekarang = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
 const KOLOM = {
   '& .MuiOutlinedInput-root': { bgcolor: WARNA.kartu, color: WARNA.teks },
@@ -34,8 +31,10 @@ function Galat({ id, pesan }: { id: string; pesan: string | null }) {
   </Box>;
 }
 
-export function FormMasuk() {
-  const [panel, setPanel] = useState<'masuk' | 'lupa'>('masuk');
+type Panel = 'masuk' | 'lupa';
+
+export function FormMasuk({ panelAwal = 'masuk' }: { panelAwal?: Panel }) {
+  const [panel, setPanel] = useState<Panel>(panelAwal);
   const [username, setUsername] = useState('');
   const tombolLupa = useRef<HTMLButtonElement>(null);
   const judulLupa = useRef<HTMLHeadingElement>(null);
@@ -48,7 +47,7 @@ export function FormMasuk() {
     else tombolLupa.current?.focus();
   }, [panel]);
 
-  const ganti = (tujuan: 'masuk' | 'lupa') => { pindahPanel.current = true; setPanel(tujuan); };
+  const ganti = (tujuan: Panel) => { pindahPanel.current = true; setPanel(tujuan); };
   return panel === 'masuk'
     ? <PanelMasuk username={username} onUsername={setUsername} onLupa={() => ganti('lupa')} tombolLupa={tombolLupa} />
     : <PanelLupaSandi identitasAwal={username} onKembali={() => ganti('masuk')} judul={judulLupa} />;
@@ -80,25 +79,13 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
     setMengirim(true);
     setGalat(null);
     setSudahMencoba(true);
-    const hasil = await ajukanMasuk({ username, password, ingat, token }, widget.current);
-    setPassword('');
-    if (!hasil.ok) {
-      // Widget sudah disetel ulang oleh ajukanMasuk; token lama tidak dipakai lagi.
-      setToken(null);
-      setGalat(hasil.pesan);
-      setMengirim(false);
-      kolomPassword.current?.focus();
-      return;
-    }
-    // Alamat tujuan dipasang sebelum sesi dimuat, supaya dasbor langsung terbuka di halaman yang benar.
-    const tujuan = alamatSetelahMasuk(safeReturnTo(tujuanSetelahMasuk(lokasiSekarang())));
-    window.history.replaceState(null, '', tujuan);
-    if (await session.muatUlang()) return;
-    window.history.replaceState(null, '', alamatHalamanMasuk(tujuan));
-    widget.current?.reset();
-    setToken(null);
-    setGalat('Sesi belum dapat dibuka. Coba masuk kembali.');
-    setMengirim(false);
+    const masuk = await kirimMasuk({ username, password, ingat, token }, widget.current, session.muatUlang, {
+      kosongkanPassword: () => setPassword(''),
+      buangToken: () => setToken(null),
+      tampilkanGalat: setGalat,
+      fokusPassword: () => kolomPassword.current?.focus(),
+    });
+    if (!masuk) setMengirim(false);
   };
 
   const tombolLihat = <InputAdornment position="end">
