@@ -110,6 +110,35 @@ class CloudflarePalsu:
         return Jawaban()
 
 
+def transport_cloudflare(cf, tunda=0.0):
+    """Transport httpx palsu untuk siteverify async (K1): menunggu `tunda` detik, lalu meneruskan data form dan
+    timeout per tahap ke CloudflarePalsu. Pembatalan oleh tenggat menghentikannya sebelum kiriman tercatat."""
+    import httpx
+    from urllib.parse import parse_qsl
+
+    async def tangani(permintaan):
+        if tunda:
+            await asyncio.sleep(tunda)
+        tahap = [v for v in (permintaan.extensions.get("timeout") or {}).values() if v is not None]
+        try:
+            jawaban = cf(str(permintaan.url), data=dict(parse_qsl(permintaan.content.decode())),
+                         timeout=max(tahap) if tahap else None)
+        except cf.ts.requests.ConnectionError:
+            raise httpx.ConnectError("tidak terjangkau", request=permintaan) from None
+        return httpx.Response(jawaban.status_code, json=jawaban.json())
+    return httpx.MockTransport(tangani)
+
+
+def pasang_cloudflare(monkeypatch, ts, cf, tunda=0.0):
+    """Klien siteverify asli (timeout per tahap dari kode) dengan transport palsu."""
+    asli = getattr(ts._klien_siteverify, "asli", ts._klien_siteverify)
+
+    def klien():
+        return asli(transport=transport_cloudflare(cf, tunda))
+    klien.asli = asli
+    monkeypatch.setattr(ts, "_klien_siteverify", klien)
+
+
 @pytest.fixture
 def bff(monkeypatch):
     for nama in _ENV_LAIN:
@@ -129,7 +158,8 @@ def bff(monkeypatch):
         auth0 = Auth0Palsu(api)
         monkeypatch.setattr(ss, "_auth0_post", auth0)
         cf = CloudflarePalsu(ts)
-        monkeypatch.setattr(ts, "_kirim", cf)
+        monkeypatch.setattr(ts, "_kirim", cf)  # cek_turnstile sinkron (verifikasi manusia, flag 0)
+        pasang_cloudflare(monkeypatch, ts, cf)  # cek_turnstile_async (login BFF)
         tidur = []
 
         async def tidur_palsu(detik):
@@ -409,22 +439,58 @@ def test_turnstile_tidak_terjangkau_gagal_tertutup(bff):
     assert b.auth0.panggilan(path="/oauth/token") == []
 
 
-def test_cek_turnstile_menolak_localhost_di_produksi(bff, monkeypatch):
+def _cek_ts(b, varian, *a, **kw):
+    """cek_turnstile sinkron (verifikasi manusia) atau cek_turnstile_async (login BFF, K1)."""
+    if varian == "async":
+        return asyncio.run(b.ts.cek_turnstile_async(*a, **kw))
+    return b.ts.cek_turnstile(*a, **kw)
+
+
+@pytest.mark.parametrize("varian", ["sinkron", "async"])
+def test_cek_turnstile_menolak_localhost_di_produksi(bff, monkeypatch, varian):
     b = bff(APP_ORIGINS="https://sapa-yanfaskes.vercel.app,http://localhost:3000")
     b.cf.jawaban = {**b.cf.jawaban, "hostname": "localhost"}
-    b.ts.cek_turnstile("jawaban", None, b.ts.AKSI_MASUK)
+    _cek_ts(b, varian, "jawaban", None, b.ts.AKSI_MASUK)
     monkeypatch.setenv("VERCEL_ENV", "production")
     with pytest.raises(b.ts.TurnstileGagal) as err:
-        b.ts.cek_turnstile("jawaban", None, b.ts.AKSI_MASUK)
+        _cek_ts(b, varian, "jawaban", None, b.ts.AKSI_MASUK)
     assert err.value.status == 403
 
 
-def test_cek_turnstile_kunci_idempotensi_opsional(bff):
+@pytest.mark.parametrize("varian", ["sinkron", "async"])
+def test_cek_turnstile_kunci_idempotensi_opsional(bff, varian):
     b = bff()
-    b.ts.cek_turnstile("jawaban", "198.51.100.7", b.ts.AKSI_MASUK)
-    assert "idempotency_key" not in b.cf.kiriman[-1][1]
-    b.ts.cek_turnstile("jawaban", None, b.ts.AKSI_MASUK, idempotency_key="kunci-1")
+    _cek_ts(b, varian, "jawaban", "198.51.100.7", b.ts.AKSI_MASUK)
+    assert "idempotency_key" not in b.cf.kiriman[-1][1] and b.cf.kiriman[-1][1]["remoteip"] == "198.51.100.7"
+    _cek_ts(b, varian, "jawaban", None, b.ts.AKSI_MASUK, idempotency_key="kunci-1")
     assert b.cf.kiriman[-1][1]["idempotency_key"] == "kunci-1" and "remoteip" not in b.cf.kiriman[-1][1]
+    assert b.cf.kiriman[-1][0] == b.ts.TURNSTILE_URL
+
+
+@pytest.mark.parametrize("jawaban,alasan", [((200, {"success": False, "error-codes": ["timeout-or-duplicate"]}),
+                                             (403, "kedaluwarsa")),
+                                            ((200, {"success": False, "error-codes": ["invalid-input-response"]}),
+                                             (403, "ditolak")),
+                                            ((500, {"success": True}), (503, "tidak terjangkau")),
+                                            ((200, ["bukan", "objek"]), (503, "tidak terjangkau"))])
+def test_k1_cek_turnstile_async_memetakan_jawaban_sama_dengan_sinkron(bff, monkeypatch, jawaban, alasan):
+    """K1: pemetaan jawaban siteverify async identik dengan versi sinkron (kode turnstile_* tidak berubah)."""
+    import httpx
+    b = bff()
+    status, body = jawaban
+    transport = httpx.MockTransport(lambda r: httpx.Response(status, json=body))
+    monkeypatch.setattr(b.ts, "_klien_siteverify", lambda: httpx.AsyncClient(transport=transport))
+
+    class Jawaban:
+        status_code = status
+
+        def json(_):
+            return body
+    monkeypatch.setattr(b.ts, "_kirim", lambda url, data=None, timeout=None: Jawaban())
+    for varian in ("sinkron", "async"):
+        with pytest.raises(b.ts.TurnstileGagal) as err:
+            _cek_ts(b, varian, "jawaban", IP_ASLI, b.ts.AKSI_MASUK)
+        assert (err.value.status, err.value.alasan) == alasan, varian
 
 
 def test_verifikasi_service_memakai_cek_turnstile(bff, monkeypatch):
@@ -2767,16 +2833,17 @@ def test_n1_ukuran_sapa_batas_terbatas_saat_banjir_username_unik(bff, monkeypatc
         b.jam.maju(seconds=30)
         ukuran.append(len(b.store.batas) + len(b.store.penanda))
     assert len(b.store.penanda) <= b.ab.BATAS_USERNAME_UNIK_IP[1]
-    # S1: lewat batas 50 percobaan tetap ke Auth0, tetapi hanya menulis baris berumur pendek: slot geser
-    # (paling lama 30 menit) dan hitungan peringatan per username (paling lama 2 jam). Jadi ukuran tabel
-    # dibatasi laju x umur terpanjang dan tidak tumbuh lagi sesudah 2 jam.
+    # S1: lewat batas 50 percobaan tetap ke Auth0, tetapi hanya menulis baris berumur pendek. K2: tanpa hitungan
+    # peringatan per username (dulu 2 jam), jadi per percobaan tinggal hash token Turnstile (5 menit) dan slot
+    # geser (paling lama 30 menit). Ukuran tabel dibatasi laju x 30 menit dan tunak sesudahnya.
     batas_atas = b.ab.BATAS_USERNAME_UNIK_IP[1] + (2 * 3600 + 2 * 900) // 30 + 10
     assert max(ukuran) <= batas_atas, max(ukuran)
-    assert max(ukuran[300:]) <= max(ukuran[:300])  # tunak, tidak tumbuh terus
+    assert max(ukuran[300:]) <= (2 * 900 + b.ab.UMUR_TURNSTILE) // 30 + 10, max(ukuran[300:])
     assert all(v <= b.jam.waktu + timedelta(days=1) for v in b.store.kedaluwarsa_batas.values())
     harian = {b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}"), b.ss.jejak(f"86400:{b.ab.KUNCI_PENANDA_LENGKET_HARIAN}"),
               b.ss.jejak(f"86400:peringatan-unik:ip:{IP_ASLI}")}
-    assert all(v <= b.jam.waktu + timedelta(hours=2) for k, v in b.store.kedaluwarsa_batas.items() if k[0] not in harian)
+    assert all(v <= b.jam.waktu + timedelta(minutes=30) for k, v in b.store.kedaluwarsa_batas.items()
+               if k[0] not in harian)
     kunci_ip_hari = b.ss.jejak(f"86400:unik-gagal:ip:{IP_ASLI}")
     assert sum(1 for k in b.store.batas if k[0] == kunci_ip_hari) == 1  # satu baris hitungan per IP per hari
     kunci_peringatan = b.ss.jejak(f"86400:peringatan-unik:ip:{IP_ASLI}")
@@ -2826,29 +2893,105 @@ def test_n5_oracle_blokir_auth0_berbentuk_429_lain(bff, monkeypatch):
     assert _kode(ada) == ["sandi_salah"] * 10 + ["terlalu_banyak"] * 2
 
 
-def test_n2_primitive_asyncio_hanya_dibuat_di_dalam_coroutine():
-    """N2: di Python 3.9 asyncio.Event/Lock/... yang dibuat di luar loop terikat ke loop lain."""
+_PRIMITIF_ASYNCIO = {"Event", "Lock", "Semaphore", "BoundedSemaphore", "Condition", "Queue", "LifoQueue",
+                     "PriorityQueue", "Barrier"}
+
+
+def _primitif_di_luar_coroutine(sumber: str) -> list:
+    """Baris pembuatan primitive asyncio yang dievaluasi di luar coroutine (N2).
+
+    Dikenali: asyncio.Event(), alias modul (import asyncio as aio), atribut bertingkat (asyncio.locks.Event()),
+    nama dari ImportFrom (from asyncio import Event as E, termasuk from asyncio import *), serta default
+    argumen, dekorator, dan anotasi parameter atau return (dievaluasi saat def dijalankan, di cakupan luar,
+    bahkan untuk async def; ditandai juga di berkas dengan from __future__ import annotations, konservatif).
+    Titik buta yang tersisa: getattr/importlib dinamis, kelas primitive yang diteruskan tanpa dipanggil
+    (default_factory=asyncio.Event) lalu dipanggil di luar loop, dan alias yang dibuat lewat penugasan
+    (E = asyncio.Event).
+    """
     import ast
-    from pathlib import Path
-    akar = Path(__file__).resolve().parents[1]
-    primitif = {"Event", "Lock", "Semaphore", "BoundedSemaphore", "Condition", "Queue", "LifoQueue",
-                "PriorityQueue", "Barrier"}
+    pohon = ast.parse(sumber)
+    modul, nama = {"asyncio"}, set()
+    for simpul in ast.walk(pohon):
+        if isinstance(simpul, ast.Import):
+            modul |= {a.asname or a.name for a in simpul.names if a.name == "asyncio" or a.name.startswith("asyncio.")}
+        elif (isinstance(simpul, ast.ImportFrom) and simpul.level == 0
+              and (simpul.module or "").split(".")[0] == "asyncio"):
+            if any(a.name == "*" for a in simpul.names):
+                nama |= _PRIMITIF_ASYNCIO
+            nama |= {a.asname or a.name for a in simpul.names if a.name in _PRIMITIF_ASYNCIO}
+            modul |= {a.asname or a.name for a in simpul.names if a.name not in _PRIMITIF_ASYNCIO | {"*"}}
+
+    def dari_asyncio(nilai) -> bool:
+        while isinstance(nilai, ast.Attribute):
+            nilai = nilai.value
+        return isinstance(nilai, ast.Name) and nilai.id in modul
+
+    def primitif(panggil) -> bool:
+        f = panggil.func
+        if isinstance(f, ast.Attribute):
+            return f.attr in _PRIMITIF_ASYNCIO and dari_asyncio(f.value)
+        return isinstance(f, ast.Name) and f.id in nama
+
     temuan = []
 
-    def kunjungi(berkas, simpul, di_coroutine):
+    def kunjungi(simpul, di_coroutine):
+        if isinstance(simpul, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            # Default argumen, dekorator, dan anotasi dievaluasi di cakupan luar saat definisi dijalankan.
+            argumen = simpul.args
+            luar = [*argumen.defaults, *[d for d in argumen.kw_defaults if d is not None]]
+            if not isinstance(simpul, ast.Lambda):
+                semua = [*argumen.posonlyargs, *argumen.args, *argumen.kwonlyargs, argumen.vararg, argumen.kwarg]
+                luar += [a.annotation for a in semua if a is not None and a.annotation is not None]
+                luar += [simpul.returns] if simpul.returns is not None else []
+                luar += simpul.decorator_list
+            for anak in luar:
+                kunjungi(anak, di_coroutine)
+            badan = simpul.body if isinstance(simpul.body, list) else [simpul.body]
+            for anak in badan:
+                kunjungi(anak, isinstance(simpul, ast.AsyncFunctionDef))
+            return
+        if isinstance(simpul, ast.Call) and primitif(simpul) and not di_coroutine:
+            temuan.append(simpul.lineno)
         for anak in ast.iter_child_nodes(simpul):
-            if isinstance(anak, ast.AsyncFunctionDef):
-                kunjungi(berkas, anak, True)
-                continue
-            if isinstance(anak, (ast.FunctionDef, ast.Lambda, ast.ClassDef)):
-                kunjungi(berkas, anak, False)
-                continue
-            if (isinstance(anak, ast.Call) and isinstance(anak.func, ast.Attribute) and anak.func.attr in primitif
-                    and isinstance(anak.func.value, ast.Name) and anak.func.value.id == "asyncio" and not di_coroutine):
-                temuan.append(f"{berkas.relative_to(akar)}:{anak.lineno}")
-            kunjungi(berkas, anak, di_coroutine)
+            kunjungi(anak, di_coroutine)
+    kunjungi(pohon, False)
+    return temuan
+
+
+@pytest.mark.parametrize("sumber,harap", [
+    ("import asyncio\nKUNCI = asyncio.Lock()", [2]),
+    ("import asyncio\nasync def f():\n    return asyncio.Event()", []),
+    ("import asyncio\ndef f():\n    return asyncio.Event()", [3]),
+    ("from asyncio import Event\nTANDA = Event()", [2]),
+    ("from asyncio import Event as E\nasync def f():\n    return E()", []),
+    ("import asyncio\nasync def f(tanda=asyncio.Event()):\n    pass", [2]),
+    ("import asyncio\ndef f(*, tanda=asyncio.Event()):\n    pass", [2]),
+    ("import asyncio as aio\nTANDA = aio.Event()", [2]),
+    ("import asyncio\nTANDA = asyncio.locks.Event()", [2]),
+    ("from asyncio import locks\nTANDA = locks.Event()", [2]),
+    # Lambda dan fungsi biasa dianggap di luar coroutine (konservatif), di mana pun didefinisikan.
+    ("import asyncio\nasync def f():\n    g = lambda: asyncio.Event()\n    return g()", [3]),
+    # F2: anotasi parameter dan return dievaluasi di cakupan luar (tanpa from __future__ import annotations);
+    # tetap ditandai secara konservatif. Star import dari asyncio membawa semua nama primitive.
+    ("import asyncio\ndef f(x: asyncio.Event() = None):\n    pass", [2]),
+    ("import asyncio\nasync def f(*a: asyncio.Lock(), **k: asyncio.Queue()):\n    pass", [2, 2]),
+    ("import asyncio\nasync def f(x, /, *, y: asyncio.Event()):\n    pass", [2]),
+    ("import asyncio\nasync def f() -> asyncio.Lock():\n    pass", [2]),
+    ("from asyncio import *\nTANDA = Event()", [2]),
+    ("from asyncio import *\nasync def f():\n    return Event()", []),
+])
+def test_n2_pemeriksa_ast_menutup_importfrom_dan_default_argumen(sumber, harap):
+    assert _primitif_di_luar_coroutine(sumber) == harap
+
+
+def test_n2_primitive_asyncio_hanya_dibuat_di_dalam_coroutine():
+    """N2: di Python 3.9 asyncio.Event/Lock/... yang dibuat di luar loop terikat ke loop lain."""
+    from pathlib import Path
+    akar = Path(__file__).resolve().parents[1]
+    temuan = []
     for berkas in sorted([*akar.glob("api/*.py"), *akar.glob("api/tests/*.py"), *akar.glob("tests/*.py")]):
-        kunjungi(berkas, ast.parse(berkas.read_text(encoding="utf-8")), False)
+        temuan += [f"{berkas.relative_to(akar)}:{baris}"
+                   for baris in _primitif_di_luar_coroutine(berkas.read_text(encoding="utf-8"))]
     assert temuan == []
 
 
@@ -2981,7 +3124,8 @@ def test_k2_auth0_post_memakai_httpx_dan_memetakan_jawaban(monkeypatch):
     def gagal(permintaan):
         raise httpx.ConnectError("putus", request=permintaan)
     monkeypatch.setattr(ss, "_klien_auth0", lambda: httpx.AsyncClient(transport=httpx.MockTransport(gagal)))
-    assert asyncio.run(ss._auth0_post("/oauth/token", {})) == (0, None)
+    # K6: koneksi tidak pernah terbentuk, jadi permintaan pasti belum terkirim (bukan hasil tidak diketahui).
+    assert asyncio.run(ss._auth0_post("/oauth/token", {})) == (ss.STATUS_TIDAK_TERKIRIM, None)
     monkeypatch.setattr(ss, "_klien_auth0", lambda: httpx.AsyncClient(
         transport=httpx.MockTransport(lambda r: httpx.Response(500, content=b"<html>bukan json</html>"))))
     assert asyncio.run(ss._auth0_post("/oauth/token", {})) == (500, None)
@@ -3004,19 +3148,54 @@ def test_n4_tenggat_auth0_saat_masuk_menjadi_belum_siap(bff, monkeypatch):
 def test_n4_tenggat_total_siteverify_503_tanpa_auth0(bff, monkeypatch):
     b = bff()
     assert b.ab.TENGGAT_SITEVERIFY == 5
-    cf = b.cf
-
-    def lambat(url, data=None, timeout=None):
-        time.sleep(0.3)
-        return cf(url, data=data, timeout=timeout)
-    monkeypatch.setattr(b.ts, "_kirim", lambat)
+    pasang_cloudflare(monkeypatch, b.ts, b.cf, tunda=0.3)
     monkeypatch.setattr(b.ab, "TENGGAT_SITEVERIFY", 0.05)
+    mulai = time.monotonic()
     res = masuk(b)
+    assert time.monotonic() - mulai < 0.25  # K1: tidak ada thread tertinggal yang ditunggu saat loop ditutup
     assert res.status_code == 503 and res.json()["kode"] == "belum_siap"
     assert b.auth0.kiriman == []
-    # Jawaban tidak menunggu siteverify 0,3 detik: sisa tahanan 700 ms masih lebih dari 0,6 detik. (Durasi
-    # TestClient sendiri tidak bisa dipakai karena loop-nya menunggu thread yang tertinggal saat ditutup.)
+    # Jawaban tidak menunggu siteverify 0,3 detik: sisa tahanan 700 ms masih lebih dari 0,6 detik.
     assert b.tidur and b.tidur[-1] > 0.6
+    assert b.cf.kiriman == []  # siteverify dibatalkan bersama tenggat, tidak selesai di belakang
+
+
+def test_k1_siteverify_login_tidak_memakai_executor_thread(bff, monkeypatch):
+    """K1: siteverify login memakai httpx.AsyncClient, bukan asyncio.to_thread di executor bawaan loop. Thread
+    yang tertinggal saat Cloudflare lambat dulu memenuhi executor itu (dipakai juga oleh DNS Auth0)."""
+    b = bff()
+
+    def dilarang(*a, **k):
+        raise AssertionError("siteverify login tidak boleh memakai executor thread")
+    monkeypatch.setattr(asyncio, "to_thread", dilarang)
+    monkeypatch.setattr(b.ts, "cek_turnstile", dilarang)  # versi sinkron hanya untuk verifikasi manusia
+    assert masuk(b).status_code == 200
+    assert len(b.cf.kiriman) == 1 and b.cf.kiriman[0][1]["remoteip"] == IP_ASLI
+    assert b.cf.kiriman[0][1]["response"].startswith("jawaban-turnstile-")
+
+
+def test_k1_siteverify_lambat_dibatalkan_tanpa_kerja_tertinggal(bff, monkeypatch):
+    """K1: setelah tenggat siteverify habis tidak ada permintaan ke Cloudflare yang masih berjalan."""
+    b = bff()
+    pasang_cloudflare(monkeypatch, b.ts, b.cf, tunda=0.6)
+
+    async def jalan():
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(b.ts.cek_turnstile_async("jawaban", IP_ASLI, b.ts.AKSI_MASUK), 0.1)
+        await asyncio.sleep(0.8)  # loop tetap hidup melewati waktu jawaban yang tertunda
+    asyncio.run(jalan())
+    assert b.cf.kiriman == []
+
+
+def test_k1_siteverify_tidak_terjangkau_tetap_belum_siap_tanpa_auth0(bff, monkeypatch):
+    import httpx
+    b = bff()
+
+    def gagal(permintaan):
+        raise httpx.ConnectTimeout("lambat", request=permintaan)
+    monkeypatch.setattr(b.ts, "_klien_siteverify", lambda: httpx.AsyncClient(transport=httpx.MockTransport(gagal)))
+    res = masuk(b)
+    assert res.status_code == 503 and res.json()["kode"] == "belum_siap" and b.auth0.kiriman == []
 
 
 def _surat_kontrol_palsu(b, monkeypatch):
@@ -3164,3 +3343,262 @@ def test_clara_429_batas_tenant_dibedakan_di_log_tanpa_username(bff, caplog, jaw
     assert len(pesan) == (1 if tenant else 0)
     blob = "\n".join(r.getMessage() for r in caplog.records)
     assert USERNAME not in blob and b.ab.ringkas_username(USERNAME) not in "\n".join(pesan)
+
+
+# --- PR 1b: cek akhir Clara (K1-K6) -------------------------------------------------------------
+
+def _isi_batas_username_unik(b):
+    b.auth0.jawaban_token = GAGAL
+    for i in range(b.ab.BATAS_USERNAME_UNIK_IP[1]):
+        masuk(b, username=f"pengguna.{i}")
+        b.jam.maju(seconds=4)
+
+
+def test_k2_lewat_batas_unik_tidak_menulis_hitungan_peringatan_username(bff):
+    """K2: setelah batas 50 username unik penuh, kegagalan tidak lagi menulis baris gagal-jam (2 jam) per
+    username. Yang tersisa per percobaan hanya baris berumur pendek: hash token Turnstile dan slot geser."""
+    b = bff()
+    _isi_batas_username_unik(b)
+    sebelum = set(b.store.kedaluwarsa_batas)
+    assert masuk(b, username="pengguna.baru").json() == TERLALU_BANYAK
+    # Penanda peringatan batas unik (satu baris per IP per hari) dibuat pada percobaan pertama lewat batas.
+    baru = set(b.store.kedaluwarsa_batas) - sebelum - {(b.ss.jejak(f"86400:peringatan-unik:ip:{IP_ASLI}"),
+                                                         int(b.jam.waktu.timestamp() // 86400))}
+    gagal_jam = b.ss.jejak("3600:gagal-jam:username:pengguna.baru")
+    assert not any(k[0] == gagal_jam for k in b.store.batas)
+    assert baru and all(b.store.kedaluwarsa_batas[k] - b.jam.waktu <= timedelta(minutes=30) for k in baru)
+    # Username di bawah batas tetap dihitung untuk peringatan 30 gagal per jam.
+    assert any(k[0] == b.ss.jejak("3600:gagal-jam:username:pengguna.0") for k in b.store.batas)
+
+
+def test_k2_urutan_operasi_db_lewat_batas_identik_untuk_akun_ada_dan_tidak_ada(bff, monkeypatch):
+    """Anti-oracle: melewati _catat_gagal_username hanya bergantung pada data SAPA, jadi urutan operasi
+    penyimpanan tetap sama untuk akun ada (Auth0 memblokir) dan tidak ada."""
+    operasi = ("tambah_batas", "tambah_batas_geser", "kurangi_batas", "baca_batas", "tambah_gagal_kumulatif",
+               "ada_gagal_kumulatif", "padamkan_penanda", "bersihkan_batas", "hitung_baris_batas", "simpan",
+               "ambil", "hapus")
+
+    def jalankan(b, u):
+        monkeypatch.setattr(b.ab, "_monoton", lambda: 100.0)
+        monkeypatch.setattr(b.ss, "_acak", lambda: 0.0)  # pembersihan deterministik (bukan 1% acak)
+        _isi_batas_username_unik(b)
+        urutan = []
+        for nama in operasi:
+            async def rekam(*a, _nama=nama, _asli=getattr(b.store, nama), **k):
+                urutan.append(_nama)
+                return await _asli(*a, **k)
+            monkeypatch.setattr(b.store, nama, rekam)
+        hasil = _deret(b, u, 12, 120)
+        b.jam.maju(minutes=31)
+        return hasil + _deret(b, u, 3, 4), urutan
+    ada, kosong = _bandingkan_akun(bff, monkeypatch, jalankan)
+    assert ada == kosong
+    assert "tambah_gagal_kumulatif" not in ada[1]
+
+
+def test_k4_klien_auth0_dan_siteverify_bertenggat_per_tahap():
+    """K4: pembatalan oleh wait_for di tengah TLS handshake tidak menutup soket. Tenggat connect dan pool httpx
+    di bawah tenggat total, jadi httpx sendiri yang menghentikan sambungan (dan menutup soketnya). TCP connect
+    dan TLS handshake masing-masing mendapat tenggat connect, jadi yang dibandingkan 2 x connect + pool."""
+    import sesi_service as ss
+    import turnstile as ts
+
+    async def periksa():
+        for klien, tenggat in ((ss._klien_auth0(), ss.TENGGAT_AUTH0), (ts._klien_siteverify(), ts.TENGGAT_SITEVERIFY)):
+            async with klien:
+                t = klien.timeout
+                assert None not in (t.connect, t.pool, t.read, t.write)
+                assert 2 * t.connect + t.pool < tenggat and t.read <= tenggat and t.write <= tenggat
+                assert klien.follow_redirects is False
+    asyncio.run(periksa())
+    assert (ss.TIMEOUT_AUTH0_SAMBUNG, ss.TIMEOUT_AUTH0_POOL, ss.TIMEOUT_AUTH0) == (5, 5, 8)
+    assert ss.TENGGAT_AUTH0 == 16 and ts.TENGGAT_SITEVERIFY == 5
+
+
+def test_k4_k6_handshake_macet_ditutup_httpx_dan_belum_terkirim(monkeypatch):
+    """K4 dan K6 dengan soket sungguhan di loopback: server menerima TCP tetapi tidak pernah menjawab TLS.
+    Tenggat connect httpx habis lebih dulu, soket ditutup (server melihat EOF), dan hasilnya pasti belum
+    terkirim (bukan hasil tidak diketahui)."""
+    import sesi_service as ss
+    monkeypatch.setattr(ss, "TIMEOUT_AUTH0_SAMBUNG", 0.2)
+    monkeypatch.setattr(ss, "TENGGAT_AUTH0", 3)
+
+    async def jalan():
+        tutup = asyncio.get_running_loop().create_future()
+
+        async def terima(reader, writer):
+            while await reader.read(4096):  # ClientHello dibaca, tidak pernah dijawab
+                pass
+            if not tutup.done():
+                tutup.set_result(True)
+            writer.close()
+        server = await asyncio.start_server(terima, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        monkeypatch.setenv("AUTH0_DOMAIN", f"127.0.0.1:{port}")
+        async with server:
+            mulai = time.monotonic()
+            hasil = await ss._auth0_post("/oauth/token", {"grant_type": "refresh_token", "refresh_token": "RT-uji"})
+            durasi = time.monotonic() - mulai
+            ditutup = await asyncio.wait_for(tutup, 1)
+        return hasil, durasi, ditutup
+    hasil, durasi, ditutup = asyncio.run(jalan())
+    assert hasil == (ss.STATUS_TIDAK_TERKIRIM, None) and durasi < 1.5 and ditutup
+
+
+@pytest.mark.parametrize("galat,terkirim", [("ConnectError", False), ("ConnectTimeout", False), ("PoolTimeout", False),
+                                             ("ReadTimeout", True), ("WriteError", True), ("ReadError", True),
+                                             ("RemoteProtocolError", True)])
+def test_k6_auth0_post_membedakan_belum_terkirim_dan_tidak_diketahui(monkeypatch, galat, terkirim):
+    import httpx
+    import sesi_service as ss
+    monkeypatch.setenv("AUTH0_DOMAIN", "sapa.test.auth0.com")
+
+    def gagal(permintaan):
+        raise getattr(httpx, galat)("uji", request=permintaan)
+    monkeypatch.setattr(ss, "_klien_auth0", lambda: httpx.AsyncClient(transport=httpx.MockTransport(gagal)))
+    assert asyncio.run(ss._auth0_post("/oauth/token", {})) == ((0 if terkirim else ss.STATUS_TIDAK_TERKIRIM), None)
+
+
+@pytest.mark.parametrize("galat,dilepas", [("ConnectError", True), ("ConnectTimeout", True), ("ReadTimeout", False),
+                                            ("RemoteProtocolError", False)])
+def test_k6_sewa_refresh_dilepas_hanya_bila_koneksi_auth0_tidak_terbentuk(bff, monkeypatch, galat, dilepas):
+    import httpx
+    import sesi_service
+    asli = sesi_service._auth0_post
+    b = bff()
+    cookie = nilai_cookie(masuk(b, ingat=True))
+    b.jam.maju(hours=3)  # access token habis
+    monkeypatch.setattr(b.ss, "_auth0_post", asli)
+    dipanggil = []
+
+    def gagal(permintaan):
+        dipanggil.append(permintaan.url.path)
+        raise getattr(httpx, galat)("uji", request=permintaan)
+    monkeypatch.setattr(b.ss, "_klien_auth0", lambda: httpx.AsyncClient(transport=httpx.MockTransport(gagal)))
+
+    async def tunggu_palsu(detik):
+        pass
+    monkeypatch.setattr(b.ss, "_tunggu", tunggu_palsu)
+    for _ in range(2):
+        with pytest.raises(b.ss.SesiBelumSiap):
+            asyncio.run(b.ss.ambil_sesi_segar(cookie, ip=IP_ASLI))
+    [baris] = b.store.sesi.values()
+    if dilepas:
+        # Refresh token pasti belum terkirim: sewa dilepas, permintaan berikutnya boleh langsung mencoba lagi.
+        assert baris.get("segar_sampai") is None and dipanggil == ["/oauth/token"] * 2
+    else:
+        # N3: setelah koneksi terbentuk hasilnya tidak diketahui, sewa dibiarkan sampai kedaluwarsa.
+        assert baris["segar_sampai"] == b.jam.waktu + b.ss.UMUR_KUNCI_SEGAR and dipanggil == ["/oauth/token"]
+
+
+def test_k6_masuk_saat_auth0_tidak_tersambung_belum_siap_dan_slot_kembali(bff, monkeypatch):
+    import httpx
+    import sesi_service
+    asli = sesi_service._auth0_post
+    b = bff()
+    monkeypatch.setattr(b.ss, "_auth0_post", asli)
+
+    def gagal(permintaan):
+        raise httpx.ConnectError("uji", request=permintaan)
+    monkeypatch.setattr(b.ss, "_klien_auth0", lambda: httpx.AsyncClient(transport=httpx.MockTransport(gagal)))
+    res = masuk(b)
+    assert res.status_code == 503 and res.json()["kode"] == "belum_siap"
+    jendela = int(b.jam.waktu.timestamp() // 900)
+    assert b.store.batas[(b.ss.jejak(f"900:gagal:username:{USERNAME}|ip:{IP_ASLI}"), jendela)] == 0
+
+
+def _postgres_koneksi_macet(b, monkeypatch, baris, tutup="macet", operasi_gagal=False):
+    """PostgresSesiStore dengan koneksi palsu yang menutup lambat (atau galat); terminate() dicatat."""
+    tercatat = {"dibuka": 0, "close": 0, "terminate": 0}
+
+    class Koneksi:
+        async def fetchrow(self, sql, *args):
+            return dict(baris) if baris else None
+
+        async def fetchval(self, sql, *args):
+            if operasi_gagal:
+                raise OSError("koneksi putus")
+            return 1
+
+        async def close(self):
+            tercatat["close"] += 1
+            if tutup == "macet":
+                await asyncio.sleep(5)
+            else:
+                raise OSError("koneksi putus")
+
+        def terminate(self):
+            tercatat["terminate"] += 1
+    pg = b.ss.PostgresSesiStore("postgresql://uji@db.invalid/sapa")
+    pg._skema_siap = True
+
+    async def sambung():
+        tercatat["dibuka"] += 1
+        return Koneksi()
+    monkeypatch.setattr(pg, "_sambung", sambung)
+    monkeypatch.setattr(b.ss, "_store", pg)
+    return tercatat
+
+
+def test_k5_tutup_koneksi_menunggu_penyegar_ikut_tenggat_dinding(bff, monkeypatch):
+    """K5: penutupan koneksi di akhir satu_koneksi() tidak boleh menambah waktu di atas tenggat dinding."""
+    b = bff()
+    sekarang = b.jam.waktu
+    baris = {"id_hash": "id-uji", "sub": "auth0|uji", "ingat": True, "dibuat_pada": sekarang,
+             "terakhir_dipakai": sekarang, "kedaluwarsa": sekarang + timedelta(days=1), "token_enc": "v2.lama",
+             "token_exp": sekarang, "segar_sampai": sekarang + b.ss.UMUR_KUNCI_SEGAR}
+    tercatat = _postgres_koneksi_macet(b, monkeypatch, baris)
+    monkeypatch.setattr(b.ss, "MAKS_TUNGGU_SEGAR", 0.3)
+    sesi = b.ss.Sesi(id_hash="id-uji", sub="auth0|uji", ingat=True, dibuat_pada=sekarang, terakhir_dipakai=sekarang,
+                     kedaluwarsa=sekarang + timedelta(days=1), token_exp=sekarang, access_token="at",
+                     token_enc="v2.lama")
+    mulai = time.monotonic()
+    assert asyncio.run(b.ss._tunggu_penyegar(sesi)) is None
+    assert time.monotonic() - mulai < 0.3 + 0.15
+    assert tercatat["dibuka"] == 1 and tercatat["terminate"] == 1
+
+
+@pytest.mark.parametrize("tutup", ["macet", "galat"])
+def test_k5_tutup_koneksi_tanpa_tenggat_dibatasi_tenggat_tutup(bff, monkeypatch, tutup):
+    b = bff()
+    tercatat = _postgres_koneksi_macet(b, monkeypatch, None, tutup)
+    assert b.ss.TENGGAT_TUTUP_DB == 2
+    monkeypatch.setattr(b.ss, "TENGGAT_TUTUP_DB", 0.1)
+
+    async def jalan():
+        async with b.ss.satu_koneksi():
+            await b.ss.store().cek()
+    mulai = time.monotonic()
+    asyncio.run(jalan())
+    assert time.monotonic() - mulai < 0.1 + 0.15
+    assert tercatat == {"dibuka": 1, "close": 1, "terminate": 1}
+
+
+@pytest.mark.parametrize("batas_akhir", [None, 0.1])
+def test_k5_tutup_koneksi_rusak_di_tengah_blok_ikut_tenggat(bff, monkeypatch, batas_akhir):
+    """K5 (F1): koneksi yang rusak di tengah satu_koneksi() dibuang oleh _urutan; penutupannya juga dibatasi
+    TENGGAT_TUTUP_DB (atau sisa tenggat dinding), tidak menunggu command_timeout asyncpg."""
+    b = bff()
+    tercatat = _postgres_koneksi_macet(b, monkeypatch, None, operasi_gagal=True)
+    monkeypatch.setattr(b.ss, "TENGGAT_TUTUP_DB", 0.1 if batas_akhir is None else 3)
+
+    async def jalan():
+        batas = None if batas_akhir is None else b.ss._monoton() + batas_akhir
+        async with b.ss.satu_koneksi(batas):
+            with pytest.raises(b.ss.SesiBelumSiap):
+                await b.ss.batas("k", 60, 5)
+    mulai = time.monotonic()
+    asyncio.run(jalan())
+    assert time.monotonic() - mulai < 0.1 + 0.15
+    assert tercatat == {"dibuka": 1, "close": 1, "terminate": 1}
+
+
+def test_k5_tutup_koneksi_normal_tidak_dihentikan_paksa(bff, monkeypatch):
+    b = bff()
+    dibuka, ditutup = _postgres_palsu(b, monkeypatch)
+
+    async def jalan():
+        async with b.ss.satu_koneksi(batas_akhir=b.ss._monoton() + 5):
+            await b.ss.batas("k", 60, 5)
+    asyncio.run(jalan())
+    assert dibuka == [1] and ditutup == [1]

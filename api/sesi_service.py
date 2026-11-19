@@ -21,14 +21,25 @@
   (satu koneksi DB, jeda bertambah dari JEDA_TUNGGU_SEGAR sampai JEDA_TUNGGU_SEGAR_MAKS), lalu memakai
   token baru (503 bila tetap belum ada).
   Bila Auth0 tetap menolak refresh token, baris dibaca ulang sebelum sesi diakhiri.
-- Sewa hanya dilepas bila Auth0 pasti tidak memproses refresh token (N3, K1): galat sebelum Auth0 dipanggil
-  atau jawaban penolakan yang jelas (_STATUS_PASTI_TIDAK_DIPROSES: 400, 401, 403, 404, 429, 503). Jawaban lain
-  (status 0 karena timeout, koneksi putus, atau tenggat total habis; 200 tanpa access_token atau body bukan
-  JSON; 500, 502, 504, 52x; galat apa pun sesudah Auth0 dipanggil) dianggap hasil tidak diketahui: sewa
-  dibiarkan sampai kedaluwarsa alami, supaya refresh token yang mungkin sudah dirotasi tidak dipakai dua kali.
+- Sewa hanya dilepas bila Auth0 pasti tidak memproses refresh token (N3, K1, K6): galat sebelum Auth0 dipanggil,
+  koneksi ke Auth0 yang tidak pernah terbentuk (STATUS_TIDAK_TERKIRIM: httpx.ConnectError, ConnectTimeout,
+  PoolTimeout; permintaan pasti belum terkirim), atau jawaban penolakan yang jelas (_STATUS_PASTI_TIDAK_DIPROSES:
+  400, 401, 403, 404, 429, 503). Jawaban lain (status 0 karena timeout baca atau tulis, koneksi putus sesudah
+  tersambung, atau tenggat total habis; 200 tanpa access_token atau body bukan JSON; 500, 502, 504, 52x; galat
+  apa pun sesudah Auth0 dipanggil) dianggap hasil tidak diketahui: sewa dibiarkan sampai kedaluwarsa alami
+  (UMUR_KUNCI_SEGAR, 30 detik), supaya refresh token yang mungkin sudah dirotasi tidak dipakai dua kali.
+  Konsekuensi: saat Auth0 5xx atau lambat, sesi yang access token-nya sudah habis menjawab 503 sampai sewa
+  habis, dan bila Auth0 ternyata sudah merotasi refresh token, sesi itu berakhir (keluar paksa) pada penyegaran
+  berikutnya sekitar 30 detik kemudian. Reuse interval refresh token di Auth0 akan mencegahnya, tetapi itu
+  keputusan CEO (keputusan terbuka di docs/runbook-login-bff.md).
 - Setiap panggilan Auth0 punya tenggat total TENGGAT_AUTH0 (N4, asyncio.wait_for), karena timeout httpx
   berlaku per tahap (connect, read), bukan untuk seluruh panggilan. Tenggat habis dianggap status 0. Klien
-  httpx async bisa dibatalkan (K2), jadi tidak ada kiriman yang tertinggal sesudah tenggat.
+  httpx async bisa dibatalkan (K2), jadi tidak ada kiriman yang tertinggal sesudah tenggat. Pembatalan di
+  tengah TLS handshake TIDAK menutup soket (httpcore hanya menutupnya untuk galat biasa, bukan pembatalan),
+  jadi tenggat per tahap httpx (K4: connect TIMEOUT_AUTH0_SAMBUNG, pool TIMEOUT_AUTH0_POOL, baca dan tulis
+  TIMEOUT_AUTH0) dibuat jauh di bawah tenggat total: TCP connect dan TLS handshake masing-masing paling lama
+  5 detik, ditambah pool 5 detik, = 15 detik < 16. Dengan begitu sambungan yang macet dihentikan httpx sendiri
+  (ConnectTimeout, soket ditutup) sebelum wait_for membatalkannya.
   Semua penulisan token bersyarat (S1): tulis ulang rotasi kunci atau v1 adalah compare-and-swap atas
   token_enc yang dibaca (tanpa menyentuh segar_sampai), dan hasil penyegaran hanya disimpan oleh pemegang
   sewa atau selama baris masih berisi token sebelum penyegaran. Bila syarat gagal, baris dibaca ulang dan
@@ -47,7 +58,10 @@
   Baris kedaluwarsa dibersihkan sesekali (PELUANG_BERSIH per panggilan) dan saat login sukses. Setiap
   pembersihan juga menghitung baris sapa_batas (dibatasi LIMIT) dan mencatat peringatan di log bila
   jumlahnya melewati AMBANG_PERINGATAN_BARIS_BATAS.
-- satu_koneksi(): semua operasi penyimpanan di dalam blok memakai satu koneksi Postgres.
+- satu_koneksi(): semua operasi penyimpanan di dalam blok memakai satu koneksi Postgres. Penutupan di akhir
+  blok, dan koneksi yang dibuang karena galat di tengah blok, ikut tenggat (K5): sisa tenggat dinding pemanggil
+  (batas_akhir) atau TENGGAT_TUTUP_DB, lalu terminate()
+  bila habis atau galat, supaya close() yang menunggu server tidak menambah sampai 5 detik.
   Kunci pembatas dan penanda log memakai HMAC dengan kunci turunan SAPA_SESI_KUNCI (HKDF,
   label "sapa-jejak"), jadi tidak bisa dibalik dengan kamus username atau ruang IPv4.
 
@@ -98,10 +112,16 @@ BATAS_GLOBAL_LOGIN = (1, 3)
 KUNCI_GLOBAL_SEGAR = "global:oauth-refresh"
 BATAS_GLOBAL_SEGAR = (1, 2)
 _JEDA_SENTUH = timedelta(seconds=60)
-# Timeout satu panggilan: httpx (connect dan read masing-masing TIMEOUT_AUTH0) dan asyncpg (connect dan
-# command masing-masing TIMEOUT_DB). Waktu terburuk satu panggilan = dua kali timeout-nya.
+# Timeout satu panggilan: httpx (baca dan tulis TIMEOUT_AUTH0) dan asyncpg (connect dan command masing-masing
+# TIMEOUT_DB). Waktu terburuk satu panggilan = dua kali timeout-nya.
 TIMEOUT_AUTH0 = 8
+# K4: tenggat tahap connect (TCP connect dan TLS handshake masing-masing) dan menunggu pool httpx, jauh di
+# bawah TENGGAT_AUTH0: 2 x 5 + 5 = 15 < 16 detik.
+TIMEOUT_AUTH0_SAMBUNG = 5
+TIMEOUT_AUTH0_POOL = 5
 TIMEOUT_DB = 5
+# K5: tenggat menutup koneksi satu_koneksi() bila pemanggil tidak memberi tenggat dinding (mis. /masuk).
+TENGGAT_TUTUP_DB = 2
 WAKTU_TERBURUK_AUTH0 = 2 * TIMEOUT_AUTH0
 WAKTU_TERBURUK_DB = 2 * TIMEOUT_DB
 # N4: tenggat total satu panggilan Auth0 (16 detik); lewat dari itu hasilnya dianggap tidak diketahui (status 0).
@@ -121,6 +141,11 @@ JEDA_TUNGGU_SEGAR_MAKS = 0.5
 # 200 tanpa access_token, body bukan JSON, 500, 502/504, 52x, status 0 (timeout, koneksi putus, tenggat habis),
 # dan status tak dikenal, dianggap hasil tidak diketahui: sewa dibiarkan sampai kedaluwarsa.
 _STATUS_PASTI_TIDAK_DIPROSES = {400, 401, 403, 404, 429, 503}
+# K6: status _auth0_post bila koneksi ke Auth0 tidak pernah terbentuk (ConnectError, ConnectTimeout, PoolTimeout):
+# permintaan pasti belum terkirim, jadi sewa penyegaran boleh dilepas. Bernilai negatif supaya pemanggil yang
+# memeriksa status <= 0 (login) memperlakukannya sama dengan Auth0 tidak terjangkau.
+STATUS_TIDAK_TERKIRIM = -1
+_GALAT_BELUM_TERKIRIM = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
 # Peluang satu panggilan pembatas ikut membersihkan baris sapa_batas yang sudah kedaluwarsa.
 PELUANG_BERSIH = 0.01
 BATAS_BERSIH = 1000
@@ -230,18 +255,26 @@ def konfigurasi_auth0() -> Optional[dict]:
     return cfg if all(cfg.values()) else None
 
 
-def _klien_auth0() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_AUTH0), follow_redirects=False)
+def _klien_auth0(transport=None) -> httpx.AsyncClient:
+    tahap = httpx.Timeout(connect=TIMEOUT_AUTH0_SAMBUNG, read=TIMEOUT_AUTH0, write=TIMEOUT_AUTH0,
+                          pool=TIMEOUT_AUTH0_POOL)
+    return httpx.AsyncClient(timeout=tahap, follow_redirects=False, transport=transport)
 
 
 async def _auth0_post(path: str, data: dict, headers: Optional[dict] = None) -> tuple[int, Optional[dict]]:
-    """POST form ke Auth0; (0, None) bila tidak terjangkau. Body tidak pernah dicatat."""
+    """POST form ke Auth0. Body tidak pernah dicatat.
+
+    (STATUS_TIDAK_TERKIRIM, None) bila koneksi tidak pernah terbentuk (pasti belum terkirim, K6); (0, None) bila
+    hasilnya tidak diketahui (galat sesudah koneksi terbentuk, atau tenggat total habis).
+    """
     url = f"https://{domain_auth0()}{path}"
 
     async def kirim():
         try:
             async with _klien_auth0() as klien:
                 res = await klien.post(url, data=data, headers=headers or {})
+        except _GALAT_BELUM_TERKIRIM:
+            return STATUS_TIDAK_TERKIRIM, None
         except (httpx.HTTPError, httpx.InvalidURL):
             return 0, None
         try:
@@ -251,8 +284,11 @@ async def _auth0_post(path: str, data: dict, headers: Optional[dict] = None) -> 
         return res.status_code, body if isinstance(body, dict) else None
 
     # N4: timeout httpx hanya per tahap; tenggat total membatasi seluruh panggilan. Klien async (K2), bukan
-    # requests di thread: pembatalan oleh wait_for menghentikan DNS, connect, atau kiriman yang belum terjadi
-    # dan menutup soket, jadi refresh token tidak pernah terkirim sesudah tenggat (atau sesudah sewa habis).
+    # requests di thread: pembatalan oleh wait_for menghentikan penantian DNS, connect, atau kiriman yang belum
+    # terjadi, jadi refresh token tidak pernah terkirim sesudah tenggat (atau sesudah sewa habis). Thread
+    # getaddrinfo di executor bawaan loop tetap berjalan sampai resolver selesai, tetapi hasilnya dibuang. Pembatalan di tengah
+    # TLS handshake tidak menutup soket; karena itu tenggat connect dan pool (K4) di bawah TENGGAT_AUTH0, supaya
+    # handshake yang macet sudah dihentikan httpx (soket ditutup) sebelum tenggat total tercapai.
     try:
         return await asyncio.wait_for(kirim(), TENGGAT_AUTH0)
     except asyncio.TimeoutError:
@@ -491,23 +527,55 @@ class MemorySesiStore:
 
 # Wadah koneksi milik satu permintaan (lihat satu_koneksi); None = satu koneksi per operasi.
 _wadah_koneksi: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar("sapa_wadah_koneksi", default=None)
+# Tenggat dinding blok satu_koneksi() yang sedang berjalan (waktu _monoton); None = tanpa tenggat dinding.
+_batas_akhir_koneksi: contextvars.ContextVar[Optional[float]] = contextvars.ContextVar(
+    "sapa_batas_akhir_koneksi", default=None)
+
+
+def _sisa_tutup(batas_akhir: Optional[float]) -> float:
+    return TENGGAT_TUTUP_DB if batas_akhir is None else batas_akhir - _monoton()
+
+
+async def _tutup_koneksi(conn, sisa: float) -> None:
+    """Tutup rapi paling lama `sisa` detik; bila tenggat sudah habis, lewat, atau galat, hentikan paksa tanpa
+    menunggu server (K5). Tenggat yang sudah habis sebelum menutup adalah jalur normal, jadi tidak dicatat."""
+    try:
+        if sisa > 0:
+            await asyncio.wait_for(conn.close(), sisa)
+            return
+    except Exception as exc:  # termasuk asyncio.TimeoutError
+        logger.warning("Koneksi penyimpanan sesi tidak tertutup rapi: %s", type(exc).__name__)
+    except BaseException:
+        _hentikan(conn)  # dibatalkan saat menutup: tetap tidak meninggalkan soket
+        raise
+    _hentikan(conn)
+
+
+def _hentikan(conn) -> None:
+    try:
+        conn.terminate()
+    except Exception as exc:
+        logger.warning("Koneksi penyimpanan sesi tidak dapat dihentikan: %s", type(exc).__name__)
 
 
 @contextlib.asynccontextmanager
-async def satu_koneksi():
+async def satu_koneksi(batas_akhir: Optional[float] = None):
     """Semua operasi penyimpanan Postgres di dalam blok memakai satu koneksi, dibuka saat pertama dipakai
-    dan ditutup di akhir blok. Operasi di dalam blok harus berurutan (bukan asyncio.gather)."""
+    dan ditutup di akhir blok. Operasi di dalam blok harus berurutan (bukan asyncio.gather).
+
+    `batas_akhir` (waktu _monoton) adalah tenggat dinding pemanggil; penutupan koneksi ikut tenggat itu (K5).
+    Tanpa batas_akhir, penutupan paling lama TENGGAT_TUTUP_DB detik. Lewat dari itu koneksi dihentikan paksa.
+    """
     wadah: dict = {}
     token = _wadah_koneksi.set(wadah)
+    token_batas = _batas_akhir_koneksi.set(batas_akhir)
     try:
         yield
     finally:
+        _batas_akhir_koneksi.reset(token_batas)
         _wadah_koneksi.reset(token)
         for conn in wadah.values():
-            try:
-                await conn.close()
-            except Exception as exc:
-                logger.warning("Koneksi penyimpanan sesi tidak tertutup rapi: %s", type(exc).__name__)
+            await _tutup_koneksi(conn, _sisa_tutup(batas_akhir))
 
 
 class PostgresSesiStore:
@@ -550,15 +618,13 @@ class PostgresSesiStore:
         except BaseException as exc:
             # Koneksi bisa sudah rusak; operasi berikutnya membuka koneksi baru.
             wadah.pop(id(self), None)
-            try:
-                if isinstance(exc, Exception):
-                    await conn.close()
-                else:
-                    # Dibatalkan di tengah perintah (mis. tenggat menunggu penyegar, K3): tutup paksa tanpa
-                    # menunggu server.
-                    conn.terminate()
-            except Exception:
-                pass
+            if isinstance(exc, Exception):
+                # K5 (F1): penutupan koneksi rusak ikut tenggat yang sama dengan akhir blok, lalu terminate().
+                await _tutup_koneksi(conn, _sisa_tutup(_batas_akhir_koneksi.get()))
+            else:
+                # Dibatalkan di tengah perintah (mis. tenggat menunggu penyegar, K3): tutup paksa tanpa
+                # menunggu server.
+                _hentikan(conn)
             raise
 
     async def _jalankan(self, cara: str, sql: str, *args):
@@ -881,7 +947,7 @@ async def _tunggu_penyegar(sesi: Sesi):
     batas_akhir = _monoton() + MAKS_TUNGGU_SEGAR
     # Satu koneksi untuk seluruh penantian, dengan jeda yang bertambah, supaya tidak membuka koneksi
     # Postgres baru setiap 100 ms.
-    async with satu_koneksi():
+    async with satu_koneksi(batas_akhir):
         while sisa > 1e-9:
             langkah = min(jeda, sisa, batas_akhir - _monoton())
             if langkah <= 0:
@@ -1028,6 +1094,10 @@ async def _segarkan_sebagai_pemegang_kunci(sesi: Sesi, cfg: dict, ip: Optional[s
         return None
     if status in _STATUS_PASTI_TIDAK_DIPROSES:
         logger.warning("Penyegaran token Auth0 gagal: status %s", status)
+        return _TANPA_TOKEN_BARU
+    if status == STATUS_TIDAK_TERKIRIM:
+        # K6: koneksi ke Auth0 tidak pernah terbentuk, refresh token pasti belum terkirim. Sewa dilepas.
+        logger.warning("Penyegaran token Auth0 gagal: koneksi tidak terbentuk; sewa dilepas")
         return _TANPA_TOKEN_BARU
     # K1: selain jawaban yang pasti tidak diproses, Auth0 mungkin sudah merotasi refresh token (mis. 200 tanpa
     # access_token, body bukan JSON, 500, 52x, timeout). Sewa dibiarkan sampai kedaluwarsa.

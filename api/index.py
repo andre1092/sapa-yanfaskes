@@ -69,12 +69,6 @@ import jwt
 import uuid
 from jwt import PyJWKClient
 try:
-    from google.oauth2 import service_account
-    from googleapiclient.discovery import build
-    HAS_GOOGLE_CLIENT = True
-except (ImportError, ModuleNotFoundError):
-    HAS_GOOGLE_CLIENT = False
-try:
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy import text
 except Exception:
@@ -138,8 +132,6 @@ TERIMA_BEARER = not (LOGIN_BFF and os.environ.get("SAPA_TERIMA_BEARER", "1").str
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
 # Klaim peran yang ditambahkan Action login Auth0 ke token akses.
 ROLES_CLAIM = os.environ.get("AUTH0_ROLES_CLAIM", "https://sapa-yanfaskes.com/roles")
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
 # Domain Normalization & Sanitization
 # Strip whitespace, https://, http://, and trailing slashes
@@ -1042,28 +1034,6 @@ def format_timestamp_standard(ts_str: Any) -> str:
     return s
 
 
-def get_sheets_service():
-    if not HAS_GOOGLE_CLIENT:
-        return None
-    gcp_creds = os.environ.get("GCP_SA_CREDENTIALS_BASE64") or os.environ.get("GCP_SA_CREDENTIALS_JSON")
-    if not gcp_creds:
-        return None
-    try:
-        import base64
-        try:
-            creds_str = base64.b64decode(gcp_creds).decode('utf-8')
-            creds_info = json.loads(creds_str)
-        except Exception:
-            creds_info = json.loads(gcp_creds)
-            
-        credentials = service_account.Credentials.from_service_account_info(
-            creds_info, scopes=SCOPES
-        )
-        return build('sheets', 'v4', credentials=credentials, cache_discovery=False)
-    except Exception as e:
-        logger.error(f"Failed to initialize Google Sheets service: {e}")
-        return None
-
 # Satu-satunya spreadsheet antrean FKRTL; tidak bisa diganti dari permintaan.
 FKRTL_ANTROL_SPREADSHEET_ID = "1U5OFfqMkN0Wj0ATmkSsplJZD_whfwmh1ef797IH6LnY"
 
@@ -1131,61 +1101,17 @@ def fetch_multiple_sheets(spreadsheet_id: str, range_names: List[str], force_ref
     if force_refresh:
         invalidate_sheets_cache(spreadsheet_id)
 
-    # 1. Sheets API lewat akun layanan (sheets_source), per tab.
+    # Sheets API lewat akun layanan (sheets_source), per tab di SHEET_GIDS (DB_FASKES, DB_LAP_ANTROL_FKRTL,
+    # per_poli: seluruh tab, jadi mencakup range_names pemanggil). range_names dipertahankan untuk kompatibilitas.
     live_dfs = fetch_live_google_sheets(spreadsheet_id, force_refresh=force_refresh)
     if any(live_dfs.get(name) is not None and not live_dfs[name].is_empty() for name in ("DB_LAP_ANTROL_FKRTL", "per_poli")):
         return live_dfs
 
-    # 2. Cadangan: batchGet lewat klien Google API dengan akun layanan yang sama.
-    service = get_sheets_service()
-    if not service:
-        logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
-        return {}
-        
-    try:
-        sheet = service.spreadsheets()
-        result = sheet.values().batchGet(spreadsheetId=spreadsheet_id, ranges=range_names).execute()
-        value_ranges = result.get('valueRanges', [])
-        
-        dfs: Dict[str, pl.DataFrame] = {}
-        for vr in value_ranges:
-            range_key = vr.get('range', '').split('!')[0].replace("'", "")
-            rows = vr.get('values', [])
-            if not rows or len(rows) < 1:
-                dfs[range_key] = pl.DataFrame()
-                continue
-                
-            headers = [str(h).strip() for h in rows[0]]
-            data = rows[1:] if len(rows) > 1 else []
-            
-            seen = {}
-            unique_headers = []
-            for h in headers:
-                if h in seen:
-                    seen[h] += 1
-                    unique_headers.append(f"{h}_{seen[h]}")
-                else:
-                    seen[h] = 1
-                    unique_headers.append(h)
-            
-            normalized_data = []
-            for r in data:
-                row_list = list(r)
-                if len(row_list) < len(unique_headers):
-                    row_list.extend([""] * (len(unique_headers) - len(row_list)))
-                elif len(row_list) > len(unique_headers):
-                    row_list = row_list[:len(unique_headers)]
-                normalized_data.append(row_list)
-                
-            if normalized_data:
-                dfs[range_key] = pl.DataFrame(normalized_data, schema=unique_headers, orient="row")
-            else:
-                dfs[range_key] = pl.DataFrame(schema=unique_headers)
-                
-        return dfs
-    except Exception as e:
-        logger.error(f"Sumber antrean FKRTL tidak terbaca ({type(e).__name__}); data kosong dikembalikan")
-        return {}
+    # Jalur cadangan batchGet lewat googleapiclient dihapus (D3, 2026-11-19): paket itu tidak pernah ada di
+    # api/requirements.txt, jadi jalur itu selalu mati di Vercel, dan memakai akun layanan yang sama dengan
+    # sheets_source sehingga tidak menolong saat jalur utama gagal.
+    logger.error("Sumber antrean FKRTL tidak terbaca; data kosong dikembalikan")
+    return {}
 
 # --- FKRTL PEMANFAATAN ANTROL ANALYTICS ENDPOINT ---
 @app.get("/api/v1/fkrtl-antrol-stats")

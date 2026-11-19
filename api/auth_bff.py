@@ -6,11 +6,14 @@ sama sekali (404 bawaan), sehingga perilaku lama tidak berubah.
 Urutan /masuk: asal (permintaan_sah: X-SAPA, plus Sec-Fetch-Site same-origin atau Origin sendiri) -> bentuk permintaan
 -> IP klien tepercaya (BF-1; kosong di Vercel berarti 503) -> pembatas kasar per IP (sebelum Turnstile)
 -> hash token Turnstile dicatat sekali pakai di tabel SAPA SEBELUM siteverify (TS-2) -> siteverify
-(tenggat total TENGGAT_SITEVERIFY, N4) -> pembatas per IP (hanya percobaan yang lolos Turnstile)
+(httpx.AsyncClient, tenggat total TENGGAT_SITEVERIFY, N4 dan K1) -> pembatas per IP (hanya percobaan yang lolos
+Turnstile)
 -> batas username unik yang gagal per IP per hari (N1, S1) -> pembatas kegagalan per (hash username + IP)
 -> kuota global login /oauth/token -> Auth0 password-realm (tenggat total sesi_service.TENGGAT_AUTH0)
 -> verifikasi token -> sesi.
-Semua operasi penyimpanan satu permintaan /masuk memakai satu koneksi DB (sesi_service.satu_koneksi).
+Semua operasi penyimpanan satu permintaan /masuk memakai satu koneksi DB (sesi_service.satu_koneksi); koneksi
+itu ditutup dengan tenggat sesi_service.TENGGAT_TUTUP_DB lalu dihentikan paksa (K5).
+Prosedur operasi (rollback, uji asap, pemantauan, keputusan terbuka): docs/runbook-login-bff.md.
 
 Pembatas (Clara, 2026-11-19; IPv6 per prefiks /64):
 - per IP kasar: BATAS_IP_KASAR, semua percobaan, hanya untuk menahan banjir sebelum Turnstile;
@@ -36,17 +39,31 @@ Pembatas (Clara, 2026-11-19; IPv6 per prefiks /64):
   per hari, bertambah hanya bila percobaan akan membuat hitungan gagal baru (username yang hitungannya
   masih hidup tidak dihitung lagi) dan dikembalikan bila hasilnya bukan kegagalan kredensial. Setelah batas
   penuh (S1), percobaan username baru dari IP itu tetap diteruskan ke Auth0 (lewat slot 10/15 menit dan
-  kuota global), jadi pengguna lain di NAT yang sama dengan sandi benar tetap bisa masuk. Kegagalannya tidak
-  menulis hitungan per username (sapa_batas tidak tumbuh selain slot geser berumur paling lama 30 menit) dan
-  dijawab terlalu_banyak seragam. Brute-force akun yang ada tetap ditahan slot 10/15 menit per (username + IP)
-  dan perlindungan brute-force Auth0;
+  kuota global), jadi pengguna lain di NAT yang sama dengan sandi benar tetap bisa masuk. Kegagalannya
+  dijawab terlalu_banyak seragam dan tidak menulis hitungan per username, baik hitungan gagal/penanda maupun
+  hitungan peringatan per jam (K2). sapa_batas tetap bertambah, tetapi terbatas: per percobaan hanya hash token
+  Turnstile (UMUR_TURNSTILE, 5 menit) dan slot geser (paling lama 30 menit), ditambah baris jendela per IP dan
+  global yang dipakai bersama. Jadi per IP paling banyak sekitar laju x umur (BATAS_IP 20/menit x 30 menit
+  = 600 slot, BATAS_IP_KASAR 60/menit x 5 menit = 300 token), bukan baris 2 jam per percobaan seperti
+  sebelum K2. Brute-force akun yang ada tetap ditahan slot 10/15 menit per (username + IP) dan perlindungan
+  brute-force Auth0. Pengguna sah di NAT yang sama dengan username yang sedang diserang bisa ditolak 15-30
+  menit (slot 10/15 menit per username + IP itu penuh oleh penyerang); lihat docs/runbook-login-bff.md;
 - penanda lengket baru: BATAS_PENANDA_LENGKET_HARIAN (1000 per hari UTC untuk seluruh SAPA, S2). Di atasnya
   hitungan yang mencapai ambang hanya berumur UMUR_HITUNGAN_GAGAL. Jadi rotasi prefiks IPv6 /64 paling
-  banyak menambah sekitar 30 ribu baris berumur 30 hari, bukan ratusan ribu;
+  banyak menambah sekitar 30 ribu baris berumur 30 hari, bukan ratusan ribu. Kuota ini batas lunak (K3):
+  baca-lalu-tulis tidak atomik (beberapa permintaan serentak bisa sama-sama membaca "belum penuh"), dan
+  promosi yang melewati tengah malam dihitung di hari berikutnya, jadi kuota bisa terlampaui sedikit;
 - global: BATAS_GLOBAL ke /oauth/token, kuota login terpisah dari kuota penyegaran sesi;
 - TIDAK ada blokir per username lintas IP (supaya akun korban tidak bisa dikunci dari banyak IP);
   sebagai gantinya log dan audit memberi peringatan sekali per jendela bila perkiraan jendela geser
-  mencapai AMBANG_PERINGATAN_USERNAME kegagalan per jam.
+  mencapai AMBANG_PERINGATAN_USERNAME kegagalan per jam. Konsekuensi K2: kegagalan dari IP yang sudah lewat
+  batas username unik hari itu tidak ikut dihitung, jadi penyerang yang lebih dulu menghabiskan 50 username
+  per IP bisa menyerang satu username tanpa memicu peringatan ini. Serangan itu tetap terlihat lewat
+  peringatan batas username unik per IP (sekali per IP per hari) dan tetap ditahan slot per (username + IP)
+  serta perlindungan Auth0. Peringatan per username tetap bermakna untuk tebakan yang tersebar dari banyak IP
+  yang masing-masing di bawah batas.
+- Jendela harian (batas username unik, kuota penanda lengket, peringatan per IP) adalah jendela tetap yang
+  berganti pukul 00.00 UTC (07.00 WIB), bukan 24 jam bergulir.
 
 Setiap respons gagal memuat field `kode` yang stabil (lihat KODE). Semua galat akun dari Auth0
 (invalid_grant, blocked, access_denied, password_leaked, too_many_attempts, dst.) dijawab sama: sandi_salah,
@@ -54,7 +71,8 @@ atau terlalu_banyak bila penanda lengket SAPA menyala (AUTH-7, anti-oracle); han
 dibedakan. Semua HTTP 429 dari /oauth/token (too_many_attempts maupun bentuk lain, N5) dihitung sebagai
 kegagalan kredensial dengan jawaban yang sama, karena bentuk 429 untuk blokir akun tidak boleh menjadi oracle;
 429 selain too_many_attempts juga dicatat di log sebagai peringatan batas tenant. Tenggat Auth0 habis
-dianggap status 0 (belum_siap), tenggat siteverify habis menjadi belum_siap tanpa memanggil Auth0.
+dianggap status 0 (belum_siap), koneksi Auth0 yang tidak terbentuk (sesi_service.STATUS_TIDAK_TERKIRIM, K6) juga
+belum_siap, dan tenggat siteverify habis atau Cloudflare tidak terjangkau menjadi belum_siap tanpa memanggil Auth0.
 Semua jawaban terlalu_banyak seragam: body sama dan tanpa Retry-After.
 Semua jalur gagal ditahan minimal WAKTU_MINIMUM_GAGAL detik, termasuk galat tak terduga (503); bila
 durasi asli sudah melewati batas itu, waktunya dibulatkan ke atas ke kelipatan LANGKAH_WAKTU_GAGAL dan
@@ -117,7 +135,7 @@ BATAS_USERNAME_UNIK_IP = (24 * 60 * 60, 50)  # username unik yang gagal per IP p
 # hanya berumur UMUR_HITUNGAN_GAGAL, jadi rotasi IPv6 /64 tidak bisa membengkakkan sapa_batas tanpa batas.
 BATAS_PENANDA_LENGKET_HARIAN = (24 * 60 * 60, 1000)
 KUNCI_PENANDA_LENGKET_HARIAN = "global:penanda-lengket-baru"
-TENGGAT_SITEVERIFY = turnstile.TIMEOUT_SITEVERIFY  # tenggat total siteverify, detik (N4)
+TENGGAT_SITEVERIFY = turnstile.TENGGAT_SITEVERIFY  # tenggat total siteverify, detik (N4)
 AMBANG_PERINGATAN_USERNAME = (60 * 60, 30)
 # Hash token Turnstile disimpan 5 menit sejak diterima (S3), sama dengan masa berlaku token di Cloudflare yang
 # dihitung sejak token dibuat. Pemakaian ulang sesudahnya sudah ditolak Cloudflare (timeout-or-duplicate).
@@ -341,7 +359,8 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         Kembalikan (tiket, lewat_batas). Tiket None bila hitungan gagal username ini masih hidup (tidak akan
         menambah baris baru) atau bila batas hari ini sudah penuh. lewat_batas benar bila batas sudah penuh:
         percobaan tetap diteruskan ke Auth0 (S1, supaya pengguna lain di NAT yang sama dengan sandi benar tetap
-        bisa masuk), tetapi kegagalannya tidak menulis hitungan per username dan dijawab terlalu_banyak.
+        bisa masuk), tetapi kegagalannya tidak menulis hitungan per username (termasuk hitungan peringatan per
+        jam, K2) dan dijawab terlalu_banyak.
         Hanya bergantung pada data SAPA, jadi sama untuk username yang ada dan tidak ada.
         """
         jendela, maks = BATAS_USERNAME_UNIK_IP
@@ -444,9 +463,10 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
             logger.info("Token Turnstile dipakai ulang: %s", jejak)
             raise _Gagal("turnstile_kedaluwarsa")
         try:
-            # N4: tenggat total. asyncio.to_thread (bukan run_in_threadpool, yang menahan pembatalan sampai
-            # thread selesai) supaya wait_for benar-benar berhenti di tenggat.
-            await asyncio.wait_for(asyncio.to_thread(turnstile.cek_turnstile, token_turnstile, ip, turnstile.AKSI_MASUK),
+            # N4 dan K1: tenggat total atas klien httpx async (dulu asyncio.to_thread). Pembatalan menghentikan
+            # penantian HTTP ke Cloudflare tanpa thread tertinggal; hanya thread DNS (getaddrinfo) di executor
+            # bawaan loop yang tetap berjalan sampai resolver selesai (lihat docstring turnstile).
+            await asyncio.wait_for(turnstile.cek_turnstile_async(token_turnstile, ip, turnstile.AKSI_MASUK),
                                    TENGGAT_SITEVERIFY)
         except asyncio.TimeoutError:
             logger.warning("Cloudflare Turnstile melewati tenggat total %s detik", TENGGAT_SITEVERIFY)
@@ -497,16 +517,20 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
                     # sandi_salah; log ini (tanpa username) yang membedakannya untuk pemantauan.
                     logger.warning("Auth0 429 batas tenant pada /oauth/token (galat %s); dijawab sandi_salah dan "
                                    "dihitung sebagai kegagalan", galat or "-")
-                if not diblokir_auth0 and (status == 0 or status >= 500 or galat in _GALAT_KONFIG or status == 200):
+                # status <= 0: Auth0 tidak terjangkau, tenggat habis (0), atau pasti belum terkirim (K6).
+                if not diblokir_auth0 and (status <= 0 or status >= 500 or galat in _GALAT_KONFIG or status == 200):
                     logger.error("Auth0 /oauth/token bermasalah: status %s, galat %s", status, galat or "-")
                     raise _Gagal("belum_siap")
                 kredensial_salah = True
-                await _catat_gagal_username(normal, jejak, catatan)
                 if lewat_batas_unik:
-                    # S1: batas username unik IP ini penuh. Tanpa hitungan per username (sapa_batas tidak
-                    # tumbuh; slot geser di atas berumur paling lama 30 menit), jawabannya seragam.
+                    # S1 dan K2: batas username unik IP ini penuh. Jawabannya seragam dan tidak ada hitungan per
+                    # username yang ditulis, termasuk hitungan peringatan per jam (_catat_gagal_username), supaya
+                    # setiap percobaan sesudah batas hanya meninggalkan baris berumur pendek (token Turnstile 5
+                    # menit, slot geser paling lama 30 menit). lewat_batas_unik hanya fungsi data SAPA, jadi
+                    # urutan operasi DB tetap sama untuk akun ada dan tidak ada.
                     logger.info("Masuk ditolak (batas username unik per IP): %s", jejak)
                     raise _Gagal("terlalu_banyak")
+                await _catat_gagal_username(normal, jejak, catatan)
                 jumlah = await _tambah_gagal_kumulatif(kunci_gagal)
                 if jumlah > BATAS_GAGAL_USERNAME_IP[1]:
                     # Kegagalan ke-10 masih sandi_salah; sesudahnya terlalu_banyak sampai sukses atau 30 hari.
