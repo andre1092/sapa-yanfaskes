@@ -49,9 +49,10 @@ try:
 except ImportError:
     import verifikasi_service
 try:
-    from . import drive_ssbi, ssbi_jadwal_service, surat_kontrol_service
+    from . import drive_ssbi, kepatuhan_service, ssbi_jadwal_service, surat_kontrol_service
 except ImportError:
     import drive_ssbi
+    import kepatuhan_service
     import ssbi_jadwal_service
     import surat_kontrol_service
 try:
@@ -3903,6 +3904,25 @@ def surat_kontrol_status(user=Depends(require_admin)):
     return JSONResponse(headers=_NO_STORE, content={"bulan": [_sk_ringkas_bulan(b, v) for b, v in isi["bulan"].items()]})
 
 
+def _sk_kabupaten(data: Optional[dict]) -> Dict[str, str]:
+    """Kabupaten per kode PPK dari referensi faskes (sumber yang sama dengan tab Kepatuhan), hanya untuk
+    faskes yang ikut dikirim. Referensi gagal dibaca = peta kosong, data tetap tampil."""
+    if not data:
+        return {}
+    kode = {f["kode"] for j in surat_kontrol_service.JENIS for f in data[j]["faskes"]}
+    try:
+        ref = kepatuhan_service.get_ref_lookup()
+    except Exception as exc:
+        logger.warning("Referensi faskes tidak terbaca untuk Surat Kontrol: %s", type(exc).__name__)
+        return {}
+    hasil = {}
+    for k in sorted(kode):
+        kab = str((ref.get(k) or {}).get("kabupaten") or "").strip()
+        if kab:
+            hasil[k] = kab[:60]
+    return hasil
+
+
 @app.get("/api/v1/surat-kontrol/data")
 def surat_kontrol_data(bulan: str = "", cakupan=Depends(require_sk_lihat)):
     isi = _sk_drive(_sk_isi)
@@ -3930,7 +3950,8 @@ def surat_kontrol_data(bulan: str = "", cakupan=Depends(require_sk_lihat)):
         data = surat_kontrol_service.untuk_petugas(mentah, kode) if kode else mentah
         diunggah = (isi["bulan"][bulan].get("meta") or {}).get("diunggah_pada", "")
     return JSONResponse(headers=_NO_STORE, content={"bulan_tersedia": tersedia, "bulan": bulan or None, "data": data,
-                                                    "rs": rs, "terkunci": bool(kode), "diunggah_pada": diunggah})
+                                                    "rs": rs, "terkunci": bool(kode), "diunggah_pada": diunggah,
+                                                    "kabupaten": _sk_kabupaten(data)})
 
 
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)

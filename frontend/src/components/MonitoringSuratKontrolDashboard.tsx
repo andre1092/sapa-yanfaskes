@@ -7,10 +7,11 @@ import MainCard from '../berry/MainCard';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
+import { TabelJpegSuratKontrol } from './TabelJpegSuratKontrol';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import {
   JENIS, STATUS, angka, dataBelumLengkap, gabungJenis, labelBulan, labelTotalCabang, namaBerkasJpeg, persen,
-  ringkasStatus, saringStatus, statusJenis, tanggalSampai, totalOf, treemap, urutFaskes, urutPoli,
+  barisTabel, ringkasStatus, saringStatus, statusJenis, tanggalSampai, totalOf, treemap, urutFaskes, urutPoli,
 } from '../lib/suratKontrol';
 import type { BarisFaskes, BarisPoli, BarisTren, DataBulan, DataJenis, Jumlah, Kunci, PilihanJenis, PilihanStatus } from '../lib/suratKontrol';
 import '../berry/berry-dashboards.css';
@@ -24,6 +25,7 @@ type Respons = {
   rs: { kode: string; nama: string } | null;
   terkunci: boolean;
   diunggah_pada: string;
+  kabupaten?: Record<string, string>;
 };
 
 const statusHttp = (error: unknown) => (error as { response?: { status?: number } })?.response?.status;
@@ -278,8 +280,8 @@ export function MonitoringSuratKontrolDashboard() {
       const node = eksporRef.current;
       if (!node || batal) return;
       try {
-        const url = await toJpeg(node, { quality: 0.95, backgroundColor: '#ffffff', pixelRatio: 2, skipFonts: true, width: 1280,
-          filter: n => !(n instanceof HTMLElement && n.classList.contains('sk-jpeg-abaikan')) });
+        // Perintah CEO 2026-11-19: JPEG berupa tabel per faskes, bukan tangkapan panel.
+        const url = await toJpeg(node, { quality: 0.95, backgroundColor: '#ffffff', pixelRatio: node.scrollHeight > 3000 ? 1 : 2, skipFonts: true });
         if (batal) return;
         const a = document.createElement('a');
         a.download = `${namaBerkasJpeg(bulanAktif, jenis, namaRs)}.jpg`;
@@ -350,11 +352,10 @@ export function MonitoringSuratKontrolDashboard() {
       </div>
     ) : <div aria-busy={query.isFetching}><Isi {...props} penuh={false} /></div>}
 
-    {/* v1.1 #14: simpul ekspor khusus, 1280 px, tema terang, daftar lengkap tanpa gulir. */}
+    {/* Simpul ekspor di luar layar: tabel per faskes mengikuti Bulan dan Jenis pelayanan (keputusan CEO). */}
     {jpeg === 'menyiapkan' && props && <div className="sk-ekspor-wadah" aria-hidden="true">
-      <div ref={eksporRef} className="sk-ekspor sk-page">
-        <p className="sk-ekspor-judul"><strong>Monitoring Surat Kontrol</strong> · {ringkasFilter} · data SEP sampai {tanggalSampai(props.sampai)}</p>
-        <Isi {...props} hp={false} penuh />
+      <div ref={eksporRef}>
+        <TabelJpegSuratKontrol baris={barisTabel(props.d, r?.kabupaten ?? {}, jenis)} bulan={bulanAktif} jenis={jenis} sampai={props.sampai} namaRs={namaRs} />
       </div>
     </div>}
   </div>;

@@ -196,3 +196,38 @@ export function bulanUnggah(sekarang: Date): string[] {
   }
   return hasil;
 }
+
+// --- Tabel Unduh JPEG (perintah CEO 2026-11-19, keputusan "RI tanpa skor") ---
+
+/**
+ * Capaian Skor Kepatuhan Surkon (0/25/50/75/100) dari persen SRK sesuai (rasio 0–1).
+ * Jenjang dibaca dari data Capaian sheet Kris 07_surkon_terbit (1.459 baris, Jan–Okt 2026). Batas 60% dan 90%
+ * belum terbukti di data (tidak ada titik di 56,27–62,03% dan 88,59–95,58%); nilainya usulan dan menunggu
+ * konfirmasi CEO sebelum rilis.
+ */
+export function skorKepatuhan(rasio: number): number {
+  const p = rasio * 100;
+  if (p >= 90) return 100;
+  if (p > 80) return 75;
+  if (p >= 60) return 50;
+  if (p > 50) return 25;
+  return 0;
+}
+
+export type BarisTabel = {
+  kode: string; nama: string; kabupaten: string; sesuai: number; tidak: number; total: number;
+  pctSesuai: number; pctTidak: number; capaian: number | null; kuning: boolean;
+};
+
+/** Sesuai = < SEP; Tidak sesuai = (= SEP) + (> SEP); skor hanya untuk Rawat Jalan; urut persen sesuai menurun. */
+export function barisTabel(d: DataJenis, kabupaten: Record<string, string>, jenis: PilihanJenis): BarisTabel[] {
+  return d.faskes.map(f => {
+    const total = totalOf(f);
+    const tidak = f.eq + f.gt;
+    return {
+      kode: f.kode, nama: f.nama, kabupaten: kabupaten[f.kode] || '-', sesuai: f.lt, tidak, total,
+      pctSesuai: total ? f.lt / total : 0, pctTidak: total ? tidak / total : 0,
+      capaian: jenis === 'RJ' && total ? skorKepatuhan(f.lt / total) : null, kuning: tidak > 0,
+    };
+  }).filter(b => b.total > 0).sort((a, b) => b.pctSesuai - a.pctSesuai || b.total - a.total);
+}
