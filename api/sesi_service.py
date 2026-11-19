@@ -613,7 +613,7 @@ async def satu_koneksi(batas_akhir: Optional[float] = None):
 class PostgresSesiStore:
     """Tabel sapa_sesi dan sapa_batas di Postgres (Neon), DSN dari SAPA_SESI_DATABASE_URL.
 
-    Di luar satu_koneksi(): satu koneksi asyncpg per operasi lalu ditutup, sama dengan audit_log:
+    Di luar satu_koneksi(): satu koneksi asyncpg per operasi lalu ditutup:
     runtime serverless bisa membuat event loop baru per permintaan, jadi pool yang terikat ke loop lama
     tidak bisa ditutup rapi. Di dalam satu_koneksi(): satu koneksi untuk seluruh permintaan.
     Skema dibuat dengan CREATE TABLE IF NOT EXISTS (aman maju-mundur).
