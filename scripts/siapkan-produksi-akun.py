@@ -85,9 +85,24 @@ def cari_url_worker(keluaran: str) -> str:
     return cocok.group(0)
 
 
+def muat_json(keluaran: str):
+    """JSON dari keluaran wrangler; baris peringatan npx/wrangler di depannya dilewati."""
+    try:
+        return json.loads(keluaran)
+    except json.JSONDecodeError:
+        pass
+    pengurai = json.JSONDecoder()
+    for cocok in re.finditer(r"(?m)^[\[{]", keluaran):
+        try:
+            return pengurai.raw_decode(keluaran, cocok.start())[0]
+        except json.JSONDecodeError:
+            continue
+    raise json.JSONDecodeError("tidak ada JSON", keluaran, 0)
+
+
 def cari_id_d1(daftar_json: str) -> str | None:
     try:
-        daftar = json.loads(daftar_json)
+        daftar = muat_json(daftar_json)
     except json.JSONDecodeError as exc:
         raise Gagal("Keluaran wrangler d1 list tidak bisa dibaca.") from exc
     for db in daftar if isinstance(daftar, list) else []:
@@ -99,7 +114,7 @@ def cari_id_d1(daftar_json: str) -> str | None:
 def jumlah_akun_dari_json(keluaran: str) -> int:
     """Membaca hasil `wrangler d1 execute --json` untuk SELECT COUNT(*) AS n."""
     try:
-        data = json.loads(keluaran)
+        data = muat_json(keluaran)
         baris = data[0]["results"][0]
         return int(baris["n"])
     except (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError) as exc:

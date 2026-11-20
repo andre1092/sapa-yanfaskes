@@ -91,3 +91,14 @@ def test_kunci_tidak_disimpan_di_keychain_atau_berkas():
         if isinstance(simpul, ast.Call) and getattr(simpul.func, "attr", None) == "write_text":
             nama = {n.id for a in simpul.args for n in ast.walk(a) if isinstance(n, ast.Name)}
             assert not nama & {"kunci", "token_cf", "token_vc"}
+
+
+def test_json_wrangler_tahan_peringatan_npm_di_depan():
+    """npx menulis 'npm warn exec ...' saat pertama memasang wrangler; JSON sesudahnya tetap terbaca."""
+    awalan = "npm warn exec The following package was not found and will be installed: wrangler@4.0.0\n"
+    daftar = f'[{{"name": "sapa-akun", "uuid": "{ID_UJI}"}}]'
+    assert sp.cari_id_d1(awalan + daftar) == ID_UJI
+    assert sp.cari_id_d1(awalan + "[]") is None
+    assert sp.jumlah_akun_dari_json(awalan + '[{"results": [{"n": 0}]}]') == 0
+    with pytest.raises(sp.Gagal):
+        sp.cari_id_d1(awalan + "bukan json")
