@@ -5,7 +5,7 @@ username (AUTH0_PAKAI_USERNAME=1), supaya pembuatan akun tidak gagal sebelum itu
 """
 import pytest
 
-from test_pengguna_fkrtl import REF, api, call  # noqa: F401  (fixture api dipakai ulang)
+from test_pengguna_fkrtl import REF, _flag_0, api, call  # noqa: F401  (fixture api dan flag 0 dipakai ulang)
 
 from api import pengguna_service as ps
 

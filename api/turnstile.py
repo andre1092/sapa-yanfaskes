@@ -9,12 +9,13 @@ Token dan jawaban Cloudflare tidak pernah dicatat di log, hanya kode galatnya.
 
 Dua varian dengan pemetaan jawaban yang sama (_periksa_jawaban):
 - cek_turnstile (sinkron, requests): verifikasi manusia (verifikasi_service), tidak berubah sejak flag 0.
-- cek_turnstile_async (httpx.AsyncClient): login BFF. Pemanggil membungkusnya dengan asyncio.wait_for
+- cek_turnstile_async (httpx.AsyncClient): login BFF (/masuk, action AKSI_MASUK) dan penyiapan akun
+  (/siapkan-akun, action AKSI_SIAPKAN_AKUN). Pemanggil membungkusnya dengan asyncio.wait_for
   (TENGGAT_SITEVERIFY); pembatalan menghentikan permintaan HTTP ke Cloudflare. Tenggat per tahap httpx
   (TIMEOUT_SITEVERIFY_TAHAP) di bawah tenggat total, supaya sambungan yang macet dihentikan httpx sendiri
   (soket ditutup). Resolusi DNS httpx memakai executor bawaan loop (sesi_service.pasang_executor_dns). Bila
   resolusi DNS tertahan, connect habis tenggat: login menjawab belum_siap, dan log memuat "Cloudflare Turnstile
-  tidak dapat dihubungi" serta "Auth0 /oauth/token bermasalah: status -1" (sesi_service.STATUS_TIDAK_TERKIRIM).
+  tidak dapat dihubungi".
 """
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ logger = logging.getLogger("sapa-api")
 TURNSTILE_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 SECRET_ENV = "TURNSTILE_SECRET_KEY"
 AKSI_MASUK = "login"  # sama dengan action widget Turnstile di halaman login
+AKSI_SIAPKAN_AKUN = "sapa_siapkan_akun"  # widget Turnstile halaman /siapkan-akun
 HOST_LOKAL = {"localhost", "127.0.0.1", "::1"}
 TIMEOUT_SITEVERIFY = 5  # detik
 TENGGAT_SITEVERIFY = TIMEOUT_SITEVERIFY  # tenggat total siteverify login, dipakai auth_bff

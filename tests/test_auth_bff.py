@@ -14,9 +14,10 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from login_uji import bff  # noqa: F401  (fixture)
 from login_uji import (ASAL, ASAL_SENDIRI, COOKIE, HEADER, IP_ASLI, IP_PALSU, ISIAN, KUNCI_A, KUNCI_B, SALAH,
-                       SANDI, SANDI_SALAH, TERLALU_BANYAK, USERNAME, bff, browser_lain, catat_audit, kredensial,
-                       klien_uji, masuk, nilai_cookie, pasang_cloudflare, set_cookie, tambah_akun)  # noqa: F401
+                       SANDI, SANDI_SALAH, TERLALU_BANYAK, USERNAME, browser_lain, catat_audit, kredensial,
+                       masuk, nilai_cookie, pasang_cloudflare, set_cookie, tambah_akun)
 from test_api_auth import token
 
 BODY_EMAIL = {"to_email": "uji@example.com", "verification_url": "https://sapa-yanfaskes.vercel.app"}
@@ -199,7 +200,10 @@ def test_akun_ada_dan_tidak_ada_identik_status_body_waktu_dan_jejak(bff, monkeyp
         username = _kondisi_gagal(b, kondisi)
         monkeypatch.setattr(b.ss, "_store", _PerekamStore(b.store, urutan, b.jam))
         res = masuk(b, username=username, password=SANDI_SALAH)
-        hasil[kondisi] = (_jejak_respons(res), list(b.tidur), len(b.verif), list(b.akun.panggilan), urutan)
+        # Operasi dan argumen (ternormal) dibandingkan; hasil baca jangkar memang berbeda (akun tiruan tanpa
+        # baris jangkar), tetapi kueri dan jumlahnya sama.
+        operasi = [(nama, a, k) for nama, a, k, _ in urutan]
+        hasil[kondisi] = (_jejak_respons(res), list(b.tidur), len(b.verif), list(b.akun.panggilan), operasi)
     assert hasil["sandi_salah"] == hasil["akun_tidak_ada"]
     assert hasil["sandi_salah"][2] == 1 and hasil["sandi_salah"][3] == ["ambil_username"]
     assert any(r[0] == "baca_jangkar" for r in hasil["sandi_salah"][4])
@@ -1083,7 +1087,7 @@ def test_akun_nonaktif_atau_hilang_sesi_langsung_401(bff, ubah):
     res = b.client.get("/api/v1/akun/status")
     assert res.status_code == 401 and res.json()["kode"] == "sesi_berakhir"
     assert b.store.sesi == {}
-    assert b.client.get("/api/v1/auth/sesi").json() == {"masuk": False}
+    assert b.client.get("/api/v1/auth/sesi").json() == {"masuk": False, "kode": "sesi_berakhir"}
 
 
 def test_sesi_dengan_versi_sandi_lama_langsung_401(bff):

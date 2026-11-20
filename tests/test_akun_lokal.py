@@ -17,9 +17,10 @@ import httpx
 import pytest
 from fastapi.routing import APIRoute
 
+from login_uji import bff  # noqa: F401  (fixture)
 from login_uji import (ASAL_SENDIRI, COOKIE, HEADER, KODE_PEMULIHAN, KODE_PENYIAPAN, PESAN_FITUR, SALAH, SANDI,
-                       SANDI_SALAH, USERNAME, bff, browser_lain, catat_audit, isian_siapkan, masuk, nilai_cookie,
-                       set_cookie, siapkan, tambah_akun, ubah_sandi)  # noqa: F401
+                       SANDI_SALAH, USERNAME, browser_lain, catat_audit, isian_siapkan, masuk, nilai_cookie,
+                       set_cookie, siapkan, tambah_akun, ubah_sandi)
 from test_api_auth import load_api
 
 AKAR = Path(__file__).resolve().parents[1]
@@ -42,7 +43,7 @@ def _aksi(b, aksi):
 def test_parameter_argon2id_produksi(monkeypatch):
     """Parameter bawaan modul (tanpa fixture yang memurahkan argon2): m=19456 KiB, t=2, p=1, PHC argon2id."""
     api = load_api(monkeypatch, SAPA_LOGIN_BFF="1", SAPA_AKUN_PEPPER=base64.b64encode(b"p" * 32).decode())
-    ak = api.akun_service
+    ak = api.auth_bff.akun_service
     assert (ak.ARGON2_MEMORI, ak.ARGON2_WAKTU, ak.ARGON2_PARALEL) == (19456, 2, 1)
     phc = ak.hash_sandi(SANDI)
     assert phc.startswith("$argon2id$v=19$m=19456,t=2,p=1$")
@@ -73,8 +74,10 @@ def test_kanonik_mac_tidak_ambigu_dan_mencakup_semua_kolom(bff):
     a = b.utama
     dasar = b.ak.hitung_mac(a.id, a.username, a.hash, a.peran, a.versi_sandi, a.aktif)
     assert dasar == a.mac and re.fullmatch(r"[0-9a-f]{64}", dasar)
-    for ubah in ({"username": a.username + "x"}, {"hash": a.hash[:-1] + "A"}, {"peran": "admin"},
-                 {"versi_sandi": a.versi_sandi + 1}, {"aktif": 0}, {"id": a.id[:-1] + "0"}):
+    def lain(teks):
+        return teks[:-1] + ("B" if teks[-1] == "A" else "A")
+    for ubah in ({"username": a.username + "x"}, {"hash": lain(a.hash)}, {"peran": "admin"},
+                 {"versi_sandi": a.versi_sandi + 1}, {"aktif": 0}, {"id": lain(a.id)}):
         isi = {"id": a.id, "username": a.username, "hash": a.hash, "peran": a.peran, "versi_sandi": a.versi_sandi,
                "aktif": a.aktif, **ubah}
         assert b.ak.hitung_mac(**isi) != dasar, ubah
@@ -503,8 +506,9 @@ def test_pemulihan_mengganti_hash_menaikkan_versi_dan_mencabut_sesi(siap_pemulih
     assert b.store.sesi == {}
     assert b.client.get("/api/v1/akun/status", headers={"Cookie": f"{COOKIE}={lama}"}).status_code == 401
     assert lain.get("/api/v1/akun/status").status_code == 401
-    # Sandi lama tidak berlaku, sandi baru berlaku.
+    # Sandi lama tidak berlaku, sandi baru berlaku (jam maju: kuota global percobaan per detik).
     _aksi(b, b.ts.AKSI_MASUK)
+    b.jam.maju(seconds=1)
     assert masuk(b, client=browser_lain(b)).status_code == 401
     assert masuk(b, client=browser_lain(b), password=SANDI_BARU).status_code == 200
 
@@ -563,6 +567,7 @@ def test_ubah_sandi_berhasil_merotasi_cookie_dan_mencabut_sesi_lain(bff, monkeyp
     baris = b.akun_mentah.akun[b.utama.id]
     assert baris["versi_sandi"] == b.utama.versi_sandi + 1
     assert asyncio.run(b.ss.baca_jangkar(b.utama.id)) == baris["versi_sandi"]
+    b.jam.maju(seconds=1)  # kuota global percobaan per detik
     assert masuk(b, client=browser_lain(b), password=SANDI_BARU).status_code == 200
     assert masuk(b, client=browser_lain(b)).status_code == 401
     [catatan] = [e for e in tercatat if e["action"] == "POST /api/v1/akun/ubah-sandi"]

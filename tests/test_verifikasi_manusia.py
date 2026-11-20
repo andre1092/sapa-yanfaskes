@@ -146,6 +146,8 @@ def test_masukan_kosong_atau_terlalu_panjang_ditolak(state, jawaban):
 
 
 def test_endpoint_tanpa_login_dan_tidak_disimpan_cache(monkeypatch):
+    # Halaman /verifikasi bagian dari login Auth0 (flag 0); saat flag 1 endpoint ini 503 (test_akun_lokal.py).
+    monkeypatch.setattr(index, "LOGIN_BFF", False)
     monkeypatch.setattr(vs, "_kirim", Cloudflare())
     res = TestClient(index.app).post("/api/v1/verifikasi-manusia", json={
         "state": STATE, "session_token": token_masuk(), "turnstile_token": "jawaban"})
@@ -155,6 +157,7 @@ def test_endpoint_tanpa_login_dan_tidak_disimpan_cache(monkeypatch):
 
 
 def test_endpoint_galat_tidak_membocorkan_rincian(monkeypatch):
+    monkeypatch.setattr(index, "LOGIN_BFF", False)
     monkeypatch.setattr(vs, "_kirim", Cloudflare({"success": False, "error-codes": ["invalid-input-response"]}))
     res = TestClient(index.app).post("/api/v1/verifikasi-manusia", json={
         "state": STATE, "session_token": token_masuk(), "turnstile_token": "jawaban"})

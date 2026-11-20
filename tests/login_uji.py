@@ -245,7 +245,7 @@ def bff(monkeypatch):
             env.pop(nama)
             monkeypatch.delenv(nama, raising=False)
         api = load_api(monkeypatch, **env)
-        ss, ab, ts, ak = api.sesi_service, api.auth_bff, api.turnstile, api.akun_service
+        ss, ab, ts, ak = api.sesi_service, api.auth_bff, api.turnstile, api.auth_bff.akun_service
         murahkan_argon2(monkeypatch, ak)
         jam = Jam()
         store = ss.MemorySesiStore()
@@ -291,7 +291,7 @@ def pasang_login_lokal(api, monkeypatch):
     """Pasang penyimpanan memori dan kunci uji untuk jalur flag 1; kembalikan (penyimpanan sesi, akun)."""
     for nama, nilai in (("SAPA_SESI_KUNCI", KUNCI_A), ("SAPA_AKUN_PEPPER", PEPPER), ("SAPA_AKUN_KUNCI_MAC", KUNCI_MAC)):
         monkeypatch.setenv(nama, nilai)
-    ss, ak = api.sesi_service, api.akun_service
+    ss, ak = api.sesi_service, api.auth_bff.akun_service
     murahkan_argon2(monkeypatch, ak)
     sesi = ss.MemorySesiStore()
     akun = ak.MemoryAkunStore()
@@ -302,7 +302,7 @@ def pasang_login_lokal(api, monkeypatch):
 
 def kepala_sesi(api, monkeypatch, peran, username="pengguna.uji@contoh.invalid"):
     """Header Cookie dan bukti asal untuk sesi lokal sah dengan `peran` (akun memori baru)."""
-    ss, ak = api.sesi_service, api.akun_service
+    ss, ak = api.sesi_service, api.auth_bff.akun_service
     if not isinstance(ak._store, ak.MemoryAkunStore):
         pasang_login_lokal(api, monkeypatch)
     akun = ak.akun_baru(ak.normal_username(username), SANDI, peran=peran)

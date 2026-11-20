@@ -3,7 +3,7 @@ import asyncio
 import contextlib
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import asyncpg
 import pytest
@@ -887,7 +887,6 @@ def test_galat_saat_menghentikan_koneksi_tidak_menutupi_galat_asli(db):
 
 # --- sewa penyegaran ---------------------------------------------------------------------------------
 
-def test_sewa_penyegaran_mencakup_pemeriksaan_koneksi_siaga():
-    """Simpanan hasil penyegaran terburuk: periksa koneksi siaga, lalu koneksi baru dan perintahnya."""
+def test_waktu_terburuk_tulis_mencakup_pemeriksaan_koneksi_siaga():
+    """Tulis terburuk: periksa koneksi siaga, lalu koneksi baru dan perintahnya."""
     assert ss.WAKTU_TERBURUK_DB >= ss.BATAS_PERIKSA + 2 * ss.TIMEOUT_DB
-    assert ss.UMUR_KUNCI_SEGAR == timedelta(seconds=ss.BATAS_SEBELUM_AUTH0 + ss.WAKTU_TERBURUK_AUTH0 + ss.WAKTU_TERBURUK_DB)
