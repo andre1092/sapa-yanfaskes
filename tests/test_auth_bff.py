@@ -1941,3 +1941,38 @@ def test_executor_dns_dipasang_saat_masuk_dan_tidak_saat_flag_mati(bff, monkeypa
     assert masuk(b).status_code == 404
     assert dipasang == []
 
+
+
+def test_flag_mati_tidak_pernah_menyentuh_db_sesi_meski_dsn_terisi(bff, monkeypatch):
+    """Flag 0 di produksi: DSN DB sesi sudah ada di env, tetapi tidak satu permintaan pun membuka penyimpanan sesi
+    (tanpa koneksi, tanpa DDL), termasuk permintaan yang membawa cookie sesi atau token Bearer."""
+    b = bff(SAPA_LOGIN_BFF="0", SAPA_SESI_DATABASE_URL="postgresql://uji:x@db-sesi.invalid/sesi")
+    disentuh = []
+    monkeypatch.setattr(b.ss, "_store", None)
+    monkeypatch.setattr(b.ss, "_store_pg", {})
+
+    class PostgresDilarang:
+        def __init__(self, dsn):
+            disentuh.append("PostgresSesiStore")
+
+        def __getattr__(self, nama):
+            disentuh.append(nama)
+            raise AssertionError("DB sesi disentuh saat flag 0")
+    monkeypatch.setattr(b.ss, "PostgresSesiStore", PostgresDilarang)
+    asli_store = b.ss.store
+
+    def store_tercatat():
+        disentuh.append("store")
+        return asli_store()
+    monkeypatch.setattr(b.ss, "store", store_tercatat)
+
+    bearer = {"Authorization": f"Bearer {token(b.api, **{b.api.ROLES_CLAIM: ['viewer']})}"}
+    cookie = {"Cookie": f"{COOKIE}=nilai-cookie-sembarang"}
+    for jalur in ("/api/v1/health", "/api/v1/auth/mode", "/api/v1/auth/sesi", "/api/v1/auth/siapkan-akun"):
+        b.client.get(jalur, headers=cookie)
+    for kepala in (cookie, bearer, {**cookie, **bearer}):
+        b.client.get("/api/v1/akun/status", headers=kepala)
+    b.client.post("/api/v1/auth/masuk", headers=HEADER, json=ISIAN)
+    b.client.post("/api/v1/akun/ubah-sandi", headers={**HEADER, **cookie}, json={})
+    b.client.post("/api/v1/auth/keluar", headers={**HEADER, **cookie})
+    assert disentuh == []
