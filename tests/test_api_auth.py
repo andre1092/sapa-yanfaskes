@@ -26,6 +26,12 @@ def load_api(monkeypatch, **env):
     return api
 
 
+@pytest.fixture(autouse=True)
+def _flag_0(monkeypatch):
+    """Jalur Bearer Auth0 hanya ada saat flag 0 (SPA Auth0). Perilaku flag 1 diuji di test_auth_bff.py dan test_akun_lokal.py."""
+    monkeypatch.setenv("SAPA_LOGIN_BFF", "0")
+
+
 def token(api, **claims):
     payload = {"sub": "auth0|ceo", "aud": api.AUTH0_API_AUDIENCE, "iss": f"https://{api.AUTH0_DOMAIN}/", "exp": int(time.time()) + 300, **claims}
     return jwt.encode(payload, KEY, algorithm="RS256")
@@ -116,3 +122,13 @@ def test_verification_email_requires_login_and_own_link(monkeypatch):
     for link in ("https://evil.example/verify", "https://sapa-yanfaskes.vercel.app.evil.example/x", "javascript:alert(1)"):
         assert client.post("/api/v1/auth/send-verification-email", json={**body, "verification_url": link}, headers=auth).status_code == 400, link
     assert client.post("/api/v1/auth/send-verification-email", json={**body, "to_email": "a@b.co>\nBcc: x@y.z"}, headers=auth).status_code == 400
+
+
+def test_bearer_auth0_ditolak_saat_login_lokal(monkeypatch):
+    """Flag 1: Bearer Auth0 yang sah sekalipun tidak pernah menjadi identitas (tanpa verifikasi JWT)."""
+    api = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com", SAPA_LOGIN_BFF="1")
+    dipanggil = []
+    monkeypatch.setattr(api, "verify_auth0_token", lambda *a, **k: dipanggil.append(1))
+    with pytest.raises(api.HTTPException) as err:
+        api.require_auth(request_with(f"Bearer {token(api)}"))
+    assert err.value.status_code == 401 and dipanggil == []

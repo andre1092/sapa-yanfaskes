@@ -3,6 +3,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
+from login_uji import kepala_sesi
 from test_api_auth import load_api, token
 
 import audit_log  # noqa: E402  (api/ ditambahkan ke sys.path oleh test_api_auth)
@@ -26,10 +27,18 @@ def setup(monkeypatch):
     monkeypatch.setattr(api, "fetch_fktp_antrol_dfs", lambda **k: __import__("polars").DataFrame())
 
     def client_for(roles):
-        claims = {} if roles is None else {api.ROLES_CLAIM: roles}
-        headers = {"Authorization": f"Bearer {token(api, **claims)}", "X-Forwarded-For": "203.0.113.77, 10.1.1.1",
-                   "x-vercel-forwarded-for": "198.51.100.23"}
-        return TestClient(api.app, raise_server_exceptions=False), headers
+        ip = {"X-Forwarded-For": "203.0.113.77, 10.1.1.1", "x-vercel-forwarded-for": "198.51.100.23"}
+        if api.LOGIN_BFF:
+            # Flag 1: identitas hanya dari sesi lokal; akun lokal selalu punya satu peran yang dikenal.
+            if not roles:
+                pytest.skip("akun lokal selalu punya peran")
+            auth, sub = kepala_sesi(api, monkeypatch, roles[0])
+            client_for.sub = sub
+        else:
+            claims = {} if roles is None else {api.ROLES_CLAIM: roles}
+            auth = {"Authorization": f"Bearer {token(api, **claims)}"}
+            client_for.sub = "auth0|ceo"
+        return TestClient(api.app, raise_server_exceptions=False), {**auth, **ip}
 
     return api, written, client_for
 
@@ -40,13 +49,13 @@ def test_admin_action_is_recorded_without_email_or_token(setup):
     assert client.get("/api/v1/fktp-antrol-stats?refresh=true", headers=headers).status_code == 200
     assert len(written) == 1
     entry = written[0]
-    assert entry["actor"] == "auth0|ceo" and entry["role"] == "super_admin"
+    assert entry["actor"] == client_for.sub and entry["role"] == "super_admin"
     assert entry["action"] == "GET /api/v1/fktp-antrol-stats" and entry["status"] == 200
     # Flag 0: perilaku lama (X-Forwarded-For). Flag 1: X-Forwarded-For mentah tidak dipercaya,
     # hanya header yang ditulis Vercel.
     assert entry["ip"] == ("198.51.100.0" if api.LOGIN_BFF else "203.0.113.0")
     blob = json.dumps(entry)
-    assert "Bearer" not in blob and "@" not in blob
+    assert "Bearer" not in blob and "@" not in blob and "sapa_sesi" not in blob
 
 
 @pytest.mark.parametrize("roles,expected", [(None, 403), (["viewer"], 403)])

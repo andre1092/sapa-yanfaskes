@@ -43,6 +43,12 @@ class FakeDrive:
 HARI_INI_UJI = date(2026, 11, 19)
 
 
+
+@pytest.fixture(autouse=True)
+def _flag_0(monkeypatch):
+    """Tes memakai Bearer Auth0 dan kode PPK petugas dari Auth0 (flag 0). Perilaku flag 1 diuji di test_auth_bff.py dan test_akun_lokal.py."""
+    monkeypatch.setenv("SAPA_LOGIN_BFF", "0")
+
 @pytest.fixture
 def env(monkeypatch):
     api = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com")

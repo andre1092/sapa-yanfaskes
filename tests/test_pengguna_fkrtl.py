@@ -51,6 +51,12 @@ class FakeAuth0:
         self.calls.append(("EMAIL", email, None))
 
 
+
+@pytest.fixture(autouse=True)
+def _flag_0(monkeypatch):
+    """Menu Pengguna FKRTL memakai Auth0 Management; saat flag 1 fiturnya 503. Perilaku flag 1 diuji di test_auth_bff.py dan test_akun_lokal.py."""
+    monkeypatch.setenv("SAPA_LOGIN_BFF", "0")
+
 @pytest.fixture
 def api(monkeypatch):
     module = load_api(monkeypatch, AUTH0_DOMAIN="sapa.test.auth0.com", AUTH0_ROLE_PETUGAS_RS_ID="rol_petugas")

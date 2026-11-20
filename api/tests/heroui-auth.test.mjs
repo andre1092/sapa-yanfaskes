@@ -87,3 +87,17 @@ test('official SDK exchanges identity and validates credential using patched Zod
     assert.equal(res.body.token, 'official-browser-token');
   } finally { globalThis.fetch = originalFetch; }
 });
+
+test('login lokal (SAPA_LOGIN_BFF=1): token Auth0 tidak lagi diterima, ditolak rapi tanpa verifikasi', async () => {
+  let dipanggil = 0;
+  const lokal = createHandler({
+    env: { ...env, SAPA_LOGIN_BFF: '1' },
+    verifierFactory: () => async () => { dipanggil += 1; return 'auth0|verified'; },
+    exchange: async () => { dipanggil += 1; return { token: 'browser-token', expiresAt: 123 }; },
+  });
+  const res = await invoke(lokal, { bearer: await token() });
+  assert.equal(res.statusCode, 503);
+  assert.deepEqual(res.body, { error: 'Agent unavailable' });
+  assert.equal(dipanggil, 0);
+  assert.equal((await invoke(lokal, { method: 'GET' })).statusCode, 405);
+});
