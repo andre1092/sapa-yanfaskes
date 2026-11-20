@@ -125,6 +125,20 @@ tertutup).
 
 Setiap langkah dikerjakan pemilik produk sendiri. Perintah lengkap Worker ada di `workers/sapa-akun/README.md`.
 
+**Jalur satu perintah (disarankan).** Setelah langkah 1 dan 2 (akun Cloudflare khusus dan token API berumur
+pendek), serta token Vercel berumur pendek dengan cakupan proyek ini, jalankan dari akar repo:
+
+```sh
+python3 scripts/siapkan-produksi-akun.py
+```
+
+Skrip meminta kedua token lewat prompt tersembunyi, lalu mengerjakan langkah 3 sampai 6 dan 8 secara berurutan:
+membuat D1 dan migrasinya, men-deploy Worker, membuat empat kunci baru, memasang `SAPA_AKUN_HMAC` di Worker, menjalankan
+uji negatif, mengisi env Vercel Production, dan menyimpan salinan kunci di Keychain macOS. Kunci dan token tidak
+pernah dicetak atau ditulis ke berkas. Skrip menolak membuat ulang kunci bila D1 sudah berisi akun, dan tidak
+menyalakan `SAPA_LOGIN_BFF`. Setelah selesai, cabut kedua token di dasbornya. Langkah manual di bawah tetap
+berlaku bila skrip tidak bisa dipakai.
+
 1. **Akun Cloudflare khusus.** Buat akun Cloudflare baru yang hanya berisi Worker dan D1 ini. Pasang dua kunci
    keamanan WebAuthn dan simpan kode cadangan; jangan memakai 2FA email saja. Anggota akun hanya pemilik.
 2. **Token API berumur pendek.** Di dasbor akun khusus, buat token dengan izin "Workers Scripts: Edit" dan
