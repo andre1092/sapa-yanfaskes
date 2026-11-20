@@ -1,0 +1,23 @@
+# Worker sapa-akun: pintu sempit ke D1 akun SAPA. Berkas ini tidak memuat id akun Cloudflare maupun secret;
+# akun dipilih lewat token API berumur pendek (CLOUDFLARE_API_TOKEN) saat deploy, dan secret dipasang dengan
+# wrangler secret put (lihat README.md).
+name = "sapa-akun"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sapa-akun"
+# Diisi pemilik dengan id hasil `wrangler d1 create sapa-akun` sebelum deploy (bukan rahasia).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Hanya metadata permintaan (path, status, durasi); Worker tidak pernah mencatat body atau header tanda tangan.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+invocation_logs = false

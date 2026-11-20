@@ -296,7 +296,7 @@ def nama_berkas(bulan: str, rs: Optional[str], bulan_ada: Iterable[str] = ()) ->
     if rs:
         bagian.append(_aman_nama(rs))
     if bulan == SEMUA:
-        # Nama berkas memuat rentang supaya unduhan bulan lain tidak bentrok (masukan Kim).
+        # Nama berkas memuat rentang supaya unduhan bulan lain tidak bentrok.
         _, teks = rentang(bulan_ada)
         bagian.append(re.sub(r"[^A-Za-z0-9_-]+", "", teks) or "Semua_Bulan")
     else:

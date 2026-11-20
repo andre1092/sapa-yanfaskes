@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from login_uji import kepala_sesi
 from test_api_auth import load_api, token
 
 SECRET = "rahasia-internal /srv/sapa token=abc123"
@@ -18,7 +19,10 @@ def client_api(monkeypatch):
 
     for name in ("process_ringkasan_kepatuhan", "fetch_multiple_sheets", "fetch_fktp_antrol_dfs", "clear_kepatuhan_cache", "fetch_csv_records"):
         monkeypatch.setattr(api, name, boom)
-    headers = {"Authorization": f"Bearer {token(api, **{api.ROLES_CLAIM: ['super_admin']})}"}
+    if api.LOGIN_BFF:
+        headers, _ = kepala_sesi(api, monkeypatch, "super_admin")
+    else:
+        headers = {"Authorization": f"Bearer {token(api, **{api.ROLES_CLAIM: ['super_admin']})}"}
     return TestClient(api.app, raise_server_exceptions=False), headers
 
 

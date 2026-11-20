@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { logoutSession } from '../auth/session';
+import { logoutSession, modeSesi } from '../auth/session';
 
 export interface AuthUser {
   id: string;
@@ -18,13 +18,15 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-// UI projection only. Auth0 owns session authority and keeps tokens in memory.
+// UI projection only. Session authority stays with the provider: Auth0 (legacy, tokens in memory) or the server cookie session (bff).
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   isAuthenticated: false,
   syncSession: (user) => set({ user, isAuthenticated: Boolean(user) }),
   logoutUser: () => {
-    set({ user: null, isAuthenticated: false });
+    // Mode bff: proyeksi baru dikosongkan setelah server mengakhiri sesi (halaman dimuat ulang).
+    // Bila keluar gagal, cookie masih berlaku, jadi halaman masuk tidak boleh tampil seolah sudah keluar.
+    if (modeSesi() !== 'bff') set({ user: null, isAuthenticated: false });
     logoutSession();
   },
   clearAuth: () => set({ user: null, isAuthenticated: false }),
