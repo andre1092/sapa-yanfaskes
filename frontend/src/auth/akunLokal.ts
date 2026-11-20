@@ -1,4 +1,4 @@
-import { kirimPost, PESAN_JARINGAN, PESAN_UMUM, type Hasil, type PenyetelUlang } from './bff';
+import { kirimPost, PESAN_JARINGAN, PESAN_UMUM, pesanDariServer, type Hasil, type PenyetelUlang } from './bff';
 
 // Akun lokal (mode bff): halaman Siapkan akun dan Ubah password. Alurnya di sini, terpisah dari komponen,
 // supaya bisa diuji tanpa DOM. Semua panggilan same-origin; isian sandi hanya ada di body JSON dan di state
@@ -55,11 +55,24 @@ export function periksaSandiBaru(baru: string, ulang: string, pembanding?: { nil
   const syarat: SyaratSandiBaru[] = [
     { kunci: 'panjang', label: `Minimal ${PANJANG_MIN_SANDI} karakter`, terpenuhi: panjangKarakter(baru) >= PANJANG_MIN_SANDI },
   ];
-  // Batas atas jarang tercapai; butir ini hanya muncul saat terlampaui supaya daftar tidak ramai.
-  if (panjangByte(baru) > MAKS_SANDI_BYTE) syarat.push({ kunci: 'maks', label: `Terlalu panjang: maksimal ${MAKS_SANDI_BYTE} karakter`, terpenuhi: false });
+  // Batas atas jarang tercapai; butir ini hanya muncul saat terlampaui supaya daftar tidak ramai. Satuannya byte,
+  // bukan karakter: huruf beraksen dan emoji memakan dua sampai empat byte, jadi labelnya menyebut itu.
+  if (panjangByte(baru) > MAKS_SANDI_BYTE) syarat.push({ kunci: 'maks', label: `Terlalu panjang: maksimal ${MAKS_SANDI_BYTE} byte (huruf beraksen dan emoji dihitung lebih dari satu)`, terpenuhi: false });
   if (pembanding) syarat.push({ kunci: 'beda', label: `Berbeda dari ${pembanding.label}`, terpenuhi: baru.length > 0 && baru !== pembanding.nilai });
   syarat.push({ kunci: 'sama', label: 'Ulangi sandi baru sama persis', terpenuhi: baru.length > 0 && baru === ulang });
   return { syarat, siap: syarat.every(s => s.terpenuhi) };
+}
+
+/** Isian form Siapkan akun yang menentukan apakah tombol Simpan aktif. */
+export type IsianFormSiapkan = { username: string; kode: string; sandi: string; ulang: string; token: string | null };
+
+/**
+ * Syarat form Siapkan akun: username dan kode terisi, token Turnstile ada, dan syarat sandi baru terpenuhi
+ * dengan kode sebagai pembanding (sandi baru tidak boleh sama dengan kode).
+ */
+export function periksaIsianSiapkan(isian: IsianFormSiapkan, labelKode: string): { syarat: SyaratSandiBaru[]; siap: boolean } {
+  const { syarat, siap: sandiSiap } = periksaSandiBaru(isian.sandi, isian.ulang, { nilai: isian.kode, label: labelKode });
+  return { syarat, siap: Boolean(isian.username.trim() && isian.kode && isian.token) && sandiSiap };
 }
 
 export const KETERANGAN_SANDI = `Minimal ${PANJANG_MIN_SANDI} karakter. Gunakan frasa panjang yang mudah Anda ingat, misalnya beberapa kata acak. Sandi yang pernah bocor di internet akan ditolak.`;
@@ -87,8 +100,11 @@ export type KetersediaanSiapkan = { status: 'tersedia'; jenis: JenisSiapkan } | 
 export const BATAS_PERIKSA_MS = 10_000;
 
 /**
- * GET /api/v1/auth/siapkan-akun. Hanya 200 dengan tersedia=true yang membuka form; jawaban lain (404, 5xx,
- * bentuk lain) berarti halaman tidak ada, tanpa alasan. Server yang tidak terjangkau menjadi galat jaringan.
+ * GET /api/v1/auth/siapkan-akun. Hanya 200 dengan tersedia=true yang membuka form. 404 dan jawaban lain yang
+ * bukan galat layanan berarti halaman tidak ada, tanpa alasan. 429 dan 5xx (layanan akun belum siap, batas
+ * percobaan) menjadi galat dengan tombol Coba lagi, supaya tidak tertukar dengan kode yang tidak aktif; status
+ * itu sudah terlihat di HTTP, jadi membedakannya tidak membuka informasi baru. Server yang tidak terjangkau
+ * menjadi galat jaringan.
  */
 export async function bacaSiapkanAkun(batasMs = BATAS_PERIKSA_MS): Promise<KetersediaanSiapkan> {
   let res: Response;
@@ -97,6 +113,14 @@ export async function bacaSiapkanAkun(batasMs = BATAS_PERIKSA_MS): Promise<Keter
     res = await fetch(ALAMAT_AKUN.siapkanAkun, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal });
   } catch {
     return { status: 'galat', pesan: PESAN_JARINGAN };
+  }
+  if (res.status === 429 || res.status >= 500) {
+    let isiGalat: Record<string, unknown> | null = null;
+    try {
+      const isi: unknown = await res.json();
+      if (isi && typeof isi === 'object' && !Array.isArray(isi)) isiGalat = isi as Record<string, unknown>;
+    } catch { /* bukan JSON: pesan cadangan menurut status */ }
+    return { status: 'galat', pesan: pesanDariServer(isiGalat, res.status) };
   }
   if (res.status !== 200) return { status: 'tidak_ada' };
   let isi: unknown = null;

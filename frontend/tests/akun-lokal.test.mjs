@@ -43,8 +43,10 @@ function fetchPalsu(jawaban) {
   globalThis.fetch = async (url, opsi = {}) => {
     panggilan.push({ url, ...opsi, body: opsi.body === undefined ? undefined : JSON.parse(opsi.body) });
     if (jawaban instanceof Error) throw jawaban;
-    const { status = 200, isi = {} } = typeof jawaban === 'function' ? jawaban(url) : jawaban;
-    return new Response(JSON.stringify(isi), { status, headers: { 'Content-Type': 'application/json' } });
+    const { status = 200, isi = {}, teks } = typeof jawaban === 'function' ? jawaban(url) : jawaban;
+    // 204 tidak boleh membawa body; `teks` dipakai untuk jawaban bukan JSON (misalnya halaman galat proksi).
+    const body = status === 204 ? null : teks ?? JSON.stringify(isi);
+    return new Response(body, { status, headers: { 'Content-Type': teks === undefined ? 'application/json' : 'text/html' } });
   };
   return panggilan;
 }
@@ -97,15 +99,49 @@ test('siapkan akun: 404 dari server berarti halaman tidak ada, tanpa form', asyn
   assert.match(tautan[0], /href="\/login"/);
 });
 
-test('siapkan akun: selain 200 dengan tersedia=true, halaman tetap tidak ada', async () => {
-  for (const jawaban of [{ status: 500, isi: {} }, { status: 503, isi: { kode: 'belum_siap', pesan: 'x' } }, { status: 200, isi: { tersedia: false } }, { status: 200, isi: [] }]) {
+test('siapkan akun: 404, atau 2xx selain 200 dengan tersedia=true persis, berarti halaman tidak ada', async () => {
+  for (const jawaban of [
+    { status: 404, isi: {} },
+    { status: 405, isi: {} },
+    { status: 200, isi: { tersedia: false } },
+    { status: 200, isi: { tersedia: 'true', jenis: 'penyiapan' } },
+    { status: 200, isi: { tersedia: 1 } },
+    { status: 200, isi: [] },
+    { status: 200, teks: 'bukan json' },
+    { status: 201, isi: { tersedia: true, jenis: 'penyiapan' } },
+    { status: 204 },
+  ]) {
     fetchPalsu(jawaban);
     assert.deepEqual(await akun.bacaSiapkanAkun(), { status: 'tidak_ada' }, JSON.stringify(jawaban));
   }
-  // Server tak terjangkau: pesan jaringan dan tombol coba lagi, bukan form.
+});
+
+test('siapkan akun: 503, 429, dan 5xx lain menjadi galat dengan pesan layanan dan tombol Coba lagi', async () => {
+  for (const [jawaban, pesan] of [
+    [{ status: 503, isi: { kode: 'belum_siap', pesan: 'Pesan layanan dari server.' } }, 'Pesan layanan dari server.'],
+    [{ status: 429, isi: { kode: 'terlalu_banyak', pesan: 'Pesan batas dari server.' } }, 'Pesan batas dari server.'],
+    [{ status: 429, isi: {} }, 'Terlalu banyak percobaan. Coba lagi beberapa saat lagi.'],
+    [{ status: 503, teks: '<html>proksi</html>' }, 'Layanan SAPA sedang tidak tersedia. Coba beberapa saat lagi.'],
+    [{ status: 500, isi: {} }, 'Permintaan belum berhasil. Coba lagi beberapa saat lagi.'],
+    [{ status: 502, teks: 'Bad Gateway' }, 'Permintaan belum berhasil. Coba lagi beberapa saat lagi.'],
+  ]) {
+    fetchPalsu(jawaban);
+    assert.deepEqual(await akun.bacaSiapkanAkun(), { status: 'galat', pesan }, JSON.stringify(jawaban));
+  }
+
+  fetchPalsu({ status: 503, isi: { kode: 'belum_siap', pesan: 'Pesan layanan dari server.' } });
+  const keadaan = await akun.bacaSiapkanAkun();
+  const html = render(h(TampilanSiapkanAkun, { keadaan, cobaLagi() {} }), { authenticated: false });
+  assert.equal(tag(html, 'form').length, 0, 'tidak ada form');
+  assert.doesNotMatch(html, /Halaman tidak ditemukan/);
+  assert.match(html, /Pesan layanan dari server\./);
+  assert.deepEqual(teksTombol(html), ['Coba lagi']);
+});
+
+test('siapkan akun: server tak terjangkau menjadi galat jaringan dengan tombol Coba lagi', async () => {
   fetchPalsu(new TypeError('gagal'));
   const keadaan = await akun.bacaSiapkanAkun();
-  assert.equal(keadaan.status, 'galat');
+  assert.deepEqual(keadaan, { status: 'galat', pesan: 'Tidak dapat terhubung ke server SAPA. Periksa koneksi internet lalu coba lagi.' });
   const html = render(h(TampilanSiapkanAkun, { keadaan, cobaLagi() {} }));
   assert.equal(tag(html, 'form').length, 0);
   assert.deepEqual(teksTombol(html), ['Coba lagi']);
@@ -137,6 +173,7 @@ test('siapkan akun: 200 menampilkan satu form lengkap dengan Turnstile action sa
   assert.match(html, />Sandi baru</);
   assert.match(html, />Ulangi sandi baru</);
   assert.match(html, /Minimal 15 karakter/);
+  assert.match(html, />Berbeda dari kode penyiapan</, 'sandi baru dibandingkan dengan kode');
 
   const widget = tag(html, 'div').filter(t => t.includes('data-turnstile-aksi'));
   assert.equal(widget.length, 1);
@@ -158,6 +195,30 @@ test('siapkan akun: jenis pemulihan memakai judul dan label kode pemulihan', asy
   const html = render(h(FormSiapkanAkun, { jenis: 'pemulihan' }));
   assert.match(html, />Pulihkan akun</);
   assert.match(html, />Kode pemulihan</);
+  assert.match(html, />Berbeda dari kode pemulihan</);
+});
+
+test('siapkan akun: Simpan hanya siap bila username, kode, Turnstile, dan semua syarat sandi terpenuhi', () => {
+  const lengkap = { username: 'admin@contoh.invalid', kode: KODE_PALSU, sandi: SANDI_BARU_PALSU, ulang: SANDI_BARU_PALSU, token: 'token-turnstile-palsu' };
+  const cek = (ubah = {}) => akun.periksaIsianSiapkan({ ...lengkap, ...ubah }, 'kode penyiapan');
+  assert.equal(cek().siap, true);
+  assert.equal(cek({ token: null }).siap, false, 'tanpa token Turnstile');
+  assert.equal(cek({ token: '' }).siap, false, 'token kosong');
+  assert.equal(cek({ username: '   ' }).siap, false, 'username kosong');
+  assert.equal(cek({ kode: '' }).siap, false, 'kode kosong');
+  assert.equal(cek({ ulang: SANDI_BARU_PALSU + 'x' }).siap, false, 'ulangan berbeda');
+
+  const samaKode = cek({ sandi: KODE_PALSU, ulang: KODE_PALSU });
+  assert.equal(samaKode.siap, false, 'sandi baru sama dengan kode');
+  assert.deepEqual(samaKode.syarat.find(s => s.kunci === 'beda'), { kunci: 'beda', label: 'Berbeda dari kode penyiapan', terpenuhi: false });
+  assert.deepEqual(cek().syarat.map(s => s.kunci), ['panjang', 'beda', 'sama']);
+});
+
+test('siapkan akun: form memakai pemeriksaan isian bersama dan menunggu kiriman selesai', async () => {
+  const kode = await sumber('components/HalamanSiapkanAkun.tsx');
+  assert.match(kode, /periksaIsianSiapkan\(\{ username, kode, sandi, ulang, token \}, teks\.pembanding\)/);
+  assert.match(kode, /const siap = isianSiap && !mengirim;/);
+  assert.match(kode, /disabled=\{!siap\}/);
 });
 
 // ---------------------------------------------------------------- Siapkan akun: kirim
@@ -255,6 +316,27 @@ test('syarat sandi: minimal 15 karakter, ulangan sama persis, dan berbeda dari p
   assert.match(akun.KETERANGAN_SANDI, /Minimal 15 karakter/);
 });
 
+test('syarat sandi: batas atas dihitung dalam byte UTF-8 dan labelnya menyebut byte, bukan karakter', () => {
+  const cek = baru => akun.periksaSandiBaru(baru, baru);
+  const maks = hasil => hasil.syarat.find(s => s.kunci === 'maks');
+  assert.equal(akun.MAKS_SANDI_BYTE, 72);
+  assert.equal(cek('a'.repeat(72)).siap, true, '72 huruf ASCII = 72 byte');
+  assert.equal(cek('é'.repeat(36)).siap, true, '36 huruf beraksen = 72 byte');
+
+  for (const baru of ['é'.repeat(40), '😀'.repeat(19)]) {
+    // 40 dan 19 karakter, jauh di bawah 72 karakter, tetapi 80 dan 76 byte.
+    assert.ok([...baru].length < 72);
+    const hasil = cek(baru);
+    assert.equal(hasil.siap, false, baru);
+    const butir = maks(hasil);
+    assert.ok(butir, 'butir batas atas muncul');
+    assert.equal(butir.terpenuhi, false);
+    assert.match(butir.label, /72 byte/);
+    assert.match(butir.label, /huruf beraksen/);
+    assert.doesNotMatch(butir.label, /72 karakter/);
+  }
+});
+
 // ---------------------------------------------------------------- Ubah password
 
 test('ubah password: POST JSON persis ke /api/v1/akun/ubah-sandi dengan X-SAPA; berhasil memuat ulang sesi', async () => {
@@ -327,6 +409,14 @@ test('pengaturan akun: bagian Ubah password berisi tiga isian sandi dan tombol n
   const kirim = tag(html, 'button').find(t => /type="submit"/.test(t));
   assert.match(kirim, /disabled/);
   assert.doesNotMatch(html, /data-turnstile-aksi/);
+  assert.match(html, />Berbeda dari sandi lama</, 'sandi baru dibandingkan dengan sandi lama');
+});
+
+test('pengaturan akun: Ubah password memakai muatUlang dari sesi aktif', async () => {
+  const kode = await sumber('components/PengaturanAkun.tsx');
+  assert.match(kode, /const \{ muatUlang \} = useSession\(\);/);
+  assert.match(kode, /pengirim\.kirim\(\{ passwordLama: lama, passwordBaru: baru \}, muatUlang, \{/);
+  assert.equal((kode.match(/muatUlang/g) ?? []).length, 2, 'tidak ada pengganti muatUlang lain');
 });
 
 test('isian sandi dan kode hanya di state komponen: tidak di penyimpanan browser atau URL', async () => {
@@ -386,4 +476,58 @@ test('dasbor: menu Pengguna FKRTL tersembunyi di mode bff dan tetap ada di mode 
   assert.ok(nav, 'navigasi utama dirender');
   assert.doesNotMatch(nav[1], /Pengguna FKRTL/);
   assert.match(nav[1], /href="\/pengaturan-akun"/);
+});
+
+async function renderDasbor({ pathname, mode, peran = 'Super Admin' }) {
+  const { InsightTracerDashboard } = await muat('components/InsightTracerDashboard.tsx');
+  const { useAuthStore } = await muat('store/authStore.ts');
+  const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query');
+  const { createTheme, ThemeProvider } = await import('@mui/material/styles');
+  const tema = createTheme({ components: { MuiUseMediaQuery: { defaultProps: { defaultMatches: true } } } });
+  const klien = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity, retry: false } } });
+  const pathnameAwal = lokasi.pathname;
+  lokasi.pathname = pathname;
+  // Render server membaca keadaan awal store (getInitialState), bukan getState; pengguna uji dipasang di
+  // objek keadaan awal selama render lalu dikembalikan.
+  const awal = useAuthStore.getInitialState();
+  const awalAsli = { user: awal.user, isAuthenticated: awal.isAuthenticated };
+  Object.assign(awal, { user: { id: 'uji-1', username: 'admin@contoh.invalid', name: 'Admin Uji', email: 'admin@contoh.invalid', role: peran }, isAuthenticated: true });
+  try {
+    return render(h(ThemeProvider, { theme: tema }, h(QueryClientProvider, { client: klien }, h(InsightTracerDashboard))), { mode });
+  } finally {
+    klien.clear();
+    Object.assign(awal, awalAsli);
+    lokasi.pathname = pathnameAwal;
+  }
+}
+const isiUtama = html => html.match(/<main\b[^>]*id="workspace-content"[^>]*>([\s\S]*?)<\/main>/)?.[1] ?? '';
+
+test('dasbor: /pengguna-fkrtl dibuka langsung di mode bff menampilkan pesan fitur belum tersedia, bukan halamannya', async () => {
+  const bff = isiUtama(await renderDasbor({ pathname: '/pengguna-fkrtl', mode: 'bff' }));
+  assert.match(bff, /Fitur ini belum tersedia di sistem akun baru\./);
+  assert.doesNotMatch(bff, /Memuat Pengguna FKRTL/, 'halaman Pengguna FKRTL tidak dimuat');
+
+  // Pembanding: di mode lama halaman Pengguna FKRTL dimuat seperti biasa.
+  const lama = isiUtama(await renderDasbor({ pathname: '/pengguna-fkrtl', mode: 'auth0' }));
+  assert.match(lama, /Memuat Pengguna FKRTL/);
+  assert.doesNotMatch(lama, /Fitur ini belum tersedia/);
+});
+
+test('dasbor: /pengaturan-akun di mode lama menampilkan pesan, di mode bff memuat Pengaturan akun', async () => {
+  const lama = isiUtama(await renderDasbor({ pathname: '/pengaturan-akun', mode: 'auth0' }));
+  assert.match(lama, /Pengaturan akun hanya tersedia di sistem akun baru\./);
+  assert.doesNotMatch(lama, /Memuat Pengaturan akun/);
+
+  const bff = isiUtama(await renderDasbor({ pathname: '/pengaturan-akun', mode: 'bff' }));
+  assert.match(bff, /Memuat Pengaturan akun/);
+  assert.doesNotMatch(bff, /hanya tersedia di sistem akun baru/);
+});
+
+test('dasbor: pemeriksaan status akun Petugas RS hanya berjalan di mode lama; mode bff langsung menampilkan dasbor', async () => {
+  const bff = await renderDasbor({ pathname: '/home', mode: 'bff', peran: 'Petugas RS' });
+  assert.doesNotMatch(bff, /Memeriksa akun/, 'mode bff tidak menunggu status akun lama');
+  assert.match(bff, /<nav\b[^>]*aria-label="Menu utama"/);
+
+  const lama = await renderDasbor({ pathname: '/home', mode: 'auth0', peran: 'Petugas RS' });
+  assert.match(lama, /Memeriksa akun/);
 });

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
 import {
-  AKSI_SIAPKAN_AKUN, bacaSiapkanAkun, buatPengirimTunggal, KETERANGAN_SANDI, kirimSiapkanAkun, periksaSandiBaru,
+  AKSI_SIAPKAN_AKUN, bacaSiapkanAkun, buatPengirimTunggal, KETERANGAN_SANDI, kirimSiapkanAkun, periksaIsianSiapkan,
   type JenisSiapkan, type KetersediaanSiapkan,
 } from '../auth/akunLokal';
 import { HALAMAN_MASUK } from '../lib/halamanAwal';
@@ -29,7 +29,7 @@ export function HalamanSiapkanAkun() {
   return <TampilanSiapkanAkun keadaan={keadaan} cobaLagi={() => { setKeadaan(null); setPercobaan(n => n + 1); }} />;
 }
 
-/** Isi halaman menurut jawaban server: memeriksa, galat jaringan, tidak ada (404), atau form. */
+/** Isi halaman menurut jawaban server: memeriksa, galat (jaringan atau layanan, dengan Coba lagi), tidak ada (404), atau form. */
 export function TampilanSiapkanAkun({ keadaan, cobaLagi }: { keadaan: KetersediaanSiapkan | null; cobaLagi: () => void }) {
   if (!keadaan) return <Kartu><Menunggu teks="Memeriksa halaman…" /></Kartu>;
   if (keadaan.status === 'galat') return <Kartu>
@@ -87,8 +87,8 @@ export function FormSiapkanAkun({ jenis }: { jenis: JenisSiapkan }) {
   const [pengirim] = useState(() => buatPengirimTunggal(kirimSiapkanAkun));
   const idGalat = useId();
   const idSyarat = useId();
-  const { syarat, siap: sandiSiap } = periksaSandiBaru(sandi, ulang, { nilai: kode, label: teks.pembanding });
-  const siap = Boolean(username.trim() && kode && token) && sandiSiap && !mengirim;
+  const { syarat, siap: isianSiap } = periksaIsianSiapkan({ username, kode, sandi, ulang, token }, teks.pembanding);
+  const siap = isianSiap && !mengirim;
   const terimaToken = useCallback((nilai: string | null) => setToken(nilai), []);
   useEffect(() => { if (selesai) judulSelesai.current?.focus(); }, [selesai]);
 
