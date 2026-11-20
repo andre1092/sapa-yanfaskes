@@ -155,7 +155,12 @@ berlaku bila skrip tidak bisa dipakai.
    `SAPA_AKUN_KUNCI_MAC`, dan `SAPA_SESI_KUNCI` (bila belum ada) sesuai bagian 6. `SAPA_LOGIN_BFF` belum diubah.
 7. **Opsional: role DB sesi Neon terbatas.** Di konsol SQL Neon, sebagai owner database, jalankan
    `api/sql/sesi_neon.sql` (membuat `sapa_sesi`, `sapa_batas`, `akun_jangkar`, dan GRANT contoh untuk role
-   `sapa_aplikasi`). Buat role itu dan sandinya lewat konsol Neon, isi DSN pooled role itu ke env baru
+   `sapa_aplikasi`). Buat role itu **lewat SQL**, bukan tombol Add role: role buatan konsol, API, atau CLI otomatis
+   menjadi anggota `neon_superuser` (pg_read_all_data, pg_write_all_data, CREATEROLE, BYPASSRLS). Contoh:
+   `CREATE ROLE sapa_aplikasi WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;` dijalankan
+   sebelum GRANT, dan pastikan `pg_has_role('sapa_aplikasi', 'neon_superuser', 'MEMBER')` bernilai false.
+   Sandi diatur lewat Reset password di halaman Roles (sandi tidak tertulis di riwayat SQL), lalu DSN pooled role
+   itu diambil dari dialog Connect dan diisi ke env baru
    `SAPA_SESI_DSN_APLIKASI` (Production, Sensitive). Jangan mengubah `SAPA_SESI_DATABASE_URL`: env itu dikelola
    integrasi Neon dan bisa ditimpa ulang ke role bawaan. Dengan `SAPA_SKEMA_MANUAL=1` DSN integrasi ditolak,
    jadi role bawaan tidak pernah dipakai diam-diam.
