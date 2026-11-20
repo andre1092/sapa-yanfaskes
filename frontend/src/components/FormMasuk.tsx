@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
-import { buatKendaliForm, buatPengirimMasuk } from '../auth/alurMasuk';
+import { buatKendaliForm, buatPengirimMasuk, periksaIsianMasuk } from '../auth/alurMasuk';
+import { PESAN_SANDI_TERLALU_PANJANG } from '../auth/batasSandi';
 import { useSession } from '../auth/useSession';
 import type { KendaliWidget } from '../lib/turnstile';
-import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
+import { ALERT_GALAT, FOKUS, KOLOM, TOMBOL, TOMBOL_TEKS, WARNA } from './gayaMasuk';
 import { WidgetTurnstile } from './WidgetTurnstile';
 
 // Login satu halaman (mode bff): Username, Password, Ingat saya, Lupa password, dan Turnstile dalam satu
@@ -14,17 +15,9 @@ import { WidgetTurnstile } from './WidgetTurnstile';
 export const AKSI_MASUK = 'login';
 export const PESAN_LUPA_SANDI = 'Hubungi Admin KC Jember untuk atur ulang sandi.';
 
-const KOLOM = {
-  '& .MuiOutlinedInput-root': { bgcolor: WARNA.kartu, color: WARNA.teks },
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#c3ccd8' },
-  '& .MuiInputLabel-root': { color: WARNA.redup },
-  '& .MuiInputLabel-root.Mui-focused': { color: WARNA.biru },
-  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: WARNA.biru, borderWidth: 2 },
-} as const;
-const TOMBOL_TEKS = { color: WARNA.biru, textTransform: 'none', fontWeight: 600, px: 1, minHeight: 44, ...FOKUS } as const;
 const JUDUL = { mb: 1, color: WARNA.judul, outline: 'none', textAlign: 'center' } as const;
 
-function Galat({ id, pesan }: { id: string; pesan: string | null }) {
+export function Galat({ id, pesan }: { id: string; pesan: string | null }) {
   // Wadah role=alert selalu ada supaya pesan baru diumumkan pembaca layar; kosong saat tidak ada galat.
   return <Box id={id} role="alert">
     {pesan && <Alert role="presentation" severity="error" sx={ALERT_GALAT}>{pesan}</Alert>}
@@ -71,7 +64,9 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
   const kolomPassword = useRef<HTMLInputElement>(null);
   const idGalat = useId();
   const idIngat = useId();
-  const siap = Boolean(username.trim() && password && token) && !mengirim;
+  const idBatas = useId();
+  const { siap: isianSiap, sandiTerlaluPanjang } = periksaIsianMasuk({ username, password, token });
+  const siap = isianSiap && !mengirim;
   const pesanGalat = galat || (sudahMencoba ? null : session.error);
   const terimaToken = useCallback((nilai: string | null) => setToken(nilai), []);
 
@@ -103,7 +98,9 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
           slotProps={{ htmlInput: { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, maxLength: 254, 'aria-describedby': terkait } }} />
         <TextField label="Password" name="password" type={lihat ? 'text' : 'password'} value={password} onChange={event => setPassword(event.target.value)}
           autoComplete="current-password" required fullWidth inputRef={kolomPassword} sx={KOLOM}
-          slotProps={{ input: { endAdornment: tombolLihat }, htmlInput: { 'aria-describedby': terkait } }} />
+          error={sandiTerlaluPanjang} helperText={sandiTerlaluPanjang ? PESAN_SANDI_TERLALU_PANJANG : undefined}
+          slotProps={{ input: { endAdornment: tombolLihat }, formHelperText: { id: idBatas },
+            htmlInput: { 'aria-describedby': [terkait, sandiTerlaluPanjang && idBatas].filter(Boolean).join(' ') || undefined } }} />
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 1 }}>
           <Box>
             <FormControlLabel label="Ingat saya" sx={{ mr: 0, color: WARNA.teks }}

@@ -21,7 +21,7 @@ const { renderToString } = await import('react-dom/server');
 const { createElement: h } = await import('react');
 const { LayarKeluar, LoginPage } = await muat('components/LoginPage.tsx');
 const { FormMasuk, PanelLupaSandi } = await muat('components/FormMasuk.tsx');
-const { buatKendaliForm, buatPengirimMasuk, kirimMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
+const { buatKendaliForm, buatPengirimMasuk, kirimMasuk, periksaIsianMasuk, PESAN_SESI_BELUM_TERBUKA } = await muat('auth/alurMasuk.ts');
 const { Context } = await muat('auth/useSession.ts');
 const bff = await muat('auth/bff.ts');
 const sesi = await muat('auth/session.ts');
@@ -86,6 +86,26 @@ test('mode bff: satu kartu tanpa Auth0, tepat lima elemen ditambah tombol Masuk'
   assert.equal(widget.length, 1, 'tepat satu widget Turnstile');
   assert.match(widget[0], /data-turnstile-aksi="login"/);
   assert.doesNotMatch(html, /<textarea|<select/);
+});
+
+test('form masuk: password dibatasi 256 byte UTF-8; lebih dari itu Masuk ditahan dan pesan tampil', async () => {
+  const lengkap = { username: 'pengguna-uji', password: SANDI_PALSU, token: 'token-palsu' };
+  const cek = (ubah = {}) => periksaIsianMasuk({ ...lengkap, ...ubah });
+  assert.deepEqual(cek(), { siap: true, sandiTerlaluPanjang: false });
+  assert.equal(cek({ username: '  ' }).siap, false);
+  assert.equal(cek({ password: '' }).siap, false);
+  assert.equal(cek({ token: null }).siap, false);
+  assert.deepEqual(cek({ password: 'a'.repeat(100) }), { siap: true, sandiTerlaluPanjang: false }, 'di atas batas lama 72 tetap boleh');
+  assert.deepEqual(cek({ password: 'a'.repeat(256) }), { siap: true, sandiTerlaluPanjang: false });
+  assert.deepEqual(cek({ password: '😀'.repeat(64) }), { siap: true, sandiTerlaluPanjang: false }, '64 emoji = 256 byte');
+  for (const password of ['a'.repeat(257), 'é'.repeat(129), '😀'.repeat(65)]) {
+    assert.deepEqual(cek({ password }), { siap: false, sandiTerlaluPanjang: true }, `${[...password].length} karakter`);
+  }
+
+  const form = await sumber('components/FormMasuk.tsx');
+  assert.match(form, /periksaIsianMasuk\(\{ username, password, token \}\)/);
+  assert.match(form, /const siap = isianSiap && !mengirim;/);
+  assert.match(form, /sandiTerlaluPanjang \? PESAN_SANDI_TERLALU_PANJANG/);
 });
 
 test('label terhubung dan wadah galat diumumkan', () => {

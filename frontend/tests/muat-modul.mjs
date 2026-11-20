@@ -4,7 +4,7 @@ import ts from 'typescript';
 
 // Memuat modul TypeScript/TSX dari src/ untuk tes node tanpa bundler: setiap berkas ditranspilasi
 // lalu diimpor sebagai data: URL. Impor relatif diikuti (hasilnya di-cache, jadi satu berkas = satu
-// instans modul), impor paket diarahkan ke node_modules frontend. import.meta.env dibaca dari
+// instans modul), impor paket diarahkan ke node_modules frontend, impor CSS menjadi modul kosong. import.meta.env dibaca dari
 // globalThis.__VITE_ENV__ supaya tes bisa memberi nilai palsu.
 
 const cache = new Map();
@@ -36,7 +36,9 @@ async function dataUrl(url) {
       const ganti = new Map();
       for (const [, , , spesifikasi] of kode.matchAll(pola)) {
         if (ganti.has(spesifikasi)) continue;
-        if (spesifikasi.startsWith('.')) ganti.set(spesifikasi, await dataUrl(await cari(url, spesifikasi)));
+        // Impor CSS (efek samping bundler) diganti modul kosong.
+        if (spesifikasi.endsWith('.css')) ganti.set(spesifikasi, 'data:text/javascript,');
+        else if (spesifikasi.startsWith('.')) ganti.set(spesifikasi, await dataUrl(await cari(url, spesifikasi)));
         else if (spesifikasi.startsWith('node:')) ganti.set(spesifikasi, spesifikasi);
         else ganti.set(spesifikasi, import.meta.resolve(spesifikasi));
       }

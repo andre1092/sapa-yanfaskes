@@ -13,3 +13,13 @@ export const TOMBOL = {
 } as const;
 
 export const ALERT_GALAT = { bgcolor: WARNA.merahLatar, color: WARNA.merah, '& .MuiAlert-icon': { color: WARNA.merah } } as const;
+
+// Kolom isian dan tombol teks kartu masuk (dipakai juga halaman Siapkan akun).
+export const KOLOM = {
+  '& .MuiOutlinedInput-root': { bgcolor: WARNA.kartu, color: WARNA.teks },
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#c3ccd8' },
+  '& .MuiInputLabel-root': { color: WARNA.redup },
+  '& .MuiInputLabel-root.Mui-focused': { color: WARNA.biru },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: WARNA.biru, borderWidth: 2 },
+} as const;
+export const TOMBOL_TEKS = { color: WARNA.biru, textTransform: 'none', fontWeight: 600, px: 1, minHeight: 44, ...FOKUS } as const;

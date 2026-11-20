@@ -13,11 +13,13 @@ import { AdminDialog } from "./AdminDialog";
 import React, { useState, useEffect } from "react";
 import { apiClient } from "../lib/apiClient";
 import { useUserStore } from "../store/userStore";
+import { useSession } from "../auth/useSession";
 
 type SettingsTab = "profile";
 
 export const AdminSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const { mode } = useSession();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 
@@ -325,7 +327,9 @@ export const AdminSettings: React.FC = () => {
             </div>
 
             <p className="pt-4 border-t border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
-              Kata sandi akun tidak diubah dari halaman ini. Gunakan layanan masuk atau hubungi administrator.
+              {mode === "bff"
+                ? "Kata sandi akun tidak diubah dari halaman ini. Ubah kata sandi lewat menu Pengaturan akun."
+                : "Kata sandi akun tidak diubah dari halaman ini. Gunakan layanan masuk atau hubungi administrator."}
             </p>
 
             {/* Tombol Simpan */}

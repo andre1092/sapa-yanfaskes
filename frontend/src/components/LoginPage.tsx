@@ -7,7 +7,7 @@ import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
 // Adapted from Berry Free React's authentication/Login and AuthLogin layout.
 // Satu kartu untuk semua mode: mode bff memakai form login satu halaman (FormMasuk), mode lama
 // (SPA Auth0) tetap memakai tombol yang membuka layanan masuk seperti sebelumnya.
-function Kartu({ children, kaki = false }: { children: ReactNode; kaki?: boolean }) {
+export function Kartu({ children, kaki = false }: { children: ReactNode; kaki?: boolean }) {
   return (
     <Box component="main" className="berry-login" sx={{ minHeight: '100dvh', bgcolor: WARNA.latar, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', p: { xs: 2, sm: 3 } }}>
       <Paper elevation={0} sx={{ width: '100%', maxWidth: 480, p: { xs: 3, sm: 5 }, borderRadius: 3, border: 1, borderColor: WARNA.garis, bgcolor: WARNA.kartu, color: WARNA.teks }}>
@@ -21,7 +21,7 @@ function Kartu({ children, kaki = false }: { children: ReactNode; kaki?: boolean
   );
 }
 
-function Menunggu({ teks }: { teks: string }) {
+export function Menunggu({ teks }: { teks: string }) {
   return <Stack spacing={1.5} alignItems="center" role="status" aria-busy="true"><CircularProgress size={28} sx={{ color: WARNA.hijau }} aria-hidden="true" /><Typography sx={{ color: WARNA.redup }}>{teks}</Typography></Stack>;
 }
 
