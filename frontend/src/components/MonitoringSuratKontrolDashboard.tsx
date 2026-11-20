@@ -8,6 +8,7 @@ import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import { TabelJpegSuratKontrol } from './TabelJpegSuratKontrol';
+import { TombolDownloadDetail } from './TombolDownloadDetail';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import {
   JENIS, STATUS, angka, dataBelumLengkap, gabungJenis, labelBulan, labelTotalCabang, namaBerkasJpeg, persen,
@@ -319,10 +320,13 @@ export function MonitoringSuratKontrolDashboard() {
           07 Surkon di Kepatuhan FKRTL, yang menilai kepatuhan penerbitan lewat bridging.</p>
         {dataBulan && <p className="sk-data-per">Data SEP sampai <strong>{tanggalSampai(dataBulan.sampai)}</strong> · sumber BI BPJS Kesehatan</p>}
       </div>
-      {props && <span>
+      {props && <span className="flex flex-wrap items-start gap-2">
+        {(admin || user?.role === 'Petugas RS') && <TombolDownloadDetail bulan={bulanAktif} jenis={jenis} status={status} kodeRs={kodeRs} terkunci={terkunci} />}
+        <span>
         <button type="button" className="sapa-button sapa-button-secondary" onClick={() => setJpeg('menyiapkan')} disabled={!d || jpeg === 'menyiapkan'} aria-busy={jpeg === 'menyiapkan'}>
           {jpeg === 'menyiapkan' ? 'Menyiapkan JPEG…' : 'Unduh JPEG'}</button>
         {jpeg === 'gagal' && <span role="alert" className="sk-catatan block">JPEG belum bisa dibuat. Coba lagi.</span>}
+        </span>
       </span>}
     </header>
 

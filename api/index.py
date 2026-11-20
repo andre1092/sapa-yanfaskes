@@ -57,11 +57,12 @@ except ImportError:
     import sesi_service
     import turnstile
 try:
-    from . import drive_ssbi, kepatuhan_service, ssbi_jadwal_service, surat_kontrol_service
+    from . import drive_ssbi, kepatuhan_service, ssbi_jadwal_service, surat_kontrol_detail_service, surat_kontrol_service
 except ImportError:
     import drive_ssbi
     import kepatuhan_service
     import ssbi_jadwal_service
+    import surat_kontrol_detail_service
     import surat_kontrol_service
 try:
     from . import kessan_service
@@ -4067,7 +4068,10 @@ def _sk_kabupaten(data: Optional[dict]) -> Dict[str, str]:
     faskes yang ikut dikirim. Referensi gagal dibaca = peta kosong, data tetap tampil."""
     if not data:
         return {}
-    kode = {f["kode"] for j in surat_kontrol_service.JENIS for f in data[j]["faskes"]}
+    return _sk_kabupaten_kode({f["kode"] for j in surat_kontrol_service.JENIS for f in data[j]["faskes"]})
+
+
+def _sk_kabupaten_kode(kode: set) -> Dict[str, str]:
     try:
         ref = kepatuhan_service.get_ref_lookup()
     except Exception as exc:
@@ -4110,6 +4114,202 @@ def surat_kontrol_data(bulan: str = "", cakupan=Depends(require_sk_lihat)):
     return JSONResponse(headers=_NO_STORE, content={"bulan_tersedia": tersedia, "bulan": bulan or None, "data": data,
                                                     "rs": rs, "terkunci": bool(kode), "diunggah_pada": diunggah,
                                                     "kabupaten": _sk_kabupaten(data)})
+
+
+# ==============================================================================
+# --- DOWNLOAD DETAIL SRK (versi 1 tanpa nomor; keputusan CEO + syarat Clara 2026-11-19) ---
+# Browser membuang Nomor SEP/Surat Kontrol; server menolak kolom dan pola nomor. Unggah: Admin.
+# Unduh: Admin semua faskes, Petugas RS hanya kode PPK akunnya, Viewer 403. Retensi 3 bulan.
+# ==============================================================================
+_SKD_KUNCI = 0x55B1_0003
+_SKD_BELUM_SIAP = "Penyimpanan detail Surat Kontrol belum disiapkan. Hubungi tim teknis SAPA."
+_SKD_DRIVE_GAGAL = "Penyimpanan detail Surat Kontrol sedang bermasalah. Data lama tetap dipakai. Coba lagi sebentar."
+_SKD_BATAS_RESPON = 4_400_000
+_SKD_PADANAN_GAGAL = "Tabel padanan faskes tidak terbaca, jadi berkas belum bisa diperiksa. Hubungi tim teknis SAPA."
+_skd_simpanan: Dict[str, Any] = {"versi": None, "isi": None}
+_skd_simpanan_lock = threading.Lock()
+_RE_SKD_KODE = re.compile(r"[0-9]{4}[A-Z][0-9]{3}")
+
+
+def _skd_drive_info() -> dict:
+    return drive_ssbi.info(drive_ssbi.ENV_SURAT_KONTROL_DETAIL)
+
+
+def _skd_drive_unduh() -> bytes:
+    return drive_ssbi.unduh(drive_ssbi.ENV_SURAT_KONTROL_DETAIL)
+
+
+def _skd_drive_tulis(isi: bytes, properti: Dict[str, str]):
+    return drive_ssbi.tulis(isi, properti, drive_ssbi.ENV_SURAT_KONTROL_DETAIL)
+
+
+def _skd_drive(fungsi, *args):
+    try:
+        return fungsi(*args)
+    except drive_ssbi.DriveBelumSiap:
+        raise HTTPException(status_code=503, detail=_SKD_BELUM_SIAP, headers=_NO_STORE)
+    except Exception as exc:
+        logger.error("Detail Surat Kontrol di Drive tidak bisa dipakai: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail=_SKD_DRIVE_GAGAL, headers=_NO_STORE)
+
+
+def _skd_isi() -> dict:
+    info = _skd_drive_info()
+    if info["ukuran"] > surat_kontrol_detail_service.BATAS_MENTAH * 2:
+        raise ValueError("berkas detail melebihi batas")
+    with _skd_simpanan_lock:
+        if _skd_simpanan["versi"] == info["versi"] and _skd_simpanan["isi"] is not None:
+            return _skd_simpanan["isi"]
+    isi = surat_kontrol_detail_service.baca_simpanan(_skd_drive_unduh() if info["ukuran"] else b"")
+    with _skd_simpanan_lock:
+        _skd_simpanan.update(versi=info["versi"], isi=isi)
+    return isi
+
+
+def _skd_aktif() -> Dict[str, dict]:
+    return surat_kontrol_detail_service.bulan_aktif(_skd_drive(_skd_isi), _sk_hari_ini())
+
+
+def _skd_padanan() -> Dict[str, set]:
+    """Gagal tertutup (review Clara butir 1): tanpa padanan, cek nama faskes tidak bisa dijalankan, jadi 503."""
+    try:
+        return {kode: set(nama) for kode, (_, nama) in _ssbi_peta().kode.items()}
+    except Exception as exc:
+        logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=_SKD_PADANAN_GAGAL, headers=_NO_STORE)
+
+
+def require_skd_unduh(request: Request) -> dict:
+    """Viewer 403; Petugas RS dikunci ke kode PPK akunnya (kosong = 403, gagal tertutup)."""
+    claims = require_auth(request)
+    petugas = petugas_rs_saja(claims)
+    if role_rank(claims) < ROLE_RANK["admin"] and not petugas:
+        _forbid(request, "admin atau Petugas RS")
+    _cek_wajib_ganti_sandi(request, claims)
+    if not petugas:
+        return {"claims": claims, "kode": None}
+    kode = (_status_petugas(claims).get("kode_ppk") or "").strip()
+    if not _RE_SKD_KODE.fullmatch(kode):
+        raise HTTPException(status_code=403, detail=_SK_TANPA_RS, headers=_NO_STORE)
+    return {"claims": claims, "kode": kode}
+
+
+async def _skd_terima(request: Request, bulan: str):
+    from starlette.concurrency import run_in_threadpool
+
+    if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
+        raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
+    bulan = _sk_bulan_param(bulan)
+    request.state.audit_detail = f"bulan={bulan}"
+    try:
+        surat_kontrol_detail_service.cek_bulan_unggah(bulan, _sk_hari_ini())
+    except surat_kontrol_detail_service.BerkasDitolak as exc:
+        raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
+    padanan = _skd_padanan()
+    batas = surat_kontrol_detail_service.BATAS_KOMPRES
+    besar = HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).", headers=_NO_STORE)
+    try:
+        if int(request.headers.get("content-length") or 0) > batas:
+            raise besar
+    except ValueError:
+        pass
+    data = bytearray()
+    async for potong in request.stream():
+        data.extend(potong)
+        if len(data) > batas:
+            raise besar
+
+    def olah():
+        return surat_kontrol_detail_service.periksa_csv(surat_kontrol_detail_service.buka_gzip(bytes(data)), bulan, padanan)
+
+    try:
+        hasil = await run_in_threadpool(olah)
+    except surat_kontrol_detail_service.BerkasDitolak as exc:
+        raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
+    # sha256 hanya untuk kiriman yang lolos pemeriksaan (sudah pasti tanpa pola nomor; syarat Clara C, review butir 4).
+    # Kode tak terpadan dicatat jumlah dan kodenya saja, tanpa nama faskes (review butir 2c).
+    tak = hasil.ringkasan["kode_tak_dikenal"]
+    request.state.audit_detail = (f"bulan={bulan} tak_terpadan={len(tak)} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
+                                  + (f" kode={','.join(tak[:12])}" if tak else ""))
+    return bulan, hasil
+
+
+def _skd_ringkas(bulan: str, v: dict) -> dict:
+    meta = v.get("meta") or {}
+    return {"bulan": bulan, "baris": len(v.get("baris") or []), "diunggah_pada": meta.get("diunggah_pada", ""),
+            "diunggah_oleh": meta.get("diunggah_oleh", "")}
+
+
+@app.post("/api/v1/surat-kontrol-detail/periksa")
+async def surat_kontrol_detail_periksa(request: Request, bulan: str = "", user=Depends(require_admin)):
+    bulan, hasil = await _skd_terima(request, bulan)
+    try:
+        ada = bulan in _skd_aktif()
+    except HTTPException:
+        ada = False
+    return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "ada": ada})
+
+
+@app.post("/api/v1/surat-kontrol-detail/integrasikan")
+async def surat_kontrol_detail_integrasikan(request: Request, bulan: str = "", user=Depends(require_admin)):
+    from starlette.concurrency import run_in_threadpool
+
+    bulan, hasil = await _skd_terima(request, bulan)
+    meta = {"diunggah_pada": datetime.now(WIB).strftime("%Y-%m-%dT%H:%M:%S+07:00"),
+            "diunggah_oleh": await run_in_threadpool(_ssbi_nama_admin, user)}
+    async with _ssbi_kunci(_SKD_KUNCI) as dapat:
+        if not dapat:
+            raise HTTPException(status_code=409, detail="Admin lain sedang mengintegrasikan data. Coba lagi setelah selesai.", headers=_NO_STORE)
+
+        def ganti():
+            ukuran = _skd_drive_info()["ukuran"]
+            if ukuran > surat_kontrol_detail_service.BATAS_MENTAH * 2:
+                raise ValueError("berkas detail melebihi batas")
+            lama = _skd_drive_unduh() if ukuran else b""
+            baru = surat_kontrol_detail_service.simpanan_baru(lama, bulan, hasil.baris, meta, _sk_hari_ini())
+            versi, _ = _skd_drive_tulis(baru, {"bulan_terakhir_diunggah": bulan, "diperbarui": meta["diunggah_pada"]})
+            return versi, surat_kontrol_detail_service.baca_simpanan(baru)
+
+        versi, isi = await run_in_threadpool(_skd_drive, ganti)
+    with _skd_simpanan_lock:
+        _skd_simpanan.update(versi=versi, isi=isi)
+    return JSONResponse(headers=_NO_STORE, content={"status": "success", "bulan": [_skd_ringkas(b, v) for b, v in isi["bulan"].items()]})
+
+
+@app.get("/api/v1/surat-kontrol-detail/status")
+def surat_kontrol_detail_status(user=Depends(require_admin)):
+    return JSONResponse(headers=_NO_STORE, content={"bulan": [_skd_ringkas(b, v) for b, v in _skd_aktif().items()]})
+
+
+@app.get("/api/v1/surat-kontrol-detail/bulan")
+def surat_kontrol_detail_bulan(cakupan=Depends(require_skd_unduh)):
+    aktif = _skd_aktif()
+    kode = cakupan["kode"]
+    tersedia = [b for b, v in aktif.items() if kode is None or any(r[0] == kode for r in v.get("baris") or [])]
+    return JSONResponse(headers=_NO_STORE, content={"bulan": tersedia})
+
+
+@app.get("/api/v1/surat-kontrol-detail/detail")
+def surat_kontrol_detail_unduh(request: Request, bulan: str = "", jenis: str = "", status: str = "", faskes: str = "",
+                               cakupan=Depends(require_skd_unduh)):
+    bulan = _sk_bulan_param(bulan)
+    if jenis not in ("RJ", "RI", "semua") or status not in ("eq", "gt", "semua") or (faskes and not _RE_SKD_KODE.fullmatch(faskes)):
+        raise HTTPException(status_code=400, detail="Pilihan filter tidak dikenali.", headers=_NO_STORE)
+    kode = cakupan["kode"] or (faskes or None)  # Petugas RS: parameter faskes diabaikan
+    aktif = _skd_aktif()
+    if bulan not in aktif:
+        raise HTTPException(status_code=404, detail="Detail bulan ini belum diunggah.", headers=_NO_STORE)
+    pilihan = surat_kontrol_detail_service.saring(aktif[bulan].get("baris") or [], jenis, status, kode)
+    if not pilihan:
+        raise HTTPException(status_code=404, detail="Tidak ada detail untuk pilihan filter ini.", headers=_NO_STORE)
+    request.state.audit_detail = f"bulan={bulan} jenis={jenis} status={status} baris={len(pilihan)}"
+    rs = pilihan[0][1] if kode else None
+    isi = surat_kontrol_detail_service.buat_xlsx(pilihan, bulan, jenis, rs, _sk_kabupaten_kode({r[0] for r in pilihan}))
+    if len(isi) > _SKD_BATAS_RESPON:
+        raise HTTPException(status_code=413, detail="Berkas detail terlalu besar. Persempit filter (jenis pelayanan atau faskes).", headers=_NO_STORE)
+    nama = surat_kontrol_detail_service.nama_berkas(bulan, jenis, rs)
+    return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
 
 
 # ==============================================================================

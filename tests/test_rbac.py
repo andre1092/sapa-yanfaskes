@@ -107,7 +107,7 @@ def test_old_sync_endpoints_are_gone(api, path):
 
 def test_every_data_route_requires_a_role(api):
     guarded = {"require_viewer", "require_admin", "require_super_admin", "require_viewer_fktp", "require_fkrtl_export",
-               "require_signed_in", "require_ssbi_unduh", "require_sk_lihat", "require_super_admin_auth0",
+               "require_signed_in", "require_ssbi_unduh", "require_sk_lihat", "require_skd_unduh", "require_super_admin_auth0",
                "require_signed_in_auth0"}
     # /api/v1/verifikasi-manusia dipanggil di tengah login, sebelum ada token SAPA. Penjaganya
     # session_token bertanda tangan dari Action Auth0 (tes di test_verifikasi_manusia.py).

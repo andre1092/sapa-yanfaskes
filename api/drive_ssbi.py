@@ -23,6 +23,7 @@ logger = logging.getLogger("sapa-api")
 
 ENV_FILE_ID = "SSBI_JADWAL_DRIVE_FILE_ID"
 ENV_SURAT_KONTROL = "SURAT_KONTROL_DRIVE_FILE_ID"  # menu Monitoring Penerbitan Surat Kontrol
+ENV_SURAT_KONTROL_DETAIL = "SURAT_KONTROL_DETAIL_DRIVE_FILE_ID"  # Download Detail SRK (tanpa nomor)
 ENV_KUNCI_TULIS = "GCP_SA_DRIVE_TULIS_BASE64"
 _ENV_KUNCI_BACA = ("GCP_SA_CREDENTIALS_BASE64", "GCP_SA_CREDENTIALS_JSON")
 SCOPE_BACA = ("https://www.googleapis.com/auth/drive.readonly",)

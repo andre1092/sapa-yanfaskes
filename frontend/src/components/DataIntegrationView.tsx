@@ -8,6 +8,7 @@ import {
 } from '../lib/ssbiJadwal';
 import type { InfoAktif, Ringkasan } from '../lib/ssbiJadwal';
 import { UnggahSuratKontrol } from './UnggahSuratKontrol';
+import { UnggahDetailSuratKontrol } from './UnggahDetailSuratKontrol';
 
 const TAUTAN_SSBI = 'https://ssbi.bpjs-kesehatan.go.id/views/07_Kesesuaian_Jadwal/FKRTL.csv';
 const KOLOM = ['Kabupaten', 'Nama Faskes', 'Tipe Faskes', 'Nama Poli', 'Nama Dokter', 'Waktu SIMRS', 'Jam Buka HFIS',
@@ -288,6 +289,8 @@ export function DataIntegrationView() {
       </section>
 
       <UnggahSuratKontrol />
+
+      <UnggahDetailSuratKontrol />
 
       <Dialog open={dialog} onClose={() => setDialog(false)} aria-labelledby="ssbi-dialog-judul">
         <DialogTitle id="ssbi-dialog-judul">Ganti data SSBI?</DialogTitle>
