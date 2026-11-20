@@ -31,7 +31,7 @@ export type RingkasJpeg = {
   rataSkor: number | null;
 };
 
-export type KelompokJpeg = { kabupaten: string; baris: BarisJpeg[]; subtotal: RingkasJpeg | null };
+export type KelompokJpeg = { kabupaten: string; baris: BarisJpeg[] };
 
 export type TabelJpeg = { kelompok: KelompokJpeg[]; total: RingkasJpeg | null; jumlahBaris: number; adaTanpaTarget: boolean };
 
@@ -107,7 +107,7 @@ function ringkasJpeg(label: string, baris: BarisKessan[]): RingkasJpeg {
 
 /**
  * Susun isi tabel JPEG dari baris halaman yang sudah disaring Periode dan Kabupaten.
- * Subtotal hanya bila Semua kabupaten dan ada lebih dari satu kelompok; Total tidak ada untuk Petugas RS.
+ * Baris dikelompokkan dan diurut per kabupaten tanpa subtotal (keputusan CEO 20 Nov); Total tidak ada untuk Petugas RS.
  */
 export function susunTabelJpeg(baris: BarisKessan[], { kabupaten, petugas }: { kabupaten: string; petugas: boolean }): TabelJpeg {
   const urut = urutJpeg(baris);
@@ -121,15 +121,9 @@ export function susunTabelJpeg(baris: BarisKessan[], { kabupaten, petugas }: { k
       else grup.push([b]);
     }
   }
-  const pakaiSubtotal = grup.length > 1;
   const kelompok = grup.map(g => {
     const lain = indeksKab(g[0].kabupaten) === KABUPATEN_URUT.length;
-    const nama = lain ? '' : g[0].kabupaten.trim();
-    return {
-      kabupaten: nama,
-      baris: g.map(barisJpeg),
-      subtotal: pakaiSubtotal ? ringkasJpeg(lain ? 'Subtotal kabupaten lain' : `Subtotal ${nama}`, g) : null,
-    };
+    return { kabupaten: lain ? '' : g[0].kabupaten.trim(), baris: g.map(barisJpeg) };
   });
   const total = !petugas && urut.length > 1 ? ringkasJpeg(kabupaten ? `Total Kabupaten ${kabupaten}` : 'Total cabang', urut) : null;
   return { kelompok, total, jumlahBaris: urut.length, adaTanpaTarget: kelompok.some(g => g.baris.some(b => b.tanpaTarget)) };
