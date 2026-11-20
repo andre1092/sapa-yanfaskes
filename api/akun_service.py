@@ -10,7 +10,8 @@ Sandi
   Pepper dari env SAPA_AKUN_PEPPER (base64, minimal 32 byte), tidak pernah disimpan di D1.
 - Username yang tidak ada atau baris yang tidak utuh tetap menjalankan satu verifikasi argon2 atas hash tiruan
   berparameter sama (cocokkan_palsu), supaya waktu jawab seragam.
-- Sandi baru: SANDI_MIN..SANDI_MAKS karakter (NFC), tanpa karakter kontrol, tidak sama dengan username, kode,
+- Sandi baru: minimal SANDI_MIN karakter dan paling panjang SANDI_MAKS_BYTE byte UTF-8 (keduanya sesudah NFC;
+  lebih panjang ditolak, tidak dipotong), tanpa karakter kontrol, tidak sama dengan username, kode,
   atau sandi lama, dan lolos HIBP k-anonymity (cek_bocor: hanya 5 karakter awal SHA-1 dikirim, header
   Add-Padding, tenggat total TENGGAT_HIBP). HIBP tidak terjangkau, status selain 200, atau jawaban yang tidak
   berformat daftar AKHIRAN:JUMLAH (kosong, HTML) berarti HibpTidakTersedia (gagal tertutup). Logger httpx dan
@@ -85,7 +86,7 @@ ARGON2_PARALEL = 1
 ARGON2_PANJANG_HASH = 32
 ARGON2_PANJANG_GARAM = 16
 SANDI_MIN = 15
-SANDI_MAKS = 128
+SANDI_MAKS_BYTE = 256  # byte UTF-8 sesudah NFC, untuk menetapkan maupun memakai sandi
 KODE_MIN = 32
 TENGGAT_WORKER = 3.0  # detik, total satu panggilan Worker
 TENGGAT_HIBP = 3.0  # detik, total satu panggilan HIBP
@@ -311,11 +312,18 @@ def hash_kode(kode: str) -> str:
 
 # --- kebijakan sandi baru dan HIBP --------------------------------------------------------------
 
+def panjang_sandi_byte(sandi: str) -> int:
+    """Panjang sandi dalam byte UTF-8 sesudah NFC (bentuk yang di-hash)."""
+    return len(unicodedata.normalize("NFC", sandi).encode("utf-8"))
+
+
 def kebijakan_sandi(sandi: str, larangan=()) -> Optional[str]:
     """None bila memenuhi kebijakan; "sandi_lemah" bila terlalu pendek/panjang, berkarakter kontrol, atau sama
     dengan salah satu nilai `larangan` (username, kode)."""
     nfc = unicodedata.normalize("NFC", sandi)
-    if not SANDI_MIN <= len(nfc) <= SANDI_MAKS or any(unicodedata.category(c) == "Cc" for c in nfc):
+    if len(nfc) < SANDI_MIN or panjang_sandi_byte(nfc) > SANDI_MAKS_BYTE:
+        return "sandi_lemah"
+    if any(unicodedata.category(c) == "Cc" for c in nfc):
         return "sandi_lemah"
     rendah = nfc.casefold()
     if any(nilai and rendah == unicodedata.normalize("NFC", nilai).strip().casefold() for nilai in larangan):

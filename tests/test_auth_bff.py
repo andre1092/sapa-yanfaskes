@@ -722,7 +722,8 @@ def test_bentuk_tidak_sah_400_tanpa_memantulkan_isian(bff, body):
 
 @pytest.mark.parametrize("ubah", [
     {"lain": "x"}, {"ingat": None}, {"ingat": 1}, {"username": "a" * 255}, {"username": "petugas\u0007uji"},
-    {"password": "s" * 129}, {"password": "sandi\u0000panjang-sekali"}, {"turnstile_token": "t" * 2049},
+    {"password": "s" * 257}, {"password": "\u00e9" * 129}, {"password": "sandi\u0000panjang-sekali"},
+    {"turnstile_token": "t" * 2049},
     {"realm": "Username-Password-Authentication"},
 ])
 def test_isian_tidak_sah_ditolak_400_satu_pesan(bff, ubah):
@@ -734,7 +735,7 @@ def test_isian_tidak_sah_ditolak_400_satu_pesan(bff, ubah):
 
 def test_isian_tepat_di_batas_panjang_diterima(bff):
     b = bff()
-    res = masuk(b, username="a" * 254, password="s" * 128)
+    res = masuk(b, username="a" * 254, password="s" * 256)
     assert res.status_code == 401 and res.json() == SALAH
 
 

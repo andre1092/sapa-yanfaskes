@@ -33,7 +33,7 @@ pemilik akun):
 - peringatan per username (log dan audit, tanpa memblokir) bila AMBANG_PERINGATAN_USERNAME kegagalan per jam.
 Sandi lama yang salah di /akun/ubah-sandi dihitung pada pembatas (username + IP) yang sama dengan /masuk.
 
-/siapkan-akun: GET menjawab {"tersedia": true, "jenis": "penyiapan"|"pemulihan"} hanya bila env
+/siapkan-akun: GET menjawab {"tersedia": true} (penyiapan dan pemulihan tidak dibedakan) hanya bila env
 SAPA_KODE_PENYIAPAN ada, kodenya belum terpakai, dan tabel akun kosong (penyiapan), atau env SAPA_KODE_PEMULIHAN
 ada, belum terpakai, dan sudah ada akun (pemulihan); selain itu 404 tanpa alasan. POST menukar kode dengan sandi
 baru: bukti asal, isian ketat, pembatas per IP BATAS_SIAPKAN_IP, ketersediaan (aturan yang sama dengan GET),
@@ -94,8 +94,9 @@ LANGKAH_WAKTU_GAGAL = 0.25
 MAKS_BODY = 4096
 _MAKS_USERNAME = 254
 _MAKS_KODE = 256
-# Batas bentuk isian sandi mentah, sama untuk menetapkan dan memakai sandi. Batas sebenarnya dihitung sesudah NFC
-# (akun_service.SANDI_MAKS), supaya sandi yang diterima saat ditetapkan selalu bisa dipakai masuk.
+# Batas bentuk isian sandi mentah (karakter), sama untuk menetapkan dan memakai sandi. Batas sebenarnya dihitung
+# dalam byte UTF-8 sesudah NFC (akun_service.SANDI_MAKS_BYTE), supaya sandi yang diterima saat ditetapkan selalu
+# bisa dipakai masuk. Sandi 256 byte sesudah NFC paling banyak 384 karakter dalam bentuk terurai.
 _MAKS_SANDI_ISIAN = 512
 _FIELD_MASUK = {"username", "password", "ingat", "turnstile_token"}
 _FIELD_SIAPKAN = {"username", "kode", "password_baru", "turnstile_token"}
@@ -256,9 +257,10 @@ def _sandi_isian(nilai, maks: int) -> str:
 
 def _sandi_dipakai(nilai) -> str:
     """Sandi yang dipakai (masuk, sandi lama): bentuk isian seperti saat ditetapkan, lalu paling panjang
-    akun_service.SANDI_MAKS karakter sesudah NFC (ukuran yang sama dengan kebijakan sandi baru)."""
+    akun_service.SANDI_MAKS_BYTE byte UTF-8 sesudah NFC (ukuran yang sama dengan kebijakan sandi baru). Sandi yang
+    lebih panjang ditolak, tidak dipotong."""
     sandi = _sandi_isian(nilai, _MAKS_SANDI_ISIAN)
-    if len(unicodedata.normalize("NFC", sandi)) > akun_service.SANDI_MAKS:
+    if akun_service.panjang_sandi_byte(sandi) > akun_service.SANDI_MAKS_BYTE:
         raise _Gagal("isian_tidak_sah")
     return sandi
 
@@ -751,7 +753,8 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
             return _jawab_gagal(_Gagal("belum_siap"))
         if jenis is None:
             return _jawab_gagal(_Gagal("tidak_tersedia"))
-        return _jawab(200, {"tersedia": True, "jenis": jenis})
+        # Penyiapan dan pemulihan tidak dibedakan di jawaban.
+        return _jawab(200, {"tersedia": True})
 
     async def _catat_kode_ditolak(request: Request, catatan: dict, kode: str, jenis: str, jejak: str) -> None:
         """Kode env yang BENAR ditolak karena sudah terpakai atau jenisnya tidak berlaku saat ini. Ini tanda kode
@@ -801,17 +804,19 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
         await _turnstile(token_turnstile, ip, turnstile.AKSI_SIAPKAN_AKUN, jejak)
         if akun_service.kebijakan_sandi(sandi_baru, larangan=(normal, username, kode)):
             raise _Gagal("sandi_lemah")
+        akun_lama = alasan = None
+        if tersedia == "pemulihan":
+            # Akun dibaca untuk setiap percobaan pemulihan, juga saat kodenya salah, supaya kode salah dan username
+            # yang tidak cocok menjalankan operasi yang sama (status, body, header, dan waktu tahan seragam).
+            akun_lama, alasan, _ = await _baca_akun(normal)
+            _tandai_integritas(catatan, alasan, jejak)
         if jenis is None:
             logger.warning("Kode penyiapan atau pemulihan salah: %s", jejak)
             raise _Gagal("kode_salah")
         hash_kode = akun_service.hash_kode(kode)
-        akun_lama = None
-        if jenis == "pemulihan":
-            akun_lama, alasan, _ = await _baca_akun(normal)
-            _tandai_integritas(catatan, alasan, jejak)
-            if akun_lama is None or alasan in _ALASAN_AUDIT:
-                # Pemulihan hanya mengganti hash akun yang sudah ada, utuh, dan cocok username-nya.
-                raise _Gagal("kode_salah")
+        if jenis == "pemulihan" and (akun_lama is None or alasan in _ALASAN_AUDIT):
+            # Pemulihan hanya mengganti hash akun yang sudah ada, utuh, dan cocok username-nya.
+            raise _Gagal("kode_salah")
         await _cek_hibp(sandi_baru)
         if jenis == "penyiapan":
             akun = await run_in_threadpool(akun_service.akun_baru, normal, sandi_baru)

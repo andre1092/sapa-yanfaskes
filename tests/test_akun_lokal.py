@@ -247,7 +247,7 @@ def test_siapkan_tersedia_hanya_bila_env_ada_dan_tabel_kosong(bff, monkeypatch):
     assert _lihat(b).status_code == 404  # env belum diisi
     monkeypatch.setenv("SAPA_KODE_PENYIAPAN", KODE_PENYIAPAN)
     res = _lihat(b)
-    assert res.status_code == 200 and res.json() == {"tersedia": True, "jenis": "penyiapan"}
+    assert res.status_code == 200 and res.json() == {"tersedia": True}
     assert res.headers["cache-control"] == "no-store"
     tambah_akun(b)
     res = _lihat(b)
@@ -437,7 +437,7 @@ def test_siapkan_kode_penyiapan_terpakai_saat_pemulihan_tersedia_404_dan_tercata
     b = siap_penyiapan()
     assert siapkan(b).status_code == 201
     monkeypatch.setenv("SAPA_KODE_PEMULIHAN", KODE_PEMULIHAN)
-    assert _lihat(b).json() == {"tersedia": True, "jenis": "pemulihan"}
+    assert _lihat(b).json() == {"tersedia": True}
     tercatat = catat_audit(monkeypatch)
     res = siapkan(b, password_baru=SANDI_BARU)
     assert res.status_code == 404 and res.json()["kode"] == "tidak_tersedia"
@@ -447,7 +447,8 @@ def test_siapkan_kode_penyiapan_terpakai_saat_pemulihan_tersedia_404_dan_tercata
     assert res.status_code == 403 and res.json()["kode"] == "kode_salah"
 
 
-@pytest.mark.parametrize("sandi,kode", [("pendek-sekali", "sandi_lemah"), ("s" * 129, "sandi_lemah"),
+@pytest.mark.parametrize("sandi,kode", [("pendek-sekali", "sandi_lemah"), ("s" * 257, "sandi_lemah"),
+                                        ("\u00e9" * 129, "sandi_lemah"),
                                         (KODE_PENYIAPAN, "sandi_lemah"), (USERNAME, "sandi_lemah")])
 def test_siapkan_kebijakan_sandi_400(siap_penyiapan, sandi, kode):
     b = siap_penyiapan()
@@ -607,7 +608,7 @@ def test_pemulihan_mengganti_hash_menaikkan_versi_dan_mencabut_sesi(siap_pemulih
     assert len(b.store.sesi) == 2
     _aksi(b, b.ts.AKSI_SIAPKAN_AKUN)
     res = _lihat(b, client=browser_lain(b))
-    assert res.status_code == 200 and res.json() == {"tersedia": True, "jenis": "pemulihan"}
+    assert res.status_code == 200 and res.json() == {"tersedia": True}
     res = siapkan(b, client=browser_lain(b), kode=KODE_PEMULIHAN, password_baru=SANDI_BARU)
     assert res.status_code == 201 and res.json() == {"siap": True}
     baris = b.akun_mentah.akun[b.utama.id]
@@ -648,12 +649,49 @@ def test_pemulihan_tidak_pernah_membuat_akun(siap_pemulihan):
     assert b.akun_mentah.akun == {} and b.akun_mentah.kode == {}
 
 
-def test_pemulihan_username_tidak_cocok_ditolak_tanpa_mengubah(siap_pemulihan):
+class _WorkerLambat:
+    """Bungkus penyimpanan akun: setiap operasi Worker memajukan jam monoton `waktu` sebesar `tunda` detik."""
+
+    def __init__(self, asli, waktu, tunda=0.4):
+        self._asli, self._waktu, self._tunda = asli, waktu, tunda
+
+    def __getattr__(self, nama):
+        nilai = getattr(self._asli, nama)
+        if nama.startswith("_") or not asyncio.iscoroutinefunction(nilai):
+            return nilai
+
+        async def lambat(*a, **k):
+            self._waktu[0] += self._tunda
+            return await nilai(*a, **k)
+        return lambat
+
+
+def _jejak_pemulihan_gagal(siap_pemulihan, monkeypatch, kode, username):
+    """(status, body, header, waktu tahan total, operasi Worker) satu percobaan pemulihan yang gagal, dengan
+    Worker yang lambat sehingga operasi tambahan terlihat pada waktu tahan."""
     b = siap_pemulihan()
-    res = siapkan(b, kode=KODE_PEMULIHAN, username="lain@contoh.invalid", password_baru=SANDI_BARU)
-    assert res.status_code == 403 and res.json()["kode"] == "kode_salah"
+    waktu = [100.0]
+    monkeypatch.setattr(b.ab, "_monoton", lambda: waktu[0])
+    monkeypatch.setattr(b.ak, "_store", _WorkerLambat(b.akun, waktu))
+    res = siapkan(b, kode=kode, username=username, password_baru=SANDI_BARU)
+    header = {k: res.headers.get(k) for k in ("cache-control", "retry-after", "set-cookie", "content-type")}
+    tahan = round(waktu[0] - 100.0 + sum(b.tidur), 6)
+    hasil = (res.status_code, res.text, header, tahan, list(b.tidur), list(b.akun.panggilan))
     assert b.akun_mentah.akun[b.utama.id]["versi_sandi"] == b.utama.versi_sandi
-    assert b.akun_mentah.kode == {}
+    assert b.akun_mentah.kode == {} and b.hibp.permintaan == []
+    return hasil
+
+
+def test_pemulihan_username_tidak_cocok_ditolak_tanpa_mengubah(siap_pemulihan, monkeypatch):
+    """Kode pemulihan benar dengan username yang tidak cocok tidak boleh bisa dibedakan dari kode salah: status,
+    body, header, waktu tahan, dan operasi Worker sama persis."""
+    tidak_cocok = _jejak_pemulihan_gagal(siap_pemulihan, monkeypatch, KODE_PEMULIHAN, "lain@contoh.invalid")
+    salah_lain = _jejak_pemulihan_gagal(siap_pemulihan, monkeypatch, "z" * 44, "lain@contoh.invalid")
+    salah_ada = _jejak_pemulihan_gagal(siap_pemulihan, monkeypatch, "z" * 44, USERNAME)
+    assert tidak_cocok[0] == 403 and json.loads(tidak_cocok[1])["kode"] == "kode_salah"
+    assert tidak_cocok == salah_lain == salah_ada
+    # Operasi Worker yang lambat tetap tertutup kelipatan waktu tahan yang sama.
+    assert tidak_cocok[3] >= 0.7 and "ambil_username" in tidak_cocok[5]
 
 
 def test_pemulihan_baris_tidak_utuh_ditolak(siap_pemulihan):
@@ -666,12 +704,22 @@ def test_pemulihan_baris_tidak_utuh_ditolak(siap_pemulihan):
 
 # --- panjang sandi: aturan sama untuk penetapan dan pemakaian ---------------------------------------
 
-SANDI_NFD = "Sandi-" + "e\u0301" * 70  # 146 karakter terurai, 76 karakter sesudah NFC
+SANDI_NFD = "Sandi-" + "e\u0301" * 125  # 381 byte terurai, tepat 256 byte UTF-8 sesudah NFC
+
+
+def test_batas_sandi_256_byte_utf8_sesudah_nfc(bff):
+    ak = bff().ak
+    assert ak.SANDI_MAKS_BYTE == 256
+    assert ak.kebijakan_sandi("s" * 256) is None
+    assert ak.kebijakan_sandi("\u00e9" * 128) is None  # 128 karakter, 256 byte
+    assert ak.kebijakan_sandi("s" * 257) == "sandi_lemah"
+    assert ak.kebijakan_sandi("\u00e9" * 128 + "s") == "sandi_lemah"  # 257 byte, tidak dipotong
 
 
 def test_sandi_nfd_yang_diterima_penyiapan_bisa_dipakai_masuk_dan_ubah_sandi(siap_penyiapan):
     b = siap_penyiapan()
-    assert len(SANDI_NFD) > b.ak.SANDI_MAKS >= len(unicodedata.normalize("NFC", SANDI_NFD))
+    nfc = unicodedata.normalize("NFC", SANDI_NFD)
+    assert len(SANDI_NFD.encode("utf-8")) > b.ak.SANDI_MAKS_BYTE == len(nfc.encode("utf-8"))
     assert siapkan(b, password_baru=SANDI_NFD).status_code == 201
     _aksi(b, b.ts.AKSI_MASUK)
     assert masuk(b, password=SANDI_NFD).status_code == 200
@@ -681,7 +729,16 @@ def test_sandi_nfd_yang_diterima_penyiapan_bisa_dipakai_masuk_dan_ubah_sandi(sia
     assert ubah_sandi(b, lama=SANDI_NFD, baru=SANDI_BARU).status_code == 200
 
 
-@pytest.mark.parametrize("sandi", ["s" * 129, "e\u0301" * 129, "s" * 513])
+def test_sandi_ascii_256_byte_bisa_ditetapkan_dan_dipakai(siap_penyiapan):
+    b = siap_penyiapan()
+    panjang = "Sandi-" + "s" * 250
+    assert siapkan(b, password_baru=panjang).status_code == 201
+    _aksi(b, b.ts.AKSI_MASUK)
+    assert masuk(b, password=panjang).status_code == 200
+    assert ubah_sandi(b, lama=panjang, baru="Baru-" + "t" * 251).status_code == 200
+
+
+@pytest.mark.parametrize("sandi", ["s" * 257, "e\u0301" * 129, "\u00e9" * 129, "s" * 513])
 def test_sandi_terlalu_panjang_sesudah_nfc_ditolak_saat_masuk_dan_sandi_lama(bff, sandi):
     b = bff()
     res = masuk(b, password=sandi)
@@ -737,7 +794,8 @@ def test_ubah_sandi_lama_salah_401_dan_berbatas(bff):
 
 
 @pytest.mark.parametrize("baru,kode", [("pendek-sekali", "sandi_lemah"), (SANDI, "sandi_sama"),
-                                       (USERNAME, "sandi_lemah"), ("s" * 129, "sandi_lemah")])
+                                       (USERNAME, "sandi_lemah"), ("s" * 257, "sandi_lemah"),
+                                       ("\u00e9" * 129, "sandi_lemah")])
 def test_ubah_sandi_kebijakan_400(bff, baru, kode):
     b = bff()
     masuk(b)

@@ -158,8 +158,9 @@ siapa pun; sandi yang pernah tertulis di chat tidak boleh dipakai.
    `SAPA_KODE_PENYIAPAN`, lalu redeploy.
 2. Buka `https://<domain SAPA>/siapkan-akun`. Halaman hanya tersedia selama env itu ada, kodenya belum terpakai,
    dan tabel akun masih kosong; selain itu 404.
-3. Isi nama pengguna (email pemilik), kode dari langkah 1, dan sandi baru (minimal 15 karakter, tidak sama
-   dengan nama pengguna atau kode, tidak ada di daftar sandi bocor), lalu centang verifikasi keamanan.
+3. Isi nama pengguna (email pemilik), kode dari langkah 1, dan sandi baru (minimal 15 karakter, paling panjang
+   256 byte, tidak sama dengan nama pengguna atau kode, tidak ada di daftar sandi bocor), lalu centang
+   verifikasi keamanan.
 4. Berhasil: akun dibuat sekali saja (INSERT hanya bila tabel kosong) dan kode langsung tercatat terpakai, jadi
    kode itu tidak bisa dipakai lagi walau env belum dihapus. Akun kedua tidak bisa dibuat lewat jalur ini.
 5. **Hapus env `SAPA_KODE_PENYIAPAN`** di Vercel, lalu redeploy.
@@ -173,7 +174,7 @@ sedang tidak tersedia. Coba lagi beberapa saat lagi." (gagal tertutup); ulangi b
 
 1. Di laptop pemilik: `openssl rand -base64 32`. Tempel ke env Vercel Production (Sensitive)
    `SAPA_KODE_PEMULIHAN`, lalu redeploy.
-2. Buka `/siapkan-akun` (jenis "pemulihan"). Isi nama pengguna akun yang sudah ada, kode, dan sandi baru.
+2. Buka `/siapkan-akun`. Isi nama pengguna akun yang sudah ada, kode, dan sandi baru.
 3. Pemulihan hanya mengganti hash akun yang username-nya cocok (versi sandi naik, MAC dihitung ulang, jangkar
    dinaikkan) dan mencabut semua sesi akun itu. Pemulihan tidak pernah membuat akun; selama tabel akun kosong
    halamannya 404.
