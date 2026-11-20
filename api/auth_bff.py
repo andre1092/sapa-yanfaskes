@@ -36,11 +36,14 @@ Sandi lama yang salah di /akun/ubah-sandi dihitung pada pembatas (username + IP)
 /siapkan-akun: GET menjawab {"tersedia": true, "jenis": "penyiapan"|"pemulihan"} hanya bila env
 SAPA_KODE_PENYIAPAN ada, kodenya belum terpakai, dan tabel akun kosong (penyiapan), atau env SAPA_KODE_PEMULIHAN
 ada, belum terpakai, dan sudah ada akun (pemulihan); selain itu 404 tanpa alasan. POST menukar kode dengan sandi
-baru: bukti asal, isian ketat, pembatas per IP BATAS_SIAPKAN_IP, Turnstile action "sapa_siapkan_akun", kebijakan
-sandi, kode dibandingkan waktu-konstan dengan semua kode env aktif, kode belum terpakai, HIBP (gagal tertutup),
-lalu penyiapan (INSERT hanya bila tabel kosong, sekaligus menandai kode) atau pemulihan (ganti hash akun dengan
-username yang cocok, versi_sandi+1, kode ditandai). Pemulihan tidak pernah membuat akun. Sesudah berhasil jangkar
-dinaikkan dan semua sesi akun dicabut.
+baru: bukti asal, isian ketat, pembatas per IP BATAS_SIAPKAN_IP, ketersediaan (aturan yang sama dengan GET),
+Turnstile action "sapa_siapkan_akun", kebijakan sandi, kode dibandingkan waktu-konstan dengan semua kode env aktif,
+HIBP (gagal tertutup), lalu penyiapan (INSERT hanya bila tabel kosong, sekaligus menandai kode) atau pemulihan
+(ganti hash akun dengan username yang cocok, versi_sandi+1, kode ditandai). Pemulihan tidak pernah membuat akun.
+Sesudah berhasil jangkar dinaikkan dan semua sesi akun dicabut. Selama tidak tersedia, POST selalu 404
+tidak_tersedia (sama dengan tanpa env) apa pun kodenya; kode_salah 403 hanya mungkin saat tersedia. Kode env yang
+benar tetapi sudah terpakai atau tidak berlaku dicatat di log dan audit (dipaksa walau 404, hasil=kode_terpakai
+atau kode_tidak_berlaku) tanpa nilai.
 
 /akun/ubah-sandi: butuh sesi cookie dan bukti asal; sandi lama diverifikasi (berbatas), sandi baru lolos kebijakan
 dan HIBP dan tidak sama dengan sandi lama; versi_sandi+1, jangkar naik, semua sesi akun (termasuk yang sedang
@@ -66,6 +69,7 @@ import logging
 import math
 import re
 import time
+import unicodedata
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Callable, Optional
@@ -89,9 +93,10 @@ WAKTU_MINIMUM_GAGAL = 0.7
 LANGKAH_WAKTU_GAGAL = 0.25
 MAKS_BODY = 4096
 _MAKS_USERNAME = 254
-_MAKS_SANDI = akun_service.SANDI_MAKS
 _MAKS_KODE = 256
-_MAKS_SANDI_BARU_ISIAN = 512  # batas bentuk isian; kebijakan sandi baru lebih ketat (akun_service.SANDI_MAKS)
+# Batas bentuk isian sandi mentah, sama untuk menetapkan dan memakai sandi. Batas sebenarnya dihitung sesudah NFC
+# (akun_service.SANDI_MAKS), supaya sandi yang diterima saat ditetapkan selalu bisa dipakai masuk.
+_MAKS_SANDI_ISIAN = 512
 _FIELD_MASUK = {"username", "password", "ingat", "turnstile_token"}
 _FIELD_SIAPKAN = {"username", "kode", "password_baru", "turnstile_token"}
 _FIELD_UBAH = {"password_lama", "password_baru"}
@@ -247,6 +252,15 @@ def _sandi_isian(nilai, maks: int) -> str:
     if not isinstance(nilai, str) or not nilai or len(nilai) > maks or any(ord(c) < 32 for c in nilai):
         raise _Gagal("isian_tidak_sah")
     return nilai
+
+
+def _sandi_dipakai(nilai) -> str:
+    """Sandi yang dipakai (masuk, sandi lama): bentuk isian seperti saat ditetapkan, lalu paling panjang
+    akun_service.SANDI_MAKS karakter sesudah NFC (ukuran yang sama dengan kebijakan sandi baru)."""
+    sandi = _sandi_isian(nilai, _MAKS_SANDI_ISIAN)
+    if len(unicodedata.normalize("NFC", sandi)) > akun_service.SANDI_MAKS:
+        raise _Gagal("isian_tidak_sah")
+    return sandi
 
 
 def _token_turnstile(nilai) -> str:
@@ -543,7 +557,7 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
             if durasi > WAKTU_MINIMUM_GAGAL:
                 logger.warning("Durasi gagal %d ms melewati batas minimum %d ms (kode %s)",
                                round(durasi * 1000), round(WAKTU_MINIMUM_GAGAL * 1000), gagal.kode)
-            request.state.audit_detail = _detail_audit(catatan, gagal.kode)
+            request.state.audit_detail = _detail_audit(catatan, catatan.get("hasil") or gagal.kode)
             return None, _jawab_gagal(gagal)
 
     # --- /masuk ----------------------------------------------------------------------------------
@@ -558,12 +572,16 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
         if set(body) - _FIELD_MASUK:
             raise _Gagal("isian_tidak_sah")
         username = _teks(body.get("username"), _MAKS_USERNAME).strip()
-        password = _sandi_isian(body.get("password"), _MAKS_SANDI)
+        password = _sandi_dipakai(body.get("password"))
         token_turnstile = _token_turnstile(body.get("turnstile_token"))
         ingat = body.get("ingat")
         if not isinstance(ingat, bool):
             raise _Gagal("isian_tidak_sah")
         normal = normal_username(username)
+        # Bentuk ternormal bisa lebih panjang dari isian (NFKC, casefold). Username yang tidak mungkin dimiliki akun
+        # (aturan yang sama dengan penyiapan) ditolak sebagai isian, tidak bergantung pada akun mana pun.
+        if not akun_service.username_sah(normal):
+            raise _Gagal("isian_tidak_sah")
         jejak = ringkas_username(username)
         catatan["u"] = jejak
 
@@ -735,6 +753,18 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
             return _jawab_gagal(_Gagal("tidak_tersedia"))
         return _jawab(200, {"tersedia": True, "jenis": jenis})
 
+    async def _catat_kode_ditolak(request: Request, catatan: dict, kode: str, jenis: str, jejak: str) -> None:
+        """Kode env yang BENAR ditolak karena sudah terpakai atau jenisnya tidak berlaku saat ini. Ini tanda kode
+        bocor atau env belum dihapus, jadi selalu dicatat: log peringatan dan audit dipaksa (walau 404), tanpa nilai
+        kode maupun username mentah."""
+        request.state.audit_paksa = True
+        try:
+            terpakai = await akun_service.kode_terpakai(akun_service.hash_kode(kode))
+        except akun_service.AkunBelumSiap:
+            terpakai = None
+        catatan["hasil"] = "kode_terpakai" if terpakai else "kode_tidak_berlaku"
+        logger.warning("Kode %s yang benar ditolak (%s): %s", jenis, catatan["hasil"], jejak)
+
     async def _proses_siapkan(request: Request, catatan: dict):
         if request.url.query:
             raise _Gagal("isian_tidak_sah")
@@ -748,7 +778,7 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
         if not akun_service.username_sah(normal):
             raise _Gagal("isian_tidak_sah")
         kode = _teks(body["kode"], _MAKS_KODE)
-        sandi_baru = _sandi_isian(body["password_baru"], _MAKS_SANDI_BARU_ISIAN)
+        sandi_baru = _sandi_isian(body["password_baru"], _MAKS_SANDI_ISIAN)
         token_turnstile = _token_turnstile(body["turnstile_token"])
         jejak = ringkas_username(normal)
         catatan["u"] = jejak
@@ -760,24 +790,23 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
         ip = _ip_wajib(request)
         # Semua percobaan dihitung (sebelum Turnstile), termasuk kode yang salah.
         await _batas(f"siapkan:ip:{kunci_ip(ip)}", BATAS_SIAPKAN_IP)
+        # Ketersediaan diperiksa sebelum kode dan Turnstile: selama tidak tersedia jawabannya selalu 404 yang sama
+        # dengan saat env kode tidak ada, apa pun kode, token, atau sandinya.
+        tersedia = await _jenis_tersedia(aktif)
+        jenis = akun_service.cocok_kode(kode, aktif)
+        if tersedia is None or (jenis is not None and jenis != tersedia):
+            if jenis is not None:
+                await _catat_kode_ditolak(request, catatan, kode, jenis, jejak)
+            raise _Gagal("tidak_tersedia")
         await _turnstile(token_turnstile, ip, turnstile.AKSI_SIAPKAN_AKUN, jejak)
         if akun_service.kebijakan_sandi(sandi_baru, larangan=(normal, username, kode)):
             raise _Gagal("sandi_lemah")
-        jenis = akun_service.cocok_kode(kode, aktif)
         if jenis is None:
             logger.warning("Kode penyiapan atau pemulihan salah: %s", jejak)
             raise _Gagal("kode_salah")
         hash_kode = akun_service.hash_kode(kode)
-        if await akun_service.kode_terpakai(hash_kode):
-            raise _Gagal("tidak_tersedia")
         akun_lama = None
-        if jenis == "penyiapan":
-            if await akun_service.jumlah() != 0:
-                raise _Gagal("tidak_tersedia")
-        else:
-            # Pemulihan tidak tersedia selama belum ada akun (pemulihan tidak pernah membuat akun).
-            if await akun_service.jumlah() == 0:
-                raise _Gagal("tidak_tersedia")
+        if jenis == "pemulihan":
             akun_lama, alasan, _ = await _baca_akun(normal)
             _tandai_integritas(catatan, alasan, jejak)
             if akun_lama is None or alasan in _ALASAN_AUDIT:
@@ -787,11 +816,14 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
         if jenis == "penyiapan":
             akun = await run_in_threadpool(akun_service.akun_baru, normal, sandi_baru)
             if not await akun_service.sisip_pertama(akun, hash_kode):
+                # Permintaan lain mendahului (tabel sudah berisi atau kode sudah ditandai).
+                await _catat_kode_ditolak(request, catatan, kode, jenis, jejak)
                 raise _Gagal("tidak_tersedia")
         else:
             hash_baru = await run_in_threadpool(akun_service.hash_sandi, sandi_baru)
             akun = await akun_service.ganti_hash(akun_lama, hash_baru, hash_kode, "pemulihan")
             if akun is None:
+                await _catat_kode_ditolak(request, catatan, kode, jenis, jejak)
                 raise _Gagal("tidak_tersedia")
         await _cabut_dan_jangkar(akun)
         logger.warning("Akun %s lewat kode %s: %s", "disiapkan" if jenis == "penyiapan" else "dipulihkan", jenis, jejak)
@@ -822,8 +854,8 @@ def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional:
         body = await _baca_json(request)
         if set(body) != _FIELD_UBAH:
             raise _Gagal("isian_tidak_sah")
-        lama = _sandi_isian(body["password_lama"], _MAKS_SANDI)
-        baru = _sandi_isian(body["password_baru"], _MAKS_SANDI_BARU_ISIAN)
+        lama = _sandi_dipakai(body["password_lama"])
+        baru = _sandi_isian(body["password_baru"], _MAKS_SANDI_ISIAN)
         akun = aktif.akun
         jejak = ringkas_username(akun.username)
         catatan["u"] = jejak

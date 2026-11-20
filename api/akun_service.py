@@ -12,7 +12,9 @@ Sandi
   berparameter sama (cocokkan_palsu), supaya waktu jawab seragam.
 - Sandi baru: SANDI_MIN..SANDI_MAKS karakter (NFC), tanpa karakter kontrol, tidak sama dengan username, kode,
   atau sandi lama, dan lolos HIBP k-anonymity (cek_bocor: hanya 5 karakter awal SHA-1 dikirim, header
-  Add-Padding, tenggat total TENGGAT_HIBP). HIBP tidak terjangkau berarti HibpTidakTersedia (gagal tertutup).
+  Add-Padding, tenggat total TENGGAT_HIBP). HIBP tidak terjangkau, status selain 200, atau jawaban yang tidak
+  berformat daftar AKHIRAN:JUMLAH (kosong, HTML) berarti HibpTidakTersedia (gagal tertutup). Logger httpx dan
+  httpcore dinaikkan ke WARNING supaya URL permintaan (berisi awalan SHA-1) tidak tercatat.
 
 Integritas baris
 - Kolom mac = HMAC-SHA256(SAPA_AKUN_KUNCI_MAC, kanonik) dengan kanonik = JSON berkunci terurut tanpa spasi atas
@@ -65,6 +67,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 logger = logging.getLogger("sapa-api")
+# httpx mencatat setiap URL permintaan di level INFO. URL HIBP memuat awalan SHA-1 sandi baru dan URL Worker
+# diperlakukan rahasia, jadi logger httpx/httpcore hanya mencatat peringatan ke atas.
+for _nama_logger in ("httpx", "httpcore"):
+    logging.getLogger(_nama_logger).setLevel(logging.WARNING)
 
 PEPPER_ENV = "SAPA_AKUN_PEPPER"
 KUNCI_MAC_ENV = "SAPA_AKUN_KUNCI_MAC"
@@ -94,6 +100,7 @@ HEADER_TANDA = "X-Sapa-Tanda"
 PESAN_HIBP_TIDAK_TERSEDIA = "Pemeriksaan keamanan sandi sedang tidak tersedia. Coba lagi beberapa saat lagi."
 _POLA_USERNAME = re.compile(r"[a-z0-9][a-z0-9._%+@-]{2,253}")
 _POLA_HEX64 = re.compile(r"[0-9a-f]{64}")
+_POLA_BARIS_HIBP = re.compile(r"([0-9A-F]{35}):([0-9]{1,12})")
 
 
 class AkunBelumSiap(Exception):
@@ -341,14 +348,25 @@ async def cek_bocor(sandi: str) -> bool:
     if res.status_code != 200:
         logger.warning("HIBP menjawab status %s", res.status_code)
         raise HibpTidakTersedia()
+    # Jawaban sah (dengan Add-Padding) berisi ratusan baris AKHIRAN:JUMLAH. Jawaban kosong atau satu baris saja
+    # yang tidak berbentuk itu (halaman HTML, captive portal, isian rusak) berarti hasil tidak bisa dipastikan.
+    bocor = False
+    jumlah_baris = 0
     for baris in res.text.splitlines():
-        nilai, _, jumlah = baris.strip().partition(":")
-        if nilai.upper() == akhiran:
-            try:
-                return int(jumlah or "0") > 0  # baris padding berjumlah 0
-            except ValueError:
-                raise HibpTidakTersedia() from None
-    return False
+        baris = baris.strip()
+        if not baris:
+            continue
+        cocok = _POLA_BARIS_HIBP.fullmatch(baris.upper())
+        if cocok is None:
+            logger.warning("HIBP menjawab isian yang tidak berformat daftar akhiran")
+            raise HibpTidakTersedia()
+        jumlah_baris += 1
+        if cocok.group(1) == akhiran and int(cocok.group(2)) > 0:  # baris padding berjumlah 0
+            bocor = True
+    if jumlah_baris == 0:
+        logger.warning("HIBP menjawab daftar akhiran kosong")
+        raise HibpTidakTersedia()
+    return bocor
 
 
 # --- tanda tangan permintaan ke Worker ------------------------------------------------------------

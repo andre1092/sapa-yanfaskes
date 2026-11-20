@@ -180,6 +180,13 @@ sedang tidak tersedia. Coba lagi beberapa saat lagi." (gagal tertutup); ulangi b
 4. Kode pemulihan sekali pakai. **Hapus env `SAPA_KODE_PEMULIHAN`**, lalu redeploy. Untuk pemulihan berikutnya
    buat kode baru.
 
+Selama penyiapan atau pemulihan tidak tersedia, `POST /api/v1/auth/siapkan-akun` selalu menjawab 404, apa pun
+kode yang dikirim. Bila kode env yang **benar** dipakai lagi (sudah terpakai, atau jenisnya tidak berlaku saat
+itu), kejadiannya tetap tercatat: log peringatan "Kode ... yang benar ditolak" dan audit `POST
+/api/v1/auth/siapkan-akun` status 404 dengan `hasil=kode_terpakai` atau `hasil=kode_tidak_berlaku` (tanpa nilai
+kode). Catatan seperti ini berarti env kode belum dihapus atau nilainya bocor: hapus env itu, redeploy, lalu
+periksa siapa yang memegang kode.
+
 ## 10. Urutan nyala dan rollback
 
 Urutan nyala (setiap langkah dengan izin pemilik produk):

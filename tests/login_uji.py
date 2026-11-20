@@ -117,6 +117,7 @@ class HibpPalsu:
         self.bocor = set()
         self.mati = False
         self.status = 200
+        self.isi = None  # teks jawaban paksa (mis. halaman HTML) menggantikan daftar akhiran
         self.permintaan = []
 
     def transport(self):
@@ -124,6 +125,8 @@ class HibpPalsu:
             self.permintaan.append(permintaan)
             if self.mati:
                 raise httpx.ConnectError("tidak terjangkau", request=permintaan)
+            if self.isi is not None:
+                return httpx.Response(self.status, text=self.isi)
             awalan = permintaan.url.path.rsplit("/", 1)[-1].upper()
             baris = [f"{'0' * 35}:0", f"{'F' * 35}:3"]  # padding dan akhiran lain
             for sandi in self.bocor:

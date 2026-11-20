@@ -9,8 +9,10 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import re
 import time
+import unicodedata
 from pathlib import Path
 
 import httpx
@@ -18,10 +20,10 @@ import pytest
 from fastapi.routing import APIRoute
 
 from login_uji import bff  # noqa: F401  (fixture)
-from login_uji import (ASAL_SENDIRI, COOKIE, HEADER, KODE_PEMULIHAN, KODE_PENYIAPAN, PESAN_FITUR, SALAH, SANDI,
+from login_uji import (ASAL_SENDIRI, COOKIE, HEADER, ISIAN, KODE_PEMULIHAN, KODE_PENYIAPAN, PESAN_FITUR, SALAH, SANDI,
                        SANDI_SALAH, USERNAME, browser_lain, catat_audit, isian_siapkan, masuk, nilai_cookie,
                        set_cookie, siapkan, tambah_akun, ubah_sandi)
-from test_api_auth import load_api
+from test_api_auth import load_api, token
 
 AKAR = Path(__file__).resolve().parents[1]
 VEKTOR = AKAR / "workers" / "sapa-akun" / "test" / "vektor-tanda.json"
@@ -319,9 +321,10 @@ def test_kode_penyiapan_sekali_pakai_walau_env_masih_ada(siap_penyiapan):
     assert b.akun_mentah.akun == {}
 
 
-def test_siapkan_insert_sekali_dua_permintaan_serentak(siap_penyiapan):
-    """Dua permintaan penyiapan serentak dengan kode sah: tepat satu 201, satu 404, satu baris akun."""
+def test_siapkan_insert_sekali_dua_permintaan_serentak(siap_penyiapan, monkeypatch):
+    """Dua permintaan penyiapan serentak dengan kode sah: tepat satu 201, satu 404 yang tercatat, satu baris akun."""
     b = siap_penyiapan()
+    tercatat = catat_audit(monkeypatch)
 
     async def dua():
         transport = httpx.ASGITransport(app=b.api.app)
@@ -333,6 +336,8 @@ def test_siapkan_insert_sekali_dua_permintaan_serentak(siap_penyiapan):
     hasil = sorted(r.status_code for r in asyncio.run(dua()))
     assert hasil == [201, 404]
     assert len(b.akun_mentah.akun) == 1
+    [ditolak] = [e for e in _catatan_siapkan(tercatat) if e["status"] == 404]
+    assert "hasil=kode_terpakai" in ditolak["target"]
 
 
 def test_sisip_pertama_atomik_di_penyimpanan(bff):
@@ -371,7 +376,75 @@ def test_kode_salah_403_dan_benar_dibandingkan_waktu_konstan(siap_penyiapan, mon
 def test_siapkan_kode_salah_tidak_membaca_atau_menulis_akun(siap_penyiapan):
     b = siap_penyiapan()
     assert siapkan(b, kode="x" * 44).status_code == 403
-    assert b.akun.panggilan == [] and b.hibp.permintaan == []
+    # Hanya pemeriksaan ketersediaan (jumlah, kode terpakai); tidak ada baris akun yang dibaca atau ditulis.
+    assert set(b.akun.panggilan) <= {"jumlah", "kode_terpakai"} and b.hibp.permintaan == []
+
+
+def _catatan_siapkan(tercatat):
+    return [e for e in tercatat if e["action"] == "POST /api/v1/auth/siapkan-akun"]
+
+
+def test_siapkan_kode_benar_terpakai_404_seragam_dan_tercatat(siap_penyiapan, monkeypatch, caplog):
+    b = siap_penyiapan()
+    assert siapkan(b).status_code == 201
+    b.hibp.permintaan.clear()
+    tercatat = catat_audit(monkeypatch)
+    caplog.set_level(logging.INFO)
+    res = siapkan(b, password_baru=SANDI_BARU)
+    assert res.status_code == 404 and res.json() == {"detail": b.ab.PESAN_TIDAK_TERSEDIA, "kode": "tidak_tersedia"}
+    [catatan] = _catatan_siapkan(tercatat)
+    assert catatan["status"] == 404 and "hasil=kode_terpakai" in catatan["target"]
+    assert any(r.levelno >= logging.WARNING and "terpakai" in r.getMessage() for r in caplog.records)
+    blob = json.dumps(tercatat) + caplog.text
+    assert KODE_PENYIAPAN not in blob and SANDI_BARU not in blob and USERNAME not in blob
+    assert len(b.akun_mentah.akun) == 1 and b.hibp.permintaan == []
+
+
+def test_siapkan_tidak_tersedia_404_apa_pun_kodenya(siap_penyiapan, monkeypatch):
+    """Selama penyiapan tidak tersedia, kode salah, token Turnstile gagal, dan sandi lemah sama-sama 404 seragam,
+    sama dengan jawaban saat env kode tidak ada; tebakan biasa tidak dicatat sebagai pemakaian kode."""
+    b = siap_penyiapan()
+    assert siapkan(b).status_code == 201
+    tercatat = catat_audit(monkeypatch)
+    jawaban = []
+    jawaban.append(siapkan(b, kode="z" * 44))
+    jawaban.append(siapkan(b, kode="z" * 44, password_baru="pendek"))
+    b.cf.jawaban = {**b.cf.jawaban, "success": False}
+    jawaban.append(siapkan(b, kode="z" * 44))
+    jawaban.append(siapkan(b))
+    monkeypatch.delenv("SAPA_KODE_PENYIAPAN")
+    tanpa_env = siapkan(b, kode="z" * 44)
+    assert tanpa_env.status_code == 404
+    for res in jawaban:
+        assert (res.status_code, res.json()) == (404, tanpa_env.json())
+    assert not any("kode_salah" in e["target"] for e in tercatat)
+    assert ["hasil=kode_terpakai" in e["target"] for e in _catatan_siapkan(tercatat)] == [True]
+
+
+def test_siapkan_kode_pemulihan_saat_tabel_kosong_404_dan_tercatat(siap_penyiapan, monkeypatch):
+    b = siap_penyiapan()
+    monkeypatch.delenv("SAPA_KODE_PENYIAPAN")
+    monkeypatch.setenv("SAPA_KODE_PEMULIHAN", KODE_PEMULIHAN)
+    tercatat = catat_audit(monkeypatch)
+    res = siapkan(b, kode=KODE_PEMULIHAN)
+    assert res.status_code == 404 and res.json()["kode"] == "tidak_tersedia"
+    [catatan] = _catatan_siapkan(tercatat)
+    assert "hasil=kode_tidak_berlaku" in catatan["target"] and KODE_PEMULIHAN not in json.dumps(tercatat)
+    assert b.akun_mentah.akun == {} and b.akun_mentah.kode == {}
+
+
+def test_siapkan_kode_penyiapan_terpakai_saat_pemulihan_tersedia_404_dan_tercatat(siap_penyiapan, monkeypatch):
+    b = siap_penyiapan()
+    assert siapkan(b).status_code == 201
+    monkeypatch.setenv("SAPA_KODE_PEMULIHAN", KODE_PEMULIHAN)
+    assert _lihat(b).json() == {"tersedia": True, "jenis": "pemulihan"}
+    tercatat = catat_audit(monkeypatch)
+    res = siapkan(b, password_baru=SANDI_BARU)
+    assert res.status_code == 404 and res.json()["kode"] == "tidak_tersedia"
+    assert "hasil=kode_terpakai" in _catatan_siapkan(tercatat)[0]["target"]
+    # Kode yang salah saat pemulihan memang tersedia tetap 403 kode_salah.
+    res = siapkan(b, kode="z" * 44, password_baru=SANDI_BARU)
+    assert res.status_code == 403 and res.json()["kode"] == "kode_salah"
 
 
 @pytest.mark.parametrize("sandi,kode", [("pendek-sekali", "sandi_lemah"), ("s" * 129, "sandi_lemah"),
@@ -423,6 +496,45 @@ def test_siapkan_hibp_bertenggat(bff, monkeypatch):
     with pytest.raises(b.ak.HibpTidakTersedia):
         asyncio.run(b.ak.cek_bocor(SANDI))
     assert time.monotonic() - mulai < 0.4
+
+
+HIBP_TIDAK_SAH = ["", "<html>captive portal</html>", "garbage", f"{'0' * 35}:x", f"{'0' * 34}:1",
+                  f"{'0' * 35}:0\r\n<html>"]
+
+
+@pytest.mark.parametrize("isi", HIBP_TIDAK_SAH)
+def test_cek_bocor_jawaban_200_tidak_berformat_hibp_gagal_tertutup(bff, monkeypatch, isi):
+    b = bff()
+    asli = b.ak._klien_hibp.asli
+    monkeypatch.setattr(b.ak, "_klien_hibp",
+                        lambda: asli(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=isi))))
+    with pytest.raises(b.ak.HibpTidakTersedia):
+        asyncio.run(b.ak.cek_bocor(SANDI))
+
+
+def test_cek_bocor_jawaban_berpadding_sah(bff, monkeypatch):
+    b = bff()
+    sha1 = hashlib.sha1(SANDI.encode()).hexdigest().upper()
+    asli = b.ak._klien_hibp.asli
+
+    def pasang(isi):
+        monkeypatch.setattr(b.ak, "_klien_hibp",
+                            lambda: asli(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=isi))))
+    pasang(f"{'0' * 35}:0\r\n{'A' * 35}:4\r\n")
+    assert asyncio.run(b.ak.cek_bocor(SANDI)) is False
+    pasang(f"{'0' * 35}:0\r\n{sha1[5:]}:7")
+    assert asyncio.run(b.ak.cek_bocor(SANDI)) is True
+    pasang(f"{sha1[5:]}:0")  # baris padding untuk akhiran yang sama: tidak bocor
+    assert asyncio.run(b.ak.cek_bocor(SANDI)) is False
+
+
+@pytest.mark.parametrize("isi", ["", "<html>captive portal</html>"])
+def test_siapkan_hibp_jawaban_tidak_sah_503(siap_penyiapan, isi):
+    b = siap_penyiapan()
+    b.hibp.isi = isi
+    res = siapkan(b)
+    assert res.status_code == 503 and res.json() == {"detail": PESAN_HIBP, "kode": "hibp_tidak_tersedia"}
+    assert b.akun_mentah.akun == {} and b.akun_mentah.kode == {}
 
 
 @pytest.mark.parametrize("body", [
@@ -513,12 +625,18 @@ def test_pemulihan_mengganti_hash_menaikkan_versi_dan_mencabut_sesi(siap_pemulih
     assert masuk(b, client=browser_lain(b), password=SANDI_BARU).status_code == 200
 
 
-def test_pemulihan_kode_sekali_pakai_walau_env_masih_ada(siap_pemulihan):
+def test_pemulihan_kode_sekali_pakai_walau_env_masih_ada(siap_pemulihan, monkeypatch):
     b = siap_pemulihan()
     assert siapkan(b, kode=KODE_PEMULIHAN, password_baru=SANDI_BARU).status_code == 201
     assert _lihat(b).status_code == 404
+    tercatat = catat_audit(monkeypatch)
     res = siapkan(b, kode=KODE_PEMULIHAN, password_baru="Sandi-Lain-Lagi-Panjang-1")
     assert res.status_code == 404 and res.json()["kode"] == "tidak_tersedia"
+    [catatan] = _catatan_siapkan(tercatat)
+    assert "hasil=kode_terpakai" in catatan["target"] and KODE_PEMULIHAN not in json.dumps(tercatat)
+    # Kode lain saat pemulihan tidak tersedia: 404 yang sama, tanpa catatan pemakaian kode.
+    salah = siapkan(b, kode="z" * 44, password_baru="Sandi-Lain-Lagi-Panjang-1")
+    assert (salah.status_code, salah.json()) == (404, res.json())
     assert b.akun_mentah.akun[b.utama.id]["versi_sandi"] == b.utama.versi_sandi + 1
 
 
@@ -544,6 +662,34 @@ def test_pemulihan_baris_tidak_utuh_ditolak(siap_pemulihan):
     res = siapkan(b, kode=KODE_PEMULIHAN, password_baru=SANDI_BARU)
     assert res.status_code == 403
     assert b.akun_mentah.akun[b.utama.id]["versi_sandi"] == b.utama.versi_sandi
+
+
+# --- panjang sandi: aturan sama untuk penetapan dan pemakaian ---------------------------------------
+
+SANDI_NFD = "Sandi-" + "e\u0301" * 70  # 146 karakter terurai, 76 karakter sesudah NFC
+
+
+def test_sandi_nfd_yang_diterima_penyiapan_bisa_dipakai_masuk_dan_ubah_sandi(siap_penyiapan):
+    b = siap_penyiapan()
+    assert len(SANDI_NFD) > b.ak.SANDI_MAKS >= len(unicodedata.normalize("NFC", SANDI_NFD))
+    assert siapkan(b, password_baru=SANDI_NFD).status_code == 201
+    _aksi(b, b.ts.AKSI_MASUK)
+    assert masuk(b, password=SANDI_NFD).status_code == 200
+    # Bentuk NFC yang setara juga cocok (hash dibuat atas NFC).
+    b.jam.maju(seconds=1)
+    assert masuk(b, client=browser_lain(b), password=unicodedata.normalize("NFC", SANDI_NFD)).status_code == 200
+    assert ubah_sandi(b, lama=SANDI_NFD, baru=SANDI_BARU).status_code == 200
+
+
+@pytest.mark.parametrize("sandi", ["s" * 129, "e\u0301" * 129, "s" * 513])
+def test_sandi_terlalu_panjang_sesudah_nfc_ditolak_saat_masuk_dan_sandi_lama(bff, sandi):
+    b = bff()
+    res = masuk(b, password=sandi)
+    assert res.status_code == 400 and res.json() == ISIAN
+    assert b.cf.kiriman == []
+    masuk(b)
+    res = ubah_sandi(b, lama=sandi, baru=SANDI_BARU)
+    assert res.status_code == 400 and res.json()["kode"] == "isian_tidak_sah"
 
 
 # --- POST /akun/ubah-sandi ------------------------------------------------------------------------
@@ -619,6 +765,44 @@ def test_ubah_sandi_hibp_mati_gagal_tertutup(bff):
     assert b.client.get("/api/v1/akun/status").status_code == 200  # sesi tetap
 
 
+@pytest.mark.parametrize("isi", ["", "<html>captive portal</html>"])
+def test_ubah_sandi_hibp_jawaban_tidak_sah_503(bff, isi):
+    b = bff()
+    masuk(b)
+    b.hibp.isi = isi
+    res = ubah_sandi(b, baru=SANDI_BARU)
+    assert res.status_code == 503 and res.json() == {"detail": PESAN_HIBP, "kode": "hibp_tidak_tersedia"}
+    assert b.akun_mentah.akun[b.utama.id]["versi_sandi"] == b.utama.versi_sandi
+
+
+def test_awalan_sha1_sandi_baru_tidak_tercatat_di_log(bff, caplog):
+    b = bff()
+    masuk(b)
+    caplog.set_level(logging.DEBUG)
+    assert ubah_sandi(b, baru=SANDI_BARU).status_code == 200
+    assert b.hibp.permintaan
+    awalan = hashlib.sha1(SANDI_BARU.encode()).hexdigest().upper()[:5]
+    for catatan in caplog.records:
+        pesan = catatan.getMessage()
+        assert awalan not in pesan.upper() and "pwnedpasswords" not in pesan, (catatan.name, pesan)
+
+
+def test_ubah_sandi_lama_salah_menyalakan_penanda_lengket_bersama_masuk(bff):
+    b = bff()
+    masuk(b)
+    for _ in range(b.ab.BATAS_GAGAL_USERNAME_IP[1]):
+        res = ubah_sandi(b, lama=SANDI_SALAH)
+        assert res.status_code == 401 and res.json()["kode"] == "sandi_lama_salah"
+        b.jam.maju(seconds=4)
+    # Jendela geser sudah lewat; yang tersisa hanya penanda lengket (username + IP) dari sandi lama yang salah.
+    b.jam.maju(seconds=b.ab.BATAS_GAGAL_USERNAME_IP[0] + 60)
+    res = masuk(b, client=browser_lain(b), password=SANDI_SALAH)
+    assert res.status_code == 429 and res.json()["kode"] == "terlalu_banyak"
+    # IP lain tidak ikut tertahan (tanpa penguncian per akun).
+    res = masuk(b, client=browser_lain(b), password=SANDI_SALAH, header={"x-vercel-forwarded-for": "203.0.113.9"})
+    assert res.status_code == 401 and res.json() == SALAH
+
+
 def test_ubah_sandi_wajib_sesi_dan_bukti_asal(bff):
     b = bff()
     res = ubah_sandi(b)
@@ -673,6 +857,12 @@ class WorkerPalsu:
                 return httpx.Response(401, json={"galat": "tidak_sah"})
             isi = json.loads(body)
             op = r.url.path
+            # Validasi isian seperti Worker asli: teks(nilai, maks) dengan panjang unit UTF-16 (.length JS).
+            for kolom, maks in (("username", 254), ("id", 64)):
+                if op in ("/akun/ambil-username", "/akun/ambil-id") and kolom in isi:
+                    nilai = isi[kolom]
+                    if not isinstance(nilai, str) or not 1 <= len(nilai.encode("utf-16-le")) // 2 <= maks:
+                        return httpx.Response(400, json={"galat": "isian_tidak_sah"})
             if op == "/akun/jumlah":
                 return httpx.Response(200, json={"jumlah": await self.mem.jumlah()})
             if op == "/akun/ambil-username":
@@ -784,6 +974,24 @@ def test_masuk_lewat_worker_dan_worker_401_menjadi_503(worker):
     res = masuk(b, client=browser_lain(b))
     assert res.status_code == 503 and res.json()["kode"] == "belum_siap"
     assert b.client.get("/api/v1/akun/status").status_code == 503
+
+
+USERNAME_MEMANJANG = ["\u00df" * 200, "\U0001F600" * 200, "\ufdfa" * 20]
+
+
+@pytest.mark.parametrize("username", USERNAME_MEMANJANG)
+def test_masuk_username_memanjang_setelah_normalisasi_400_tanpa_worker(worker, username):
+    b = worker
+    res = masuk(b, username=username)
+    assert res.status_code == 400 and res.json() == ISIAN
+    assert b.worker.permintaan == [] and b.cf.kiriman == []
+
+
+@pytest.mark.parametrize("username", USERNAME_MEMANJANG)
+def test_worker_palsu_menolak_username_lebih_dari_254_unit_utf16(worker, username):
+    b = worker
+    with pytest.raises(b.ak.AkunBelumSiap):
+        asyncio.run(b.ak.ambil_username(b.ak.normal_username(username)))
 
 
 def test_worker_url_wajib_https(bff, monkeypatch):
@@ -931,6 +1139,32 @@ def test_menyusuri_rute_tanpa_cookie_cookie_palsu_dan_kedaluwarsa_401(bff):
             header = {**ASAL_SENDIRI, **({"Cookie": f"{COOKIE}={cookie}"} if cookie else {})}
             res = browser_lain(b).request(metode, alamat, headers=header)
             assert res.status_code == 401, (metode, pola, cookie, res.status_code, res.text[:200])
+
+
+def test_menyusuri_rute_bearer_auth0_sah_tanpa_cookie_401(bff, monkeypatch):
+    """Token Auth0 bertanda tangan sah ber-peran super_admin tidak pernah menjadi identitas di rute mana pun."""
+    b = bff()
+
+    def dilarang(*a, **k):
+        raise AssertionError("verifikasi JWT Auth0 dipanggil saat flag 1")
+    monkeypatch.setattr(b.api, "verify_auth0_token", dilarang)
+    bearer = f"Bearer {token(b.api, **{b.api.ROLES_CLAIM: ['super_admin']})}"
+    for metode, alamat, pola in _semua_permintaan(b.api):
+        for cookie in (None, "nilai-palsu-yang-tidak-pernah-ada-di-db"):
+            header = {**ASAL_SENDIRI, "Authorization": bearer, **({"Cookie": f"{COOKIE}={cookie}"} if cookie else {})}
+            res = browser_lain(b).request(metode, alamat, headers=header)
+            assert res.status_code == 401, (metode, pola, cookie, res.status_code, res.text[:200])
+
+
+def test_peran_klaim_dibaca_dari_baris_akun_bukan_dari_sesi(bff):
+    b = bff()
+    assert masuk(b).status_code == 200
+    assert b.client.get("/api/v1/audit-log").status_code not in (401, 403)
+    # Peran diturunkan langsung di tabel (MAC dihitung ulang, versi sandi sama): sesi yang sama ikut turun.
+    turun = b.ak.dengan_mac(b.utama, peran="viewer")
+    b.akun_mentah.akun[b.utama.id] = b.ak.baris_dari(turun)
+    assert b.client.get("/api/v1/audit-log").status_code == 403
+    assert b.client.get("/api/v1/auth/sesi").json()["peran"] == "viewer"
 
 
 def test_menyusuri_rute_mutasi_tanpa_x_sapa_403_dan_fitur_auth0_503(bff):
