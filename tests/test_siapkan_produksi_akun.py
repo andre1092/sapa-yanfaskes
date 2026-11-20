@@ -80,3 +80,14 @@ def test_skrip_tidak_pernah_mencetak_kunci_atau_token():
 def test_konfigurasi_sementara_diabaikan_git():
     abaikan = (Path(__file__).resolve().parent.parent / "workers" / "sapa-akun" / ".gitignore").read_text()
     assert "wrangler.produksi.toml" in abaikan.split()
+
+
+def test_kunci_tidak_disimpan_di_keychain_atau_berkas():
+    sumber = BERKAS.read_text()
+    assert '"security"' not in sumber and "add-generic-password" not in sumber
+    assert "write_text(" in sumber  # hanya konfigurasi sementara berisi database_id
+    pohon = ast.parse(sumber)
+    for simpul in ast.walk(pohon):
+        if isinstance(simpul, ast.Call) and getattr(simpul.func, "attr", None) == "write_text":
+            nama = {n.id for a in simpul.args for n in ast.walk(a) if isinstance(n, ast.Name)}
+            assert not nama & {"kunci", "token_cf", "token_vc"}

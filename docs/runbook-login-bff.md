@@ -134,8 +134,8 @@ python3 scripts/siapkan-produksi-akun.py
 
 Skrip meminta kedua token lewat prompt tersembunyi, lalu mengerjakan langkah 3 sampai 6 dan 8 secara berurutan:
 membuat D1 dan migrasinya, men-deploy Worker, membuat empat kunci baru, memasang `SAPA_AKUN_HMAC` di Worker, menjalankan
-uji negatif, mengisi env Vercel Production, dan menyimpan salinan kunci di Keychain macOS. Kunci dan token tidak
-pernah dicetak atau ditulis ke berkas. Skrip menolak membuat ulang kunci bila D1 sudah berisi akun, dan tidak
+uji negatif, dan mengisi env Vercel Production. Kunci dan token tidak pernah dicetak, ditulis ke berkas, atau
+disimpan di Keychain; tidak ada salinan lain selain di Vercel dan Worker. Skrip menolak membuat ulang kunci bila D1 sudah berisi akun, dan tidak
 menyalakan `SAPA_LOGIN_BFF`. Setelah selesai, cabut kedua token di dasbornya. Langkah manual di bawah tetap
 berlaku bila skrip tidak bisa dipakai.
 

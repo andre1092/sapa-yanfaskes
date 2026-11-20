@@ -18,8 +18,9 @@ Yang dikerjakan, berurutan, dan berhenti di langkah pertama yang gagal:
  6. Meminta token Vercel lewat prompt tersembunyi, lalu mengisi env Production proyek sapa-yanfaskes:
     keempat kunci (tipe sensitive) dan SAPA_AKUN_WORKER_URL. Nilai lama dengan nama sama ditimpa (aman, karena
     D1 masih kosong dan login lokal belum dinyalakan).
- 7. Menyimpan salinan keempat kunci di Keychain macOS (layanan "SAPA <NAMA>", akun "sapa-yanfaskes") lewat
-    `security -i` dari stdin, supaya nilai tidak muncul di daftar proses.
+Salinan kunci sengaja TIDAK disimpan di mana pun (termasuk Keychain), supaya tidak ada proses lain di laptop yang
+bisa membacanya. Bila SAPA_AKUN_HMAC hilang, jalankan ulang skrip ini selama D1 masih kosong, atau ikuti rotasi
+di runbook. Bila pepper atau kunci MAC hilang, akun dibuat ulang (lihat runbook bagian pemulihan).
 
 Kunci dan token tidak pernah dicetak, dicatat, atau ditulis ke berkas. Setelah selesai, cabut kedua token di
 dasbor masing-masing. Skrip tidak menyalakan SAPA_LOGIN_BFF dan tidak membuat SAPA_KODE_PENYIAPAN; keduanya
@@ -147,20 +148,6 @@ def isi_env_vercel(token: str, nilai: dict) -> None:
         print(f"   {nama}: {'diganti' if lama else 'ditambahkan'} (Production)")
 
 
-def simpan_keychain(kunci: dict) -> None:
-    if not shutil.which("security"):
-        print("   Keychain macOS tidak tersedia; simpan salinan kunci di pengelola sandi secara manual "
-              "(nilai tidak bisa dibaca lagi dari Vercel).")
-        return
-    perintah = "".join(
-        f'add-generic-password -U -a sapa-yanfaskes -s "SAPA {nama}" -w "{nilai}"\n' for nama, nilai in kunci.items())
-    hasil = subprocess.run(["security", "-i"], input=perintah, capture_output=True, text=True)
-    if hasil.returncode != 0:
-        raise Gagal("Gagal menyimpan salinan kunci ke Keychain.")
-    jumlah = len(kunci)
-    print(f"   {jumlah} kunci tersimpan di Keychain (layanan \"SAPA <NAMA>\").")
-
-
 def utama() -> int:
     if not (DIR_WORKER / "wrangler.toml").exists():
         print("Jalankan dari salinan repo yang memuat workers/sapa-akun.", file=sys.stderr)
@@ -226,8 +213,6 @@ def utama() -> int:
         del token_vc
         print("   Token Vercel tidak dipakai lagi. Cabut token itu di dasbor Vercel.")
 
-        langkah("7. Salinan kunci di Keychain")
-        simpan_keychain(kunci)
         del kunci
 
         langkah("Selesai")
