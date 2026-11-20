@@ -113,7 +113,8 @@ untuk dua env, dan jangan pernah menulis nilainya di chat, berkas, atau repo.
 | `SAPA_AKUN_PEPPER` | `openssl rand -base64 32` | **baru**; simpan salinan offline. Hilang = semua sandi harus dipulihkan |
 | `SAPA_AKUN_KUNCI_MAC` | `openssl rand -base64 32` | terpisah dari pepper; hilang = MAC semua baris tidak cocok |
 | `SAPA_SESI_KUNCI` | `openssl rand -base64 32` | sudah ada sejak login BFF; isi bila belum |
-| `SAPA_SKEMA_MANUAL` | `1` | opsional, hanya bila DB sesi memakai role terbatas (bagian 7 langkah 7) |
+| `SAPA_SESI_DSN_APLIKASI` | DSN pooled role `sapa_aplikasi` | role terbatas (bagian 7 langkah 7); didahulukan dari `SAPA_SESI_DATABASE_URL` |
+| `SAPA_SKEMA_MANUAL` | `1` | tanpa DDL; hanya `SAPA_SESI_DSN_APLIKASI` yang diterima, DSN integrasi ditolak (503) |
 | `SAPA_KODE_PENYIAPAN` | `openssl rand -base64 32` | sementara, hanya selama penyiapan akun pertama (bagian 8) |
 | `SAPA_KODE_PEMULIHAN` | `openssl rand -base64 32` | sementara, hanya selama pemulihan (bagian 9) |
 | `SAPA_LOGIN_BFF` | `1` | diisi paling akhir (bagian 10) |
@@ -154,8 +155,11 @@ berlaku bila skrip tidak bisa dipakai.
    `SAPA_AKUN_KUNCI_MAC`, dan `SAPA_SESI_KUNCI` (bila belum ada) sesuai bagian 6. `SAPA_LOGIN_BFF` belum diubah.
 7. **Opsional: role DB sesi Neon terbatas.** Di konsol SQL Neon, sebagai owner database, jalankan
    `api/sql/sesi_neon.sql` (membuat `sapa_sesi`, `sapa_batas`, `akun_jangkar`, dan GRANT contoh untuk role
-   `sapa_aplikasi`). Buat role itu dan sandinya lewat konsol Neon, ganti DSN `SAPA_SESI_DATABASE_URL` ke role itu,
-   lalu isi `SAPA_SKEMA_MANUAL=1` supaya aplikasi tidak menjalankan DDL. Role aplikasi hanya SELECT, INSERT,
+   `sapa_aplikasi`). Buat role itu dan sandinya lewat konsol Neon, isi DSN pooled role itu ke env baru
+   `SAPA_SESI_DSN_APLIKASI` (Production, Sensitive). Jangan mengubah `SAPA_SESI_DATABASE_URL`: env itu dikelola
+   integrasi Neon dan bisa ditimpa ulang ke role bawaan. Dengan `SAPA_SKEMA_MANUAL=1` DSN integrasi ditolak,
+   jadi role bawaan tidak pernah dipakai diam-diam.
+   Lalu isi `SAPA_SKEMA_MANUAL=1` supaya aplikasi tidak menjalankan DDL. Role aplikasi hanya SELECT, INSERT,
    UPDATE, DELETE pada tabel sesi dan pembatas, serta SELECT, INSERT, UPDATE pada `akun_jangkar` (tanpa DELETE,
    tanpa DDL). Tanpa langkah ini, aplikasi membuat tabelnya sendiri dengan `CREATE TABLE IF NOT EXISTS`.
 8. **Uji negatif Worker** dari terminal sendiri: `python3 scripts/uji-worker-akun.py <alamat Worker>`. Semua

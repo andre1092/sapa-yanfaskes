@@ -82,6 +82,8 @@ logger = logging.getLogger("sapa-api")
 
 NAMA_COOKIE = "__Host-sapa_sesi"
 DSN_ENV = "SAPA_SESI_DATABASE_URL"
+# DSN role aplikasi terbatas (env sendiri; SAPA_SESI_DATABASE_URL dikelola dan bisa ditimpa integrasi Neon).
+DSN_APLIKASI_ENV = "SAPA_SESI_DSN_APLIKASI"
 KUNCI_ENV = "SAPA_SESI_KUNCI"
 KUNCI_LAMA_ENV = "SAPA_SESI_KUNCI_LAMA"
 SKEMA_MANUAL_ENV = "SAPA_SKEMA_MANUAL"
@@ -621,7 +623,7 @@ class _Pinjaman:
 
 
 class PostgresSesiStore:
-    """Tabel sapa_sesi dan sapa_batas di Postgres (Neon), DSN dari SAPA_SESI_DATABASE_URL.
+    """Tabel sapa_sesi dan sapa_batas di Postgres (Neon), DSN dari dsn_aktif().
 
     Koneksi dipinjam dari daftar siaga event loop yang sedang berjalan dan dikembalikan sesudah operasi (atau di
     akhir blok satu_koneksi()); lihat docstring modul. Skema dibuat dengan CREATE TABLE IF NOT EXISTS (aman
@@ -629,7 +631,7 @@ class PostgresSesiStore:
     """
 
     def __init__(self, dsn: Optional[str] = None):
-        self.dsn = dsn or _env(DSN_ENV)
+        self.dsn = dsn or dsn_aktif()
         self._skema_siap = False
 
     async def _sambung(self):
@@ -851,11 +853,23 @@ _store: Optional[SesiStore] = None
 _store_pg: dict[str, PostgresSesiStore] = {}
 
 
+def dsn_aktif() -> str:
+    """DSN yang dipakai: SAPA_SESI_DSN_APLIKASI (role terbatas) bila ada, selain itu DSN integrasi.
+
+    Dengan SAPA_SKEMA_MANUAL=1 hanya DSN role terbatas yang diterima, sehingga role bawaan integrasi (pemilik
+    database) tidak pernah dipakai diam-diam; tanpa DSN itu penyimpanan dianggap belum siap (503, gagal tertutup).
+    """
+    aplikasi = _env(DSN_APLIKASI_ENV)
+    if aplikasi or _env(SKEMA_MANUAL_ENV) == "1":
+        return aplikasi
+    return _env(DSN_ENV)
+
+
 def store() -> Optional[SesiStore]:
     """Penyimpanan aktif: yang dipasang lewat atur_store (tes), atau Postgres bila DSN diisi."""
     if _store is not None:
         return _store
-    dsn = _env(DSN_ENV)
+    dsn = dsn_aktif()
     if not dsn:
         return None
     if dsn not in _store_pg:
@@ -871,7 +885,8 @@ def atur_store(baru: Optional[SesiStore]) -> None:
 def _store_wajib() -> SesiStore:
     s = store()
     if s is None:
-        logger.error("Penyimpanan sesi belum dikonfigurasi (%s kosong)", DSN_ENV)
+        nama = DSN_APLIKASI_ENV if _env(SKEMA_MANUAL_ENV) == "1" else DSN_ENV
+        logger.error("Penyimpanan sesi belum dikonfigurasi (%s kosong)", nama)
         raise SesiBelumSiap()
     return s
 
