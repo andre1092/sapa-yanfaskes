@@ -88,12 +88,11 @@ export function UnggahDetailSuratKontrol() {
             <td>{tanggalData(b.diunggah_pada, true)}</td><td>{b.diunggah_oleh}</td></tr>)}</tbody></table>}
       <div className="mt-4 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm font-semibold text-[var(--text-main)]" htmlFor="skd-bulan">Bulan data
-          <select id="skd-bulan" value={bulan} disabled={sibuk} onChange={e => { setBulan(e.target.value); setHasil(null); setTahap('kosong'); }}
+          <select id="skd-bulan" aria-describedby="skd-bulan-bantu" value={bulan} disabled={sibuk} onChange={e => { setBulan(e.target.value); setHasil(null); setTahap('kosong'); }}
             className="min-h-[44px] max-w-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface)] px-3 font-normal">
             <option value="" disabled>Pilih bulan</option>
             {bulanUnggahDetail(new Date()).map(b => <option key={b} value={b}>{labelBulan(b)}</option>)}
           </select>
-          <span className="text-xs font-normal text-[var(--text-muted)]">Hanya 3 bulan terakhir yang bisa diunggah.</span>
         </label>
         <label className={`sapa-button sapa-button-secondary ${sibuk || !bulan ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
           Pilih berkas CSV
@@ -101,6 +100,7 @@ export function UnggahDetailSuratKontrol() {
             onChange={(e: ChangeEvent<HTMLInputElement>) => { void pilih(e.target.files?.[0]); e.target.value = ''; }} />
         </label>
       </div>
+      <p id="skd-bulan-bantu" className="mt-1 text-xs text-[var(--text-muted)]">Hanya 3 bulan terakhir yang bisa diunggah.</p>
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
