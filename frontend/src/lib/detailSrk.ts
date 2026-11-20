@@ -77,14 +77,14 @@ export function bersihkanDetailCsv(teks: string): HasilBersih {
   const keluar = [KIRIM.map(kutipCsv).join(',')];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i].map(x => x.trim());
-    if (r.length !== kepala.length) return { csv: '', baris: 0, galat: `Jumlah kolom di baris ${i + 1} tidak sama dengan baris judul. Unduh ulang berkas dari SSBI.` };
+    if (r.length !== kepala.length) return { csv: '', baris: 0, galat: `Jumlah kolom di baris ${i + 1} tidak sama dengan baris judul. Unduh ulang berkas dari SSBI, lalu pilih tanpa dibuka di Excel.` };
     const sep = r[posisi['Nomor SEP']] ?? '';
     if (!RE_NOMOR.test(sep)) return { csv: '', baris: 0, galat: `Nomor SEP di baris ${i + 1} tidak sesuai pola. Unduh ulang berkas dari SSBI.` };
     const nilai = [sep.slice(0, 8), r[posisi['Jenis Pelayanan']], r[posisi['Kode Poli Tujuan SEP']], r[posisi['Day, Month, Year of Tgl SEP']],
       r[posisi['Day, Month, Year of Tgl Terbit Kontrol']], r[posisi['Nama Faskes']], r[posisi['Status Surat Kontrol']]];
     // Semua sel yang akan dikirim dicek pola nomor (nomor yang bergeser kolom tidak boleh sampai ke server).
     if (nilai.slice(1).some(v => miripNomor(v ?? ''))) {
-      return { csv: '', baris: 0, galat: `Baris ${i + 1} memuat pola nomor SEP atau nomor surat kontrol di luar kolom nomor. Berkas tidak dikirim; unduh ulang dari SSBI.` };
+      return { csv: '', baris: 0, galat: `Baris ${i + 1} memuat pola nomor SEP atau nomor surat kontrol di luar kolom nomor. Berkas tidak dikirim. Unduh ulang berkas dari SSBI, lalu pilih tanpa dibuka di Excel.` };
     }
     keluar.push(nilai.map(v => kutipCsv(v ?? '')).join(','));
   }

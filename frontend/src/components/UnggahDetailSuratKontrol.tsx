@@ -60,7 +60,7 @@ export function UnggahDetailSuratKontrol() {
       qc.setQueryData(['surat-kontrol-detail-status'], { bulan: Array.isArray(res.data?.bulan) ? res.data.bulan : [] });
       qc.invalidateQueries({ queryKey: ['surat-kontrol-detail-bulan'] });
       if (!bulanTersimpan(res.data, bulan)) {
-        setGalat(`Detail ${labelBulan(bulan)} tidak ada di daftar bulan tersimpan. Muat ulang halaman lalu periksa lagi.`);
+        setGalat(`Belum bisa dipastikan Detail ${labelBulan(bulan)} tersimpan. Muat ulang halaman, lalu lihat tabel Bulan yang tersimpan. Jika ${labelBulan(bulan)} belum ada, integrasikan lagi.`);
         setTahap('galat'); return;
       }
       setTahap('berhasil');
@@ -71,6 +71,7 @@ export function UnggahDetailSuratKontrol() {
   };
 
   const r = hasil?.ringkasan;
+  const barisLama = r ? status.data?.bulan.find(b => b.bulan === r.bulan)?.baris : undefined;
   return (
     <section aria-labelledby="skd-unggah" className="sk-unggah rounded-xl border border-[var(--border-color)] bg-[var(--surface)] p-5">
       <h2 id="skd-unggah" className="text-base font-bold text-[var(--text-main)]">Detail Surat Kontrol</h2>
@@ -92,6 +93,7 @@ export function UnggahDetailSuratKontrol() {
             <option value="" disabled>Pilih bulan</option>
             {bulanUnggahDetail(new Date()).map(b => <option key={b} value={b}>{labelBulan(b)}</option>)}
           </select>
+          <span className="text-xs font-normal text-[var(--text-muted)]">Hanya 3 bulan terakhir yang bisa diunggah.</span>
         </label>
         <label className={`sapa-button sapa-button-secondary ${sibuk || !bulan ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
           Pilih berkas CSV
@@ -114,8 +116,9 @@ export function UnggahDetailSuratKontrol() {
           <p><strong>{labelBulan(r.bulan)}:</strong> {angka(r.baris)} baris, {angka(r.faskes)} faskes. Rawat jalan = SEP {angka(r.RJ.eq)} · &gt; SEP {angka(r.RJ.gt)};
             Rawat inap = SEP {angka(r.RI.eq)} · &gt; SEP {angka(r.RI.gt)}.</p>
           {r.kode_tak_dikenal.length > 0 && <p className="mt-2 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
-            <strong>Periksa sebelum Integrasikan:</strong> {r.kode_tak_dikenal.length} kode faskes belum ada di tabel padanan ({r.kode_tak_dikenal.join('; ')}). Nama faskesnya belum bisa dicocokkan dengan kode PPK.</p>}
-          {hasil?.ada && <p className="mt-2">Data detail {labelBulan(r.bulan)} yang sekarang akan diganti. Bulan lain tidak berubah.</p>}
+            <strong>Periksa sebelum Integrasikan:</strong> {r.kode_tak_dikenal.length} kode faskes belum ada di tabel padanan ({r.kode_tak_dikenal.join('; ')}). Nama faskes untuk kode ini tidak bisa dicek, jadi pastikan berkasnya benar. Minta tim teknis SAPA menambahkan kode ini ke tabel padanan.</p>}
+          {hasil?.ada && <p className="mt-2 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
+            Detail {labelBulan(r.bulan)} yang sekarang{barisLama !== undefined ? ` (${angka(barisLama)} baris)` : ''} akan diganti. Bulan lain tidak berubah.</p>}
         </div>}
         {tahap === 'berhasil' && <p role="status" className="rounded-lg border border-[var(--success)] p-3 text-[var(--text-main)]">Detail {labelBulan(bulan)} tersimpan.</p>}
       </div>

@@ -186,6 +186,7 @@ def test_upload_month_outside_window_is_400(env, aksi, bulan):
     _, drive, call, _ = env
     res = unggah(call, aksi, bulan=bulan)
     assert res.status_code == 400 and "3 bulan terakhir" in res.json()["detail"] and drive.tulis_n == 0
+    assert "Muat ulang halaman" in res.json()["detail"]
 
 
 def test_integrate_reports_months_including_uploaded_one(env):

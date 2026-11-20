@@ -60,6 +60,7 @@ test('sel biasa tidak dianggap nomor', () => {
 test('baris dengan jumlah kolom bergeser ditolak', () => {
   const g = s.bersihkanDetailCsv(`${KEPALA}\r\n${BARIS},tambahan\r\n`).galat;
   assert.match(g ?? '', /Jumlah kolom di baris 2/);
+  assert.match(g, /tanpa dibuka di Excel/);
 });
 
 test('pilihan bulan unggah hanya 3 bulan terakhir, mulai November 2026', () => {

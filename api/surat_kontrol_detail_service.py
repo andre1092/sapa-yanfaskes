@@ -89,7 +89,7 @@ def cek_bulan_unggah(bulan: str, hari_ini: date) -> str:
     """Review Clara butir 6: unggah hanya untuk 3 bulan terakhir (bulan berjalan WIB dan dua sebelumnya)."""
     cek_bulan(bulan)
     if not (_bulan_minimum(hari_ini) <= bulan <= f"{hari_ini.year}-{hari_ini.month:02d}"):
-        raise BerkasDitolak("Bulan data harus salah satu dari 3 bulan terakhir dan tidak boleh bulan yang akan datang.")
+        raise BerkasDitolak("Bulan data harus salah satu dari 3 bulan terakhir. Muat ulang halaman untuk melihat pilihan bulan terbaru.")
     return bulan
 
 
