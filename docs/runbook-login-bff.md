@@ -159,7 +159,10 @@ berlaku bila skrip tidak bisa dipakai.
    menjadi anggota `neon_superuser` (pg_read_all_data, pg_write_all_data, CREATEROLE, BYPASSRLS). Contoh:
    `CREATE ROLE sapa_aplikasi WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;` dijalankan
    sebelum GRANT, dan pastikan `pg_has_role('sapa_aplikasi', 'neon_superuser', 'MEMBER')` bernilai false.
-   Sandi diatur lewat Reset password di halaman Roles (sandi tidak tertulis di riwayat SQL), lalu DSN pooled role
+   Neon hanya bisa me-reset sandi role yang sudah bersandi, jadi beri dulu sandi awal acak buatan server yang
+   tidak pernah ditampilkan: `DO $$ BEGIN EXECUTE format('ALTER ROLE sapa_aplikasi WITH PASSWORD %L',
+   md5(random()::text || clock_timestamp()::text) || md5(random()::text)); END $$;`. Lalu sandi asli diatur lewat
+   Reset password di halaman Roles (sandi tidak tertulis di riwayat SQL), dan pemeriksaan role diulang. DSN pooled role
    itu diambil dari dialog Connect dan diisi ke env baru
    `SAPA_SESI_DSN_APLIKASI` (Production, Sensitive). Jangan mengubah `SAPA_SESI_DATABASE_URL`: env itu dikelola
    integrasi Neon dan bisa ditimpa ulang ke role bawaan. Dengan `SAPA_SKEMA_MANUAL=1` DSN integrasi ditolak,
