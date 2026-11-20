@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
 from test_api_auth import load_api, token
-from test_surat_kontrol_detail_service import BAIK, csv
+from test_surat_kontrol_detail_service import BAIK, BESAR, csv
 
 import audit_log  # noqa: E402
 
@@ -147,3 +147,48 @@ def test_months_endpoint_for_download_roles(env):
     assert call("GET", "/api/v1/surat-kontrol-detail/bulan").json()["bulan"] == ["2026-11"]
     assert call("GET", "/api/v1/surat-kontrol-detail/bulan", roles=["viewer"]).status_code == 403
     assert call("GET", "/api/v1/surat-kontrol-detail/status").json()["bulan"][0]["bulan"] == "2026-11"
+
+
+# --- Review Clara PR #87 (2026-11-19), butir wajib 1, 2c, 4 (sha256), 6. Nilai palsu. ------------------------
+
+def test_padanan_unreadable_fails_closed_with_503(env, monkeypatch):
+    api, drive, call, _ = env
+
+    def rusak():
+        raise OSError("padanan hilang")
+
+    monkeypatch.setattr(api, "_ssbi_padanan", None)
+    monkeypatch.setattr(api.ssbi_jadwal_service.Padanan, "dari_berkas", staticmethod(rusak))
+    for aksi in ("periksa", "integrasikan"):
+        assert unggah(call, aksi).status_code == 503
+    assert drive.tulis_n == 0
+
+
+def test_unmatched_codes_are_audited_without_names(env):
+    _, _, call, written = env
+    b = ("0191R006", "Rawat Inap", "", "November 4, 2026", "November 5, 2026", "RS BARU PALSU", BESAR)
+    res = unggah(call, "periksa", raw=csv(BAIK[0], b))
+    assert res.status_code == 200 and res.json()["ringkasan"]["kode_tak_dikenal"] == ["0191R006"]
+    target = written[-1]["target"]
+    assert "tak_terpadan=1" in target and "0191R006" in target and "RS BARU PALSU" not in target
+
+
+def test_rejected_upload_is_audited_without_hash(env):
+    _, _, call, written = env
+    b = list(BAIK[0]); b[5] = "0189 R001 1125 V000123"
+    assert unggah(call, "periksa", raw=csv(tuple(b))).status_code == 400
+    assert "bulan=2026-11" in written[-1]["target"] and "sha256=" not in written[-1]["target"]
+
+
+@pytest.mark.parametrize("bulan", ["2026-08", "2026-12", "2027-01"])
+@pytest.mark.parametrize("aksi", ["periksa", "integrasikan"])
+def test_upload_month_outside_window_is_400(env, aksi, bulan):
+    _, drive, call, _ = env
+    res = unggah(call, aksi, bulan=bulan)
+    assert res.status_code == 400 and "3 bulan terakhir" in res.json()["detail"] and drive.tulis_n == 0
+
+
+def test_integrate_reports_months_including_uploaded_one(env):
+    _, _, call, _ = env
+    res = unggah(call, bulan="2026-11")
+    assert res.status_code == 200 and "2026-11" in [b["bulan"] for b in res.json()["bulan"]]

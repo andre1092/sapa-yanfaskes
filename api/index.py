@@ -4119,6 +4119,7 @@ _SKD_KUNCI = 0x55B1_0003
 _SKD_BELUM_SIAP = "Penyimpanan detail Surat Kontrol belum disiapkan. Hubungi tim teknis SAPA."
 _SKD_DRIVE_GAGAL = "Penyimpanan detail Surat Kontrol sedang bermasalah. Data lama tetap dipakai. Coba lagi sebentar."
 _SKD_BATAS_RESPON = 4_400_000
+_SKD_PADANAN_GAGAL = "Tabel padanan faskes tidak terbaca, jadi berkas belum bisa diperiksa. Hubungi tim teknis SAPA."
 _skd_simpanan: Dict[str, Any] = {"versi": None, "isi": None}
 _skd_simpanan_lock = threading.Lock()
 _RE_SKD_KODE = re.compile(r"[0-9]{4}[A-Z][0-9]{3}")
@@ -4164,11 +4165,12 @@ def _skd_aktif() -> Dict[str, dict]:
 
 
 def _skd_padanan() -> Dict[str, set]:
+    """Gagal tertutup (review Clara butir 1): tanpa padanan, cek nama faskes tidak bisa dijalankan, jadi 503."""
     try:
         return {kode: set(nama) for kode, (_, nama) in _ssbi_peta().kode.items()}
     except Exception as exc:
         logger.error("Tabel padanan SSBI tidak terbaca: %s", type(exc).__name__)
-        return {}
+        raise HTTPException(status_code=503, detail=_SKD_PADANAN_GAGAL, headers=_NO_STORE)
 
 
 def require_skd_unduh(request: Request) -> dict:
@@ -4193,6 +4195,11 @@ async def _skd_terima(request: Request, bulan: str):
         raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
     bulan = _sk_bulan_param(bulan)
     request.state.audit_detail = f"bulan={bulan}"
+    try:
+        surat_kontrol_detail_service.cek_bulan_unggah(bulan, _sk_hari_ini())
+    except surat_kontrol_detail_service.BerkasDitolak as exc:
+        raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
+    padanan = _skd_padanan()
     batas = surat_kontrol_detail_service.BATAS_KOMPRES
     besar = HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).", headers=_NO_STORE)
     try:
@@ -4205,17 +4212,20 @@ async def _skd_terima(request: Request, bulan: str):
         data.extend(potong)
         if len(data) > batas:
             raise besar
-    # Kiriman sudah bersih (nomor dibuang di browser), jadi sha256 dihitung atas kiriman ini (syarat Clara C).
-    request.state.audit_detail = f"bulan={bulan} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
-    padanan = _skd_padanan()
 
     def olah():
         return surat_kontrol_detail_service.periksa_csv(surat_kontrol_detail_service.buka_gzip(bytes(data)), bulan, padanan)
 
     try:
-        return bulan, await run_in_threadpool(olah)
+        hasil = await run_in_threadpool(olah)
     except surat_kontrol_detail_service.BerkasDitolak as exc:
         raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
+    # sha256 hanya untuk kiriman yang lolos pemeriksaan (sudah pasti tanpa pola nomor; syarat Clara C, review butir 4).
+    # Kode tak terpadan dicatat jumlah dan kodenya saja, tanpa nama faskes (review butir 2c).
+    tak = hasil.ringkasan["kode_tak_dikenal"]
+    request.state.audit_detail = (f"bulan={bulan} tak_terpadan={len(tak)} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
+                                  + (f" kode={','.join(tak[:12])}" if tak else ""))
+    return bulan, hasil
 
 
 def _skd_ringkas(bulan: str, v: dict) -> dict:

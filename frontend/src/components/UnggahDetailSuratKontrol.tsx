@@ -3,8 +3,8 @@ import type { ChangeEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { tanggalData } from '../lib/ssbiJadwal';
-import { angka, bulanUnggah, labelBulan } from '../lib/suratKontrol';
-import { bersihkanDetailCsv } from '../lib/detailSrk';
+import { angka, labelBulan } from '../lib/suratKontrol';
+import { bersihkanDetailCsv, bulanTersimpan, bulanUnggahDetail } from '../lib/detailSrk';
 
 // Bagian "Detail Surat Kontrol" di Integrasi data (USUL-unduh-detail.md Kim; syarat Clara: nomor dibuang di browser).
 type InfoBulan = { bulan: string; baris: number; diunggah_pada: string; diunggah_oleh: string };
@@ -57,8 +57,12 @@ export function UnggahDetailSuratKontrol() {
     setTahap('mengirim');
     try {
       const res = await kirim('integrasikan', bulan, gz);
-      qc.setQueryData(['surat-kontrol-detail-status'], { bulan: res.data.bulan });
+      qc.setQueryData(['surat-kontrol-detail-status'], { bulan: Array.isArray(res.data?.bulan) ? res.data.bulan : [] });
       qc.invalidateQueries({ queryKey: ['surat-kontrol-detail-bulan'] });
+      if (!bulanTersimpan(res.data, bulan)) {
+        setGalat(`Detail ${labelBulan(bulan)} tidak ada di daftar bulan tersimpan. Muat ulang halaman lalu periksa lagi.`);
+        setTahap('galat'); return;
+      }
       setTahap('berhasil');
     } catch (e) {
       setGalat(pesanGalat(e, `Data ${labelBulan(bulan)} belum tersimpan karena koneksi terputus. Data lama tetap dipakai.`));
@@ -86,7 +90,7 @@ export function UnggahDetailSuratKontrol() {
           <select id="skd-bulan" value={bulan} disabled={sibuk} onChange={e => { setBulan(e.target.value); setHasil(null); setTahap('kosong'); }}
             className="min-h-[44px] max-w-xs rounded-lg border border-[var(--border-color)] bg-[var(--surface)] px-3 font-normal">
             <option value="" disabled>Pilih bulan</option>
-            {bulanUnggah(new Date()).map(b => <option key={b} value={b}>{labelBulan(b)}</option>)}
+            {bulanUnggahDetail(new Date()).map(b => <option key={b} value={b}>{labelBulan(b)}</option>)}
           </select>
         </label>
         <label className={`sapa-button sapa-button-secondary ${sibuk || !bulan ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}>
@@ -109,7 +113,8 @@ export function UnggahDetailSuratKontrol() {
         {r && tahap !== 'berhasil' && <div role="status" className="rounded-lg bg-[var(--surface-subtle)] p-3 text-[var(--text-main)]">
           <p><strong>{labelBulan(r.bulan)}:</strong> {angka(r.baris)} baris, {angka(r.faskes)} faskes. Rawat jalan = SEP {angka(r.RJ.eq)} · &gt; SEP {angka(r.RJ.gt)};
             Rawat inap = SEP {angka(r.RI.eq)} · &gt; SEP {angka(r.RI.gt)}.</p>
-          {r.kode_tak_dikenal.length > 0 && <p className="mt-2">Kode faskes belum ada di tabel padanan: {r.kode_tak_dikenal.join('; ')}.</p>}
+          {r.kode_tak_dikenal.length > 0 && <p className="mt-2 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
+            <strong>Periksa sebelum Integrasikan:</strong> {r.kode_tak_dikenal.length} kode faskes belum ada di tabel padanan ({r.kode_tak_dikenal.join('; ')}). Nama faskesnya belum bisa dicocokkan dengan kode PPK.</p>}
           {hasil?.ada && <p className="mt-2">Data detail {labelBulan(r.bulan)} yang sekarang akan diganti. Bulan lain tidak berubah.</p>}
         </div>}
         {tahap === 'berhasil' && <p role="status" className="rounded-lg border border-[var(--success)] p-3 text-[var(--text-main)]">Detail {labelBulan(bulan)} tersimpan.</p>}

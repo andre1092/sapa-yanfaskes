@@ -38,6 +38,11 @@ _BULAN_EN = {n: i + 1 for i, n in enumerate(("January", "February", "March", "Ap
                                               "September", "October", "November", "December"))}
 
 _RE_NOMOR = re.compile(r"[0-9]{4}[A-Z][0-9]{7}[A-Z][0-9]{6}")
+# Review Clara PR #87 butir 3: sel dinormalisasi dulu, lalu dicek pola utuh dan pola potongan nomor:
+# kepala (kode PPK + 4 digit tanggal + ...), ekor (>=4 digit + huruf + 6 digit), atau deret digit panjang.
+_RE_POTONGAN = re.compile(r"[0-9]{4}[A-Z][0-9]{7}|[0-9]{4}[A-Z][0-9]{6}|[0-9]{11}")
+_RE_PEMISAH = re.compile(r"[\s._\-/]+")
+_RE_POLI = re.compile(r"[A-Z0-9]{0,6}")
 _RE_KODE = re.compile(r"[0-9]{4}[A-Z][0-9]{3}")
 _RE_TGL = re.compile(r"([A-Z][a-z]+) ([0-9]{1,2}), ([0-9]{4})")
 _RE_BULAN = re.compile(r"[0-9]{4}-(0[1-9]|1[0-2])")
@@ -59,6 +64,32 @@ def label_bulan(bulan: str) -> str:
 def cek_bulan(bulan: str) -> str:
     if not isinstance(bulan, str) or not _RE_BULAN.fullmatch(bulan):
         raise ValueError("bulan harus YYYY-MM")
+    return bulan
+
+
+def normalkan_sel(nilai: str) -> str:
+    """NFKC, digit Unicode apa pun -> ASCII, huruf besar, buang kategori Cf/Z* dan pemisah spasi . - _ /."""
+    teks = unicodedata.normalize("NFKC", nilai or "")
+    keluar = []
+    for ch in teks:
+        kat = unicodedata.category(ch)
+        if kat == "Cf" or kat.startswith("Z"):
+            continue
+        d = unicodedata.decimal(ch, None)
+        keluar.append(str(d) if d is not None else ch)
+    return _RE_PEMISAH.sub("", "".join(keluar).upper())
+
+
+def mirip_nomor(nilai: str) -> bool:
+    n = normalkan_sel(nilai)
+    return bool(_RE_NOMOR.search(n) or _RE_POTONGAN.search(n))
+
+
+def cek_bulan_unggah(bulan: str, hari_ini: date) -> str:
+    """Review Clara butir 6: unggah hanya untuk 3 bulan terakhir (bulan berjalan WIB dan dua sebelumnya)."""
+    cek_bulan(bulan)
+    if not (_bulan_minimum(hari_ini) <= bulan <= f"{hari_ini.year}-{hari_ini.month:02d}"):
+        raise BerkasDitolak("Bulan data harus salah satu dari 3 bulan terakhir dan tidak boleh bulan yang akan datang.")
     return bulan
 
 
@@ -109,60 +140,76 @@ def _galat(nomor: int, kolom: str, alasan: str) -> BerkasDitolak:
 
 
 def periksa_csv(raw: bytes, bulan: str, padanan: Dict[str, Set[str]]) -> HasilPeriksa:
-    """`padanan`: kode PPK -> himpunan nama faskes baku (norm). Kode di luar padanan dilaporkan, tidak ditolak."""
+    """`padanan`: kode PPK -> himpunan nama faskes baku (norm).
+
+    Kode di luar padanan diterima dengan syarat (review Clara butir 2): namanya bukan nama padanan milik kode lain,
+    dan satu kode tak terpadan hanya punya satu nama di seluruh berkas. Parsing lazy (butir 5): kepala dicek dulu,
+    baris kosong ikut dihitung, dan pembacaan berhenti begitu melewati BATAS_BARIS.
+    """
     try:
         teks = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
         raise BerkasDitolak("Kiriman harus CSV UTF-8 dari halaman Integrasi data.") from None
     if "\x00" in teks:
         raise BerkasDitolak("Berkas memuat karakter yang tidak sah.")
+    pembaca = csv.reader(io.StringIO(teks, newline=""), strict=True)
     try:
-        rows = list(csv.reader(io.StringIO(teks, newline=""), strict=True))
+        kepala = [h.strip() for h in next(pembaca, [])]
     except csv.Error:
         raise BerkasDitolak("Berkas CSV tidak terbaca. Unduh ulang dari SSBI.") from None
-    if not rows:
+    if not kepala:
         raise BerkasDitolak("Berkas tidak berisi baris data.")
-    kepala = [h.strip() for h in rows[0]]
-    if any("nomor" in h.casefold() for h in kepala):
+    if any("nomor" in normalkan_sel(h).casefold() for h in kepala):
         raise BerkasDitolak("Kiriman masih memuat kolom nomor SEP atau nomor surat kontrol. Unggah lewat halaman Integrasi data.")
     if tuple(kepala) != KEPALA:
         raise BerkasDitolak("Kolom berkas tidak sesuai view SSBI Surat Kontrol = SEP.")
+    milik: Dict[str, str] = {n: k for k, nama in padanan.items() for n in nama}
     hasil: List[List[str]] = []
     ring = {"RJ": {"eq": 0, "gt": 0}, "RI": {"eq": 0, "gt": 0}}
-    tak_dikenal: Set[str] = set()
-    for nomor, sel in enumerate(rows[1:], start=2):
-        if not any(c.strip() for c in sel):
-            continue
-        if len(sel) != len(KEPALA):
-            raise BerkasDitolak(f"Jumlah kolom di baris {nomor} tidak sama dengan baris judul. Tidak ada data yang diubah.")
-        sel = [c.strip() for c in sel]
-        for k, c in zip(KEPALA, sel):
-            if len(c) > BATAS_SEL:
-                raise _galat(nomor, k, f"isi lebih dari {BATAS_SEL} karakter")
-            if _RE_NOMOR.search(c):
-                raise BerkasDitolak(f"Baris {nomor} memuat pola nomor SEP atau nomor surat kontrol. Nomor harus dibuang di browser; tidak ada data yang diubah.")
-        kode, jenis, poli, t_sep, t_terbit, nama, status = sel
-        if not _RE_KODE.fullmatch(kode) or kode[:4] not in PREFIKS_KC:
-            raise _galat(nomor, "kode PPK", "bukan kode PPK FKRTL KC Jember")
-        if kode in padanan:
-            if norm(nama) not in padanan[kode]:
-                raise _galat(nomor, "Nama Faskes", "tidak cocok dengan kode PPK")
-        else:
-            tak_dikenal.add(kode)
-        if jenis not in JENIS:
-            raise _galat(nomor, "Jenis Pelayanan", "harus Rawat Jalan atau Rawat Inap")
-        if status not in STATUS:
-            raise _galat(nomor, "Status", "hanya status tidak sesuai (= SEP atau > SEP)")
-        a, b = _tgl(t_sep), _tgl(t_terbit)
-        if a is None or b is None:
-            raise _galat(nomor, "Tgl SEP/Tgl Terbit", "tanggal tidak terbaca")
-        if a[:7] != bulan:
-            raise _galat(nomor, "Tgl SEP", f"bukan {label_bulan(bulan)}; periksa bulan yang dipilih")
-        j, s = JENIS[jenis], STATUS[status]
-        ring[j][s] += 1
-        hasil.append([kode, nama, j, poli, a, b, s])
-        if len(hasil) > BATAS_BARIS:
-            raise BerkasDitolak("Berkas berisi terlalu banyak baris.")
+    tak_dikenal: Dict[str, str] = {}
+    nomor = 1
+    try:
+        for sel in pembaca:
+            nomor += 1
+            if nomor - 1 > BATAS_BARIS:
+                raise BerkasDitolak("Berkas berisi terlalu banyak baris.")
+            if not any(c.strip() for c in sel):
+                continue
+            if len(sel) != len(KEPALA):
+                raise BerkasDitolak(f"Jumlah kolom di baris {nomor} tidak sama dengan baris judul. Tidak ada data yang diubah.")
+            sel = [c.strip() for c in sel]
+            for k, c in zip(KEPALA, sel):
+                if len(c) > BATAS_SEL:
+                    raise _galat(nomor, k, f"isi lebih dari {BATAS_SEL} karakter")
+                if mirip_nomor(c):
+                    raise BerkasDitolak(f"Baris {nomor} memuat pola nomor SEP atau nomor surat kontrol. Nomor harus dibuang di browser; tidak ada data yang diubah.")
+            kode, jenis, poli, t_sep, t_terbit, nama, status = sel
+            if not _RE_KODE.fullmatch(kode) or kode[:4] not in PREFIKS_KC:
+                raise _galat(nomor, "kode PPK", "bukan kode PPK FKRTL KC Jember")
+            n = norm(nama)
+            if kode in padanan:
+                if n not in padanan[kode]:
+                    raise _galat(nomor, "Nama Faskes", "tidak cocok dengan kode PPK")
+            elif n in milik:
+                raise _galat(nomor, "Nama Faskes", "nama ini milik kode PPK lain di tabel padanan")
+            elif tak_dikenal.setdefault(kode, n) != n:
+                raise _galat(nomor, "Nama Faskes", "kode PPK di luar tabel padanan harus memakai satu nama di seluruh berkas")
+            if not _RE_POLI.fullmatch(poli):
+                raise _galat(nomor, "Kode Poli", "harus kode poli SSBI (huruf besar/angka, paling banyak 6)")
+            if jenis not in JENIS:
+                raise _galat(nomor, "Jenis Pelayanan", "harus Rawat Jalan atau Rawat Inap")
+            if status not in STATUS:
+                raise _galat(nomor, "Status", "hanya status tidak sesuai (= SEP atau > SEP)")
+            a, b = _tgl(t_sep), _tgl(t_terbit)
+            if a is None or b is None:
+                raise _galat(nomor, "Tgl SEP/Tgl Terbit", "tanggal tidak terbaca")
+            if a[:7] != bulan:
+                raise _galat(nomor, "Tgl SEP", f"bukan {label_bulan(bulan)}; periksa bulan yang dipilih")
+            j, s = JENIS[jenis], STATUS[status]
+            ring[j][s] += 1
+            hasil.append([kode, nama, j, poli, a, b, s])
+    except csv.Error:
+        raise BerkasDitolak("Berkas CSV tidak terbaca. Unduh ulang dari SSBI.") from None
     if not hasil:
         raise BerkasDitolak("Berkas tidak berisi baris data.")
     return HasilPeriksa(hasil, {"bulan": bulan, "baris": len(hasil), **ring,

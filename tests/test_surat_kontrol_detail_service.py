@@ -111,18 +111,108 @@ def test_rows_filtered_by_type_status_and_hospital():
 
 
 def test_xlsx_has_confidential_title_columns_and_no_formulas():
-    b = list(BAIK[0]); b[2] = "=HYPERLINK(\"x\")"
-    baris = periksa(csv(tuple(b), BAIK[1])).baris
+    # Kode Poli kini whitelist ASCII pendek, jadi pengaman formula diuji lewat Nama Faskes.
+    baris = periksa(csv(*BAIK)).baris
+    baris[0][1] = "=HYPERLINK(\"x\")"
     isi = dt.buat_xlsx(baris, "2026-11", "semua", None, {"0189R001": "KAB. JEMBER"})
     ws = load_workbook(io.BytesIO(isi)).active
     assert ws["A1"].value == "RAHASIA — data pelayanan peserta"
     assert [c.value for c in ws[5]] == list(dt.KOLOM)
     data = [[c.value for c in r] for r in ws.iter_rows(min_row=6)]
     assert data[0][0] == "Jember" and data[1][0] == "Lumajang"
-    assert data[0][4].startswith("'=") and data[0][7] == 0 and data[1][7] == 5
+    assert data[0][2].startswith("'=") and data[0][7] == 0 and data[1][7] == 5
     assert ws.freeze_panes == "A6"
 
 
 def test_file_name():
     assert dt.nama_berkas("2026-11", "RJ", None) == "Detail_Surat_Kontrol_November_2026_RJ.xlsx"
     assert dt.nama_berkas("2026-11", "semua", "MELATI LUMAJANG, RSUD") == "Detail_Surat_Kontrol_November_2026_Semua_MELATI_LUMAJANG_RSUD.xlsx"
+
+
+# --- Review Clara PR #87 (2026-11-19), butir wajib 2, 3, 5, 6. Semua nilai palsu. ---------------------------
+
+# Varian penyamaran nomor tiruan: pemisah, huruf kecil, digit lebar penuh/Arab-Indik, karakter Cf, NBSP, potongan.
+VARIAN = ["0189 R001 1125 V000123", "0189.R001.1125.V000123", "0189-R001-1125-V000123", "0189_R001_1125_V000123",
+          "0189/R001/1125/V000123", "0189r0011125v000123", "\uff10\uff11\uff18\uff19R0011125V000123",
+          "\u0660\u0661\u0668\u0669R0011125V000123", "0189R001\u200b1125V000123", "0189R001\u00a01125\u2060V000123",
+          "0189R0011125", "1125V000123", "SEP 0189R0011125"]
+
+
+@pytest.mark.parametrize("varian", VARIAN)
+@pytest.mark.parametrize("kolom", [2, 5])
+def test_disguised_number_in_any_cell_is_refused_without_echo(varian, kolom):
+    b = list(BAIK[0]); b[kolom] = varian
+    with pytest.raises(dt.BerkasDitolak) as err:
+        periksa(csv(tuple(b)))
+    assert "nomor" in err.value.pesan and varian not in err.value.pesan
+
+
+@pytest.mark.parametrize("poli", ["INT", "BED", "017", "", "AB12CD"])
+def test_poli_whitelist_accepts_short_ascii_codes(poli):
+    b = list(BAIK[0]); b[2] = poli
+    assert periksa(csv(tuple(b))).baris[0][3] == poli
+
+
+@pytest.mark.parametrize("poli", ["int", "INT A", "PENYAKIT DALAM", "ABCDEFG", "\uff29NT", "I\u200bNT", "=1+1"])
+def test_poli_outside_whitelist_is_refused(poli):
+    b = list(BAIK[0]); b[2] = poli
+    with pytest.raises(dt.BerkasDitolak, match="Poli"):
+        periksa(csv(tuple(b)))
+
+
+def test_normal_cells_do_not_look_like_numbers():
+    for nilai in ("November 30, 2026", "RSD Mawar", "MELATI LUMAJANG, RSUD", "0189R001", SAMA, BESAR):
+        assert not dt.mirip_nomor(nilai)
+
+
+def test_unmatched_code_using_another_codes_hospital_name_is_refused():
+    b = ("0191R006", "Rawat Jalan", "INT", "November 3, 2026", "November 3, 2026", "  rsd   MAWAR ", SAMA)
+    with pytest.raises(dt.BerkasDitolak, match="kode PPK lain"):
+        periksa(csv(b))
+
+
+def test_unmatched_code_must_keep_one_name_across_file():
+    a = ("0191R006", "Rawat Jalan", "INT", "November 3, 2026", "November 3, 2026", "RS BARU", SAMA)
+    b = ("0191R006", "Rawat Inap", "", "November 4, 2026", "November 5, 2026", "RS BARU LAIN", BESAR)
+    with pytest.raises(dt.BerkasDitolak, match="satu nama"):
+        periksa(csv(a, b))
+    c = ("0191R006", "Rawat Inap", "", "November 4, 2026", "November 5, 2026", "rs  baru", BESAR)
+    assert periksa(csv(a, c)).ringkasan["kode_tak_dikenal"] == ["0191R006"]
+
+
+def test_header_is_checked_before_rows_are_parsed():
+    raw = csv(kepala="a,b,c") + b'"x"y,1,2\r\n'
+    with pytest.raises(dt.BerkasDitolak, match="Kolom berkas"):
+        periksa(raw)
+
+
+def test_blank_lines_count_toward_row_limit(monkeypatch):
+    monkeypatch.setattr(dt, "BATAS_BARIS", 5)
+    with pytest.raises(dt.BerkasDitolak, match="terlalu banyak baris"):
+        periksa(csv(BAIK[0]) + b"\r\n" * 10)
+    assert periksa(csv(BAIK[0]) + b"\r\n" * 3).ringkasan["baris"] == 1
+
+
+def test_blank_line_flood_is_parsed_lazily():
+    import tracemalloc
+    raw = csv() + b"\n" * 3_000_000
+    tracemalloc.start()
+    try:
+        with pytest.raises(dt.BerkasDitolak, match="terlalu banyak baris"):
+            periksa(raw)
+        _, puncak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert puncak < 40 * 1024 * 1024
+
+
+@pytest.mark.parametrize("bulan", ["2026-09", "2026-10", "2026-11"])
+def test_upload_month_inside_three_month_window_is_accepted(bulan):
+    assert dt.cek_bulan_unggah(bulan, date(2026, 11, 20)) == bulan
+
+
+@pytest.mark.parametrize("bulan,hari", [("2026-08", date(2026, 11, 20)), ("2026-12", date(2026, 11, 20)),
+                                         ("2026-10", date(2027, 1, 2)), ("2027-02", date(2027, 1, 31))])
+def test_upload_month_outside_window_or_future_is_refused(bulan, hari):
+    with pytest.raises(dt.BerkasDitolak, match="3 bulan terakhir"):
+        dt.cek_bulan_unggah(bulan, hari)
