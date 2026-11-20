@@ -3,7 +3,7 @@ import asyncio
 import contextlib
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import asyncpg
 import pytest
@@ -144,7 +144,7 @@ def _blok(di_blok, batas=5):
     return ss.satu_koneksi(ss._monoton() + batas) if di_blok else contextlib.nullcontext()
 
 
-BARIS_SESI = {"id_hash": "id-uji", "sub": "auth0|uji", "ingat": True, "dibuat_pada": WAKTU,
+BARIS_SESI = {"id_hash": "id-uji", "sub": "sapa|uji", "ingat": True, "dibuat_pada": WAKTU,
               "terakhir_dipakai": WAKTU, "kedaluwarsa": WAKTU, "token_enc": "v2.uji", "token_exp": WAKTU}
 
 # Argumen contoh setiap operasi penyimpanan. Operasi tulis mungkin sudah dieksekusi server sebelum koneksinya
@@ -154,11 +154,9 @@ OPERASI_TULIS = {
     "simpan": (BARIS_SESI,),
     "sentuh": ("id-uji", WAKTU),
     "tulis_ulang_token": ("id-uji", "v2.lama", "v2.baru"),
-    "simpan_hasil_segar": ("id-uji", "v2.baru", WAKTU, WAKTU, "v2.lama"),
-    "klaim_segar": ("id-uji", "v2.lama", WAKTU, WAKTU),
-    "lepas_segar": ("id-uji", WAKTU),
     "hapus": ("id-uji",),
-    "hapus_sub": ("auth0|uji",),
+    "hapus_sub": ("sapa|uji",),
+    "naikkan_jangkar": ("akun-uji", 2),
     "tambah_batas": ("k", 1, WAKTU),
     "tambah_batas_geser": ("k", 1, WAKTU),
     "kurangi_batas": ("k", 1),
@@ -171,6 +169,7 @@ OPERASI_BACA = {
     "baca_batas": (("k", 1), 1),
     "ada_gagal_kumulatif": (("k", WAKTU), True),
     "hitung_baris_batas": ((10,), 1),
+    "baca_jangkar": (("akun-uji",), 1),
     "cek": ((), None),
 }
 
@@ -888,7 +887,6 @@ def test_galat_saat_menghentikan_koneksi_tidak_menutupi_galat_asli(db):
 
 # --- sewa penyegaran ---------------------------------------------------------------------------------
 
-def test_sewa_penyegaran_mencakup_pemeriksaan_koneksi_siaga():
-    """Simpanan hasil penyegaran terburuk: periksa koneksi siaga, lalu koneksi baru dan perintahnya."""
+def test_waktu_terburuk_tulis_mencakup_pemeriksaan_koneksi_siaga():
+    """Tulis terburuk: periksa koneksi siaga, lalu koneksi baru dan perintahnya."""
     assert ss.WAKTU_TERBURUK_DB >= ss.BATAS_PERIKSA + 2 * ss.TIMEOUT_DB
-    assert ss.UMUR_KUNCI_SEGAR == timedelta(seconds=ss.BATAS_SEBELUM_AUTH0 + ss.WAKTU_TERBURUK_AUTH0 + ss.WAKTU_TERBURUK_DB)

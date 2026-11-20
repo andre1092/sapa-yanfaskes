@@ -22,6 +22,7 @@ REQ_API = API / "requirements.txt"
 # Nama impor -> nama paket di PyPI, bila berbeda. Modul bawaan paket lain dianggap dari paket itu.
 PETA_PAKET = {
     "jwt": "PyJWT",
+    "argon2": "argon2-cffi",
     "multipart": "python-multipart",
     "python_multipart": "python-multipart",
     "google.auth": "google-auth",
@@ -132,11 +133,18 @@ def test_semua_impor_pihak_ketiga_api_tercantum_di_api_requirements():
 
 
 def test_pemeriksa_gagal_bila_httpx_dihapus_dari_api_requirements():
-    """Bukti tes di atas menangkap insiden 2026-11-19: tanpa httpx, sesi_service terdeteksi."""
+    """Bukti tes di atas menangkap insiden 2026-11-19: tanpa httpx, modul yang memakainya terdeteksi."""
     teks = "\n".join(b for b in REQ_API.read_text(encoding="utf-8").splitlines()
                      if normal(re.split(r"[<>=\[ ;]", b.strip())[0] or "-") != "httpx")
     hilang = paket_hilang(teks)
-    assert list(hilang) == ["httpx"] and "sesi_service.py" in hilang["httpx"]
+    assert list(hilang) == ["httpx"] and {"akun_service.py", "turnstile.py"} <= set(hilang["httpx"])
+
+
+def test_pemeriksa_gagal_bila_argon2_cffi_dihapus_dari_api_requirements():
+    """argon2-cffi (hash sandi akun lokal) wajib ada di api/requirements.txt, bukan hanya di venv tes."""
+    teks = "\n".join(b for b in REQ_API.read_text(encoding="utf-8").splitlines()
+                     if normal(re.split(r"[<>=\[ ;]", b.strip())[0] or "-") != "argon2-cffi")
+    assert paket_hilang(teks) == {"argon2-cffi": ["akun_service.py"]}
 
 
 def test_pemeriksa_menangkap_impor_di_fungsi_try_dan_nama_paket_berbeda(tmp_path):

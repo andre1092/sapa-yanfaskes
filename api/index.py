@@ -128,10 +128,11 @@ ASAL_BFF = [o for o in APP_ORIGINS if os.environ.get("VERCEL_ENV") != "productio
             or urlparse(o).hostname not in turnstile.HOST_LOKAL]
 # Hanya untuk pengembangan lokal tanpa Auth0; ditolak di deployment Vercel mana pun.
 DEV_AUTH_BYPASS = os.environ.get("SAPA_DEV_AUTH_BYPASS") == "1" and not os.environ.get("VERCEL_ENV")
-# Login satu halaman (BFF): 0 (bawaan) = perilaku lama, tanpa rute /api/v1/auth/{masuk,sesi,keluar,siap}.
+# Login satu halaman dengan akun lokal (tanpa Auth0): 0 (bawaan) = perilaku lama (Auth0 SPA, Bearer), tanpa rute
+# /api/v1/auth/{masuk,sesi,keluar,siap,siapkan-akun} dan /api/v1/akun/ubah-sandi. 1 = satu-satunya identitas adalah
+# sesi cookie akun lokal; Bearer Auth0 ditolak tanpa syarat dan fitur yang bergantung Auth0 menjawab 503.
 LOGIN_BFF = os.environ.get("SAPA_LOGIN_BFF", "0").strip() == "1"
-# Selama transisi Bearer Auth0 tetap diterima; SAPA_TERIMA_BEARER=0 hanya berlaku bila LOGIN_BFF aktif.
-TERIMA_BEARER = not (LOGIN_BFF and os.environ.get("SAPA_TERIMA_BEARER", "1").strip() == "0")
+PESAN_FITUR_AKUN_BARU = "Fitur ini belum tersedia di sistem akun baru."
 GCP_SA_CREDENTIALS_JSON = os.environ.get("GCP_SA_CREDENTIALS_JSON")
 # Klaim peran yang ditambahkan Action login Auth0 ke token akses.
 ROLES_CLAIM = os.environ.get("AUTH0_ROLES_CLAIM", "https://sapa-yanfaskes.com/roles")
@@ -185,10 +186,9 @@ def _galat_infrastruktur_jwks(exc: Exception) -> bool:
 
 def verify_auth0_token(token: str, galat_infra_503: bool = False):
     """
-    Verifies the RS256 JWT signature using Auth0's public keys.
+    Verifies the RS256 JWT signature using Auth0's public keys. Hanya dipakai saat flag 0 (jalur Bearer).
 
-    galat_infra_503 (hanya jalur sesi cookie BFF): galat JWKS atau jaringan menjadi 503, bukan 401, supaya
-    sesi yang masih sah tidak diakhiri saat JWKS Auth0 tidak terjangkau. Jalur Bearer tetap seperti lama.
+    galat_infra_503: galat JWKS atau jaringan menjadi 503, bukan 401.
     """
     if not jwk_client:
         logger.error("AUTH0_DOMAIN is not configured; rejecting authenticated request")
@@ -289,24 +289,19 @@ def _sesi_berakhir() -> GalatSesi:
 
 
 def _klaim_dari_sesi(request):
-    """Klaim dari cookie __Host-sapa_sesi (sesi dibaca middleware); None bila tidak ada sesi."""
-    sesi = getattr(getattr(request, "state", None), "sapa_sesi", None)
-    if sesi is None:
+    """Klaim dari sesi akun lokal (cookie __Host-sapa_sesi, sudah direvalidasi middleware); None bila tidak ada.
+
+    Bentuk klaim sama dengan sebelumnya: sub = "sapa|<id akun>", peran dari tabel akun di klaim ROLES_CLAIM.
+    """
+    aktif = getattr(getattr(request, "state", None), "sapa_sesi", None)
+    if aktif is None:
         return None
     # Cookie dikirim browser otomatis, jadi permintaan yang mengubah data wajib membawa penanda CSRF.
     if request.method not in _METODE_AMAN and not auth_bff.permintaan_sah(request, ASAL_BFF):
         logger.warning("Permintaan bercookie ditolak (CSRF): %s %s", request.method, request.url.path)
         raise GalatSesi(403, auth_bff.PESAN_DITOLAK, "asal_tidak_sah")
-    try:
-        claims = dict(verify_auth0_token(sesi.access_token, galat_infra_503=True))
-    except HTTPException as exc:
-        if exc.status_code == 401:
-            raise _sesi_berakhir() from None
-        # JWKS tidak terjangkau atau auth belum dikonfigurasi: sesi tidak diakhiri, cukup 503.
-        raise GalatSesi(503, auth_bff.PESAN_BELUM_SIAP, "belum_siap") from None
-    # Access token disegarkan server sehingga iat selalu baru; waktu login yang benar adalah pembuatan sesi.
-    claims[_KLAIM_SESI_DIBUAT] = int(sesi.dibuat_pada.timestamp())
-    return claims
+    return {"sub": aktif.sesi.sub, ROLES_CLAIM: [aktif.akun.peran],
+            _KLAIM_SESI_DIBUAT: int(aktif.sesi.dibuat_pada.timestamp())}
 
 
 _KLAIM_SESI_DIBUAT = "sapa_sesi_dibuat"
@@ -314,35 +309,36 @@ _KLAIM_SESI_DIBUAT = "sapa_sesi_dibuat"
 
 def _bearer(request) -> str:
     auth_header = request.headers.get("Authorization", "")
-    token = auth_header[7:].strip() if auth_header.startswith("Bearer ") and TERIMA_BEARER else ""
+    token = auth_header[7:].strip() if auth_header.startswith("Bearer ") else ""
     return "" if token in ("undefined", "null") else token
 
 
 def require_auth(request: Request):
+    """Kembalikan klaim yang sah; selain itu tolak dengan 401/503.
+
+    Flag 1: satu jalur klaim, yaitu sesi akun lokal. Header Authorization tidak pernah dibaca maupun diverifikasi
+    (Bearer Auth0 ditolak tanpa syarat). Flag 0: token Bearer Auth0 seperti sebelumnya.
+    """
     _remember_claims(request, None)
-    """Kembalikan klaim token Auth0 yang sah; selain itu tolak dengan 401/503."""
     if DEV_AUTH_BYPASS:
         return {"sub": "local-dev", ROLES_CLAIM: ["viewer"], "tenant_id": "00000000-0000-0000-0000-000000000001"}
 
-    token = _bearer(request)
-    # Bearer yang dikirim eksplisit didahulukan: header Authorization tidak bisa dipasang lintas situs tanpa
-    # preflight, jadi bukan sasaran CSRF. Pemeriksaan CSRF hanya berlaku bila identitas berasal dari cookie.
-    if LOGIN_BFF and not token:
+    if LOGIN_BFF:
         claims = _klaim_dari_sesi(request)
         if claims is not None:
             _remember_claims(request, claims)
             return claims
-
-    if not token:
-        if LOGIN_BFF and getattr(getattr(request, "state", None), "sapa_sesi_galat", None):
+        if getattr(getattr(request, "state", None), "sapa_sesi_galat", None):
             raise GalatSesi(503, "Sesi belum dapat diperiksa. Coba lagi sebentar.", "belum_siap")
-        if LOGIN_BFF and _bawa_cookie_sesi(request):
-            # Cookie dibawa tetapi sesinya tidak berlaku lagi (kedaluwarsa, keluar, dicabut).
+        if _bawa_cookie_sesi(request):
+            # Cookie dibawa tetapi sesinya tidak berlaku lagi (kedaluwarsa, keluar, dicabut, sandi diganti).
             raise _sesi_berakhir()
         raise HTTPException(status_code=401, detail="Silakan masuk terlebih dahulu", headers={"WWW-Authenticate": "Bearer"})
+
+    token = _bearer(request)
+    if not token:
+        raise HTTPException(status_code=401, detail="Silakan masuk terlebih dahulu", headers={"WWW-Authenticate": "Bearer"})
     claims = verify_auth0_token(token)
-    if LOGIN_BFF and isinstance(claims, dict):
-        claims.pop(_KLAIM_SESI_DIBUAT, None)  # hanya boleh diisi jalur sesi, tidak dari token
     _remember_claims(request, claims)
     return claims
 
@@ -376,6 +372,10 @@ def petugas_rs_saja(claims) -> bool:
 
 
 def _status_petugas(claims, segar: bool = False) -> dict:
+    if LOGIN_BFF:
+        # Akun lokal tidak punya status Auth0 (sandi awal, kode PPK); nonaktif diperiksa saat revalidasi sesi.
+        # Petugas RS tanpa kode PPK sah tetap ditolak oleh penjaga data masing-masing.
+        return {"wajib_ganti_sandi": False, "nonaktif": False, "diatur_ulang_pada": None, "kode_ppk": ""}
     try:
         return pengguna_service.status_akun(str(claims.get("sub", "")), segar=segar)
     except pengguna_service.PenggunaBelumSiap:
@@ -447,6 +447,27 @@ require_viewer = require_role("viewer")
 require_admin = require_role("admin")
 require_super_admin = require_role("super_admin")
 
+
+def _tanpa_auth0() -> None:
+    """Fitur yang bergantung Auth0 Management: 503 terkendali saat flag 1 (bukan 500, tanpa memanggil Auth0)."""
+    if LOGIN_BFF:
+        raise HTTPException(status_code=503, detail=PESAN_FITUR_AKUN_BARU, headers={"Cache-Control": "no-store"})
+
+
+def require_super_admin_auth0(request: Request):
+    """Super Admin, untuk fitur Auth0 (menu Pengguna FKRTL). Peran diperiksa lebih dulu, lalu 503 saat flag 1;
+    keduanya sebelum isian divalidasi."""
+    claims = require_super_admin(request)
+    _tanpa_auth0()
+    return claims
+
+
+def require_signed_in_auth0(request: Request):
+    """Sudah masuk, untuk fitur Auth0 (ganti sandi awal petugas lewat Auth0); 503 saat flag 1."""
+    claims = require_signed_in(request)
+    _tanpa_auth0()
+    return claims
+
 # --- RIWAYAT AKTIVITAS (audit log, hanya Super Admin yang bisa membaca) ---
 _ROLE_BY_RANK = {3: "super_admin", 2: "admin", 1: "viewer", 0: ""}
 
@@ -461,7 +482,8 @@ async def audit_middleware(request: Request, call_next):
     response = await call_next(request)
     try:
         path, query = request.url.path, request.url.query
-        if audit_log.should_record(request.method, path, response.status_code, query):
+        paksa = bool(getattr(request.state, "audit_paksa", False))
+        if paksa or audit_log.should_record(request.method, path, response.status_code, query):
             claims = getattr(request.state, "audit_claims", None)
             if LOGIN_BFF:
                 # Sumber IP sama dengan login (ip_klien); tanpa IP tepercaya dicatat kosong,
@@ -487,20 +509,6 @@ def mode_login():
     return JSONResponse(headers=_NO_STORE, content={"bff": LOGIN_BFF})
 
 
-def _token_admin(access_token: str) -> bool:
-    """Untuk batas menganggur khusus admin (sesi_service.batas_menganggur_admin, nonaktif bila env kosong).
-
-    Token berasal dari penyimpanan sesi terenkripsi dan sudah diverifikasi saat diperoleh; tanda tangan
-    tidak diperiksa ulang di sini karena hasilnya hanya bisa memperketat. Token yang tidak terbaca
-    diperlakukan sebagai admin (lebih ketat).
-    """
-    try:
-        klaim = jwt.decode(access_token, options={"verify_signature": False})
-    except jwt.PyJWTError:
-        return True
-    return role_rank(klaim) >= ROLE_RANK["admin"]
-
-
 def _klaim_opsional(request):
     try:
         return require_auth(request)
@@ -513,17 +521,11 @@ if LOGIN_BFF:
 
     @app.middleware("http")
     async def sesi_middleware(request: Request, call_next):
-        """Baca sesi dari cookie __Host-sapa_sesi (dan segarkan token) sebelum dependency auth berjalan."""
+        """Baca dan revalidasi sesi akun lokal dari cookie __Host-sapa_sesi sebelum dependency auth berjalan."""
         request.state.sapa_sesi = None
         request.state.sapa_sesi_galat = None
-        cookie = request.cookies.get(sesi_service.NAMA_COOKIE)
-        if cookie and request.url.path.startswith("/api/") and request.url.path != "/api/v1/auth/masuk":
-            try:
-                # Di Vercel penyegaran hanya dengan IP tepercaya (auth0-forwarded-for).
-                request.state.sapa_sesi = await sesi_service.ambil_sesi_segar(
-                    cookie, adalah_admin=_token_admin, ip=ip_klien(request), ip_wajib=_di_vercel())
-            except sesi_service.SesiBelumSiap:
-                request.state.sapa_sesi_galat = 503
+        if request.url.path.startswith("/api/") and request.url.path != "/api/v1/auth/masuk":
+            await auth_bff.muat_sesi(request)
         return await call_next(request)
 
     @app.exception_handler(GalatSesi)
@@ -539,9 +541,7 @@ if LOGIN_BFF:
         return JSONResponse(status_code=422, headers=_NO_STORE, content={"detail": rincian})
 
     app.include_router(auth_bff.buat_router(
-        verifikasi_token=lambda t: verify_auth0_token(t, galat_infra_503=True), ip_pengguna=ip_klien,
-        label_peran=role_label, klaim_opsional=_klaim_opsional, asal_diizinkan=ASAL_BFF,
-        audience=AUTH0_API_AUDIENCE,
+        ip_pengguna=ip_klien, label_peran=role_label, klaim_opsional=_klaim_opsional, asal_diizinkan=ASAL_BFF,
     ))
 
 
@@ -602,6 +602,9 @@ def verifikasi_manusia(body: VerifikasiManusia, request: Request):
     turnstile.cek_turnstile di Production. Di Vercel x-forwarded-for sudah ditulis ulang Vercel, jadi
     IP yang dikirim ke Cloudflare sama dengan sebelumnya.
     """
+    if LOGIN_BFF:
+        # Halaman /verifikasi hanya bagian dari login Auth0 Universal Login.
+        return JSONResponse(status_code=503, headers=_NO_STORE, content={"detail": PESAN_FITUR_AKUN_BARU})
     ip = ip_pengguna(request)
     try:
         hasil = verifikasi_service.verifikasi(body.state, body.session_token, body.turnstile_token, ip)
@@ -650,7 +653,7 @@ def _gagal_auth0(exc: Exception):
 
 
 @app.get("/api/v1/pengguna-fkrtl")
-def list_pengguna_fkrtl(user=Depends(require_super_admin)):
+def list_pengguna_fkrtl(user=Depends(require_super_admin_auth0)):
     faskes = _faskes_fkrtl()
     peta = {f["kode_ppk"]: f for f in faskes}
     client = pengguna_service.get_client()
@@ -669,7 +672,7 @@ def list_pengguna_fkrtl(user=Depends(require_super_admin)):
 
 
 @app.post("/api/v1/pengguna-fkrtl", status_code=201)
-def create_pengguna_fkrtl(body: PenggunaBaru, user=Depends(require_super_admin)):
+def create_pengguna_fkrtl(body: PenggunaBaru, user=Depends(require_super_admin_auth0)):
     nama, email, kode = body.nama.strip(), body.email.strip().lower(), body.kode_ppk.strip()
     if not nama or len(nama) > 100:
         raise HTTPException(status_code=400, detail="Nama wajib diisi (maksimal 100 karakter).")
@@ -689,7 +692,7 @@ def create_pengguna_fkrtl(body: PenggunaBaru, user=Depends(require_super_admin))
 
 
 @app.post("/api/v1/pengguna-fkrtl/{user_id}/username")
-def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
+def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin_auth0)):
     """Tahap 2 migrasi: memberi username ke akun petugas yang dibuat sebelum username dipakai."""
     if not pengguna_service.pakai_username():
         raise HTTPException(status_code=409, detail="Nama pengguna belum diaktifkan di Auth0.")
@@ -711,7 +714,7 @@ def isi_username_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin))
 
 
 @app.post("/api/v1/pengguna-fkrtl/{user_id}/atur-ulang-sandi")
-def reset_sandi_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
+def reset_sandi_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin_auth0)):
     client = _klien_pengguna()
     _petugas_atau_404(client, user_id)
     try:
@@ -723,7 +726,7 @@ def reset_sandi_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
 
 
 @app.post("/api/v1/pengguna-fkrtl/{user_id}/undangan")
-def undangan_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
+def undangan_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin_auth0)):
     client = _klien_pengguna()
     akun = _petugas_atau_404(client, user_id)
     try:
@@ -734,7 +737,7 @@ def undangan_pengguna_fkrtl(user_id: str, user=Depends(require_super_admin)):
 
 
 @app.patch("/api/v1/pengguna-fkrtl/{user_id}")
-def update_pengguna_fkrtl(user_id: str, body: UbahStatusPengguna, user=Depends(require_super_admin)):
+def update_pengguna_fkrtl(user_id: str, body: UbahStatusPengguna, user=Depends(require_super_admin_auth0)):
     client = _klien_pengguna()
     _petugas_atau_404(client, user_id)
     try:
@@ -756,7 +759,7 @@ def status_akun(user=Depends(require_signed_in)):
 
 
 @app.post("/api/v1/akun/ganti-sandi")
-def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in)):
+def ganti_sandi_akun(body: GantiSandi, user=Depends(require_signed_in_auth0)):
     if not petugas_rs_saja(user):
         raise HTTPException(status_code=403, detail="Ganti kata sandi lewat tautan “Lupa kata sandi?” di halaman masuk.")
     # Hanya untuk mengganti sandi awal; status dibaca langsung dari Auth0 (bukan simpanan sementara).
@@ -3735,7 +3738,9 @@ def _ssbi_nama_berkas(request: Request) -> str:
 
 
 def _ssbi_nama_admin(claims) -> str:
-    """Nama tampilan admin dari Auth0 (tanpa email); cadangannya label peran."""
+    """Nama tampilan admin dari Auth0 (tanpa email); cadangannya label peran. Flag 1: label peran saja."""
+    if LOGIN_BFF:
+        return "Super Admin" if role_rank(claims) >= ROLE_RANK["super_admin"] else "Admin"
     try:
         client = pengguna_service.get_client()
         if client is not None:

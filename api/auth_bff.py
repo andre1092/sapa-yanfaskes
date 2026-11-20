@@ -1,57 +1,64 @@
-"""Endpoint login satu halaman (BFF): /api/v1/auth/masuk, /sesi, /keluar, /siap.
+"""Login satu halaman dengan akun lokal (BFF, tanpa Auth0): /api/v1/auth/masuk, /sesi, /keluar, /siap,
+/siapkan-akun, dan /api/v1/akun/ubah-sandi.
 
-Router ini hanya dipasang di api/index.py bila SAPA_LOGIN_BFF=1. Dengan flag 0 rutenya tidak ada
-sama sekali (404 bawaan), sehingga perilaku lama tidak berubah.
+Router ini hanya dipasang di api/index.py bila SAPA_LOGIN_BFF=1. Dengan flag 0 rutenya tidak ada sama sekali
+(404 bawaan) dan aplikasi memakai Auth0 SPA seperti sebelumnya. Saat flag 1 tidak ada panggilan Auth0 maupun
+verifikasi JWT Auth0 di jalur mana pun.
 
-Urutan /masuk: asal (permintaan_sah: X-SAPA, plus Sec-Fetch-Site same-origin atau Origin sendiri) -> bentuk permintaan
--> IP klien tepercaya (kosong di Vercel berarti 503) -> pembatas kasar per IP -> hash token Turnstile dicatat
-sekali pakai di tabel SAPA sebelum siteverify -> siteverify (httpx.AsyncClient, tenggat total TENGGAT_SITEVERIFY)
--> pembatas per IP -> batas username unik yang gagal per IP per hari -> pembatas kegagalan per
-(username ternormal + IP) -> kuota global login /oauth/token -> Auth0 password-realm (tenggat total
-sesi_service.TENGGAT_AUTH0) -> verifikasi token -> sesi.
-Semua operasi penyimpanan satu permintaan /masuk memakai satu koneksi DB (sesi_service.satu_koneksi); koneksi
-itu ditutup dengan tenggat sesi_service.TENGGAT_TUTUP_DB lalu dihentikan paksa.
-Prosedur operasi (deploy, uji asap, rollback): docs/runbook-login-bff.md.
+Akun ada di tabel akun_sapa (Cloudflare D1, lewat Worker sapa-akun; lihat api/akun_service.py). Sesi, pembatas,
+hash token Turnstile, dan jangkar versi ada di DB sesi Neon (api/sesi_service.py). Prosedur operasi (tindakan
+pemilik sebelum flag 1, penyiapan akun pertama, pemulihan, rollback): docs/runbook-login-bff.md.
 
-Pembatas (IPv6 per prefiks /64):
+Urutan /masuk: asal (permintaan_sah: X-SAPA, plus Sec-Fetch-Site same-origin atau Origin sendiri) -> bentuk
+permintaan -> konfigurasi (kunci sesi, DB sesi, pepper dan kunci MAC, penyimpanan akun, Turnstile) -> IP klien
+tepercaya (kosong di Vercel berarti 503) -> pembatas kasar per IP -> hash token Turnstile dicatat sekali pakai
+sebelum siteverify -> siteverify (tenggat total TENGGAT_SITEVERIFY) -> pembatas per IP -> batas username unik yang
+gagal per IP per hari -> pembatas kegagalan per (username ternormal + IP) -> kuota global percobaan per detik ->
+baca akun (Worker) dan jangkar (Neon) -> periksa MAC, jangkar, aktif -> satu verifikasi argon2id (hash asli bila
+baris sah, hash tiruan bila akun tidak ada atau tidak sah) -> sesi baru.
+Semua operasi penyimpanan satu permintaan memakai satu koneksi DB (sesi_service.satu_koneksi).
+
+Pembatas (IPv6 per prefiks /64), tanpa penguncian per akun (kegagalan dari IP lain tidak pernah menahan IP
+pemilik akun):
 - per IP kasar: BATAS_IP_KASAR, semua percobaan, dihitung sebelum siteverify;
 - per IP: BATAS_IP, hanya percobaan yang lolos siteverify;
 - per (username ternormal + IP): BATAS_GAGAL_USERNAME_IP, hanya kegagalan kredensial, dengan perkiraan jendela
-  geser. Satu slot dipesan atomik sebelum Auth0 dipanggil dan dikembalikan bila hasilnya bukan kegagalan
-  kredensial (sukses, Turnstile, Auth0 bermasalah, mfa, kuota global);
-- hitungan gagal per (username ternormal + IP), tanpa jendela geser: di bawah BATAS_GAGAL_USERNAME_IP berumur
-  UMUR_HITUNGAN_GAGAL sejak gagal terakhir; pada kegagalan ke-BATAS_GAGAL_USERNAME_IP naik menjadi penanda
-  lengket berumur UMUR_PENANDA sejak gagal terakhir (selama kuota BATAS_PENANDA_LENGKET_HARIAN belum penuh),
-  yang direset oleh login sukses dari IP itu. Kegagalan sampai ke-BATAS_GAGAL_USERNAME_IP dijawab sandi_salah,
-  sesudahnya terlalu_banyak;
-- username unik yang gagal per IP: BATAS_USERNAME_UNIK_IP per hari UTC. Satu baris hitungan per IP per hari,
-  bertambah hanya bila percobaan akan membuat hitungan gagal baru, dan dikembalikan bila hasilnya bukan kegagalan
-  kredensial. Setelah batas penuh, percobaan tetap diteruskan ke Auth0; kegagalannya dijawab terlalu_banyak dan
-  hitungan per username tidak ditulis;
-- penanda lengket baru: BATAS_PENANDA_LENGKET_HARIAN per hari UTC untuk seluruh SAPA. Di atasnya hitungan yang
-  mencapai ambang hanya berumur UMUR_HITUNGAN_GAGAL;
-- global: BATAS_GLOBAL ke /oauth/token, kuota login terpisah dari kuota penyegaran sesi;
-- peringatan per username: log dan audit mencatat sekali per jendela bila perkiraan jendela geser mencapai
-  AMBANG_PERINGATAN_USERNAME kegagalan per jam.
-Jendela harian berganti pukul 00.00 UTC.
+  geser. Satu slot dipesan atomik sebelum akun dibaca dan dikembalikan bila hasilnya bukan kegagalan kredensial;
+- hitungan gagal per (username ternormal + IP) tanpa jendela geser: di bawah ambang berumur UMUR_HITUNGAN_GAGAL
+  sejak gagal terakhir; pada kegagalan ke-BATAS_GAGAL_USERNAME_IP naik menjadi penanda lengket berumur UMUR_PENANDA
+  (selama kuota BATAS_PENANDA_LENGKET_HARIAN belum penuh), direset oleh login sukses dari IP itu. Kegagalan sampai
+  ke-BATAS_GAGAL_USERNAME_IP dijawab sandi_salah, sesudahnya terlalu_banyak;
+- username unik yang gagal per IP: BATAS_USERNAME_UNIK_IP per hari UTC;
+- global: sesi_service.BATAS_GLOBAL_LOGIN verifikasi per detik;
+- peringatan per username (log dan audit, tanpa memblokir) bila AMBANG_PERINGATAN_USERNAME kegagalan per jam.
+Sandi lama yang salah di /akun/ubah-sandi dihitung pada pembatas (username + IP) yang sama dengan /masuk.
 
-Setiap respons gagal memuat field `kode` yang stabil (lihat KODE). Anti-enumerasi: jawaban /masuk hanya fungsi
-hitungan SAPA, sama untuk akun ada dan tidak ada. Semua galat akun dari Auth0 (invalid_grant, blocked,
-access_denied, password_leaked, too_many_attempts, dst.) dan semua HTTP 429 dari /oauth/token dijawab sandi_salah
-(atau terlalu_banyak bila hitungan SAPA sudah lewat batas) dan dihitung sebagai kegagalan kredensial; hanya
-mfa_required yang dibedakan. 429 selain too_many_attempts juga dicatat di log sebagai batas tenant. Tenggat Auth0
-habis (status 0), koneksi Auth0 yang tidak terbentuk (sesi_service.STATUS_TIDAK_TERKIRIM), tenggat siteverify
-habis, atau Cloudflare tidak terjangkau menjadi belum_siap.
-Semua jawaban terlalu_banyak seragam: body sama dan tanpa Retry-After.
-Semua jalur gagal ditahan minimal WAKTU_MINIMUM_GAGAL detik, termasuk galat tak terduga (503); bila
-durasi asli sudah melewati batas itu, waktunya dibulatkan ke atas ke kelipatan LANGKAH_WAKTU_GAGAL dan
-log memberi peringatan.
-Sandi, username mentah, dan token tidak pernah dicatat; log dan audit hanya memuat penanda HMAC
-username 12 karakter (ringkas_username), IP tersamar (audit_log.mask_ip), dan kode hasil.
+/siapkan-akun: GET menjawab {"tersedia": true} (penyiapan dan pemulihan tidak dibedakan) hanya bila env
+SAPA_KODE_PENYIAPAN ada, kodenya belum terpakai, dan tabel akun kosong (penyiapan), atau env SAPA_KODE_PEMULIHAN
+ada, belum terpakai, dan sudah ada akun (pemulihan); selain itu 404 tanpa alasan. POST menukar kode dengan sandi
+baru: bukti asal, isian ketat, pembatas per IP BATAS_SIAPKAN_IP, ketersediaan (aturan yang sama dengan GET),
+Turnstile action "sapa_siapkan_akun", kebijakan sandi, kode dibandingkan waktu-konstan dengan semua kode env aktif,
+HIBP (gagal tertutup), lalu penyiapan (INSERT hanya bila tabel kosong, sekaligus menandai kode) atau pemulihan
+(ganti hash akun dengan username yang cocok, versi_sandi+1, kode ditandai). Pemulihan tidak pernah membuat akun.
+Sesudah berhasil jangkar dinaikkan dan semua sesi akun dicabut. Selama tidak tersedia, POST selalu 404
+tidak_tersedia (sama dengan tanpa env) apa pun kodenya; kode_salah 403 hanya mungkin saat tersedia. Kode env yang
+benar tetapi sudah terpakai atau tidak berlaku dicatat di log dan audit (dipaksa walau 404, hasil=kode_terpakai
+atau kode_tidak_berlaku) tanpa nilai.
 
-Env: AUTH0_LOGIN_CLIENT_ID, AUTH0_LOGIN_CLIENT_SECRET, AUTH0_LOGIN_REALM (nama connection per
-lingkungan, misalnya SAPA-Staging-DB), SAPA_SESI_KUNCI, SAPA_SESI_KUNCI_LAMA, SAPA_SESI_DATABASE_URL,
-TURNSTILE_SECRET_KEY, serta AUTH0_DOMAIN dan AUTH0_API_AUDIENCE yang sudah ada.
+/akun/ubah-sandi: butuh sesi cookie dan bukti asal; sandi lama diverifikasi (berbatas), sandi baru lolos kebijakan
+dan HIBP dan tidak sama dengan sandi lama; versi_sandi+1, jangkar naik, semua sesi akun (termasuk yang sedang
+dipakai) dicabut, lalu satu sesi baru diterbitkan (id cookie berotasi).
+
+Revalidasi sesi (muat_sesi, dipanggil middleware untuk setiap permintaan /api/ bercookie): baca baris akun dan
+jangkar setiap permintaan tanpa cache; MAC tidak cocok, versi_sandi di bawah jangkar, akun nonaktif atau hilang,
+atau versi_sandi sesi berbeda: sesi dihapus dan permintaan 401. MAC dan rollback dicatat di audit tanpa nilai.
+Penyimpanan akun, DB sesi, atau kunci bermasalah: 503 tanpa menghapus sesi.
+
+Setiap respons gagal memuat field `kode` yang stabil (lihat KODE). Jawaban /masuk untuk kegagalan kredensial
+identik untuk akun ada, tidak ada, nonaktif, atau tidak utuh (status, body, header, satu argon2, urutan operasi).
+Semua jawaban gagal ditahan minimal WAKTU_MINIMUM_GAGAL detik; bila lebih lama, dibulatkan ke atas ke kelipatan
+LANGKAH_WAKTU_GAGAL. Sandi, kode, hash, username mentah, dan token tidak pernah dicatat; log dan audit hanya memuat
+penanda HMAC username 12 karakter (ringkas_username), IP tersamar, dan kode hasil.
 """
 from __future__ import annotations
 
@@ -63,16 +70,18 @@ import math
 import re
 import time
 import unicodedata
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Callable, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 
 try:
-    from . import audit_log, sesi_service, turnstile
+    from . import akun_service, audit_log, sesi_service, turnstile
 except ImportError:
+    import akun_service
     import audit_log
     import sesi_service
     import turnstile
@@ -83,41 +92,39 @@ _NO_STORE = {"Cache-Control": "no-store"}
 WAKTU_MINIMUM_GAGAL = 0.7
 LANGKAH_WAKTU_GAGAL = 0.25
 MAKS_BODY = 4096
-_MAKS_USERNAME = 254  # identitas (username atau email selama transisi)
-_MAKS_SANDI_BYTE = 72  # batas bcrypt Auth0; lebih panjang ditolak, tidak dipotong
+_MAKS_USERNAME = 254
+_MAKS_KODE = 256
+# Batas bentuk isian sandi mentah (karakter), sama untuk menetapkan dan memakai sandi. Batas sebenarnya dihitung
+# dalam byte UTF-8 sesudah NFC (akun_service.SANDI_MAKS_BYTE), supaya sandi yang diterima saat ditetapkan selalu
+# bisa dipakai masuk. Sandi 256 byte sesudah NFC paling banyak 384 karakter dalam bentuk terurai.
+_MAKS_SANDI_ISIAN = 512
 _FIELD_MASUK = {"username", "password", "ingat", "turnstile_token"}
+_FIELD_SIAPKAN = {"username", "kode", "password_baru", "turnstile_token"}
+_FIELD_UBAH = {"password_lama", "password_baru"}
 _MAKS_TURNSTILE = 2048
 # Token Turnstile berbentuk base64url bertitik. Pola ketat supaya varian token yang sama (spasi, karakter
 # tak terlihat) tidak menghasilkan hash sekali pakai yang berbeda.
 _POLA_TURNSTILE = re.compile(r"[A-Za-z0-9._-]{1,%d}" % _MAKS_TURNSTILE)
-GRANT_REALM = "http://auth0.com/oauth/grant-type/password-realm"
-SCOPE = "openid offline_access"
 BATAS_IP_KASAR = (60, 60)
 BATAS_IP = (60, 20)
 BATAS_GAGAL_USERNAME_IP = (15 * 60, 10)
 BATAS_GLOBAL = sesi_service.BATAS_GLOBAL_LOGIN
-# Umur hitungan gagal per (username + IP) sejak gagal terakhir: pendek di bawah ambang, lengket sesudahnya.
 UMUR_HITUNGAN_GAGAL = timedelta(seconds=BATAS_GAGAL_USERNAME_IP[0])
 UMUR_PENANDA = timedelta(days=30)
 BATAS_USERNAME_UNIK_IP = (24 * 60 * 60, 50)  # username unik yang gagal per IP per hari
-# Penanda lengket baru (30 hari) per hari untuk seluruh SAPA. Di atasnya hitungan yang mencapai ambang hanya
-# berumur UMUR_HITUNGAN_GAGAL.
 BATAS_PENANDA_LENGKET_HARIAN = (24 * 60 * 60, 1000)
 KUNCI_PENANDA_LENGKET_HARIAN = "global:penanda-lengket-baru"
-TENGGAT_SITEVERIFY = turnstile.TENGGAT_SITEVERIFY  # tenggat total siteverify, detik
+BATAS_SIAPKAN_IP = (60 * 60, 10)  # POST /siapkan-akun per IP per jam, semua percobaan
+BATAS_LIHAT_SIAPKAN_IP = (60, 30)  # GET /siapkan-akun per IP per menit
+TENGGAT_SITEVERIFY = turnstile.TENGGAT_SITEVERIFY
 AMBANG_PERINGATAN_USERNAME = (60 * 60, 30)
-# Hash token Turnstile disimpan 5 menit sejak diterima, sama dengan masa berlaku token di Cloudflare yang
-# dihitung sejak token dibuat. Pemakaian ulang sesudahnya ditolak Cloudflare (timeout-or-duplicate).
 UMUR_TURNSTILE = 300
 SIMPAN_SIAP_DETIK = 30
-_METODE_AMAN = {"GET", "HEAD", "OPTIONS"}
-# Galat Auth0 yang menandakan salah atur client/tenant, bukan sandi salah.
-_GALAT_KONFIG = {"invalid_client", "unauthorized_client", "unsupported_grant_type", "invalid_scope",
-                 "invalid_request", "server_error", "temporarily_unavailable"}
+_PERAN_ADMIN = {"admin", "super_admin"}
+# Alasan penolakan baris akun yang dicatat di audit (tanpa nilai).
+_ALASAN_AUDIT = {"integritas_gagal", "rollback_terdeteksi"}
 
 PESAN_SALAH = "Nama pengguna atau kata sandi salah."
-PESAN_MFA = ("Akun ini memakai verifikasi dua langkah yang belum didukung di halaman ini. "
-             "Hubungi administrator SAPA.")
 PESAN_TURNSTILE_GAGAL = "Verifikasi keamanan gagal. Ulangi centang."
 PESAN_TURNSTILE_KEDALUWARSA = "Verifikasi keamanan sudah kedaluwarsa. Ulangi centang."
 PESAN_SESI_BERAKHIR = "Sesi berakhir. Silakan masuk kembali."
@@ -126,6 +133,12 @@ PESAN_BELUM_SIAP = "Layanan masuk sedang tidak tersedia. Coba beberapa saat lagi
 PESAN_ISIAN = "Isian masuk tidak lengkap atau tidak sah."
 PESAN_DITOLAK = "Permintaan ditolak. Muat ulang halaman lalu coba lagi."
 PESAN_KELUAR_GAGAL = "Sesi belum dapat diakhiri. Coba lagi."
+PESAN_KODE_SALAH = "Kode atau nama pengguna tidak cocok."
+PESAN_TIDAK_TERSEDIA = "Halaman ini tidak tersedia."
+PESAN_SANDI_LEMAH = ("Kata sandi baru harus 15 sampai 128 karakter dan tidak sama dengan nama pengguna atau kode.")
+PESAN_SANDI_BOCOR = "Kata sandi ini pernah bocor di internet. Pilih kata sandi lain."
+PESAN_SANDI_SAMA = "Kata sandi baru tidak boleh sama dengan kata sandi lama."
+PESAN_SANDI_LAMA_SALAH = "Kata sandi lama salah."
 
 # Kode galat stabil untuk frontend -> (status bawaan, pesan bawaan). Jangan mengganti nama kode yang ada.
 KODE = {
@@ -133,11 +146,17 @@ KODE = {
     "terlalu_banyak": (429, PESAN_TERLALU_BANYAK),
     "turnstile_gagal": (403, PESAN_TURNSTILE_GAGAL),
     "turnstile_kedaluwarsa": (403, PESAN_TURNSTILE_KEDALUWARSA),
-    "mfa": (403, PESAN_MFA),
     "belum_siap": (503, PESAN_BELUM_SIAP),
     "asal_tidak_sah": (403, PESAN_DITOLAK),
     "isian_tidak_sah": (400, PESAN_ISIAN),  # semua pelanggaran isian 400 dengan satu pesan
     "sesi_berakhir": (401, PESAN_SESI_BERAKHIR),
+    "kode_salah": (403, PESAN_KODE_SALAH),
+    "tidak_tersedia": (404, PESAN_TIDAK_TERSEDIA),
+    "sandi_lemah": (400, PESAN_SANDI_LEMAH),
+    "sandi_bocor": (400, PESAN_SANDI_BOCOR),
+    "sandi_sama": (400, PESAN_SANDI_SAMA),
+    "sandi_lama_salah": (401, PESAN_SANDI_LAMA_SALAH),
+    "hibp_tidak_tersedia": (503, akun_service.PESAN_HIBP_TIDAK_TERSEDIA),
 }
 
 
@@ -156,14 +175,26 @@ class _Gagal(Exception):
         self.kode, self.status, self.pesan = kode, status or bawaan_status, pesan or bawaan_pesan
 
 
+@dataclass
+class SesiAktif:
+    """Sesi cookie yang lolos revalidasi terhadap baris akun dan jangkar."""
+    sesi: sesi_service.SesiLokal
+    akun: akun_service.Akun
+
+
 def normal_username(username: str) -> str:
-    """Bentuk ternormal untuk kunci pembatas dan penanda: NFKC, trim, huruf kecil."""
-    return unicodedata.normalize("NFKC", username).strip().casefold()
+    """Bentuk ternormal untuk kunci pembatas, penanda, dan pencarian akun: NFKC, trim, huruf kecil."""
+    return akun_service.normal_username(username)
 
 
 def ringkas_username(username: str) -> str:
     """Penanda log dan audit untuk username: 12 karakter HMAC berkunci server, bukan nilai mentah."""
     return sesi_service.jejak("username:" + normal_username(username))[:12]
+
+
+def _id_tiruan(normal: str) -> str:
+    """Id akun tiruan untuk membaca jangkar saat username tidak ada (operasi DB sama dengan akun yang ada)."""
+    return "tiruan-" + sesi_service.jejak("akun-tiruan:" + normal)[:32]
 
 
 def kunci_ip(ip: Optional[str]) -> str:
@@ -182,8 +213,8 @@ def kunci_ip(ip: Optional[str]) -> str:
 
 
 def permintaan_sah(request, asal_diizinkan) -> bool:
-    """Penjaga CSRF untuk /masuk, /keluar, dan setiap non-GET bercookie: X-SAPA: 1 dan
-    bukti asal sendiri yang WAJIB ada.
+    """Penjaga CSRF untuk /masuk, /keluar, /siapkan-akun, /akun/ubah-sandi, dan setiap non-GET bercookie:
+    X-SAPA: 1 dan bukti asal sendiri yang WAJIB ada.
 
     Lolos hanya bila Sec-Fetch-Site = same-origin, atau header itu tidak dikirim dan Origin termasuk
     asal_diizinkan. Origin asing, Sec-Fetch-Site selain same-origin (termasuk none), dan permintaan tanpa
@@ -215,6 +246,30 @@ def _teks(nilai, maks: int) -> str:
     if any(ord(c) < 32 for c in nilai):
         raise _Gagal("isian_tidak_sah")
     return nilai
+
+
+def _sandi_isian(nilai, maks: int) -> str:
+    """Sandi pada isian: teks tak kosong, paling panjang `maks`, tanpa karakter kontrol. Tidak dipotong."""
+    if not isinstance(nilai, str) or not nilai or len(nilai) > maks or any(ord(c) < 32 for c in nilai):
+        raise _Gagal("isian_tidak_sah")
+    return nilai
+
+
+def _sandi_dipakai(nilai) -> str:
+    """Sandi yang dipakai (masuk, sandi lama): bentuk isian seperti saat ditetapkan, lalu paling panjang
+    akun_service.SANDI_MAKS_BYTE byte UTF-8 sesudah NFC (ukuran yang sama dengan kebijakan sandi baru). Sandi yang
+    lebih panjang ditolak, tidak dipotong."""
+    sandi = _sandi_isian(nilai, _MAKS_SANDI_ISIAN)
+    if akun_service.panjang_sandi_byte(sandi) > akun_service.SANDI_MAKS_BYTE:
+        raise _Gagal("isian_tidak_sah")
+    return sandi
+
+
+def _token_turnstile(nilai) -> str:
+    token = _teks(nilai, _MAKS_TURNSTILE)
+    if not _POLA_TURNSTILE.fullmatch(token):
+        raise _Gagal("turnstile_gagal")
+    return token
 
 
 async def _baca_json(request: Request) -> dict:
@@ -258,18 +313,70 @@ def _jawab_gagal(gagal: _Gagal) -> JSONResponse:
 
 
 def _detail_audit(catatan: dict, hasil: str) -> str:
-    """Detail audit login: hash username pendek, hasil/kode, dan peringatan. Tanpa nilai mentah."""
+    """Detail audit: hash username pendek, hasil/kode, dan peringatan. Tanpa nilai mentah."""
     bagian = [f"u={catatan['u']}"] if catatan.get("u") else []
     bagian.append(f"hasil={hasil}")
-    if catatan.get("peringatan"):
-        bagian.append(f"peringatan={catatan['peringatan']}")
+    for kunci in ("integritas", "peringatan"):
+        if catatan.get(kunci):
+            bagian.append(f"peringatan={catatan[kunci]}")
     return " ".join(bagian)
 
 
-def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_peran: Callable,
-                klaim_opsional: Callable, asal_diizinkan, audience: str) -> APIRouter:
-    """Router BFF yang memakai fungsi auth api/index.py (disuntikkan agar tidak ada impor melingkar)."""
-    router = APIRouter(prefix="/api/v1/auth")
+def _tandai_integritas(catatan: dict, alasan: Optional[str], jejak: str) -> None:
+    if alasan in _ALASAN_AUDIT:
+        catatan["integritas"] = alasan
+        logger.error("Baris akun ditolak (%s): %s", alasan, jejak)
+
+
+async def _naikkan_jangkar_bila_perlu(akun: akun_service.Akun, versi_min: int) -> None:
+    """Baris sah berversi di atas jangkar menaikkan jangkar (menutup celah bila tulis jangkar sempat gagal)."""
+    if akun.versi_sandi > versi_min:
+        try:
+            await sesi_service.naikkan_jangkar(akun.id, akun.versi_sandi)
+        except sesi_service.SesiBelumSiap:
+            logger.warning("Jangkar akun belum dapat dinaikkan saat dibaca")
+
+
+async def muat_sesi(request: Request) -> None:
+    """Baca dan revalidasi sesi cookie untuk permintaan ini; hasilnya di request.state.sapa_sesi (SesiAktif) atau
+    request.state.sapa_sesi_galat (503). Dipanggil middleware sebelum dependency auth berjalan."""
+    request.state.sapa_sesi = None
+    request.state.sapa_sesi_galat = None
+    cookie = request.cookies.get(sesi_service.NAMA_COOKIE)
+    if not cookie:
+        return
+    try:
+        sesi = await sesi_service.ambil_sesi_lokal(cookie, adalah_admin=lambda peran: peran in _PERAN_ADMIN)
+        if sesi is None:
+            return
+        if not akun_service.kunci_siap():
+            logger.error("Revalidasi sesi belum siap: pepper atau kunci MAC akun kosong")
+            raise akun_service.AkunBelumSiap()
+        akun = await akun_service.ambil_id(sesi.akun_id)
+        versi_min = await sesi_service.baca_jangkar(sesi.akun_id)
+        alasan = "tidak_ada" if akun is None else akun_service.periksa_akun(akun, versi_min)
+        if alasan is None and akun.versi_sandi != sesi.versi_sandi:
+            alasan = "versi_berubah"
+        if alasan is not None:
+            if alasan in _ALASAN_AUDIT:
+                logger.error("Sesi ditolak saat revalidasi (%s)", alasan)
+                request.state.audit_detail = f"peringatan={alasan}"
+                request.state.audit_paksa = True
+            await sesi_service.hapus_sesi_id(sesi.id_hash)
+            return
+        await _naikkan_jangkar_bila_perlu(akun, versi_min)
+        request.state.sapa_sesi = SesiAktif(sesi=sesi, akun=akun)
+    except (sesi_service.SesiBelumSiap, akun_service.AkunBelumSiap):
+        request.state.sapa_sesi_galat = 503
+    except Exception as exc:
+        logger.error("Revalidasi sesi gagal tak terduga: %s", type(exc).__name__)
+        request.state.sapa_sesi_galat = 503
+
+
+def buat_router(*, ip_pengguna: Callable, label_peran: Callable, klaim_opsional: Callable,
+                asal_diizinkan) -> APIRouter:
+    """Router login lokal yang memakai fungsi auth api/index.py (disuntikkan agar tidak ada impor melingkar)."""
+    router = APIRouter()
 
     simpanan_siap = {"waktu": None, "siap": False}
 
@@ -301,11 +408,7 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         return hasil
 
     async def _tambah_gagal_kumulatif(kunci: str) -> int:
-        """Tambah hitungan gagal (username + IP). Penanda lengket baru dibatasi per hari untuk seluruh SAPA.
-
-        Kuota harian dibaca sebelum menulis: bila sudah penuh, hitungan yang mencapai ambang hanya berumur
-        pendek. Jawaban tetap fungsi hitungan SAPA saja (kuota global sama untuk akun ada dan tidak ada).
-        """
+        """Tambah hitungan gagal (username + IP). Penanda lengket baru dibatasi per hari untuk seluruh SAPA."""
         jendela, maks = BATAS_PENANDA_LENGKET_HARIAN
         ambang = BATAS_GAGAL_USERNAME_IP[1]
         try:
@@ -323,12 +426,8 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         return jumlah
 
     async def _pesan_username_unik(kunci_gagal: str, ip: str) -> tuple[Optional[tuple], bool]:
-        """Pesan satu tempat username unik yang gagal untuk IP ini hari ini.
+        """Pesan satu tempat username unik yang gagal untuk IP ini hari ini; (tiket, lewat_batas).
 
-        Kembalikan (tiket, lewat_batas). Tiket None bila hitungan gagal username ini masih hidup (tidak akan
-        menambah baris baru) atau bila batas hari ini sudah penuh. lewat_batas benar bila batas sudah penuh:
-        percobaan tetap diteruskan ke Auth0, tetapi kegagalannya tidak menulis hitungan per username dan dijawab
-        terlalu_banyak.
         Hanya bergantung pada data SAPA, jadi sama untuk username yang ada dan tidak ada.
         """
         jendela, maks = BATAS_USERNAME_UNIK_IP
@@ -345,8 +444,6 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         return tiket, False
 
     async def _peringatkan_batas_username_unik(ip: str, jendela: int) -> None:
-        """Satu peringatan per IP (/64) per hari saat batas username unik tercapai. IP disamarkan dan tanpa
-        username. Satu baris penanda per IP per hari."""
         try:
             jumlah, _ = await sesi_service.hitung(f"peringatan-unik:ip:{kunci_ip(ip)}", jendela)
         except sesi_service.SesiBelumSiap:
@@ -360,15 +457,10 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         try:
             await sesi_service.padamkan_penanda(kunci)
         except sesi_service.SesiBelumSiap:
-            # Penanda yang tertinggal hanya lebih ketat; login yang sudah sukses tidak digagalkan.
             logger.warning("Penanda lengket tidak dapat dipadamkan")
 
     async def _catat_gagal_username(normal: str, jejak: str, catatan: dict) -> None:
-        """Hitung kegagalan per username lintas IP untuk peringatan log dan audit.
-
-        Memakai jendela geser (perkiraan dari jendela ini dan jendela sebelumnya) dan memberi peringatan sekali
-        per jendela.
-        """
+        """Hitung kegagalan per username lintas IP untuk peringatan log dan audit (tidak memblokir)."""
         jendela, ambang = AMBANG_PERINGATAN_USERNAME
         try:
             hasil = await sesi_service.hitung_geser(f"gagal-jam:username:{normal}", jendela)
@@ -383,57 +475,32 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
                            jejak, jumlah)
             catatan["peringatan"] = f"gagal_{jumlah}_per_jam"
 
-    async def _proses_masuk(request: Request, catatan: dict) -> tuple[dict, str, bool]:
-        # Sandi tidak boleh lewat URL: query string apa pun ditolak.
-        if request.url.query:
-            raise _Gagal("isian_tidak_sah")
-        if not permintaan_sah(request, asal_diizinkan):
-            raise _Gagal("asal_tidak_sah")
-        body = await _baca_json(request)
-        username = _teks(body.get("username"), _MAKS_USERNAME).strip()
-        if set(body) - _FIELD_MASUK:
-            raise _Gagal("isian_tidak_sah")
-        password = body.get("password")
-        if not isinstance(password, str) or not password or len(password.encode("utf-8")) > _MAKS_SANDI_BYTE \
-                or any(ord(c) < 32 for c in password):
-            raise _Gagal("isian_tidak_sah")
-        token_turnstile = _teks(body.get("turnstile_token"), _MAKS_TURNSTILE)
-        if not _POLA_TURNSTILE.fullmatch(token_turnstile):
-            raise _Gagal("turnstile_gagal")
-        ingat = body.get("ingat")
-        if not isinstance(ingat, bool):
-            raise _Gagal("isian_tidak_sah")
-        normal = normal_username(username)
-        jejak = ringkas_username(username)
-        catatan["u"] = jejak
-
-        cfg = sesi_service.konfigurasi_auth0()
-        kurang = [nama for nama, siap in (("auth0_client", cfg is not None), ("kunci", sesi_service.kunci_siap()),
-                                          ("db", sesi_service.store() is not None),
+    def _cek_konfigurasi(nama_jalur: str) -> None:
+        kurang = [nama for nama, siap in (("kunci", sesi_service.kunci_siap()), ("db", sesi_service.store() is not None),
+                                          ("akun", akun_service.konfigurasi_siap()),
                                           ("turnstile", bool(turnstile.kunci_rahasia()))) if not siap]
         if kurang:
-            logger.error("Login BFF belum siap: %s", ",".join(kurang))
+            logger.error("%s belum siap: %s", nama_jalur, ",".join(kurang))
             raise _Gagal("belum_siap")
 
+    def _ip_wajib(request: Request) -> str:
         ip = ip_pengguna(request)
         if not ip:
-            # Tanpa IP klien tepercaya, Auth0 dan pembatas akan melihat semua login dari satu IP.
-            logger.error("IP klien tepercaya tidak tersedia; login ditolak (periksa header Vercel)")
+            logger.error("IP klien tepercaya tidak tersedia; permintaan ditolak (periksa header Vercel)")
             raise _Gagal("belum_siap")
-        # Batas kasar dihitung sebelum Turnstile; batas 20/menit dihitung setelah siteverify.
-        await _batas(f"ip-kasar:{kunci_ip(ip)}", BATAS_IP_KASAR)
+        return ip
+
+    async def _turnstile(token: str, ip: str, aksi: str, jejak: str) -> None:
         # Hash token dicatat sebelum siteverify, jadi kiriman ganda tidak sampai ke Cloudflare.
         try:
-            pertama = await sesi_service.sekali_pakai(f"turnstile:{token_turnstile}", UMUR_TURNSTILE)
+            pertama = await sesi_service.sekali_pakai(f"turnstile:{token}", UMUR_TURNSTILE)
         except sesi_service.SesiBelumSiap:
             raise _Gagal("belum_siap") from None
         if not pertama:
             logger.info("Token Turnstile dipakai ulang: %s", jejak)
             raise _Gagal("turnstile_kedaluwarsa")
         try:
-            # Tenggat total atas klien httpx async; pembatalan menghentikan penantian HTTP ke Cloudflare.
-            await asyncio.wait_for(turnstile.cek_turnstile_async(token_turnstile, ip, turnstile.AKSI_MASUK),
-                                   TENGGAT_SITEVERIFY)
+            await asyncio.wait_for(turnstile.cek_turnstile_async(token, ip, aksi), TENGGAT_SITEVERIFY)
         except asyncio.TimeoutError:
             logger.warning("Cloudflare Turnstile melewati tenggat total %s detik", TENGGAT_SITEVERIFY)
             raise _Gagal("belum_siap") from None
@@ -442,6 +509,89 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
                 raise _Gagal("belum_siap") from None
             kedaluwarsa = exc.alasan == turnstile.ALASAN_KEDALUWARSA
             raise _Gagal("turnstile_kedaluwarsa" if kedaluwarsa else "turnstile_gagal") from None
+
+    async def _baca_akun(normal: str) -> tuple[Optional[akun_service.Akun], Optional[str], int]:
+        """(akun, alasan tidak sah, versi_min). Jangkar selalu dibaca (id tiruan bila akun tidak ada)."""
+        try:
+            akun = await akun_service.ambil_username(normal)
+            versi_min = await sesi_service.baca_jangkar(akun.id if akun is not None else _id_tiruan(normal))
+            alasan = None if akun is None else akun_service.periksa_akun(akun, versi_min)
+        except (akun_service.AkunBelumSiap, sesi_service.SesiBelumSiap):
+            raise _Gagal("belum_siap") from None
+        return akun, alasan, versi_min
+
+    async def _cek_hibp(sandi: str) -> None:
+        try:
+            bocor = await akun_service.cek_bocor(sandi)
+        except akun_service.HibpTidakTersedia:
+            raise _Gagal("hibp_tidak_tersedia") from None
+        if bocor:
+            raise _Gagal("sandi_bocor")
+
+    async def _cabut_dan_jangkar(akun: akun_service.Akun) -> None:
+        """Sesudah tulis D1 berhasil: naikkan jangkar ke versi baru, lalu cabut semua sesi akun."""
+        try:
+            await sesi_service.naikkan_jangkar(akun.id, akun.versi_sandi)
+            await sesi_service.hapus_semua_sesi_user(sesi_service.SUB_AWALAN + akun.id)
+        except sesi_service.SesiBelumSiap:
+            raise _Gagal("belum_siap") from None
+
+    async def _tangani(request: Request, catatan: dict, proses):
+        """Jalankan `proses` dalam satu koneksi DB; galat menjadi respons gagal yang ditahan waktu minimum."""
+        mulai = _monoton()
+        sesi_service.pasang_executor_dns()
+        try:
+            async with sesi_service.satu_koneksi():
+                return await proses(request, catatan), None
+        except Exception as exc:
+            if isinstance(exc, _Gagal):
+                gagal = exc
+            elif isinstance(exc, (akun_service.AkunBelumSiap, sesi_service.SesiBelumSiap)):
+                gagal = _Gagal("belum_siap")
+            else:
+                # Jaring pengaman: galat tak terduga tetap 503 seragam, tanpa rincian atau isian di log.
+                logger.error("%s gagal tak terduga: %s", request.url.path, type(exc).__name__)
+                gagal = _Gagal("belum_siap")
+            durasi = _monoton() - mulai
+            sisa = waktu_tahan_gagal(durasi) - durasi
+            if sisa > 0:
+                await _tidur(sisa)
+            if durasi > WAKTU_MINIMUM_GAGAL:
+                logger.warning("Durasi gagal %d ms melewati batas minimum %d ms (kode %s)",
+                               round(durasi * 1000), round(WAKTU_MINIMUM_GAGAL * 1000), gagal.kode)
+            request.state.audit_detail = _detail_audit(catatan, catatan.get("hasil") or gagal.kode)
+            return None, _jawab_gagal(gagal)
+
+    # --- /masuk ----------------------------------------------------------------------------------
+
+    async def _proses_masuk(request: Request, catatan: dict):
+        # Sandi tidak boleh lewat URL: query string apa pun ditolak.
+        if request.url.query:
+            raise _Gagal("isian_tidak_sah")
+        if not permintaan_sah(request, asal_diizinkan):
+            raise _Gagal("asal_tidak_sah")
+        body = await _baca_json(request)
+        if set(body) - _FIELD_MASUK:
+            raise _Gagal("isian_tidak_sah")
+        username = _teks(body.get("username"), _MAKS_USERNAME).strip()
+        password = _sandi_dipakai(body.get("password"))
+        token_turnstile = _token_turnstile(body.get("turnstile_token"))
+        ingat = body.get("ingat")
+        if not isinstance(ingat, bool):
+            raise _Gagal("isian_tidak_sah")
+        normal = normal_username(username)
+        # Bentuk ternormal bisa lebih panjang dari isian (NFKC, casefold). Username yang tidak mungkin dimiliki akun
+        # (aturan yang sama dengan penyiapan) ditolak sebagai isian, tidak bergantung pada akun mana pun.
+        if not akun_service.username_sah(normal):
+            raise _Gagal("isian_tidak_sah")
+        jejak = ringkas_username(username)
+        catatan["u"] = jejak
+
+        _cek_konfigurasi("Login lokal")
+        ip = _ip_wajib(request)
+        # Batas kasar dihitung sebelum Turnstile; batas 20/menit dihitung setelah siteverify.
+        await _batas(f"ip-kasar:{kunci_ip(ip)}", BATAS_IP_KASAR)
+        await _turnstile(token_turnstile, ip, turnstile.AKSI_MASUK, jejak)
         await _batas(f"ip:{kunci_ip(ip)}", BATAS_IP)
 
         kunci_gagal = f"gagal:username:{normal}|ip:{kunci_ip(ip)}"
@@ -455,67 +605,37 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
             raise
         try:
             await _batas(sesi_service.KUNCI_GLOBAL_LOGIN, BATAS_GLOBAL)
-            status, jawaban = await sesi_service._auth0_post("/oauth/token", {
-                "grant_type": GRANT_REALM, "realm": cfg["realm"], "client_id": cfg["client_id"],
-                "client_secret": cfg["client_secret"], "audience": audience, "scope": SCOPE,
-                "username": username, "password": password,
-            }, {"auth0-forwarded-for": ip})
-            galat = (jawaban or {}).get("error")
-            if status != 200 or not jawaban or not isinstance(jawaban.get("access_token"), str):
-                if galat is not None and not isinstance(galat, str):
-                    logger.error("Auth0 /oauth/token bermasalah: status %s, galat tidak berbentuk teks", status)
-                    raise _Gagal("belum_siap")
-                if galat == "mfa_required":
-                    # Akun ber-MFA mendapat pesan sendiri (belum didukung di halaman ini).
-                    logger.warning("Masuk ditolak (mfa_required): %s", jejak)
-                    raise _Gagal("mfa")
-                # Semua 429 Auth0 (termasuk too_many_attempts) dihitung sebagai kegagalan kredensial biasa: slot
-                # tidak dikembalikan dan jawabannya hanya ditentukan hitungan SAPA. Di bawah ini jalurnya sama
-                # dengan invalid_grant, termasuk operasi DB-nya.
-                diblokir_auth0 = status == 429
-                if diblokir_auth0 and galat != "too_many_attempts":
-                    # 429 selain too_many_attempts dicatat sebagai batas tenant Auth0 (tanpa username); jawaban
-                    # tetap sandi_salah.
-                    logger.warning("Auth0 429 batas tenant pada /oauth/token (galat %s); dijawab sandi_salah dan "
-                                   "dihitung sebagai kegagalan", galat or "-")
-                # status <= 0: Auth0 tidak terjangkau, tenggat habis (0), atau pasti belum terkirim (-1).
-                if not diblokir_auth0 and (status <= 0 or status >= 500 or galat in _GALAT_KONFIG or status == 200):
-                    logger.error("Auth0 /oauth/token bermasalah: status %s, galat %s", status, galat or "-")
-                    raise _Gagal("belum_siap")
+            akun, alasan, versi_min = await _baca_akun(normal)
+            # Tepat satu verifikasi argon2 untuk setiap kondisi: hash asli bila baris sah, tiruan bila tidak.
+            if akun is not None and alasan is None:
+                cocok = await run_in_threadpool(akun_service.cocokkan_sandi, akun.hash, password)
+            else:
+                cocok = await run_in_threadpool(akun_service.cocokkan_palsu, password)
+            _tandai_integritas(catatan, alasan, jejak)
+            if not cocok:
                 kredensial_salah = True
                 if lewat_batas_unik:
-                    # Batas username unik IP ini penuh: jawaban terlalu_banyak dan hitungan per username tidak
-                    # ditulis. lewat_batas_unik hanya fungsi data SAPA.
                     logger.info("Masuk ditolak (batas username unik per IP): %s", jejak)
                     raise _Gagal("terlalu_banyak")
                 await _catat_gagal_username(normal, jejak, catatan)
                 jumlah = await _tambah_gagal_kumulatif(kunci_gagal)
                 if jumlah > BATAS_GAGAL_USERNAME_IP[1]:
-                    # Kegagalan ke-10 masih sandi_salah; sesudahnya terlalu_banyak sampai sukses atau 30 hari.
                     logger.info("Masuk ditolak (penanda lengket): %s", jejak)
                     raise _Gagal("terlalu_banyak")
-                logger.info("Masuk ditolak (%s): %s", galat or status, jejak)
+                logger.info("Masuk ditolak (kredensial): %s", jejak)
                 raise _Gagal("sandi_salah")
         finally:
-            # Hanya kegagalan kredensial yang dihitung; sukses dan kegagalan lain mengembalikan slot dan
-            # tempat username unik.
+            # Hanya kegagalan kredensial yang dihitung; sukses dan kegagalan lain mengembalikan slot dan tempat
+            # username unik.
             if not kredensial_salah:
                 await _kembalikan_slot(slot.tiket)
                 if tiket_unik is not None:
                     await _kembalikan_slot(tiket_unik)
         # Login sukses dari IP ini mereset hitungan kumulatif dan penanda lengket (username + IP).
         await _padamkan_penanda(kunci_gagal)
-
+        await _naikkan_jangkar_bila_perlu(akun, versi_min)
         try:
-            klaim = await run_in_threadpool(verifikasi_token, jawaban["access_token"])
-        except HTTPException as exc:
-            logger.error("Token dari Auth0 tidak lolos verifikasi (status %s); periksa audience client login", exc.status_code)
-            raise _Gagal("belum_siap") from None
-        sub = klaim.get("sub")
-        if not isinstance(sub, str) or not sub:
-            raise _Gagal("belum_siap")
-        try:
-            cookie = await sesi_service.buat_sesi(sub, ingat, jawaban)
+            cookie = await sesi_service.buat_sesi_lokal(akun.id, akun.versi_sandi, akun.username, akun.peran, ingat)
         except sesi_service.SesiBelumSiap:
             raise _Gagal("belum_siap") from None
         # Sesi lama di browser yang sama diakhiri, supaya setiap login memakai id baru.
@@ -526,79 +646,50 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
             except sesi_service.SesiBelumSiap:
                 pass
         logger.info("Masuk berhasil: %s", jejak)
-        return klaim, cookie, ingat
+        return akun, cookie, ingat
 
-    @router.post("/masuk")
+    @router.post("/api/v1/auth/masuk")
     async def masuk(request: Request):
-        mulai = _monoton()
-        sesi_service.pasang_executor_dns()
         catatan: dict = {}
-        try:
-            async with sesi_service.satu_koneksi():
-                klaim, cookie, ingat = await _proses_masuk(request, catatan)
-        except Exception as exc:
-            if isinstance(exc, _Gagal):
-                gagal = exc
-            else:
-                # Jaring pengaman: galat tak terduga tetap 503 seragam, tanpa rincian atau isian di log.
-                logger.error("Masuk gagal tak terduga: %s", type(exc).__name__)
-                gagal = _Gagal("belum_siap")
-            durasi = _monoton() - mulai
-            sisa = waktu_tahan_gagal(durasi) - durasi
-            if sisa > 0:
-                await _tidur(sisa)
-            if durasi > WAKTU_MINIMUM_GAGAL:
-                logger.warning("Durasi masuk gagal %d ms melewati batas minimum %d ms (kode %s)",
-                               round(durasi * 1000), round(WAKTU_MINIMUM_GAGAL * 1000), gagal.kode)
-            request.state.audit_detail = _detail_audit(catatan, gagal.kode)
-            return _jawab_gagal(gagal)
-        request.state.audit_claims = {"sub": klaim["sub"]}
+        hasil, gagal = await _tangani(request, catatan, _proses_masuk)
+        if gagal is not None:
+            return gagal
+        akun, cookie, ingat = hasil
+        request.state.audit_claims = {"sub": sesi_service.SUB_AWALAN + akun.id}
         request.state.audit_detail = _detail_audit(catatan, "berhasil")
-        res = _jawab(200, {"masuk": True, "peran": label_peran(klaim)})
+        res = _jawab(200, {"masuk": True, "peran": akun.peran})
         _cookie(res, cookie, ingat)
         return res
 
-    @router.get("/sesi")
+    # --- /sesi, /keluar --------------------------------------------------------------------------
+
+    @router.get("/api/v1/auth/sesi")
     async def sesi(request: Request):
         aktif = getattr(request.state, "sapa_sesi", None)
         if getattr(request.state, "sapa_sesi_galat", None):
-            # DB sesi (atau kunci) bermasalah bukan berarti tidak masuk. Cookie dibiarkan supaya sesi
-            # kembali setelah pulih.
+            # DB sesi, penyimpanan akun, atau kunci bermasalah bukan berarti tidak masuk. Cookie dibiarkan.
             return _jawab_gagal(_Gagal("belum_siap"))
         if aktif is None:
-            # Cookie dibawa tetapi sesinya sudah tidak ada (kedaluwarsa, keluar, dicabut): sesi_berakhir.
             if request.cookies.get(sesi_service.NAMA_COOKIE):
                 res = _jawab(200, {"masuk": False, "kode": "sesi_berakhir"})
                 _hapus_cookie(res)
                 return res
             return _jawab(200, {"masuk": False})
-        try:
-            klaim = await run_in_threadpool(verifikasi_token, aktif.access_token)
-        except HTTPException as exc:
-            if exc.status_code == 401:
-                return _jawab(200, {"masuk": False, "kode": "sesi_berakhir"})
-            # JWKS Auth0 tidak terjangkau atau auth belum dikonfigurasi: sesi mungkin masih sah.
-            return _jawab_gagal(_Gagal("belum_siap"))
-        isi = {"masuk": True, "peran": label_peran(klaim)}
-        if aktif.nama:
-            isi["nama"] = aktif.nama
-        return _jawab(200, isi)
+        return _jawab(200, {"masuk": True, "peran": aktif.akun.peran, "nama": aktif.akun.username})
 
-    @router.post("/keluar")
+    @router.post("/api/v1/auth/keluar")
     async def keluar(request: Request):
         if not permintaan_sah(request, asal_diizinkan):
             return _jawab_gagal(_Gagal("asal_tidak_sah"))
         aktif = getattr(request.state, "sapa_sesi", None)
         if aktif is not None:
-            request.state.audit_claims = {"sub": aktif.sub}
+            request.state.audit_claims = {"sub": aktif.sesi.sub}
         cookie = request.cookies.get(sesi_service.NAMA_COOKIE)
         if cookie:
             try:
                 await sesi_service.hapus_sesi(cookie)
             except sesi_service.SesiBelumSiap:
                 return _jawab_gagal(_Gagal("belum_siap", pesan=PESAN_KELUAR_GAGAL))
-        if aktif is not None and aktif.refresh_token:
-            await sesi_service.cabut_refresh_token(aktif.refresh_token)
         res = _jawab(200, {"keluar": True})
         _hapus_cookie(res)
         # Browser juga membuang cookie dan penyimpanan lain milik asal ini.
@@ -607,12 +698,15 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         res.headers["Clear-Site-Data"] = '"cookies", "storage"'
         return res
 
+    # --- /siap -----------------------------------------------------------------------------------
+
     async def _cek_lengkap() -> dict:
         cek = await sesi_service.cek_kesiapan()
+        cek["akun"] = akun_service.konfigurasi_siap()
         cek["turnstile"] = bool(turnstile.kunci_rahasia())
         return cek
 
-    @router.get("/siap")
+    @router.get("/api/v1/auth/siap")
     async def siap(request: Request):
         # Rincian hanya untuk Super Admin (selalu segar); tanpa login cukup satu nilai siap/tidak yang
         # disimpan sementara SIMPAN_SIAP_DETIK, supaya permintaan anonim tidak membebani DB.
@@ -624,5 +718,200 @@ def buat_router(*, verifikasi_token: Callable, ip_pengguna: Callable, label_pera
         if simpanan_siap["waktu"] is None or sekarang - simpanan_siap["waktu"] >= SIMPAN_SIAP_DETIK:
             simpanan_siap.update(waktu=sekarang, siap=all((await _cek_lengkap()).values()))
         return _jawab(200, {"siap": simpanan_siap["siap"]})
+
+    # --- /siapkan-akun ---------------------------------------------------------------------------
+
+    async def _jenis_tersedia(aktif: dict) -> Optional[str]:
+        """Jenis penukaran yang tersedia sekarang, atau None. AkunBelumSiap bila Worker tidak terjangkau."""
+        jumlah = None
+        if "penyiapan" in aktif and not await akun_service.kode_terpakai(akun_service.hash_kode(aktif["penyiapan"])):
+            jumlah = await akun_service.jumlah()
+            if jumlah == 0:
+                return "penyiapan"
+        if "pemulihan" in aktif and not await akun_service.kode_terpakai(akun_service.hash_kode(aktif["pemulihan"])):
+            if jumlah is None:
+                jumlah = await akun_service.jumlah()
+            if jumlah > 0:
+                return "pemulihan"
+        return None
+
+    @router.get("/api/v1/auth/siapkan-akun")
+    async def lihat_siapkan_akun(request: Request):
+        aktif = akun_service.kode_env()
+        if not aktif:
+            return _jawab_gagal(_Gagal("tidak_tersedia"))
+        try:
+            ip = _ip_wajib(request)
+            async with sesi_service.satu_koneksi():
+                await _batas(f"siapkan-lihat:ip:{kunci_ip(ip)}", BATAS_LIHAT_SIAPKAN_IP)
+            if not akun_service.konfigurasi_siap():
+                raise _Gagal("belum_siap")
+            jenis = await _jenis_tersedia(aktif)
+        except _Gagal as gagal:
+            return _jawab_gagal(gagal)
+        except akun_service.AkunBelumSiap:
+            return _jawab_gagal(_Gagal("belum_siap"))
+        if jenis is None:
+            return _jawab_gagal(_Gagal("tidak_tersedia"))
+        # Penyiapan dan pemulihan tidak dibedakan di jawaban.
+        return _jawab(200, {"tersedia": True})
+
+    async def _catat_kode_ditolak(request: Request, catatan: dict, kode: str, jenis: str, jejak: str) -> None:
+        """Kode env yang BENAR ditolak karena sudah terpakai atau jenisnya tidak berlaku saat ini. Ini tanda kode
+        bocor atau env belum dihapus, jadi selalu dicatat: log peringatan dan audit dipaksa (walau 404), tanpa nilai
+        kode maupun username mentah."""
+        request.state.audit_paksa = True
+        try:
+            terpakai = await akun_service.kode_terpakai(akun_service.hash_kode(kode))
+        except akun_service.AkunBelumSiap:
+            terpakai = None
+        catatan["hasil"] = "kode_terpakai" if terpakai else "kode_tidak_berlaku"
+        logger.warning("Kode %s yang benar ditolak (%s): %s", jenis, catatan["hasil"], jejak)
+
+    async def _proses_siapkan(request: Request, catatan: dict):
+        if request.url.query:
+            raise _Gagal("isian_tidak_sah")
+        if not permintaan_sah(request, asal_diizinkan):
+            raise _Gagal("asal_tidak_sah")
+        body = await _baca_json(request)
+        if set(body) != _FIELD_SIAPKAN:
+            raise _Gagal("isian_tidak_sah")
+        username = _teks(body["username"], _MAKS_USERNAME).strip()
+        normal = normal_username(username)
+        if not akun_service.username_sah(normal):
+            raise _Gagal("isian_tidak_sah")
+        kode = _teks(body["kode"], _MAKS_KODE)
+        sandi_baru = _sandi_isian(body["password_baru"], _MAKS_SANDI_ISIAN)
+        token_turnstile = _token_turnstile(body["turnstile_token"])
+        jejak = ringkas_username(normal)
+        catatan["u"] = jejak
+
+        aktif = akun_service.kode_env()
+        if not aktif:
+            raise _Gagal("tidak_tersedia")
+        _cek_konfigurasi("Penyiapan akun")
+        ip = _ip_wajib(request)
+        # Semua percobaan dihitung (sebelum Turnstile), termasuk kode yang salah.
+        await _batas(f"siapkan:ip:{kunci_ip(ip)}", BATAS_SIAPKAN_IP)
+        # Ketersediaan diperiksa sebelum kode dan Turnstile: selama tidak tersedia jawabannya selalu 404 yang sama
+        # dengan saat env kode tidak ada, apa pun kode, token, atau sandinya.
+        tersedia = await _jenis_tersedia(aktif)
+        jenis = akun_service.cocok_kode(kode, aktif)
+        if tersedia is None or (jenis is not None and jenis != tersedia):
+            if jenis is not None:
+                await _catat_kode_ditolak(request, catatan, kode, jenis, jejak)
+            raise _Gagal("tidak_tersedia")
+        await _turnstile(token_turnstile, ip, turnstile.AKSI_SIAPKAN_AKUN, jejak)
+        if akun_service.kebijakan_sandi(sandi_baru, larangan=(normal, username, kode)):
+            raise _Gagal("sandi_lemah")
+        akun_lama = alasan = None
+        if tersedia == "pemulihan":
+            # Akun dibaca untuk setiap percobaan pemulihan, juga saat kodenya salah, supaya kode salah dan username
+            # yang tidak cocok menjalankan operasi yang sama (status, body, header, dan waktu tahan seragam).
+            akun_lama, alasan, _ = await _baca_akun(normal)
+            _tandai_integritas(catatan, alasan, jejak)
+        if jenis is None:
+            logger.warning("Kode penyiapan atau pemulihan salah: %s", jejak)
+            raise _Gagal("kode_salah")
+        hash_kode = akun_service.hash_kode(kode)
+        if jenis == "pemulihan" and (akun_lama is None or alasan in _ALASAN_AUDIT):
+            # Pemulihan hanya mengganti hash akun yang sudah ada, utuh, dan cocok username-nya.
+            raise _Gagal("kode_salah")
+        await _cek_hibp(sandi_baru)
+        if jenis == "penyiapan":
+            akun = await run_in_threadpool(akun_service.akun_baru, normal, sandi_baru)
+            if not await akun_service.sisip_pertama(akun, hash_kode):
+                # Permintaan lain mendahului (tabel sudah berisi atau kode sudah ditandai).
+                await _catat_kode_ditolak(request, catatan, kode, jenis, jejak)
+                raise _Gagal("tidak_tersedia")
+        else:
+            hash_baru = await run_in_threadpool(akun_service.hash_sandi, sandi_baru)
+            akun = await akun_service.ganti_hash(akun_lama, hash_baru, hash_kode, "pemulihan")
+            if akun is None:
+                await _catat_kode_ditolak(request, catatan, kode, jenis, jejak)
+                raise _Gagal("tidak_tersedia")
+        await _cabut_dan_jangkar(akun)
+        logger.warning("Akun %s lewat kode %s: %s", "disiapkan" if jenis == "penyiapan" else "dipulihkan", jenis, jejak)
+        return jenis
+
+    @router.post("/api/v1/auth/siapkan-akun")
+    async def siapkan_akun(request: Request):
+        catatan: dict = {}
+        jenis, gagal = await _tangani(request, catatan, _proses_siapkan)
+        if gagal is not None:
+            return gagal
+        request.state.audit_detail = _detail_audit(catatan, jenis)
+        return _jawab(201, {"siap": True})
+
+    # --- /akun/ubah-sandi ------------------------------------------------------------------------
+
+    async def _proses_ubah_sandi(request: Request, catatan: dict):
+        if request.url.query:
+            raise _Gagal("isian_tidak_sah")
+        if not permintaan_sah(request, asal_diizinkan):
+            raise _Gagal("asal_tidak_sah")
+        if getattr(request.state, "sapa_sesi_galat", None):
+            raise _Gagal("belum_siap")
+        aktif: Optional[SesiAktif] = getattr(request.state, "sapa_sesi", None)
+        if aktif is None:
+            raise _Gagal("sesi_berakhir")
+        request.state.audit_claims = {"sub": aktif.sesi.sub}
+        body = await _baca_json(request)
+        if set(body) != _FIELD_UBAH:
+            raise _Gagal("isian_tidak_sah")
+        lama = _sandi_dipakai(body["password_lama"])
+        baru = _sandi_isian(body["password_baru"], _MAKS_SANDI_ISIAN)
+        akun = aktif.akun
+        jejak = ringkas_username(akun.username)
+        catatan["u"] = jejak
+        _cek_konfigurasi("Ubah sandi")
+        ip = _ip_wajib(request)
+        await _batas(f"ip-kasar:{kunci_ip(ip)}", BATAS_IP_KASAR)
+        if akun_service.kebijakan_sandi(baru, larangan=(akun.username,)):
+            raise _Gagal("sandi_lemah")
+        # Sandi lama yang salah dihitung pada pembatas kegagalan (username + IP) yang sama dengan /masuk.
+        kunci_gagal = f"gagal:username:{akun.username}|ip:{kunci_ip(ip)}"
+        slot = await _pesan_slot_gagal(kunci_gagal)
+        kredensial_salah = False
+        try:
+            await _batas(sesi_service.KUNCI_GLOBAL_LOGIN, BATAS_GLOBAL)
+            if not await run_in_threadpool(akun_service.cocokkan_sandi, akun.hash, lama):
+                kredensial_salah = True
+                jumlah = await _tambah_gagal_kumulatif(kunci_gagal)
+                if jumlah > BATAS_GAGAL_USERNAME_IP[1]:
+                    raise _Gagal("terlalu_banyak")
+                raise _Gagal("sandi_lama_salah")
+        finally:
+            if not kredensial_salah:
+                await _kembalikan_slot(slot.tiket)
+        await _padamkan_penanda(kunci_gagal)
+        if akun_service.sama_sandi(lama, baru):
+            raise _Gagal("sandi_sama")
+        await _cek_hibp(baru)
+        hash_baru = await run_in_threadpool(akun_service.hash_sandi, baru)
+        akun_baru = await akun_service.ganti_hash(akun, hash_baru)
+        if akun_baru is None:
+            # Baris berubah sejak dibaca (permintaan lain); tidak ada yang ditimpa.
+            raise _Gagal("belum_siap")
+        await _cabut_dan_jangkar(akun_baru)
+        try:
+            cookie = await sesi_service.buat_sesi_lokal(akun_baru.id, akun_baru.versi_sandi, akun_baru.username,
+                                                        akun_baru.peran, aktif.sesi.ingat)
+        except sesi_service.SesiBelumSiap:
+            raise _Gagal("belum_siap") from None
+        logger.warning("Sandi akun diubah; semua sesi akun dicabut: %s", jejak)
+        return cookie, aktif.sesi.ingat
+
+    @router.post("/api/v1/akun/ubah-sandi")
+    async def ubah_sandi(request: Request):
+        catatan: dict = {}
+        hasil, gagal = await _tangani(request, catatan, _proses_ubah_sandi)
+        if gagal is not None:
+            return gagal
+        cookie, ingat = hasil
+        request.state.audit_detail = _detail_audit(catatan, "sandi_diubah")
+        res = _jawab(200, {"diubah": True})
+        _cookie(res, cookie, ingat)
+        return res
 
     return router

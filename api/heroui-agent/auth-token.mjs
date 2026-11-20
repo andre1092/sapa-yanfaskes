@@ -13,6 +13,9 @@ export function createHandler({ env = process.env, exchange = createAuthToken, v
       res.setHeader('Allow', 'POST');
       return reply(405, { error: 'Method not allowed' });
     }
+    // Login lokal (SAPA_LOGIN_BFF=1) tidak memakai Auth0: token Bearer Auth0 tidak lagi menjadi identitas, jadi
+    // asisten ditolak rapi sampai ia memakai sesi akun lokal. Token tidak dibaca maupun diverifikasi.
+    if (String(env.SAPA_LOGIN_BFF ?? '').trim() === '1') return reply(503, { error: 'Agent unavailable' });
     let config;
     try { config = readConfig(env); } catch { return reply(503, { error: 'Agent unavailable' }); }
     const authorization = req.headers.authorization;

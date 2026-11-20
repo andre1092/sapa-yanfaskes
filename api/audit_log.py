@@ -2,7 +2,8 @@
 
 Yang dicatat: akses ditolak (401/403) dan tindakan admin (sinkronisasi, muat ulang,
 ekspor, unggah dan unduh data SSBI, email verifikasi, membuka log, masuk dan keluar lewat
-login satu halaman). Tidak mencatat email, token, atau isi data.
+login satu halaman, penyiapan atau pemulihan akun, ubah sandi, dan baris akun yang ditolak saat revalidasi
+karena tidak utuh atau dikembalikan ke versi lama). Tidak mencatat email, token, sandi, kode, hash, atau isi data.
 Kegagalan menulis log tidak pernah menggagalkan permintaan pengguna.
 
 Koneksi ke Postgres audit dipakai ulang lintas permintaan dalam instans yang sama. Setiap event loop punya
@@ -48,9 +49,10 @@ CREATE TRIGGER audit_log_no_truncate BEFORE TRUNCATE ON audit_log
     FOR EACH STATEMENT EXECUTE FUNCTION audit_log_append_only();
 """
 
-_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-export|ssbi-jadwal/(periksa|integrasikan|detail)|surat-kontrol/(periksa|integrasikan)|auth/(send-verification-email|masuk|keluar)|audit-log|akun/ganti-sandi|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
-# Rute login satu halaman hanya ada bila SAPA_LOGIN_BFF=1; 404/405 (rute tidak ada, metode salah) tidak dicatat.
-_AUTH_BFF_PATHS = re.compile(r"^/api/v1/auth/(masuk|keluar)$")
+_ACTION_PATHS = re.compile(r"^/api/v1/(fkrtl-export|ssbi-jadwal/(periksa|integrasikan|detail)|surat-kontrol/(periksa|integrasikan)|auth/(send-verification-email|masuk|keluar|siapkan-akun)|audit-log|akun/(ganti-sandi|ubah-sandi)|pengguna-fkrtl(/[^/]+(/(atur-ulang-sandi|undangan|username))?)?)$")
+# Rute login satu halaman hanya ada bila SAPA_LOGIN_BFF=1; selain POST, dan 404/405 (rute tidak ada, metode salah,
+# atau penyiapan akun tidak tersedia), tidak dicatat.
+_AUTH_BFF_PATHS = re.compile(r"^/api/v1/(auth/(masuk|keluar|siapkan-akun)|akun/ubah-sandi)$")
 _schema_ready = False
 _TANPA_DSN = object()
 CONNECT_TIMEOUT = 5
