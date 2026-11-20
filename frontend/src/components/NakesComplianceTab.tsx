@@ -559,7 +559,7 @@ export const NakesComplianceTab: React.FC = () => {
                 Grafik Bulanan: Persen Sesuai (%)
               </Typography>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                Tren rata-rata kesesuaian jadwal praktek nakes (Januari - September 2026)
+                Tren rata-rata kesesuaian jadwal praktek nakes per bulan di tahun 2026
               </p>
             </div>
 

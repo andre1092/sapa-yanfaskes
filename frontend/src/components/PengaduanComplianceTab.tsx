@@ -547,7 +547,7 @@ export const PengaduanComplianceTab: React.FC = () => {
               GRAFIK BULANAN: TREN CAPAIAN PENYELESAIAN PENGADUAN (POIN)
             </Typography>
             <p className="text-[11px] text-[var(--text-muted)]">
-              Tren rata-rata skor capaian tindak lanjut pengaduan sesuai SLA (Januari - September 2026) • Bobot 20%
+              Tren rata-rata skor capaian tindak lanjut pengaduan sesuai SLA per bulan di tahun 2026 • Bobot 20%
             </p>
           </div>
 
