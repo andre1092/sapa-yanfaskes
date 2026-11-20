@@ -75,6 +75,7 @@ export type Ringkasan = {
   target: number;
   /** Σ kunjungan faskes bertarget ÷ Σ target × 100; null bila tidak ada target. */
   persen: number | null;
+  /** Rata-rata skor faskes bertarget saja; null bila tidak ada yang bertarget. */
   rataSkor: number | null;
   belum100: number;
 };
@@ -87,7 +88,8 @@ export function ringkas(baris: BarisKessan[]): Ringkasan {
     kunjungan: jumlah(baris, b => b.jumlah_kessan),
     target,
     persen: target > 0 ? (jumlah(t, b => b.jumlah_kessan) / target) * 100 : null,
-    rataSkor: baris.length ? jumlah(baris, b => b.skor) / baris.length : null,
+    // Keputusan CEO 20 Nov: faskes tanpa target ("target belum ada") tidak ikut rata-rata skor.
+    rataSkor: t.length ? jumlah(t, b => b.skor) / t.length : null,
     belum100: baris.filter(b => b.skor < 100).length,
   };
 }

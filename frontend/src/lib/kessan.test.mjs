@@ -65,13 +65,15 @@ test('ringkasan: persen hanya dari faskes bertarget, tanpa baris jadi kosong', (
   assert.equal(r.kunjungan, 1099);
   assert.equal(r.target, 200);
   assert.equal(r.persen, 50);
-  assert.equal(r.rataSkor, 75);
+  // Keputusan CEO: faskes tanpa target (target belum ada) tidak ikut rata-rata skor.
+  assert.equal(r.rataSkor, 50);
   assert.equal(r.belum100, 1);
   const kosong = k.ringkas([]);
   assert.equal(kosong.jumlahFaskes, 0);
   assert.equal(kosong.persen, null);
   assert.equal(kosong.rataSkor, null);
   assert.equal(k.ringkas([{ ...NOV[0], target: null, persen: null }]).persen, null);
+  assert.equal(k.ringkas([{ ...NOV[0], target: null, persen: null, skor: 100 }]).rataSkor, null);
 });
 
 test('agregasi per kabupaten: urutan tetap dan angka acuan', () => {

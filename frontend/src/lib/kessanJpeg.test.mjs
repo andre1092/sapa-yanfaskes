@@ -17,7 +17,7 @@ const j = await import(await muat('./kessanJpeg.ts', { './kessan': urlKessan, '.
 const k = await import(urlKessan);
 
 // Data tiruan: kode dan nama faskes samaran. Agregatnya sama dengan angka acuan November 2026 setelah 27 FKRTL
-// (27 faskes, 16.191 dari target 7.782, rata-rata skor 97,2; Jember 14, Lumajang 9, Bondowoso 4 faskes).
+// (27 faskes, 16.191 dari target 7.782, rata-rata skor 97 dari faskes bertarget; Jember 14, Lumajang 9, Bondowoso 4 faskes).
 // Dua baris terakhir meniru FKRTL tanpa baris sheet yang kini dikirim API: kunjungan 0, target null, skor 100.
 const NOV = [
   ['Bondowoso', 1622, 357, 100], ['Lumajang', 1598, 357, 100], ['Jember', 1202, 278, 100], ['Lumajang', 1184, 357, 100],
@@ -114,7 +114,8 @@ test('semua kabupaten: subtotal per kabupaten dan Total cabang sesuai angka acua
   assert.equal(t.total.kunjungan, 16191);
   assert.equal(t.total.target, 7782);
   assert.equal(k.persen(t.total.persen), '208,06');
-  assert.equal(k.skorRata(t.total.rataSkor), '97,2');
+  // Rata-rata hanya dari 25 faskes bertarget (keputusan CEO): 97.
+  assert.equal(k.skorRata(t.total.rataSkor), '97');
   assert.equal(t.adaTanpaTarget, true);
   // Dalam kelompok: kunjungan menurun, faskes tanpa target (kunjungan 0) di bawah.
   const lumajang = t.kelompok[1].baris;
