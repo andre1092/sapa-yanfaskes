@@ -3,7 +3,7 @@ import { Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Stack
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
 import {
   AKSI_SIAPKAN_AKUN, bacaSiapkanAkun, buatPengirimTunggal, KETERANGAN_SANDI, kirimSiapkanAkun, periksaIsianSiapkan,
-  type JenisSiapkan, type KetersediaanSiapkan,
+  type KetersediaanSiapkan,
 } from '../auth/akunLokal';
 import { HALAMAN_MASUK } from '../lib/halamanAwal';
 import type { KendaliWidget } from '../lib/turnstile';
@@ -13,8 +13,9 @@ import { Kartu, Menunggu } from './LoginPage';
 import { ALERT_GALAT, FOKUS, KOLOM, TOMBOL, TOMBOL_TEKS, WARNA } from './gayaMasuk';
 import { WidgetTurnstile } from './WidgetTurnstile';
 
-// Halaman /siapkan-akun (akun lokal, mode bff), dibuka tanpa sesi. Form hanya tampil bila server menyatakan
-// penyiapan atau pemulihan tersedia; selain itu halaman ini tidak ada. Isian hanya ada di state komponen.
+// Halaman /siapkan-akun (akun lokal, mode bff), dibuka tanpa sesi. Form hanya tampil bila server menjawab 200
+// dengan tersedia=true; selain itu halaman ini tidak ada. Teks halaman sama untuk setiap kode yang berlaku, karena
+// server tidak membedakannya. Isian hanya ada di state komponen.
 
 const JUDUL = { color: WARNA.judul, textAlign: 'center', outline: 'none' } as const;
 
@@ -40,7 +41,7 @@ export function TampilanSiapkanAkun({ keadaan, cobaLagi }: { keadaan: Ketersedia
     </Stack>
   </Kartu>;
   if (keadaan.status === 'tidak_ada') return <Kartu><TidakDitemukan /></Kartu>;
-  return <Kartu><FormSiapkanAkun jenis={keadaan.jenis} /></Kartu>;
+  return <Kartu><FormSiapkanAkun /></Kartu>;
 }
 
 export function TidakDitemukan() {
@@ -53,25 +54,13 @@ export function TidakDitemukan() {
   </Stack>;
 }
 
-const TEKS: Record<JenisSiapkan, { judul: string; pengantar: string; labelKode: string; pembanding: string; berhasil: string }> = {
-  penyiapan: {
-    judul: 'Siapkan akun',
-    pengantar: 'Buat sandi untuk akun SAPA. Kode penyiapan hanya diketahui pemilik layanan.',
-    labelKode: 'Kode penyiapan',
-    pembanding: 'kode penyiapan',
-    berhasil: 'Akun berhasil disiapkan. Silakan masuk dengan username dan sandi baru.',
-  },
-  pemulihan: {
-    judul: 'Pulihkan akun',
-    pengantar: 'Ganti sandi akun SAPA yang sudah ada. Semua sesi akun ini akan dikeluarkan.',
-    labelKode: 'Kode pemulihan',
-    pembanding: 'kode pemulihan',
-    berhasil: 'Sandi berhasil diganti dan semua sesi lama sudah dikeluarkan. Silakan masuk dengan sandi baru.',
-  },
-};
+const JUDUL_HALAMAN = 'Siapkan akun';
+const PENGANTAR = 'Buat sandi baru untuk akun SAPA. Kode penyiapan hanya diketahui pemilik layanan.';
+const LABEL_KODE = 'Kode penyiapan';
+const PEMBANDING_KODE = 'kode penyiapan';
+const PESAN_BERHASIL = 'Sandi akun berhasil disimpan. Silakan masuk dengan username dan sandi baru.';
 
-export function FormSiapkanAkun({ jenis }: { jenis: JenisSiapkan }) {
-  const teks = TEKS[jenis];
+export function FormSiapkanAkun() {
   const [username, setUsername] = useState('');
   const [kode, setKode] = useState('');
   const [lihatKode, setLihatKode] = useState(false);
@@ -87,7 +76,7 @@ export function FormSiapkanAkun({ jenis }: { jenis: JenisSiapkan }) {
   const [pengirim] = useState(() => buatPengirimTunggal(kirimSiapkanAkun));
   const idGalat = useId();
   const idSyarat = useId();
-  const { syarat, siap: isianSiap } = periksaIsianSiapkan({ username, kode, sandi, ulang, token }, teks.pembanding);
+  const { syarat, siap: isianSiap } = periksaIsianSiapkan({ username, kode, sandi, ulang, token }, PEMBANDING_KODE);
   const siap = isianSiap && !mengirim;
   const terimaToken = useCallback((nilai: string | null) => setToken(nilai), []);
   useEffect(() => { if (selesai) judulSelesai.current?.focus(); }, [selesai]);
@@ -109,8 +98,8 @@ export function FormSiapkanAkun({ jenis }: { jenis: JenisSiapkan }) {
   };
 
   if (selesai) return <Stack spacing={2.5} sx={{ width: '100%' }}>
-    <Typography ref={judulSelesai} tabIndex={-1} component="h1" variant="h2" sx={JUDUL}>{teks.judul}</Typography>
-    <Box role="status"><Alert severity="success">{teks.berhasil}</Alert></Box>
+    <Typography ref={judulSelesai} tabIndex={-1} component="h1" variant="h2" sx={JUDUL}>{JUDUL_HALAMAN}</Typography>
+    <Box role="status"><Alert severity="success">{PESAN_BERHASIL}</Alert></Box>
     <Button fullWidth size="large" variant="contained" href={HALAMAN_MASUK} sx={TOMBOL}>Ke halaman masuk</Button>
   </Stack>;
 
@@ -123,8 +112,8 @@ export function FormSiapkanAkun({ jenis }: { jenis: JenisSiapkan }) {
 
   return <Stack spacing={2.5} sx={{ width: '100%' }}>
     <Box sx={{ textAlign: 'center' }}>
-      <Typography id="siapkan-title" component="h1" variant="h2" sx={{ ...JUDUL, mb: 1 }}>{teks.judul}</Typography>
-      <Typography sx={{ color: WARNA.redup }}>{teks.pengantar}</Typography>
+      <Typography id="siapkan-title" component="h1" variant="h2" sx={{ ...JUDUL, mb: 1 }}>{JUDUL_HALAMAN}</Typography>
+      <Typography sx={{ color: WARNA.redup }}>{PENGANTAR}</Typography>
     </Box>
     <Box component="form" method="post" noValidate onSubmit={kirim} aria-labelledby="siapkan-title" aria-busy={mengirim} sx={{ width: '100%' }}>
       <Stack spacing={2}>
@@ -132,7 +121,7 @@ export function FormSiapkanAkun({ jenis }: { jenis: JenisSiapkan }) {
         <TextField label="Username" name="username" value={username} onChange={event => setUsername(event.target.value)}
           autoComplete="username" required fullWidth sx={KOLOM}
           slotProps={{ htmlInput: { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, maxLength: 254, 'aria-describedby': terkait } }} />
-        <TextField label={teks.labelKode} name="kode" type={lihatKode ? 'text' : 'password'} value={kode} onChange={event => setKode(event.target.value)}
+        <TextField label={LABEL_KODE} name="kode" type={lihatKode ? 'text' : 'password'} value={kode} onChange={event => setKode(event.target.value)}
           autoComplete="off" required fullWidth inputRef={kolomKode} sx={KOLOM}
           slotProps={{ input: { endAdornment: tombolLihat }, htmlInput: { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, maxLength: 256, 'aria-describedby': terkait } }} />
         <TextField label="Sandi baru" name="password_baru" type="password" value={sandi} onChange={event => setSandi(event.target.value)}

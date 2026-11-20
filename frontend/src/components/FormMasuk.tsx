@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, InputAdornment, Stack, TextField, Typography } from '@mui/material';
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
-import { buatKendaliForm, buatPengirimMasuk } from '../auth/alurMasuk';
+import { buatKendaliForm, buatPengirimMasuk, periksaIsianMasuk } from '../auth/alurMasuk';
+import { PESAN_SANDI_TERLALU_PANJANG } from '../auth/batasSandi';
 import { useSession } from '../auth/useSession';
 import type { KendaliWidget } from '../lib/turnstile';
 import { ALERT_GALAT, FOKUS, KOLOM, TOMBOL, TOMBOL_TEKS, WARNA } from './gayaMasuk';
@@ -63,7 +64,9 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
   const kolomPassword = useRef<HTMLInputElement>(null);
   const idGalat = useId();
   const idIngat = useId();
-  const siap = Boolean(username.trim() && password && token) && !mengirim;
+  const idBatas = useId();
+  const { siap: isianSiap, sandiTerlaluPanjang } = periksaIsianMasuk({ username, password, token });
+  const siap = isianSiap && !mengirim;
   const pesanGalat = galat || (sudahMencoba ? null : session.error);
   const terimaToken = useCallback((nilai: string | null) => setToken(nilai), []);
 
@@ -95,7 +98,9 @@ export function PanelMasuk({ username, onUsername, onLupa, tombolLupa }: PropsMa
           slotProps={{ htmlInput: { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, maxLength: 254, 'aria-describedby': terkait } }} />
         <TextField label="Password" name="password" type={lihat ? 'text' : 'password'} value={password} onChange={event => setPassword(event.target.value)}
           autoComplete="current-password" required fullWidth inputRef={kolomPassword} sx={KOLOM}
-          slotProps={{ input: { endAdornment: tombolLihat }, htmlInput: { 'aria-describedby': terkait } }} />
+          error={sandiTerlaluPanjang} helperText={sandiTerlaluPanjang ? PESAN_SANDI_TERLALU_PANJANG : undefined}
+          slotProps={{ input: { endAdornment: tombolLihat }, formHelperText: { id: idBatas },
+            htmlInput: { 'aria-describedby': [terkait, sandiTerlaluPanjang && idBatas].filter(Boolean).join(' ') || undefined } }} />
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 1 }}>
           <Box>
             <FormControlLabel label="Ingat saya" sx={{ mr: 0, color: WARNA.teks }}

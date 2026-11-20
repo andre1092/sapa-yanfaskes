@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { Alert, Box, Button, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material';
-import { buatPengirimTunggal, KETERANGAN_SANDI, kirimUbahSandi, periksaSandiBaru } from '../auth/akunLokal';
+import { buatPengirimTunggal, KETERANGAN_SANDI, kirimUbahSandi, periksaIsianUbahSandi, PESAN_SANDI_TERLALU_PANJANG } from '../auth/akunLokal';
 import { useSession } from '../auth/useSession';
 import { DaftarSyarat } from './DaftarSyaratSandi';
 
@@ -29,8 +29,9 @@ export function UbahPassword() {
   const kolomLama = useRef<HTMLInputElement>(null);
   const idSyarat = useId();
   const idGalat = useId();
-  const { syarat, siap: sandiSiap } = periksaSandiBaru(baru, ulang, { nilai: lama, label: 'sandi lama' });
-  const siap = Boolean(lama) && sandiSiap && !mengirim;
+  const idBatasLama = useId();
+  const { syarat, siap: isianSiap, lamaTerlaluPanjang } = periksaIsianUbahSandi({ lama, baru, ulang });
+  const siap = isianSiap && !mengirim;
 
   const kirim = async (event: FormEvent) => {
     event.preventDefault();
@@ -58,7 +59,9 @@ export function UbahPassword() {
         <Box role="status">{berhasil && <Alert severity="success">{berhasil}</Alert>}</Box>
         <TextField label="Sandi lama" name="password_lama" type="password" value={lama} onChange={event => setLama(event.target.value)}
           autoComplete="current-password" required fullWidth inputRef={kolomLama}
-          slotProps={{ htmlInput: { 'aria-describedby': terkait } }} />
+          error={lamaTerlaluPanjang} helperText={lamaTerlaluPanjang ? PESAN_SANDI_TERLALU_PANJANG : undefined}
+          slotProps={{ formHelperText: { id: idBatasLama },
+            htmlInput: { 'aria-describedby': [terkait, lamaTerlaluPanjang && idBatasLama].filter(Boolean).join(' ') || undefined } }} />
         <TextField label="Sandi baru" name="password_baru" type="password" value={baru} onChange={event => setBaru(event.target.value)}
           autoComplete="new-password" required fullWidth slotProps={{ htmlInput: { 'aria-describedby': dijelaskan } }} />
         <TextField label="Ulangi sandi baru" name="ulangi_password_baru" type="password" value={ulang} onChange={event => setUlang(event.target.value)}

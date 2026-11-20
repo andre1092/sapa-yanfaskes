@@ -1,4 +1,5 @@
 import { alamatHalamanMasuk, alamatSetelahMasuk, tujuanSetelahMasuk } from '../lib/halamanAwal';
+import { sandiTerlaluPanjang } from './batasSandi';
 import { ajukanMasuk, type IsianMasuk, type PenyetelUlang } from './bff';
 import { safeReturnTo } from './session';
 
@@ -34,6 +35,15 @@ export function buatKendaliForm({ setPassword, setLihat, setToken, setGalat, fok
     tampilkanGalat: pesan => setGalat(pesan),
     fokusPassword: fokus,
   };
+}
+
+/**
+ * Syarat tombol Masuk: username, password, dan token Turnstile ada, dan password tidak melebihi batas byte.
+ * Bila melebihi, form menampilkan pesan di bawah isian password.
+ */
+export function periksaIsianMasuk({ username, password, token }: { username: string; password: string; token: string | null }): { siap: boolean; sandiTerlaluPanjang: boolean } {
+  const terlaluPanjang = sandiTerlaluPanjang(password);
+  return { siap: Boolean(username.trim() && password && token) && !terlaluPanjang, sandiTerlaluPanjang: terlaluPanjang };
 }
 
 export const PESAN_SESI_BELUM_TERBUKA = 'Sesi belum dapat dibuka. Coba masuk kembali.';

@@ -1,4 +1,7 @@
 import { kirimPost, PESAN_JARINGAN, PESAN_UMUM, pesanDariServer, type Hasil, type PenyetelUlang } from './bff';
+import { PESAN_SANDI_TERLALU_PANJANG, sandiTerlaluPanjang } from './batasSandi';
+
+export { MAKS_SANDI_BYTE, PESAN_SANDI_TERLALU_PANJANG } from './batasSandi';
 
 // Akun lokal (mode bff): halaman Siapkan akun dan Ubah password. Alurnya di sini, terpisah dari komponen,
 // supaya bisa diuji tanpa DOM. Semua panggilan same-origin; isian sandi hanya ada di body JSON dan di state
@@ -13,8 +16,6 @@ export const ALAMAT_AKUN = {
 export const AKSI_SIAPKAN_AKUN = 'sapa_siapkan_akun';
 
 export const PANJANG_MIN_SANDI = 15;
-/** Batas atas sandi dalam byte UTF-8, sama dengan batas form masuk, supaya sandi baru selalu bisa dipakai masuk. */
-export const MAKS_SANDI_BYTE = 72;
 
 export const PESAN_UBAH_SANDI_BERHASIL = 'Password berhasil diubah. Perangkat lain sudah dikeluarkan.';
 export const PESAN_HIBP_TIDAK_TERSEDIA = 'Pemeriksaan keamanan sandi sedang tidak tersedia. Coba lagi beberapa saat lagi.';
@@ -45,7 +46,6 @@ export function pesanAkun(hasil: Hasil): string {
 export type SyaratSandiBaru = { kunci: 'panjang' | 'maks' | 'beda' | 'sama'; label: string; terpenuhi: boolean };
 
 const panjangKarakter = (s: string) => [...s].length;
-const panjangByte = (s: string) => new TextEncoder().encode(s).length;
 
 /**
  * Syarat sandi baru yang bisa dicek di browser: minimal 15 karakter, tidak melebihi batas masuk, berbeda dari
@@ -56,8 +56,8 @@ export function periksaSandiBaru(baru: string, ulang: string, pembanding?: { nil
     { kunci: 'panjang', label: `Minimal ${PANJANG_MIN_SANDI} karakter`, terpenuhi: panjangKarakter(baru) >= PANJANG_MIN_SANDI },
   ];
   // Batas atas jarang tercapai; butir ini hanya muncul saat terlampaui supaya daftar tidak ramai. Satuannya byte,
-  // bukan karakter: huruf beraksen dan emoji memakan dua sampai empat byte, jadi labelnya menyebut itu.
-  if (panjangByte(baru) > MAKS_SANDI_BYTE) syarat.push({ kunci: 'maks', label: `Terlalu panjang: maksimal ${MAKS_SANDI_BYTE} byte (huruf beraksen dan emoji dihitung lebih dari satu)`, terpenuhi: false });
+  // bukan karakter, jadi labelnya menyebut itu.
+  if (sandiTerlaluPanjang(baru)) syarat.push({ kunci: 'maks', label: PESAN_SANDI_TERLALU_PANJANG, terpenuhi: false });
   if (pembanding) syarat.push({ kunci: 'beda', label: `Berbeda dari ${pembanding.label}`, terpenuhi: baru.length > 0 && baru !== pembanding.nilai });
   syarat.push({ kunci: 'sama', label: 'Ulangi sandi baru sama persis', terpenuhi: baru.length > 0 && baru === ulang });
   return { syarat, siap: syarat.every(s => s.terpenuhi) };
@@ -73,6 +73,19 @@ export type IsianFormSiapkan = { username: string; kode: string; sandi: string; 
 export function periksaIsianSiapkan(isian: IsianFormSiapkan, labelKode: string): { syarat: SyaratSandiBaru[]; siap: boolean } {
   const { syarat, siap: sandiSiap } = periksaSandiBaru(isian.sandi, isian.ulang, { nilai: isian.kode, label: labelKode });
   return { syarat, siap: Boolean(isian.username.trim() && isian.kode && isian.token) && sandiSiap };
+}
+
+/** Isian form Ubah password yang menentukan apakah tombol aktif. */
+export type IsianFormUbahSandi = { lama: string; baru: string; ulang: string };
+
+/**
+ * Syarat form Ubah password: sandi lama terisi dan tidak melebihi batas byte (pesan tampil di bawah isian), dan
+ * syarat sandi baru terpenuhi dengan sandi lama sebagai pembanding.
+ */
+export function periksaIsianUbahSandi({ lama, baru, ulang }: IsianFormUbahSandi): { syarat: SyaratSandiBaru[]; siap: boolean; lamaTerlaluPanjang: boolean } {
+  const { syarat, siap: sandiSiap } = periksaSandiBaru(baru, ulang, { nilai: lama, label: 'sandi lama' });
+  const lamaTerlaluPanjang = sandiTerlaluPanjang(lama);
+  return { syarat, siap: Boolean(lama) && !lamaTerlaluPanjang && sandiSiap, lamaTerlaluPanjang };
 }
 
 export const KETERANGAN_SANDI = `Minimal ${PANJANG_MIN_SANDI} karakter. Gunakan frasa panjang yang mudah Anda ingat, misalnya beberapa kata acak. Sandi yang pernah bocor di internet akan ditolak.`;
@@ -94,8 +107,7 @@ export function buatPengirimTunggal<A extends unknown[], R>(fungsi: (...args: A)
 
 // ---------------------------------------------------------------- Siapkan akun
 
-export type JenisSiapkan = 'penyiapan' | 'pemulihan';
-export type KetersediaanSiapkan = { status: 'tersedia'; jenis: JenisSiapkan } | { status: 'tidak_ada' } | { status: 'galat'; pesan: string };
+export type KetersediaanSiapkan = { status: 'tersedia' } | { status: 'tidak_ada' } | { status: 'galat'; pesan: string };
 
 export const BATAS_PERIKSA_MS = 10_000;
 
@@ -126,7 +138,7 @@ export async function bacaSiapkanAkun(batasMs = BATAS_PERIKSA_MS): Promise<Keter
   let isi: unknown = null;
   try { isi = await res.json(); } catch { /* bentuk salah: tidak ada */ }
   if (!isi || typeof isi !== 'object' || (isi as { tersedia?: unknown }).tersedia !== true) return { status: 'tidak_ada' };
-  return { status: 'tersedia', jenis: (isi as { jenis?: unknown }).jenis === 'pemulihan' ? 'pemulihan' : 'penyiapan' };
+  return { status: 'tersedia' };
 }
 
 export type IsianSiapkan = { username: string; kode: string; passwordBaru: string; token: string };

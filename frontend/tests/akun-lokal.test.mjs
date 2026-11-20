@@ -104,11 +104,11 @@ test('siapkan akun: 404, atau 2xx selain 200 dengan tersedia=true persis, berart
     { status: 404, isi: {} },
     { status: 405, isi: {} },
     { status: 200, isi: { tersedia: false } },
-    { status: 200, isi: { tersedia: 'true', jenis: 'penyiapan' } },
+    { status: 200, isi: { tersedia: 'true' } },
     { status: 200, isi: { tersedia: 1 } },
     { status: 200, isi: [] },
     { status: 200, teks: 'bukan json' },
-    { status: 201, isi: { tersedia: true, jenis: 'penyiapan' } },
+    { status: 201, isi: { tersedia: true } },
     { status: 204 },
   ]) {
     fetchPalsu(jawaban);
@@ -148,9 +148,9 @@ test('siapkan akun: server tak terjangkau menjadi galat jaringan dengan tombol C
 });
 
 test('siapkan akun: 200 menampilkan satu form lengkap dengan Turnstile action sapa_siapkan_akun', async () => {
-  fetchPalsu({ status: 200, isi: { tersedia: true, jenis: 'penyiapan' } });
+  fetchPalsu({ status: 200, isi: { tersedia: true } });
   const keadaan = await akun.bacaSiapkanAkun();
-  assert.deepEqual(keadaan, { status: 'tersedia', jenis: 'penyiapan' });
+  assert.deepEqual(keadaan, { status: 'tersedia' });
 
   const html = render(h(TampilanSiapkanAkun, { keadaan, cobaLagi() {} }), { authenticated: false });
   assert.match(html, />Siapkan akun</);
@@ -188,14 +188,22 @@ test('siapkan akun: 200 menampilkan satu form lengkap dengan Turnstile action sa
   assert.match(simpan, /disabled/, 'Simpan nonaktif sebelum isian lengkap dan Turnstile lulus');
 });
 
-test('siapkan akun: jenis pemulihan memakai judul dan label kode pemulihan', async () => {
-  fetchPalsu({ status: 200, isi: { tersedia: true, jenis: 'pemulihan' } });
-  const keadaan = await akun.bacaSiapkanAkun();
-  assert.deepEqual(keadaan, { status: 'tersedia', jenis: 'pemulihan' });
-  const html = render(h(FormSiapkanAkun, { jenis: 'pemulihan' }));
-  assert.match(html, />Pulihkan akun</);
-  assert.match(html, />Kode pemulihan</);
-  assert.match(html, />Berbeda dari kode pemulihan</);
+test('siapkan akun: teks netral yang sama untuk penyiapan maupun pemulihan; field jenis lama diabaikan', async () => {
+  const halaman = [];
+  for (const isi of [{ tersedia: true }, { tersedia: true, jenis: 'pemulihan' }, { tersedia: true, jenis: 'penyiapan' }]) {
+    fetchPalsu({ status: 200, isi });
+    const keadaan = await akun.bacaSiapkanAkun();
+    assert.deepEqual(keadaan, { status: 'tersedia' }, JSON.stringify(isi));
+    halaman.push(render(h(TampilanSiapkanAkun, { keadaan, cobaLagi() {} }), { authenticated: false }));
+  }
+  assert.equal(new Set(halaman).size, 1, 'tampilan identik');
+  assert.doesNotMatch(halaman[0], /pemulihan|pulihkan/i);
+  assert.match(halaman[0], />Siapkan akun</);
+  assert.equal(render(h(FormSiapkanAkun)), render(h(FormSiapkanAkun, { jenis: 'pemulihan' })), 'form tidak bercabang menurut jenis');
+
+  const kode = await sumber('components/HalamanSiapkanAkun.tsx');
+  assert.doesNotMatch(kode, /pemulihan|pulihkan|jenis/i, 'tanpa cabang atau teks pemulihan');
+  assert.doesNotMatch(await sumber('auth/akunLokal.ts'), /pemulihan|JenisSiapkan/i);
 });
 
 test('siapkan akun: Simpan hanya siap bila username, kode, Turnstile, dan semua syarat sandi terpenuhi', () => {
@@ -216,7 +224,7 @@ test('siapkan akun: Simpan hanya siap bila username, kode, Turnstile, dan semua 
 
 test('siapkan akun: form memakai pemeriksaan isian bersama dan menunggu kiriman selesai', async () => {
   const kode = await sumber('components/HalamanSiapkanAkun.tsx');
-  assert.match(kode, /periksaIsianSiapkan\(\{ username, kode, sandi, ulang, token \}, teks\.pembanding\)/);
+  assert.match(kode, /periksaIsianSiapkan\(\{ username, kode, sandi, ulang, token \}, PEMBANDING_KODE\)/);
   assert.match(kode, /const siap = isianSiap && !mengirim;/);
   assert.match(kode, /disabled=\{!siap\}/);
 });
@@ -319,22 +327,46 @@ test('syarat sandi: minimal 15 karakter, ulangan sama persis, dan berbeda dari p
 test('syarat sandi: batas atas dihitung dalam byte UTF-8 dan labelnya menyebut byte, bukan karakter', () => {
   const cek = baru => akun.periksaSandiBaru(baru, baru);
   const maks = hasil => hasil.syarat.find(s => s.kunci === 'maks');
-  assert.equal(akun.MAKS_SANDI_BYTE, 72);
-  assert.equal(cek('a'.repeat(72)).siap, true, '72 huruf ASCII = 72 byte');
-  assert.equal(cek('é'.repeat(36)).siap, true, '36 huruf beraksen = 72 byte');
+  assert.equal(akun.MAKS_SANDI_BYTE, 256);
+  assert.equal(cek('a'.repeat(256)).siap, true, '256 huruf ASCII = 256 byte');
+  assert.equal(cek('é'.repeat(128)).siap, true, '128 huruf beraksen = 256 byte');
+  assert.equal(cek('😀'.repeat(64)).siap, true, '64 emoji = 256 byte');
+  assert.equal(maks(cek('a'.repeat(100))), undefined, 'di bawah batas: butir tidak muncul');
+  assert.equal(cek('a'.repeat(100)).siap, true, '100 karakter (di atas batas lama 72) diterima');
 
-  for (const baru of ['é'.repeat(40), '😀'.repeat(19)]) {
-    // 40 dan 19 karakter, jauh di bawah 72 karakter, tetapi 80 dan 76 byte.
-    assert.ok([...baru].length < 72);
+  for (const baru of ['a'.repeat(257), 'é'.repeat(130), '😀'.repeat(65)]) {
+    // 257, 130, dan 65 karakter: dua terakhir jauh di bawah 256 karakter, tetapi 260 byte.
+    assert.ok([...baru].length <= 257);
     const hasil = cek(baru);
     assert.equal(hasil.siap, false, baru);
     const butir = maks(hasil);
     assert.ok(butir, 'butir batas atas muncul');
     assert.equal(butir.terpenuhi, false);
-    assert.match(butir.label, /72 byte/);
+    assert.match(butir.label, /256 byte/);
     assert.match(butir.label, /huruf beraksen/);
-    assert.doesNotMatch(butir.label, /72 karakter/);
+    assert.doesNotMatch(butir.label, /karakter|72/);
   }
+});
+
+test('ubah password: sandi lama juga dibatasi 256 byte, dengan pesan di bawah isian', () => {
+  const cek = lama => akun.periksaIsianUbahSandi({ lama, baru: SANDI_BARU_PALSU, ulang: SANDI_BARU_PALSU });
+  assert.deepEqual(cek(SANDI_LAMA_PALSU), { syarat: akun.periksaSandiBaru(SANDI_BARU_PALSU, SANDI_BARU_PALSU, { nilai: SANDI_LAMA_PALSU, label: 'sandi lama' }).syarat, siap: true, lamaTerlaluPanjang: false });
+  assert.equal(cek('').siap, false, 'sandi lama kosong');
+  assert.equal(cek('a'.repeat(256)).siap, true, '256 byte diterima');
+  assert.equal(cek('a'.repeat(256)).lamaTerlaluPanjang, false);
+  for (const lama of ['a'.repeat(257), 'é'.repeat(129)]) {
+    const hasil = cek(lama);
+    assert.equal(hasil.siap, false, lama);
+    assert.equal(hasil.lamaTerlaluPanjang, true);
+  }
+  assert.equal(akun.PESAN_SANDI_TERLALU_PANJANG, 'Terlalu panjang: maksimal 256 byte (huruf beraksen dan emoji dihitung lebih dari satu)');
+});
+
+test('pengaturan akun: komponen memakai pemeriksaan isian bersama untuk sandi lama', async () => {
+  const kode = await sumber('components/PengaturanAkun.tsx');
+  assert.match(kode, /periksaIsianUbahSandi\(\{ lama, baru, ulang \}\)/);
+  assert.match(kode, /const siap = isianSiap && !mengirim;/);
+  assert.match(kode, /lamaTerlaluPanjang \? PESAN_SANDI_TERLALU_PANJANG/);
 });
 
 // ---------------------------------------------------------------- Ubah password
