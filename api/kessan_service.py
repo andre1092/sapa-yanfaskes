@@ -1,7 +1,8 @@
 """Monitoring Kessan FKRTL: data agregat kunjungan Kessan per FKRTL per bulan dari Google Sheets.
 
-Sumber dua lembar dalam satu spreadsheet: `kessan` (data per faskes per bulan) dan `db_fkrtl` (referensi
-nama faskes). ID spreadsheet dan gid hanya dibaca dari env; jangan menuliskannya di repo.
+Sumber dua lembar dalam satu spreadsheet: `kessan` (data per faskes per bulan) dan `db_fkrtl` (daftar induk FKRTL:
+nama dan kabupaten; FKRTL di sini selalu tampil tiap bulan). ID spreadsheet dan gid hanya dibaca dari env; jangan
+menuliskannya di repo, begitu pula daftar kode yang dikecualikan.
 Hanya data agregat per faskes, tanpa data peserta.
 """
 import csv
@@ -26,6 +27,8 @@ logger = logging.getLogger("sapa-api")
 ENV_SPREADSHEET = "SAPA_KESSAN_SPREADSHEET_ID"
 ENV_GID = "SAPA_KESSAN_GID"
 ENV_GID_DB = "SAPA_KESSAN_GID_DB_FKRTL"
+# Kode PPK di db_fkrtl yang tidak ditampilkan, dipisah koma (di produksi: 0188S001). Tidak ditanam di kode.
+ENV_KODE_DIKECUALIKAN = "SAPA_KESSAN_KODE_DIKECUALIKAN"
 
 PESAN_BELUM_DIKONFIGURASI = "Data Kessan belum dikonfigurasi."
 PESAN_GAGAL = "Data Kessan belum bisa dimuat."
@@ -40,6 +43,7 @@ _KOLOM_WAJIB = ("kode_ppk", "jumlah_kessan", "target", "bulan", "kabupaten", "la
 
 _ID_SAH = re.compile(r"[A-Za-z0-9_-]{20,100}")
 _GID_SAH = re.compile(r"\d{1,12}")
+_KODE_PPK_SAH = re.compile(r"[0-9]{4}[A-Z][0-9]{3}")  # mis. 0101R001; hanya untuk daftar induk db_fkrtl
 
 _BULAN = {
     "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6, "july": 7, "august": 8,
@@ -51,7 +55,8 @@ _BULAN = {
     "desember": 12, "agu": 8, "okt": 10, "des": 12,
 }
 
-# kunci konfigurasi -> (kedaluwarsa_pada, respons lengkap | None bila gagal, peta nama | None)
+# kunci konfigurasi -> (kedaluwarsa_pada, respons lengkap | None bila gagal, peta nama | None,
+#                       baris db_fkrtl terakhir yang sah | None)
 _CACHE: Dict[tuple, tuple] = {}
 _CACHE_LOCK = threading.Lock()
 _KUNCI_MUAT: Dict[tuple, threading.Lock] = {}  # satu pengambilan per kunci cache (single-flight)
@@ -194,15 +199,54 @@ def peta_nama(db_rows: Iterable[Dict[str, str]]) -> Dict[str, str]:
     return hasil
 
 
+def daftar_kode(teks) -> frozenset:
+    """"0188s001, 0909R009" menjadi {"0188S001", "0909R009"}; butir kosong diabaikan."""
+    return frozenset(k for k in (kode_ppk(b) for b in str(teks or "").split(",")) if k)
+
+
+def kode_dikecualikan() -> frozenset:
+    """Kode PPK di env SAPA_KESSAN_KODE_DIKECUALIKAN (dipisah koma); kosong berarti tidak ada pengecualian."""
+    return daftar_kode(os.environ.get(ENV_KODE_DIKECUALIKAN))
+
+
 def _urut_kabupaten(nama: Iterable[str]) -> List[str]:
     ada = {n for n in nama if n}
     return [k for k in KABUPATEN_URUT if k in ada] + sorted(ada - set(KABUPATEN_URUT))
 
 
-def susun(kessan_rows: List[Dict[str, str]], db_rows: List[Dict[str, str]]) -> Dict[str, Any]:
-    """Respons lengkap (semua faskes) dari baris sheet kessan dan db_fkrtl."""
+def _induk_fkrtl(db_rows: Iterable[Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+    """kode_ppk -> {nama, kabupaten} untuk setiap FKRTL di db_fkrtl, urut seperti di sheet."""
+    hasil: Dict[str, Dict[str, str]] = {}
+    tidak_sah = 0
+    for r in db_rows:
+        if _kosong(r.get("kode_ppk")):
+            continue
+        kode = kode_ppk(r.get("kode_ppk"))
+        if not _KODE_PPK_SAH.fullmatch(kode):
+            tidak_sah += 1  # baris catatan atau salah ketik: jangan jadi faskes tampil
+            continue
+        kab = "" if _kosong(r.get("kabupaten")) else nama_kabupaten(r.get("kabupaten"))  # sel "-" = kosong
+        hasil[kode] = {"nama": (r.get("nama_ppk") or "").strip(), "kabupaten": kab}
+    if tidak_sah:
+        logger.warning("db_fkrtl Kessan: %d baris berkode PPK tidak sah dilewati", tidak_sah)  # isi baris tidak dicatat
+    return hasil
+
+
+def susun(kessan_rows: List[Dict[str, str]], db_rows: List[Dict[str, str]],
+          dikecualikan: Iterable[str] = ()) -> Dict[str, Any]:
+    """Respons lengkap dari baris sheet kessan dan db_fkrtl.
+
+    Untuk setiap bulan yang ada di sheet, semua FKRTL di db_fkrtl (kecuali kode di `dikecualikan`) selalu punya baris.
+    FKRTL tanpa baris sheet pada bulan itu diberi kunjungan 0, target kosong, dan skor 100. Baris sheet berkode
+    dikecualikan dibuang. Bila db_fkrtl kosong (gagal dibaca), hanya baris sheet yang dipakai.
+    """
+    if isinstance(dikecualikan, str):  # "0188S001" atau "a,b": jangan diiterasi per karakter
+        dikecualikan = daftar_kode(dikecualikan)
+    dikecualikan = {kode_ppk(k) for k in dikecualikan}
     nama_db = peta_nama(db_rows)
+    induk = _induk_fkrtl(db_rows)
     per_kunci: Dict[tuple, Dict[str, Any]] = {}
+    cadangan: Dict[str, Dict[str, str]] = {}  # nama dan kabupaten terakhir di sheet per kode
     last_update = None
     dibaca = dibuang = ganda = tanpa_kab = 0
     for r in kessan_rows:
@@ -210,8 +254,10 @@ def susun(kessan_rows: List[Dict[str, str]], db_rows: List[Dict[str, str]]) -> D
             last_update = r["last_update_bi"].strip()
         if all(_kosong(r.get(k)) for k in ("kode_ppk", "jumlah_kessan", "bulan")):
             continue  # baris kosong di ujung sheet
-        dibaca += 1
         kode = kode_ppk(r.get("kode_ppk"))
+        if kode in dikecualikan:
+            continue  # bukan baris rusak, jadi tidak ikut dihitung
+        dibaca += 1
         bulan = kunci_bulan(r.get("bulan"))
         jumlah = bilangan_bulat(r.get("jumlah_kessan"))
         target = None if _kosong(r.get("target")) else bilangan_bulat(r.get("target"))
@@ -221,12 +267,17 @@ def susun(kessan_rows: List[Dict[str, str]], db_rows: List[Dict[str, str]]) -> D
         target = target or None
         persen = hitung_persen(jumlah, target)
         skor = bilangan_bulat(r.get("skor_kepatuhan"))
-        kabupaten = nama_kabupaten(r.get("kabupaten"))
+        # Kabupaten dari db_fkrtl dulu (seperti nama); kolom sheet hanya cadangan, sel kosong atau "-" diabaikan.
+        kab_sheet = "" if _kosong(r.get("kabupaten")) else nama_kabupaten(r.get("kabupaten"))
+        kabupaten = induk.get(kode, {}).get("kabupaten") or kab_sheet
         tanpa_kab += not kabupaten
         ganda += (kode, bulan) in per_kunci
+        nama_sheet = (r.get("nama_ppk") or "").strip()
+        cadangan[kode] = {"nama": nama_sheet or cadangan.get(kode, {}).get("nama", ""),
+                          "kabupaten": kab_sheet or cadangan.get(kode, {}).get("kabupaten", "")}
         per_kunci[(kode, bulan)] = {
             "kode_ppk": kode,
-            "nama_faskes": nama_db.get(kode) or (r.get("nama_ppk") or "").strip() or kode,
+            "nama_faskes": nama_db.get(kode) or nama_sheet or kode,
             "kabupaten": kabupaten,
             "bulan": bulan,
             "jumlah_kessan": jumlah,
@@ -245,8 +296,25 @@ def susun(kessan_rows: List[Dict[str, str]], db_rows: List[Dict[str, str]]) -> D
         logger.warning("Sheet Kessan: %d pasangan kode PPK dan bulan ganda; yang terakhir dipakai", ganda)
     if tanpa_kab:
         logger.warning("Sheet Kessan: %d baris tanpa kabupaten", tanpa_kab)
+    tersedia = sorted({bulan for _, bulan in per_kunci})
+    for kode, ref in induk.items():
+        if kode in dikecualikan:
+            continue
+        sheet = cadangan.get(kode, {})
+        for bulan in tersedia:
+            if (kode, bulan) in per_kunci:
+                continue
+            per_kunci[(kode, bulan)] = {
+                "kode_ppk": kode,
+                "nama_faskes": ref["nama"] or sheet.get("nama") or kode,
+                "kabupaten": ref["kabupaten"] or sheet.get("kabupaten", ""),
+                "bulan": bulan,
+                "jumlah_kessan": 0,
+                "target": None,
+                "persen": None,
+                "skor": skor_dari_aturan(None),
+            }
     baris = sorted(per_kunci.values(), key=lambda b: (b["bulan"], -b["jumlah_kessan"], b["nama_faskes"].casefold()))
-    tersedia = sorted({b["bulan"] for b in baris})
     tanggal = tanggal_last_update(last_update)
     if last_update and tanggal is None:
         logger.warning("Last Update sheet Kessan tidak berformat YYYY-MM-DD; bulan sementara tidak ditandai")
@@ -276,6 +344,7 @@ def saring_petugas(data: Dict[str, Any], kode: str, nama_db: Dict[str, str]) -> 
 # --- pengambilan data ---------------------------------------------------------
 
 def _konfigurasi() -> tuple:
+    """(spreadsheet, gid kessan, gid db_fkrtl, kode dikecualikan terurut); juga menjadi kunci cache."""
     sid = (os.environ.get(ENV_SPREADSHEET) or "").strip()
     gid = (os.environ.get(ENV_GID) or "").strip()
     gid_db = (os.environ.get(ENV_GID_DB) or "").strip()
@@ -284,7 +353,7 @@ def _konfigurasi() -> tuple:
     if not (_ID_SAH.fullmatch(sid) and _GID_SAH.fullmatch(gid) and _GID_SAH.fullmatch(gid_db)):
         logger.error("Env sumber data Kessan tidak sah")  # nilai env tidak dicatat
         raise KessanBelumDikonfigurasi(PESAN_BELUM_DIKONFIGURASI)
-    return sid, gid, gid_db
+    return sid, gid, gid_db, tuple(sorted(kode_dikecualikan()))
 
 
 def _unduh_ekspor_csv(spreadsheet_id: str, gid: str) -> Optional[bytes]:
@@ -319,8 +388,18 @@ def _ambil(spreadsheet_id: str, gid: str, label: str) -> Optional[List[Dict[str,
     return baca_csv(isi) if isi else None
 
 
-def _muat(sid: str, gid: str, gid_db: str) -> tuple:
-    """(respons lengkap, peta nama, lengkap?) dari sheet; KessanGagalDimuat bila sheet kessan tak terbaca."""
+def _db_sah(db_rows: Optional[List[Dict[str, str]]]) -> bool:
+    """db_fkrtl dianggap terbaca hanya bila berisi minimal satu kode PPK sah (bukan hanya kepala kolom)."""
+    return any(_KODE_PPK_SAH.fullmatch(kode_ppk(r.get("kode_ppk"))) for r in db_rows or ())
+
+
+def _muat(sid: str, gid: str, gid_db: str, dikecualikan: tuple = (),
+          db_simpanan: Optional[List[Dict[str, str]]] = None) -> tuple:
+    """(respons lengkap, peta nama, lengkap?, db_fkrtl sah) dari sheet; KessanGagalDimuat bila sheet kessan tak terbaca.
+
+    Bila db_fkrtl gagal dibaca atau tidak berisi kode sah, dipakai `db_simpanan` (db_fkrtl terakhir yang sah untuk
+    kunci konfigurasi ini) dan hasilnya ditandai tidak lengkap (disimpan dengan TTL singkat).
+    """
     kessan = _ambil(sid, gid, "KESSAN")
     if kessan is None:
         raise KessanGagalDimuat(PESAN_GAGAL)
@@ -328,9 +407,18 @@ def _muat(sid: str, gid: str, gid_db: str) -> tuple:
         logger.error("Kolom sheet Kessan tidak dikenali")
         raise KessanGagalDimuat(PESAN_GAGAL)
     db = _ambil(sid, gid_db, "KESSAN_DB_FKRTL")
-    if db is None:
-        logger.warning("Referensi db_fkrtl Kessan tidak terbaca; nama faskes memakai nama di sheet kessan")
-    return susun(kessan, db or []), peta_nama(db or []), db is not None
+    lengkap = _db_sah(db)
+    if not lengkap:
+        if db is not None:
+            logger.warning("Referensi db_fkrtl Kessan tidak berisi kode PPK sah; dianggap gagal dibaca")
+        if db_simpanan:
+            logger.warning("Referensi db_fkrtl Kessan tidak terbaca; memakai db_fkrtl terakhir yang sah")
+            db = db_simpanan
+        else:
+            # Hanya jumlah dan keadaan yang dicatat, tanpa isi baris.
+            logger.error("Referensi db_fkrtl Kessan tidak terbaca dan belum ada simpanan; hanya baris sheet kessan")
+            db = None
+    return susun(kessan, db or [], dikecualikan), peta_nama(db or []), lengkap, db
 
 
 def _segarkan(kunci: tuple, simpanan: Optional[tuple]) -> tuple:
@@ -347,16 +435,17 @@ def _segarkan(kunci: tuple, simpanan: Optional[tuple]) -> tuple:
         sekarang = time.time()
         if simpanan is not None and sekarang < simpanan[0]:
             return simpanan  # sudah disegarkan utas lain selama menunggu
+        db_simpanan = simpanan[3] if simpanan is not None else None
         try:
-            data, nama_db, lengkap = _muat(*kunci)
+            data, nama_db, lengkap, db_sah = _muat(*kunci, db_simpanan=db_simpanan)
         except KessanGagalDimuat:
             if simpanan is not None and simpanan[1] is not None:
                 logger.warning("Sheet Kessan gagal dibaca; memakai data simpanan terakhir")
-                baru = (sekarang + JEDA_GAGAL, simpanan[1], simpanan[2])
+                baru = (sekarang + JEDA_GAGAL, simpanan[1], simpanan[2], db_simpanan)
             else:
-                baru = (sekarang + JEDA_GAGAL, None, None)
+                baru = (sekarang + JEDA_GAGAL, None, None, db_simpanan)
         else:
-            baru = (sekarang + (CACHE_TTL if lengkap else CACHE_TTL_SINGKAT), data, nama_db)
+            baru = (sekarang + (CACHE_TTL if lengkap else CACHE_TTL_SINGKAT), data, nama_db, db_sah)
         with _CACHE_LOCK:
             _CACHE[kunci] = baru
         return baru
@@ -369,7 +458,7 @@ def data_kessan(kode_rs: Optional[str]) -> Dict[str, Any]:
         simpanan = _CACHE.get(kunci)
     if simpanan is None or time.time() >= simpanan[0]:
         simpanan = _segarkan(kunci, simpanan)
-    _, data, nama_db = simpanan
+    _, data, nama_db, _ = simpanan
     if data is None:
         raise KessanGagalDimuat(PESAN_GAGAL)
     return saring_petugas(data, kode_rs, nama_db) if kode_rs else data

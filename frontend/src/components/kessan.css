@@ -157,6 +157,15 @@
 .ks-urut-hp { display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; margin-top: 8px; }
 .ks-urut-hp { min-width: 0; max-width: 100%; }
 .ks-urut-hp select { height: 44px; font-size: 13px; padding: 0 8px; min-width: 0; flex: 0 1 auto; }
+/* Unduh JPEG (SPEK-jpeg.md): rata kanan sebaris judul panel; < 640 px selebar penuh di atas Urutkan */
+.ks-jpeg { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; align-self: flex-start; }
+.ks-jpeg-tombol { height: 44px; white-space: nowrap; }
+.ks-jpeg-tombol[aria-disabled="true"] { cursor: progress; opacity: .7; }
+.ks-jpeg-galat { margin: 0; font-size: 12px; color: var(--danger); max-width: 32ch; text-align: right; }
+/* Simpul ekspor di luar layar, dipasang di body (bukan di dalam .ks-page yang memakai containment) */
+.ks-ekspor-wadah { position: fixed; left: -20000px; top: 0; pointer-events: none; }
+/* Cadangan: tabel ekspor JPEG tanpa animasi atau transisi apa pun saat ditangkap html-to-image. */
+#jpeg-export-kessan, #jpeg-export-kessan * { animation: none !important; transition: none !important; opacity: 1 !important; }
 .ks-kaki { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
 .ks-kaki .ks-chip { min-width: 36px; font-size: 11px; padding: 0 6px; line-height: 18px; }
 
@@ -205,6 +214,9 @@
   /* tabel menjadi kartu per faskes; peran eksplisit di markup menjaga semantik tabel */
   .ks-geser { display: none; }
   .ks-urut-hp { display: flex; }
+  .ks-jpeg { flex: 1 1 100%; align-items: stretch; align-self: auto; margin-top: 8px; }
+  .ks-jpeg-tombol { width: 100%; }
+  .ks-jpeg-galat { text-align: left; max-width: none; }
   .ks-tw { overflow: visible; margin: 0; padding: 0; }
   .ks-utama { min-width: 0; }
   .ks-utama thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

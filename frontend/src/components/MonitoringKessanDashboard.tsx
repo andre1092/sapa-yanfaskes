@@ -4,11 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import {
-  KABUPATEN_URUT, URUT_BAWAAN, aturLabel, angka, bacaFilter, bulanPendek, kelasSkor, labelBulan, perKabupaten, persen,
+  KABUPATEN_URUT, URUT_BAWAAN, aturLabel, angka, bacaFilter, bulanPendek, kartuSkorPetugas, kelasSkor, labelBulan, perKabupaten, persen,
   rentangBulan, ringkas, saring, seriFaskes, seriKabupaten, skalaSumbu, skorRata, tampilLabelBulan, teksStatusFilter,
   tulisFilter, urutBerikut, urutkan,
 } from '../lib/kessan';
 import type { BarisKessan, FilterKessan, KolomUrut, ResponsKessan, Urutan } from '../lib/kessan';
+import { UnduhJpegKessan } from './UnduhJpegKessan';
 import './kessan.css';
 
 // Hi-fi Kim: agents/kim/desain/monitoring-kessan/SPEK.md dan mockup.html (2026-11-20).
@@ -50,8 +51,11 @@ function Kartu({ baris, bulan, kabupaten, petugas, namaRs }: KartuProps) {
   const r = ringkas(baris);
   const ada = r.jumlahFaskes > 0;
   const lingkup = kabupaten ? `Kabupaten ${kabupaten}` : 'Semua kabupaten';
-  const subTotal = !ada ? labelBulan(bulan) : r.target > 0 ? `Target ${angka(r.target)} · ${persen(r.persen)}% dari target` : 'Tanpa target';
-  const subSkor = !ada ? ' ' : petugas ? (r.belum100 ? 'Belum skor 100' : 'Target tercapai')
+  const subTotal = !ada ? labelBulan(bulan) : r.target > 0 ? `Target ${angka(r.target)} · ${persen(r.persen)}% dari target` : 'Target belum ada';
+  // Petugas RS: skor RS itu sendiri; Admin/Viewer: rata-rata faskes bertarget.
+  const kartuRs = kartuSkorPetugas(baris);
+  const nilaiSkor = petugas ? kartuRs.nilai : skorRata(r.rataSkor);
+  const subSkor = !ada ? ' ' : petugas ? kartuRs.sub
     : r.belum100 ? `${angka(r.belum100)} faskes belum skor 100` : 'Semua faskes skor 100';
   return <>
     <div className="ks-kpi ks-kpi-jf">
@@ -67,7 +71,7 @@ function Kartu({ baris, bulan, kabupaten, petugas, namaRs }: KartuProps) {
     </div>
     <div className="ks-kpi ks-kpi-skor">
       <p className="ks-kpi-lbl">{petugas ? 'Skor Kepatuhan' : 'Rata-rata Skor Kepatuhan'}</p>
-      <p className="ks-kpi-v">{skorRata(r.rataSkor)}</p><p className="ks-kpi-s">{subSkor}</p>
+      <p className="ks-kpi-v">{nilaiSkor}</p><p className="ks-kpi-s">{subSkor}</p>
     </div>
   </>;
 }
@@ -277,7 +281,7 @@ function TabelFaskes({ baris, bulan, petugas, urut, setUrut, kartu, geser }: Tab
           return <tr key={`${b.kode_ppk}-${b.bulan}`} role="row">
             <th scope="row" role="rowheader">{b.nama_faskes}</th>
             <td role="cell" className="ks-kab ks-c-kab">{b.kabupaten}</td>
-            <td role="cell" className="ks-num ks-c-tgt">{adaTarget ? angka(b.target as number) : <>–<span className="ks-tanpa"> tanpa target</span></>}</td>
+            <td role="cell" className="ks-num ks-c-tgt">{adaTarget ? angka(b.target as number) : <>–<span className="ks-tanpa"> target belum ada</span></>}</td>
             <td role="cell" className="ks-num ks-c-kunj"><span className="ks-cap">
               <span className="ks-cap-bar" aria-hidden="true"><span style={{ width: `${t * 100}%`, '--t': t } as CSSProperties} /></span>
               <span className="ks-cap-n">{angka(b.jumlah_kessan)}</span>
@@ -303,7 +307,7 @@ function TabelFaskes({ baris, bulan, petugas, urut, setUrut, kartu, geser }: Tab
       <span><span className="ks-chip ks-chip-mid">50</span> 50–&lt;75%</span>
       <span><span className="ks-chip ks-chip-bad">25</span> 25–&lt;50%</span>
       <span><span className="ks-chip ks-chip-bad">0</span> &lt; 25%</span>
-      <span>Tanpa target (kosong atau 0): skor 100.</span>
+      <span>Target belum ada (kosong atau 0): skor 100.</span>
     </div>
   </>;
 }
@@ -474,6 +478,9 @@ export function MonitoringKessanDashboard() {
                     {sementara && <>{' '}<span className="ks-badge-sem">Data sementara</span></>}
                   </p>}
                 </div>
+                {/* Isi JPEG mengikuti Periode dan Kabupaten; urutan klik di tabel tidak dipakai (SPEK-jpeg.md). */}
+                <UnduhJpegKessan baris={tampil} bulan={f.periode} kabupaten={f.kabupaten} petugas={terkunci} namaRs={namaRs}
+                  sementara={sementara} lastUpdate={r?.last_update_bi} nonaktif={memuat} />
                 {!memuat && tampil.length > 0 && <label className="ks-urut-hp">Urutkan
                   <select value={URUT_HP.some(o => o.v === `${urut.kolom}:${urut.arah}`) ? `${urut.kolom}:${urut.arah}` : ''}
                     onChange={e => { const [kolom, arah] = e.target.value.split(':'); setUrut({ kolom: kolom as KolomUrut, arah: arah as 'asc' | 'desc' }); }}>

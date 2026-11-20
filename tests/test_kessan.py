@@ -35,6 +35,11 @@ DB_CSV = (
 )
 
 
+JUMLAH_BARIS_SHEET = 7  # baris sah di KESSAN_CSV (baris kosong dibuang)
+# Ditambah FKRTL db_fkrtl tanpa baris sheet: Teratai di 3 bulan dan Melati di Januari.
+JUMLAH_BARIS_LENGKAP = JUMLAH_BARIS_SHEET + 4
+
+
 def olah():
     return ks.susun(ks.baca_csv(KESSAN_CSV), ks.baca_csv(DB_CSV))
 
@@ -112,7 +117,7 @@ def test_susun_respons_lengkap():
     assert data["bulan_sementara"] == ["2026-11"]
     assert data["kabupaten"] == ["Jember", "Lumajang", "Bondowoso"]
     assert data["rs"] is None and data["terkunci"] is False
-    assert len(data["baris"]) == 7  # baris kosong dibuang
+    assert len(data["baris"]) == JUMLAH_BARIS_LENGKAP  # baris kosong dibuang, FKRTL db_fkrtl ditambahkan
 
 
 def test_nama_dari_db_fkrtl_dengan_cadangan_nama_sheet():
@@ -208,24 +213,147 @@ def test_saring_petugas_hanya_baris_rs_sendiri():
     assert hasil["rs"] == {"kode": "0202R002", "nama": "MELATI LUMAJANG, RSUD"} and hasil["terkunci"] is True
     assert hasil["kabupaten"] == ["Lumajang"]
     assert hasil["bulan_tersedia"] == data["bulan_tersedia"] and hasil["bulan_sementara"] == ["2026-11"]
-    assert len(data["baris"]) == 7  # data asli tidak berubah
+    assert len(data["baris"]) == JUMLAH_BARIS_LENGKAP  # data asli tidak berubah
 
 
 def test_saring_petugas_rs_tanpa_baris():
-    hasil = ks.saring_petugas(olah(), "0909R009", ks.peta_nama(ks.baca_csv(DB_CSV)))
+    # Kode di luar db_fkrtl dan sheet: tanpa baris; nama tetap dari db_fkrtl bila ada.
+    hasil = ks.saring_petugas(olah(), "0909R009", {"0909R009": "RS TERATAI"})
+    assert hasil["rs"] == {"kode": "0909R009", "nama": "RS TERATAI"}
+    hasil = ks.saring_petugas(ks.susun(ks.baca_csv(KESSAN_CSV), []), "0909R009", {"0909R009": "RS TERATAI"})
     assert hasil["baris"] == [] and hasil["rs"] == {"kode": "0909R009", "nama": "RS TERATAI"}
     hasil = ks.saring_petugas(olah(), "7777R777", {})
+    assert hasil["baris"] == []
     assert hasil["rs"] == {"kode": "7777R777", "nama": "7777R777"}
 
 
 def test_saring_petugas_kode_akun_huruf_kecil_dan_berspasi():
     nama_db = ks.peta_nama(ks.baca_csv(DB_CSV))
     hasil = ks.saring_petugas(olah(), " 0202r002 ", nama_db)
-    assert {b["kode_ppk"] for b in hasil["baris"]} == {"0202R002"} and len(hasil["baris"]) == 2
+    assert {b["kode_ppk"] for b in hasil["baris"]} == {"0202R002"} and len(hasil["baris"]) == 3  # Januari tambahan
     assert hasil["rs"] == {"kode": "0202R002", "nama": "MELATI LUMAJANG, RSUD"}
     # RS tanpa baris: nama tetap ketemu di db_fkrtl walau kode akun huruf kecil, juga bila peta berkunci huruf kecil.
     assert ks.saring_petugas(olah(), "0909r009", nama_db)["rs"] == {"kode": "0909R009", "nama": "RS TERATAI"}
     assert ks.saring_petugas(olah(), "0909R009", {"0909r009": "RS TERATAI"})["rs"]["nama"] == "RS TERATAI"
+
+
+# --- daftar induk FKRTL dari db_fkrtl ----------------------------------------
+
+def test_fkrtl_db_tanpa_baris_sheet_tetap_tampil_tiap_bulan():
+    data = olah()
+    for bulan in data["bulan_tersedia"]:
+        teratai = baris(data, "0909R009", bulan)
+        assert teratai == {"kode_ppk": "0909R009", "nama_faskes": "RS TERATAI", "kabupaten": "Jember", "bulan": bulan,
+                           "jumlah_kessan": 0, "target": None, "persen": None, "skor": 100}
+    # Melati tidak punya baris Januari di sheet: ditambahkan dengan nama dan kabupaten dari db_fkrtl.
+    melati = baris(data, "0202R002", "2026-01")
+    assert (melati["nama_faskes"], melati["kabupaten"], melati["jumlah_kessan"], melati["skor"]) == (
+        "MELATI LUMAJANG, RSUD", "Lumajang", 0, 100)
+    # Baris yang ada di sheet tidak berubah, dan bulan tidak bertambah karena baris tambahan.
+    assert baris(data, "0202R002", "2026-10")["skor"] == 25
+    assert data["bulan_tersedia"] == ["2026-01", "2026-10", "2026-11"]
+    assert {b["kode_ppk"] for b in data["baris"] if b["bulan"] == "2026-11"} == {
+        "0101R001", "0202R002", "0303R003", "0404R004", "0909R009"}
+
+
+def test_baris_tambahan_tidak_mengubah_total_dan_target_sheet_nol_tetap_dari_sheet():
+    # Baris sheet dengan target dan kunjungan 0 (ditulis Saiful untuk RS yang tidak muncul di BI) tetap skor dari sheet.
+    teks = KESSAN_CSV + "0909R009,RS Teratai,0,50,0.00%,0,November 2026,Jember,Last Update : 2026-11-20 02:42:06\n"
+    data = ks.susun(ks.baca_csv(teks), ks.baca_csv(DB_CSV))
+    teratai = baris(data, "0909R009")
+    assert (teratai["jumlah_kessan"], teratai["target"], teratai["persen"], teratai["skor"]) == (0, 50, 0.0, 0)
+    assert len([b for b in data["baris"] if b["kode_ppk"] == "0909R009" and b["bulan"] == "2026-11"]) == 1
+    nov = [b for b in olah()["baris"] if b["bulan"] == "2026-11"]
+    assert sum(b["jumlah_kessan"] for b in nov) == 1644 + 268 + 120 + 1182
+    assert sum(b["target"] or 0 for b in nov) == 278 + 357
+
+
+def test_kode_dikecualikan_dibuang_dari_db_dan_sheet():
+    data = ks.susun(ks.baca_csv(KESSAN_CSV), ks.baca_csv(DB_CSV), dikecualikan={"0909R009", "0303R003"})
+    kode = {b["kode_ppk"] for b in data["baris"]}
+    assert "0909R009" not in kode and "0303R003" not in kode
+    assert data["kabupaten"] == ["Jember", "Lumajang"]  # Bondowoso hanya milik baris yang dikecualikan
+    assert len(data["baris"]) == 6 + 1  # 6 baris sheet + Melati Januari
+
+
+def test_kode_dikecualikan_tidak_dihitung_baris_rusak(caplog):
+    teks = KESSAN_CSV.replace("0101R001,", "0188S001,")  # 3 baris sah tetapi dikecualikan
+    with caplog.at_level(logging.WARNING, logger="sapa-api"):
+        data = ks.susun(ks.baca_csv(teks), [], dikecualikan={"0188S001"})
+    assert "0188S001" not in {b["kode_ppk"] for b in data["baris"]} and "dibuang" not in caplog.text
+
+
+@pytest.mark.parametrize("teks,hasil", [
+    (None, frozenset()), ("", frozenset()), (" , ", frozenset()), ("0188S001", frozenset({"0188S001"})),
+    (" 0188s001 , 0909R009,", frozenset({"0188S001", "0909R009"})),
+])
+def test_kode_dikecualikan_dari_env(monkeypatch, teks, hasil):
+    if teks is None:
+        monkeypatch.delenv(ks.ENV_KODE_DIKECUALIKAN, raising=False)
+    else:
+        monkeypatch.setenv(ks.ENV_KODE_DIKECUALIKAN, teks)
+    assert ks.kode_dikecualikan() == hasil
+    assert ks.ENV_KODE_DIKECUALIKAN == "SAPA_KESSAN_KODE_DIKECUALIKAN"
+
+
+def test_kode_dikecualikan_berupa_string_tunggal_tidak_diiterasi_per_karakter():
+    data = ks.susun(ks.baca_csv(KESSAN_CSV), ks.baca_csv(DB_CSV), " 0909r009 , 0303R003")
+    kode = {b["kode_ppk"] for b in data["baris"]}
+    assert "0909R009" not in kode and "0303R003" not in kode
+
+
+def test_baris_db_fkrtl_berkode_tidak_sah_tidak_menjadi_faskes(caplog):
+    db = DB_CSV + "catatan: cek ulang,KAB. JEMBER,keterangan,,,,\nRS-BARU,KAB. JEMBER,RS BARU,,,,\n"
+    with caplog.at_level(logging.WARNING, logger="sapa-api"):
+        data = ks.susun(ks.baca_csv(KESSAN_CSV), ks.baca_csv(db))
+    assert {b["kode_ppk"] for b in data["baris"]} == {"0101R001", "0202R002", "0303R003", "0404R004", "0909R009"}
+    assert len(data["baris"]) == JUMLAH_BARIS_LENGKAP
+    assert "2 baris" in caplog.text and "catatan" not in caplog.text and "RS BARU" not in caplog.text
+
+
+def test_db_fkrtl_kosong_hanya_baris_sheet():
+    assert len(ks.susun(ks.baca_csv(KESSAN_CSV), [])["baris"]) == JUMLAH_BARIS_SHEET
+
+
+@pytest.mark.parametrize("kab_sheet", ["Lumajang", "-", "", "Kota Jember"])
+def test_kabupaten_baris_sheet_diambil_dari_db_fkrtl_dulu(kab_sheet):
+    # Baris sheet 0101R001 (KAB. JEMBER di db_fkrtl) ditulis dengan kabupaten lain, "-", atau kosong.
+    sheet = KESSAN_CSV.replace("November 2026,Jember,", f"November 2026,{kab_sheet},", 1)
+    data = ks.susun(ks.baca_csv(sheet), ks.baca_csv(DB_CSV))
+    assert baris(data, "0101R001")["kabupaten"] == "Jember"
+    assert data["kabupaten"] == ["Jember", "Lumajang", "Bondowoso"]
+
+
+def test_kabupaten_baris_sheet_salah_ketik_tetap_dari_db_fkrtl():
+    sheet = KESSAN_CSV.replace("October 2026,Lumajang,", "October 2026,Lumajan,", 1)
+    data = ks.susun(ks.baca_csv(sheet), ks.baca_csv(DB_CSV))
+    assert baris(data, "0202R002", "2026-10")["kabupaten"] == "Lumajang"
+    assert "Lumajan" not in data["kabupaten"]
+
+
+def test_kabupaten_kode_di_luar_db_fkrtl_memakai_kolom_sheet():
+    # 0303R003 tidak ada di db_fkrtl: kabupaten tetap dari kolom sheet; sel "-" tidak menjadi kabupaten.
+    data = olah()
+    assert baris(data, "0303R003")["kabupaten"] == "Bondowoso"
+    sheet = KESSAN_CSV.replace("November 2026,Bondowoso,", "November 2026,-,", 1)
+    data = ks.susun(ks.baca_csv(sheet), ks.baca_csv(DB_CSV))
+    assert baris(data, "0303R003")["kabupaten"] == ""
+    assert "-" not in data["kabupaten"]
+
+
+def test_kabupaten_strip_di_db_fkrtl_tidak_menimpa_kabupaten_sheet():
+    # Sel kabupaten "-" di db_fkrtl dianggap kosong: kabupaten sah dari kolom sheet tetap dipakai.
+    db = DB_CSV.replace("0101R001,KAB. JEMBER,", "0101R001,-,", 1)
+    data = ks.susun(ks.baca_csv(KESSAN_CSV), ks.baca_csv(db))
+    assert all(b["kabupaten"] == "Jember" for b in data["baris"] if b["kode_ppk"] == "0101R001")
+    assert "-" not in data["kabupaten"]
+
+
+def test_saring_petugas_fkrtl_tanpa_baris_sheet_mendapat_baris_kosong():
+    hasil = ks.saring_petugas(olah(), "0909R009", ks.peta_nama(ks.baca_csv(DB_CSV)))
+    assert [b["bulan"] for b in hasil["baris"]] == ["2026-01", "2026-10", "2026-11"]
+    assert all(b["jumlah_kessan"] == 0 and b["skor"] == 100 for b in hasil["baris"])
+    assert hasil["rs"] == {"kode": "0909R009", "nama": "RS TERATAI"}
 
 
 # --- konfigurasi dan pengambilan ---------------------------------------------
@@ -239,6 +367,7 @@ def sumber(monkeypatch):
     monkeypatch.setenv(ks.ENV_SPREADSHEET, ID_TIRUAN)
     monkeypatch.setenv(ks.ENV_GID, "111")
     monkeypatch.setenv(ks.ENV_GID_DB, "222")
+    monkeypatch.delenv("SAPA_KESSAN_KODE_DIKECUALIKAN", raising=False)
     monkeypatch.setattr(ks, "_CACHE", {})
     isi = {"111": KESSAN_CSV, "222": DB_CSV}
     panggil = []
@@ -270,9 +399,19 @@ def test_env_tidak_valid_belum_dikonfigurasi(sumber, monkeypatch, nama, nilai):
 
 def test_data_kessan_memakai_cache_singkat(sumber):
     _, panggil = sumber
-    assert len(ks.data_kessan(None)["baris"]) == 7
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP
     ks.data_kessan("0101R001")
     assert sorted(panggil) == ["111", "222"]
+
+
+def test_data_kessan_membuang_kode_dari_env(sumber, monkeypatch):
+    assert "0909R009" in {b["kode_ppk"] for b in ks.data_kessan(None)["baris"]}
+    # Isi env berubah (mis. setelah redeploy): tidak memakai simpanan dengan daftar pengecualian lama.
+    monkeypatch.setenv(ks.ENV_KODE_DIKECUALIKAN, " 0909r009 ")
+    data = ks.data_kessan(None)
+    assert "0909R009" not in {b["kode_ppk"] for b in data["baris"]}
+    assert len(data["baris"]) == JUMLAH_BARIS_LENGKAP - 3
+    assert ks.data_kessan("0909R009")["baris"] == []
 
 
 def test_cache_kedaluwarsa_dibaca_ulang(sumber, monkeypatch):
@@ -308,7 +447,7 @@ def test_gagal_tanpa_cache_tidak_membaca_ulang_dalam_jeda(sumber, monkeypatch):
     assert panggil.count("111") == 1
     isi["111"] = KESSAN_CSV
     jam[0] += ks.JEDA_GAGAL + 1
-    assert len(ks.data_kessan(None)["baris"]) == 7 and panggil.count("111") == 2
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP and panggil.count("111") == 2
 
 
 def test_sheet_kessan_gagal_memakai_cache_lama(sumber, monkeypatch):
@@ -318,7 +457,7 @@ def test_sheet_kessan_gagal_memakai_cache_lama(sumber, monkeypatch):
     ks.data_kessan(None)
     isi["111"] = None
     jam[0] += ks.CACHE_TTL + 1
-    assert len(ks.data_kessan(None)["baris"]) == 7
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP
 
 
 def test_data_simpanan_lama_tidak_membaca_ulang_dalam_jeda(sumber, monkeypatch):
@@ -356,7 +495,7 @@ def test_pengambilan_serentak_hanya_sekali(sumber, monkeypatch):
     lanjut.set()
     for u in utas:
         u.join(5)
-    assert hasil == [7, 7, 7, 7] and panggil.count("111") == 1 and panggil.count("222") == 1
+    assert hasil == [JUMLAH_BARIS_LENGKAP] * 4 and panggil.count("111") == 1 and panggil.count("222") == 1
 
 
 def test_sheet_kessan_tanpa_kolom_wajib_dianggap_gagal(sumber):
@@ -375,18 +514,80 @@ def test_kolom_penting_hilang_atau_berganti_nama_dianggap_gagal(sumber, kolom):
         ks.data_kessan(None)
 
 
-def test_db_fkrtl_gagal_nama_memakai_cadangan_dengan_cache_singkat(sumber, monkeypatch):
+def test_db_fkrtl_gagal_tanpa_simpanan_hanya_baris_sheet_dengan_cache_singkat(sumber, monkeypatch, caplog):
+    # Belum pernah ada db_fkrtl sah untuk kunci konfigurasi ini: hanya baris sheet, nama dari sheet, TTL singkat.
     isi, panggil = sumber
     jam = [1000.0]
     monkeypatch.setattr(ks.time, "time", lambda: jam[0])
     isi["222"] = None
-    assert baris(ks.data_kessan(None), "0101R001")["nama_faskes"] == "RSD Mawar"
+    with caplog.at_level(logging.WARNING, logger="sapa-api"):
+        data = ks.data_kessan(None)
+    assert baris(data, "0101R001")["nama_faskes"] == "RSD Mawar"
+    assert len(data["baris"]) == JUMLAH_BARIS_SHEET
+    assert "RSD" not in caplog.text and "0101R001" not in caplog.text  # log tanpa isi baris
     isi["222"] = DB_CSV
     assert baris(ks.data_kessan(None), "0101R001")["nama_faskes"] == "RSD Mawar"  # masih dalam cache singkat
     assert panggil.count("222") == 1 and ks.CACHE_TTL_SINGKAT < ks.CACHE_TTL
     jam[0] += ks.CACHE_TTL_SINGKAT + 1
     assert baris(ks.data_kessan(None), "0101R001")["nama_faskes"] == "RSD MAWAR JEMBER"
     assert panggil.count("222") == 2
+
+
+DB_HANYA_KEPALA = DB_CSV.split("\n", 1)[0] + "\n"
+DB_TANPA_KODE_SAH = DB_HANYA_KEPALA + "catatan: cek ulang,KAB. JEMBER,keterangan,,,,\n"
+
+
+@pytest.mark.parametrize("db_rusak", [None, RuntimeError("timeout"), DB_HANYA_KEPALA, DB_TANPA_KODE_SAH])
+def test_db_fkrtl_gagal_memakai_db_terakhir_yang_sah_dengan_cache_singkat(sumber, monkeypatch, db_rusak):
+    # Cache lengkap kedaluwarsa lalu db_fkrtl gagal atau tanpa kode sah: tetap lengkap dengan nama dari db_fkrtl
+    # terakhir yang sah, dan disimpan dengan TTL singkat (tidak menimpa data lengkap selama CACHE_TTL penuh).
+    isi, panggil = sumber
+    jam = [1000.0]
+    monkeypatch.setattr(ks.time, "time", lambda: jam[0])
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP
+    isi["222"] = db_rusak
+    jam[0] += ks.CACHE_TTL + 1
+    data = ks.data_kessan(None)
+    assert len(data["baris"]) == JUMLAH_BARIS_LENGKAP
+    assert baris(data, "0101R001")["nama_faskes"] == "RSD MAWAR JEMBER"
+    assert baris(data, "0909R009")["nama_faskes"] == "RS TERATAI"
+    assert ks.data_kessan("0909R009")["rs"] == {"kode": "0909R009", "nama": "RS TERATAI"}
+    assert panggil.count("222") == 2
+    jam[0] += ks.CACHE_TTL_SINGKAT + 1  # TTL singkat: dibaca ulang lebih cepat
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP
+    assert panggil.count("222") == 3
+    isi["222"] = DB_CSV  # db_fkrtl pulih
+    jam[0] += ks.CACHE_TTL_SINGKAT + 1
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP and panggil.count("222") == 4
+    jam[0] += ks.CACHE_TTL_SINGKAT + 1  # kembali ke TTL penuh
+    ks.data_kessan(None)
+    assert panggil.count("222") == 4
+
+
+@pytest.mark.parametrize("db_rusak", [DB_HANYA_KEPALA, DB_TANPA_KODE_SAH])
+def test_db_fkrtl_tanpa_kode_sah_dianggap_gagal(sumber, monkeypatch, db_rusak):
+    isi, panggil = sumber
+    jam = [1000.0]
+    monkeypatch.setattr(ks.time, "time", lambda: jam[0])
+    isi["222"] = db_rusak
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_SHEET
+    jam[0] += ks.CACHE_TTL_SINGKAT + 1  # TTL singkat, bukan CACHE_TTL penuh
+    isi["222"] = DB_CSV
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP and panggil.count("222") == 2
+
+
+def test_sheet_kessan_gagal_tetap_menyimpan_db_terakhir_yang_sah(sumber, monkeypatch):
+    # Urutan: sukses, sheet kessan gagal (data lama dipakai), lalu db_fkrtl gagal: db sah tidak hilang.
+    isi, _ = sumber
+    jam = [1000.0]
+    monkeypatch.setattr(ks.time, "time", lambda: jam[0])
+    ks.data_kessan(None)
+    isi["111"] = None
+    jam[0] += ks.CACHE_TTL + 1
+    ks.data_kessan(None)
+    isi["111"], isi["222"] = KESSAN_CSV, None
+    jam[0] += ks.JEDA_GAGAL + 1
+    assert len(ks.data_kessan(None)["baris"]) == JUMLAH_BARIS_LENGKAP
 
 
 # --- endpoint ----------------------------------------------------------------
@@ -431,7 +632,7 @@ def test_admin_dan_viewer_melihat_semua(api_env, roles):
     res = call(roles=roles)
     assert res.status_code == 200 and res.headers["cache-control"] == "no-store"
     body = res.json()
-    assert len(body["baris"]) == 7 and body["rs"] is None and body["terkunci"] is False
+    assert len(body["baris"]) == JUMLAH_BARIS_LENGKAP and body["rs"] is None and body["terkunci"] is False
     assert body["kabupaten"] == ["Jember", "Lumajang", "Bondowoso"]
 
 
@@ -478,7 +679,7 @@ def test_petugas_rs_login_lokal_ditolak_tanpa_data(monkeypatch, sumber):
     admin, _ = kepala_sesi(api, monkeypatch, "admin", username="admin.uji@contoh.invalid")
     res = TestClient(api.app, base_url="https://testserver", raise_server_exceptions=False).get(
         "/api/v1/kessan/data", headers=admin)
-    assert res.status_code == 200 and len(res.json()["baris"]) == 7
+    assert res.status_code == 200 and len(res.json()["baris"]) == JUMLAH_BARIS_LENGKAP
 
 
 def test_petugas_tanpa_kode_ppk_ditolak(api_env):

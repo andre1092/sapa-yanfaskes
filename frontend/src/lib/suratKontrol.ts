@@ -149,7 +149,7 @@ export function treemap(items: { id: string; nilai: number }[], w: number, h: nu
   return hasil;
 }
 
-const aman = (teks: string) => teks.normalize('NFKD').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+export const aman = (teks: string) => teks.normalize('NFKD').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 export function namaBerkasJpeg(bulan: string, jenis: PilihanJenis, rs: string): string {
   return ['Monitoring_Surat_Kontrol_Tabel', aman(labelBulan(bulan)), jenis === 'semua' ? 'Semua' : jenis, rs ? aman(rs) : '']

@@ -75,6 +75,7 @@ export type Ringkasan = {
   target: number;
   /** Σ kunjungan faskes bertarget ÷ Σ target × 100; null bila tidak ada target. */
   persen: number | null;
+  /** Rata-rata skor faskes bertarget saja; null bila tidak ada yang bertarget. */
   rataSkor: number | null;
   belum100: number;
 };
@@ -87,9 +88,21 @@ export function ringkas(baris: BarisKessan[]): Ringkasan {
     kunjungan: jumlah(baris, b => b.jumlah_kessan),
     target,
     persen: target > 0 ? (jumlah(t, b => b.jumlah_kessan) / target) * 100 : null,
-    rataSkor: baris.length ? jumlah(baris, b => b.skor) / baris.length : null,
+    // Keputusan CEO 20 Nov: faskes tanpa target ("target belum ada") tidak ikut rata-rata skor.
+    rataSkor: t.length ? jumlah(t, b => b.skor) / t.length : null,
     belum100: baris.filter(b => b.skor < 100).length,
   };
+}
+
+/**
+ * Kartu Skor Kepatuhan untuk akun Petugas RS: skor RS itu sendiri pada periode terpilih (satu baris),
+ * bukan rata-rata. RS tanpa target tetap menampilkan skornya (100 dari aturan) dengan subteks "Target belum ada".
+ */
+export function kartuSkorPetugas(baris: BarisKessan[]): { nilai: string; sub: string } {
+  const b = baris[0];
+  if (!b) return { nilai: '–', sub: '\u00a0' };
+  const sub = !bertarget(b) ? 'Target belum ada' : b.skor < 100 ? 'Belum skor 100' : 'Target tercapai';
+  return { nilai: skorRata(b.skor), sub };
 }
 
 export type PerKabupaten = { kabupaten: string; jumlahFaskes: number; kunjungan: number; target: number; persen: number | null };
