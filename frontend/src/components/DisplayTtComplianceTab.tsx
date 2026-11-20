@@ -6,7 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
-import { bulanTerbaru } from '../lib/bulanTerbaru';
+import { bulanAwalDitunggu } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
@@ -103,6 +103,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
 
   // Fetch data from backend API
   const fetchData = async () => {
+    let menungguBulan = false;
     setLoading(true);
     setError(null);
     try {
@@ -124,12 +125,15 @@ export const DisplayTtComplianceTab: React.FC = () => {
       const response = await apiClient.get<DisplayTtApiResponse>(`/api/v1/fkrtl-kepatuhan/display-tt${queryString}`);
 
       if (response && response.data && response.data.status === 'success') {
-        setApiData(response.data);
         // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
-        if (!selectedBulan) {
-          const terbaru = bulanTerbaru(response.data?.filter_options?.bulan);
-          if (terbaru) setSelectedBulan(terbaru);
+        // Selama bulan belum terpilih, data belum ditampilkan supaya tidak muncul angka gabungan semua bulan.
+        const bulanAwal = bulanAwalDitunggu(selectedBulan, response.data?.filter_options?.bulan);
+        if (bulanAwal) {
+          menungguBulan = true;
+          setSelectedBulan(bulanAwal);
+          return;
         }
+        setApiData(response.data);
       } else {
         setError('Gagal memuat data kepatuhan display tempat tidur.');
       }
@@ -137,7 +141,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
       console.error('Error fetching Display TT compliance data:', err);
       setError(err?.response?.data?.detail || err?.message || 'Gagal mengambil data dari Google Spreadsheet Display TT.');
     } finally {
-      setLoading(false);
+      if (!menungguBulan) setLoading(false);
     }
   };
 

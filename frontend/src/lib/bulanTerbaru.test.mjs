@@ -26,3 +26,13 @@ test('opsi kosong, tidak ada, atau tanpa bulan sah menghasilkan string kosong', 
 test('mengembalikan teks opsi apa adanya supaya cocok dengan nilai filter', () => {
   assert.equal(bulanTerbaru(['  October 2026  ', 'September 2026']), '  October 2026  ');
 });
+
+test('bulanAwalDitunggu: hanya saat belum ada bulan terpilih dan opsi punya bulan sah', async () => {
+  const { bulanAwalDitunggu } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+  const opsi = ['Semua Bulan', 'October 2026', 'November 2026'];
+  assert.equal(bulanAwalDitunggu('', opsi), 'November 2026');
+  assert.equal(bulanAwalDitunggu('September 2026', opsi), '');
+  assert.equal(bulanAwalDitunggu('Semua Bulan', opsi), '');
+  assert.equal(bulanAwalDitunggu('', ['Semua Bulan']), '');
+  assert.equal(bulanAwalDitunggu('', undefined), '');
+});

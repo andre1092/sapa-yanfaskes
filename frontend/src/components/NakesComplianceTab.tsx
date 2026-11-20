@@ -6,7 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
-import { bulanTerbaru } from '../lib/bulanTerbaru';
+import { bulanAwalDitunggu } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 import { UnduhDetailJadwal } from './UnduhDetailJadwal';
@@ -111,6 +111,7 @@ export const NakesComplianceTab: React.FC = () => {
 
   // Fetch data from backend API
   const fetchData = async () => {
+    let menungguBulan = false;
     setLoading(true);
     setError(null);
     try {
@@ -130,12 +131,15 @@ export const NakesComplianceTab: React.FC = () => {
 
       const res = await apiClient.get<NakesApiResponse>(`/api/v1/fkrtl-kepatuhan/nakes?${params.toString()}`);
       if (res.data && res.data.status === 'success') {
-        setApiData(res.data);
         // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
-        if (!selectedBulan) {
-          const terbaru = bulanTerbaru(res.data?.filter_options?.bulan);
-          if (terbaru) setSelectedBulan(terbaru);
+        // Selama bulan belum terpilih, data belum ditampilkan supaya tidak muncul angka gabungan semua bulan.
+        const bulanAwal = bulanAwalDitunggu(selectedBulan, res.data?.filter_options?.bulan);
+        if (bulanAwal) {
+          menungguBulan = true;
+          setSelectedBulan(bulanAwal);
+          return;
         }
+        setApiData(res.data);
       } else {
         throw new Error('Format data tidak sesuai');
       }
@@ -143,7 +147,7 @@ export const NakesComplianceTab: React.FC = () => {
       console.warn('Gagal memuat live data nakes dari backend:', err);
       setError('Gagal menghubungkan ke server, memuat data lokal...');
     } finally {
-      setLoading(false);
+      if (!menungguBulan) setLoading(false);
     }
   };
 

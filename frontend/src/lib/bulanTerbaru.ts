@@ -20,3 +20,10 @@ export function bulanTerbaru(opsi: readonly string[] | undefined | null): string
   }
   return terbaik;
 }
+
+// Bulan yang harus dipilih dulu sebelum data ditampilkan: hanya saat belum ada bulan terpilih ('' setelah muat
+// pertama atau Reset). Tanpa ini, tab yang backend-nya menjumlah semua bulan saat bulan kosong sempat
+// menampilkan angka gabungan sebelum bulan terbaru terpilih.
+export function bulanAwalDitunggu(terpilih: string, opsi: readonly string[] | undefined | null): string {
+  return terpilih ? '' : bulanTerbaru(opsi);
+}

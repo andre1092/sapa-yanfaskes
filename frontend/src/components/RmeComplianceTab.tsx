@@ -6,7 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
-import { bulanTerbaru } from '../lib/bulanTerbaru';
+import { bulanAwalDitunggu } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
@@ -107,6 +107,7 @@ export const RmeComplianceTab: React.FC = () => {
   const [hoveredMonth, setHoveredMonth] = useState<RmeMonthlyChartItem | null>(null);
 
   const fetchData = async () => {
+    let menungguBulan = false;
     setLoading(true);
     setError(null);
     try {
@@ -128,12 +129,15 @@ export const RmeComplianceTab: React.FC = () => {
       const response = await apiClient.get<RmeApiResponse>(`/api/v1/fkrtl-kepatuhan/rme${queryString}`);
 
       if (response && response.data && response.data.status === 'success') {
-        setApiData(response.data);
         // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
-        if (!selectedBulan) {
-          const terbaru = bulanTerbaru(response.data?.filter_options?.bulan);
-          if (terbaru) setSelectedBulan(terbaru);
+        // Selama bulan belum terpilih, data belum ditampilkan supaya tidak muncul angka gabungan semua bulan.
+        const bulanAwal = bulanAwalDitunggu(selectedBulan, response.data?.filter_options?.bulan);
+        if (bulanAwal) {
+          menungguBulan = true;
+          setSelectedBulan(bulanAwal);
+          return;
         }
+        setApiData(response.data);
       } else {
         setError('Gagal memuat data kepatuhan Rekam Medis Elektronik (RME).');
       }
@@ -141,7 +145,7 @@ export const RmeComplianceTab: React.FC = () => {
       console.error('Error fetching RME compliance data:', err);
       setError(err?.response?.data?.detail || 'Terjadi kesalahan sistem saat menghubungi server.');
     } finally {
-      setLoading(false);
+      if (!menungguBulan) setLoading(false);
     }
   };
 
