@@ -4,7 +4,7 @@ import { IconEye, IconEyeOff } from '@tabler/icons-react';
 import { buatKendaliForm, buatPengirimMasuk } from '../auth/alurMasuk';
 import { useSession } from '../auth/useSession';
 import type { KendaliWidget } from '../lib/turnstile';
-import { ALERT_GALAT, FOKUS, TOMBOL, WARNA } from './gayaMasuk';
+import { ALERT_GALAT, FOKUS, KOLOM, TOMBOL, TOMBOL_TEKS, WARNA } from './gayaMasuk';
 import { WidgetTurnstile } from './WidgetTurnstile';
 
 // Login satu halaman (mode bff): Username, Password, Ingat saya, Lupa password, dan Turnstile dalam satu
@@ -14,17 +14,9 @@ import { WidgetTurnstile } from './WidgetTurnstile';
 export const AKSI_MASUK = 'login';
 export const PESAN_LUPA_SANDI = 'Hubungi Admin KC Jember untuk atur ulang sandi.';
 
-const KOLOM = {
-  '& .MuiOutlinedInput-root': { bgcolor: WARNA.kartu, color: WARNA.teks },
-  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#c3ccd8' },
-  '& .MuiInputLabel-root': { color: WARNA.redup },
-  '& .MuiInputLabel-root.Mui-focused': { color: WARNA.biru },
-  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: WARNA.biru, borderWidth: 2 },
-} as const;
-const TOMBOL_TEKS = { color: WARNA.biru, textTransform: 'none', fontWeight: 600, px: 1, minHeight: 44, ...FOKUS } as const;
 const JUDUL = { mb: 1, color: WARNA.judul, outline: 'none', textAlign: 'center' } as const;
 
-function Galat({ id, pesan }: { id: string; pesan: string | null }) {
+export function Galat({ id, pesan }: { id: string; pesan: string | null }) {
   // Wadah role=alert selalu ada supaya pesan baru diumumkan pembaca layar; kosong saat tidak ada galat.
   return <Box id={id} role="alert">
     {pesan && <Alert role="presentation" severity="error" sx={ALERT_GALAT}>{pesan}</Alert>}

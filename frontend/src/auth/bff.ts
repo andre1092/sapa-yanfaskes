@@ -10,9 +10,9 @@ export const ALAMAT_AUTH = {
   keluar: '/api/v1/auth/keluar',
 } as const;
 
-const PESAN_JARINGAN = 'Tidak dapat terhubung ke server SAPA. Periksa koneksi internet lalu coba lagi.';
+export const PESAN_JARINGAN = 'Tidak dapat terhubung ke server SAPA. Periksa koneksi internet lalu coba lagi.';
 const PESAN_BELUM_ADA = 'Layanan ini belum tersedia. Hubungi administrator SAPA.';
-const PESAN_UMUM = 'Permintaan belum berhasil. Coba lagi beberapa saat lagi.';
+export const PESAN_UMUM = 'Permintaan belum berhasil. Coba lagi beberapa saat lagi.';
 const PESAN_SESI_GAGAL = 'Sesi belum dapat dibaca. Coba muat ulang halaman.';
 // Cadangan bila server (atau proksi di depannya) tidak memberi teks: pesan umum terlalu samar untuk dua status ini.
 const PESAN_STATUS: Partial<Record<number, string>> = {
@@ -49,7 +49,8 @@ export function pesanDariServer(isi: IsiJson, status: number, cadangan = PESAN_U
   return PESAN_STATUS[status] ?? cadangan;
 }
 
-async function kirim(alamat: string, body?: Record<string, unknown>): Promise<Hasil> {
+/** POST JSON same-origin dengan X-SAPA; cookie sesi dikirim browser. Galat jaringan menjadi status 0. */
+export async function kirimPost(alamat: string, body?: Record<string, unknown>): Promise<Hasil> {
   let res: Response;
   try {
     res = await fetch(alamat, {
@@ -117,7 +118,7 @@ export type IsianMasuk = { username: string; password: string; ingat: boolean; t
 
 /** POST /api/v1/auth/masuk. Setiap kegagalan menyetel ulang widget, karena token Turnstile sekali pakai. */
 export async function ajukanMasuk(isian: IsianMasuk, widget?: PenyetelUlang): Promise<Hasil> {
-  const hasil = await kirim(ALAMAT_AUTH.masuk, {
+  const hasil = await kirimPost(ALAMAT_AUTH.masuk, {
     // ingat selalu boolean: nilai lain (misalnya "on" dari kotak centang) tidak memperpanjang sesi.
     username: isian.username, password: isian.password, ingat: isian.ingat === true, turnstile_token: isian.token,
   });
@@ -128,5 +129,5 @@ export async function ajukanMasuk(isian: IsianMasuk, widget?: PenyetelUlang): Pr
 
 /** POST /api/v1/auth/keluar. */
 export async function keluarSesi(): Promise<Hasil> {
-  return kirim(ALAMAT_AUTH.keluar);
+  return kirimPost(ALAMAT_AUTH.keluar);
 }
