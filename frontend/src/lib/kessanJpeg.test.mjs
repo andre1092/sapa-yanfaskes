@@ -99,17 +99,11 @@ test('urutan tetap: kabupaten Jember, Lumajang, Bondowoso, lain; lalu kunjungan 
   assert.equal(baris[0].kode_ppk, 'A');
 });
 
-test('semua kabupaten: subtotal per kabupaten dan Total cabang sesuai angka acuan November', () => {
+test('semua kabupaten: urut per kabupaten tanpa subtotal (keputusan CEO), Total cabang sesuai acuan November', () => {
   const t = j.susunTabelJpeg(NOV, { kabupaten: '', petugas: false });
   assert.equal(t.jumlahBaris, 27);
   assert.deepEqual(t.kelompok.map(g => [g.kabupaten, g.baris.length]), [['Jember', 14], ['Lumajang', 9], ['Bondowoso', 4]]);
-  const [jem, lum, bon] = t.kelompok.map(g => g.subtotal);
-  assert.equal(jem.label, 'Subtotal Jember (14 faskes)');
-  assert.equal(jem.kunjungan, 8479);
-  assert.equal(lum.label, 'Subtotal Lumajang (9 faskes)');
-  assert.equal(lum.kunjungan, 5009);
-  assert.equal(bon.label, 'Subtotal Bondowoso (4 faskes)');
-  assert.equal(bon.kunjungan, 2703);
+  assert.ok(t.kelompok.every(g => !('subtotal' in g)));
   assert.equal(t.total.label, 'Total cabang (27 faskes)');
   assert.equal(t.total.kunjungan, 16191);
   assert.equal(t.total.target, 7782);
@@ -127,38 +121,38 @@ test('semua kabupaten: subtotal per kabupaten dan Total cabang sesuai angka acua
   assert.equal(t.kelompok.reduce((s, g) => s + g.baris.length, 0), 27);
 });
 
-test('baris berkabupaten lain atau kosong menjadi kelompok terakhir dengan subtotal sendiri', () => {
+test('baris berkabupaten lain atau kosong menjadi kelompok terakhir', () => {
   const baris = [...NOV.slice(0, 3), { ...NOV[3], kabupaten: '' }, { ...NOV[4], kabupaten: 'Situbondo' }];
   const t = j.susunTabelJpeg(baris, { kabupaten: '', petugas: false });
   const akhir = t.kelompok[t.kelompok.length - 1];
   assert.equal(akhir.kabupaten, '');
-  assert.equal(akhir.subtotal.label, 'Subtotal kabupaten lain (2 faskes)');
+  assert.ok(!('subtotal' in akhir));
   assert.deepEqual(akhir.baris.map(b => b.kabupaten).sort(), ['-', 'Situbondo']);
   assert.equal(t.total.label, 'Total cabang (5 faskes)');
 });
 
-test('filter kabupaten: satu kelompok tanpa Subtotal, Total memakai nama kabupaten', () => {
+test('filter kabupaten: satu kelompok, Total memakai nama kabupaten', () => {
   const lum = NOV.filter(b => b.kabupaten === 'Lumajang');
   const t = j.susunTabelJpeg(lum, { kabupaten: 'Lumajang', petugas: false });
   assert.equal(t.kelompok.length, 1);
-  assert.equal(t.kelompok[0].subtotal, null);
+  assert.ok(!('subtotal' in t.kelompok[0]));
   assert.equal(t.total.label, 'Total Kabupaten Lumajang (9 faskes)');
   assert.equal(t.total.kunjungan, 5009);
 });
 
-test('Petugas RS: satu baris tanpa Subtotal dan Total', () => {
+test('Petugas RS: satu baris tanpa Total', () => {
   const t = j.susunTabelJpeg([NOV[23]], { kabupaten: '', petugas: true });
   assert.equal(t.kelompok.length, 1);
-  assert.equal(t.kelompok[0].subtotal, null);
+  assert.ok(!('subtotal' in t.kelompok[0]));
   assert.equal(t.total, null);
   assert.equal(t.jumlahBaris, 1);
   assert.equal(t.kelompok[0].baris[0].kuning, true);
 });
 
-test('satu kabupaten saja di Semua kabupaten: tanpa Subtotal; tanpa baris: tanpa Total', () => {
+test('satu kabupaten saja di Semua kabupaten; tanpa baris: tanpa Total', () => {
   const t = j.susunTabelJpeg(NOV.filter(b => b.kabupaten === 'Jember'), { kabupaten: '', petugas: false });
   assert.equal(t.kelompok.length, 1);
-  assert.equal(t.kelompok[0].subtotal, null);
+  assert.ok(!('subtotal' in t.kelompok[0]));
   assert.equal(t.total.label, 'Total cabang (14 faskes)');
   const kosong = j.susunTabelJpeg([], { kabupaten: '', petugas: false });
   assert.equal(kosong.jumlahBaris, 0);

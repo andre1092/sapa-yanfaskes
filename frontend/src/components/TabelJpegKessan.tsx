@@ -63,7 +63,7 @@ export function TabelJpegKessan({ baris, bulan, kabupaten, petugas, namaRs, seme
         </tr>
       </thead>
       <tbody>
-        {t.kelompok.map(g => <ElemenKelompok key={g.kabupaten || '-'} baris={g.baris} subtotal={g.subtotal} />)}
+        {t.kelompok.map(g => <ElemenKelompok key={g.kabupaten || '-'} baris={g.baris} />)}
         {t.total && <BarisRingkas r={t.total} latar="#E5E7EB" />}
       </tbody>
     </table>
@@ -78,13 +78,13 @@ export function TabelJpegKessan({ baris, bulan, kabupaten, petugas, namaRs, seme
         <span style={{ ...warna(n), border: GARIS, padding: '0 6px', fontWeight: 700 }}>{n}</span>{rentang}</span>)}
     </div>
     {t.adaTanpaTarget && <div style={{ marginTop: 6 }}>
-      * Target belum ada (kosong atau 0): skor 100; tidak ikut dalam % Capaian, % Subtotal dan Total, serta rata-rata skor.
+      * Target belum ada (kosong atau 0): skor 100; tidak ikut dalam % Capaian, % Total, serta rata-rata skor.
     </div>}
     <div style={{ marginTop: 10, fontSize: 11, color: REDUP }}>{teksDiunduh(new Date())}</div>
   </div>;
 }
 
-function ElemenKelompok({ baris, subtotal }: { baris: BarisJpeg[]; subtotal: RingkasJpeg | null }) {
+function ElemenKelompok({ baris }: { baris: BarisJpeg[] }) {
   return <>
     {baris.map(b => {
       const latar: React.CSSProperties = b.kuning ? { backgroundColor: KUNING } : {};
@@ -97,6 +97,5 @@ function ElemenKelompok({ baris, subtotal }: { baris: BarisJpeg[]; subtotal: Rin
         <td style={{ ...SEL, ...warna(b.skor), textAlign: 'center', fontWeight: 700 }}>{b.labelSkor}</td>
       </tr>;
     })}
-    {subtotal && <BarisRingkas r={subtotal} latar="#F3F4F6" />}
   </>;
 }
