@@ -1,0 +1,51 @@
+{
+  "keterangan": "Vektor uji tanda tangan permintaan server SAPA ke Worker sapa-akun. Kunci di sini palsu dan hanya untuk tes. String yang ditandatangani: baris-baris 'sapa-akun-v1', METODE, PATH, WAKTU (detik Unix), NONCE (kosong untuk baca), hex(SHA-256(body mentah)), digabung dengan '\\n'. Tanda = hex(HMAC-SHA256(kunci, string itu)). Dipakai tes Python dan node --test.",
+  "kunci_base64": "dmVrdG9yLXVqaS1idWthbi1yYWhhc2lhLTMyLWJ5dGU=",
+  "vektor": [
+    {
+      "metode": "POST",
+      "path": "/akun/jumlah",
+      "waktu": "1763600000",
+      "nonce": "",
+      "body": "{}",
+      "kanonik": "sapa-akun-v1\nPOST\n/akun/jumlah\n1763600000\n\n44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "tanda": "bf024672d82b50b19a99a6dda4dba0dfcfa7a4d504d3ee41f8ebd6a56962091f"
+    },
+    {
+      "metode": "POST",
+      "path": "/akun/ambil-username",
+      "waktu": "1763600001",
+      "nonce": "",
+      "body": "{\"username\":\"admin@contoh.invalid\"}",
+      "kanonik": "sapa-akun-v1\nPOST\n/akun/ambil-username\n1763600001\n\n5b27b38ca230e6f79dceb2aa4a8eb90763a2b1ce33a7140e8fd41d3d219daaa0",
+      "tanda": "332525717eb61ffc6575de3e43911046cfacbeeed582a578f035f5c756338372"
+    },
+    {
+      "metode": "POST",
+      "path": "/akun/ganti-hash",
+      "waktu": "1763600002",
+      "nonce": "0123456789abcdef0123456789abcdef",
+      "body": "{\"hash\":\"$argon2id$v=19$m=19456,t=2,p=1$AAAA$BBBB\",\"hash_kode\":null,\"id\":\"00000000-0000-4000-8000-000000000001\",\"jenis\":null,\"mac\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"versi_baru\":2,\"versi_lama\":1}",
+      "kanonik": "sapa-akun-v1\nPOST\n/akun/ganti-hash\n1763600002\n0123456789abcdef0123456789abcdef\na2264df8e04e45639faa4392f710d744f74d43a8c4a8636ae3b8a7dbc5397a36",
+      "tanda": "2fed0c8101b1c84a76376b30ccfc63c4c8be24a3c26b754ea2da0a1831d68b68"
+    },
+    {
+      "metode": "POST",
+      "path": "/kode/terpakai",
+      "waktu": "1763600003",
+      "nonce": "",
+      "body": "{\"hash_kode\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}",
+      "kanonik": "sapa-akun-v1\nPOST\n/kode/terpakai\n1763600003\n\nf3949adeb39b830dff8fdbb8bc6a108c35c9d9a8dea772a1db2c37bda9bbbb87",
+      "tanda": "ce2a201eacbd5b18661ce823c089ab4cb638345ffc1186f39063a6d499080e6c"
+    },
+    {
+      "metode": "POST",
+      "path": "/akun/sisip-pertama",
+      "waktu": "1763600004",
+      "nonce": "fedcba9876543210fedcba9876543210",
+      "body": "{\"catatan\":\"éè unicode\"}",
+      "kanonik": "sapa-akun-v1\nPOST\n/akun/sisip-pertama\n1763600004\nfedcba9876543210fedcba9876543210\n971d4edb913efbc3f5fbac967a772fb248a56e22799107415a42bb1177dc230b",
+      "tanda": "c5f7b958ede1e8df6b40d48918e6505646212561ece8e25c50aecf7b1dd1b9d5"
+    }
+  ]
+}

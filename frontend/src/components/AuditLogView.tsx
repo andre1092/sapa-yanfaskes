@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import MainCard from '../berry/MainCard';
 import { apiClient } from '../lib/apiClient';
+import { useSession } from '../auth/useSession';
 import { AnimatedButton } from './ui/AnimatedButton';
 import { KerangkaMemuat } from './ui/KerangkaMemuat';
 import '../berry/berry-dashboards.css';
@@ -17,6 +18,9 @@ const waktu = (iso: string) => new Date(iso).toLocaleString('id-ID', { dateStyle
 const rincian = (target: string) => (target.includes(' ') ? target.slice(target.indexOf(' ') + 1) : '-');
 
 export function AuditLogView() {
+  // Mode bff: login dicatat SAPA sendiri dan pelaku berbentuk "sapa|<id akun>", bukan ID Auth0.
+  const { mode } = useSession();
+  const bff = mode === 'bff';
   const [aksi, setAksi] = useState('');
   const [pelaku, setPelaku] = useState('');
   const [dari, setDari] = useState('');
@@ -32,11 +36,11 @@ export function AuditLogView() {
       <MainCard content={false} className="berry-dashboard-card p-4 sm:p-6">
         <Typography variant="h2" component="h1" sx={{ mb: 1 }}>Log aktivitas</Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Akses yang ditolak dan tindakan admin (sinkronisasi, muat ulang, ekspor, email verifikasi). Login berhasil dan gagal tercatat di log Auth0.
+          Akses yang ditolak dan tindakan admin (sinkronisasi, muat ulang, ekspor, email verifikasi). {bff ? 'Login berhasil dan gagal juga tercatat di sini.' : 'Login berhasil dan gagal tercatat di log Auth0.'}
         </Typography>
         <form className="flex flex-wrap items-end gap-3 mb-4" onSubmit={(event) => { event.preventDefault(); setSaring({ action: aksi.trim(), actor: pelaku.trim(), ...(dari ? { since: dari } : {}), ...(sampai ? { until: sampai } : {}) }); }}>
           <TextField size="small" label="Tindakan" value={aksi} onChange={(e) => setAksi(e.target.value)} placeholder="mis. sync" />
-          <TextField size="small" label="Pelaku (ID Auth0)" value={pelaku} onChange={(e) => setPelaku(e.target.value)} />
+          <TextField size="small" label={bff ? 'Pelaku (ID akun)' : 'Pelaku (ID Auth0)'} value={pelaku} onChange={(e) => setPelaku(e.target.value)} />
           <TextField size="small" type="date" label="Dari tanggal" value={dari} onChange={(e) => setDari(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           <TextField size="small" type="date" label="Sampai tanggal" value={sampai} onChange={(e) => setSampai(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
           <AnimatedButton type="submit" className="sapa-button sapa-button-primary">Terapkan</AnimatedButton>

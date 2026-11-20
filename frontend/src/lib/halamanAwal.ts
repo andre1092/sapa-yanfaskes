@@ -4,6 +4,14 @@ export const HALAMAN_AWAL = '/home';
 /** Alamat halaman masuk SAPA (keputusan CEO 2026-11-16). */
 export const HALAMAN_MASUK = '/login';
 
+/** Halaman penyiapan dan pemulihan akun lokal; dibuka tanpa sesi. */
+export const HALAMAN_SIAPKAN_AKUN = '/siapkan-akun';
+
+/** Apakah jalur (tanpa query) adalah halaman Siapkan akun; garis miring di akhir diabaikan. */
+export function diHalamanSiapkanAkun(pathname: string): boolean {
+  return pathname.replace(/\/+$/, '') === HALAMAN_SIAPKAN_AKUN;
+}
+
 const PARAM_KEMBALI = 'kembali';
 
 function jalurDari(alamat: string): string {

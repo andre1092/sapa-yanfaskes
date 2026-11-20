@@ -55,6 +55,9 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            // SDK Auth0 (@auth0/auth0-react memuat kata "react") tidak boleh masuk vendor-core: SDK itu hanya
+            // dipakai mode login lama dan dimuat lewat import() dinamis bersama src/auth/SesiAuth0.tsx.
+            if (id.includes('/@auth0/')) return;
             if (id.includes('react') || id.includes('react-dom') || id.includes('zustand') || id.includes('@tanstack')) {
               return 'vendor-core';
             }

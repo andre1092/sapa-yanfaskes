@@ -6,6 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
+import { bulanAwalDitunggu } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
@@ -93,10 +94,11 @@ const KESSAN_TARGET_STANDARDS = [
 ];
 
 export const UmablComplianceTab: React.FC = () => {
-  // Filter states (Default Bulan: September 2026)
+  // Filter states (bulan bawaan: bulan terbaru dari API)
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  // Kosong sampai data pertama datang; lalu diisi bulan terbaru dari opsi filter API.
+  const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -118,6 +120,7 @@ export const UmablComplianceTab: React.FC = () => {
 
   // Fetch data from backend API
   const fetchData = async () => {
+    let menungguBulan = false;
     setLoading(true);
     setError(null);
     try {
@@ -139,6 +142,14 @@ export const UmablComplianceTab: React.FC = () => {
       const response = await apiClient.get<UmablApiResponse>(`/api/v1/fkrtl-kepatuhan/umabl${queryString}`);
 
       if (response && response.data && response.data.status === 'success') {
+        // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
+        // Selama bulan belum terpilih, data belum ditampilkan supaya tidak muncul angka gabungan semua bulan.
+        const bulanAwal = bulanAwalDitunggu(selectedBulan, response.data?.filter_options?.bulan);
+        if (bulanAwal) {
+          menungguBulan = true;
+          setSelectedBulan(bulanAwal);
+          return;
+        }
         setApiData(response.data);
       } else {
         setError('Gagal memuat data kepatuhan umpan balik peserta.');
@@ -147,7 +158,7 @@ export const UmablComplianceTab: React.FC = () => {
       console.error('Error fetching Umabl Compliance data:', err);
       setError(err?.response?.data?.detail || err?.message || 'Terjadi kesalahan saat memuat data dari server.');
     } finally {
-      setLoading(false);
+      if (!menungguBulan) setLoading(false);
     }
   };
 
@@ -296,7 +307,7 @@ export const UmablComplianceTab: React.FC = () => {
           setSelectedKabupaten('Semua Kabupaten');
           setSelectedNamaPpk('Semua Faskes');
           setSelectedTipeFaskes('Semua Tipe Faskes');
-          setSelectedBulan('September 2026');
+          setSelectedBulan('');
           setStatusFilter('ALL');
           setSearchQuery('');
           setCurrentPage(1);

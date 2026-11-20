@@ -16,14 +16,18 @@ import logging
 import os
 import secrets
 import time
-from urllib.parse import urlparse
 
 import jwt
 import requests
 
+try:
+    from . import turnstile
+except ImportError:
+    import turnstile
+
 logger = logging.getLogger(__name__)
 
-TURNSTILE_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+TURNSTILE_URL = turnstile.TURNSTILE_URL
 AKSI = "sapa_login"
 TUJUAN = "sapa-verifikasi"
 UMUR_TOKEN_BALASAN = 120
@@ -55,11 +59,6 @@ def _domain_auth0() -> str:
     return _env("AUTH0_DOMAIN").removeprefix("https://").removeprefix("http://").rstrip("/")
 
 
-def _host_diizinkan() -> set[str]:
-    asal = _env("APP_ORIGINS") or "https://sapa-yanfaskes.vercel.app"
-    return {urlparse(o.strip()).hostname for o in asal.split(",") if urlparse(o.strip()).hostname}
-
-
 def _kirim(url: str, data: dict | None = None, timeout: float | None = None):
     return requests.post(url, data=data, timeout=timeout)
 
@@ -75,7 +74,7 @@ def verifikasi(state, session_token, turnstile_token, remote_ip: str | None, pos
     session_token = _teks(session_token, _MAKS_TOKEN)
     turnstile_token = _teks(turnstile_token, _MAKS_TURNSTILE)
 
-    rahasia, kunci_turnstile, domain = _env("SAPA_VERIFIKASI_SECRET"), _env("TURNSTILE_SECRET_KEY"), _domain_auth0()
+    rahasia, kunci_turnstile, domain = _env("SAPA_VERIFIKASI_SECRET"), turnstile.kunci_rahasia(), _domain_auth0()
     if not (rahasia and kunci_turnstile and domain):
         logger.error("Verifikasi Turnstile belum dikonfigurasi")
         raise VerifikasiGagal(503, PESAN_LAYANAN)
@@ -94,24 +93,11 @@ def verifikasi(state, session_token, turnstile_token, remote_ip: str | None, pos
         raise VerifikasiGagal(400, PESAN_TAUTAN)
 
     # Token Turnstile memang sekali pakai, jadi kunci idempotensi acak tidak menambah perlindungan.
-    data = {"secret": kunci_turnstile, "response": turnstile_token}
-    if remote_ip:
-        data["remoteip"] = remote_ip
     try:
-        res = (post or _kirim)(TURNSTILE_URL, data=data, timeout=8)
-        hasil = res.json() if res.status_code == 200 else None
-    except (requests.RequestException, ValueError):
-        hasil = None
-    if not isinstance(hasil, dict):
-        logger.warning("Cloudflare Turnstile tidak dapat dihubungi")
-        raise VerifikasiGagal(503, PESAN_LAYANAN)
-
-    cocok = (hasil.get("success") is True and hasil.get("hostname") in _host_diizinkan()
-             and hasil.get("action") == AKSI and hasil.get("cdata") == ringkas_state(state))
-    if not cocok:
-        # Hanya kode galat Cloudflare yang dicatat; jawaban dan token tidak.
-        logger.info("Turnstile ditolak: %s", ",".join(map(str, hasil.get("error-codes") or [])) or "tidak cocok")
-        raise VerifikasiGagal(403, PESAN_GAGAL)
+        turnstile.cek_turnstile(turnstile_token, remote_ip, AKSI, cdata=ringkas_state(state), post=post or _kirim)
+    except turnstile.TurnstileGagal as exc:
+        gagal = VerifikasiGagal(503, PESAN_LAYANAN) if exc.status == 503 else VerifikasiGagal(403, PESAN_GAGAL)
+        raise gagal from None
 
     sekarang = int(time.time())
     balasan = jwt.encode({

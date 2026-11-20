@@ -1,0 +1,5 @@
+# Untuk tes lokal dan CI. Paket API diambil dari berkas yang sama dengan Vercel (api/requirements.txt),
+# supaya tes memasang paket yang sama dengan produksi.
+-r api/requirements.txt
+pytest>=9.2.0
+openpyxl>=3.1.5

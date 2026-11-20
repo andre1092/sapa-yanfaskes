@@ -107,7 +107,7 @@ def test_session_token_dari_auth0_yang_tidak_sah_ditolak_tanpa_memanggil_cloudfl
     assert cf.kiriman == []
 
 
-@pytest.mark.parametrize("ubah", [{"state": "state-lain"}, {"iss": "https://penyerang.example/"}])
+@pytest.mark.parametrize("ubah", [{"state": "state-lain"}, {"iss": "https://asing.example/"}])
 def test_klaim_state_atau_iss_yang_tidak_cocok_ditolak(ubah):
     with pytest.raises(vs.VerifikasiGagal) as err:
         vs.verifikasi(STATE, token_masuk(**ubah), "jawaban", None, post=Cloudflare())
@@ -146,6 +146,8 @@ def test_masukan_kosong_atau_terlalu_panjang_ditolak(state, jawaban):
 
 
 def test_endpoint_tanpa_login_dan_tidak_disimpan_cache(monkeypatch):
+    # Halaman /verifikasi bagian dari login Auth0 (flag 0); saat flag 1 endpoint ini 503 (test_akun_lokal.py).
+    monkeypatch.setattr(index, "LOGIN_BFF", False)
     monkeypatch.setattr(vs, "_kirim", Cloudflare())
     res = TestClient(index.app).post("/api/v1/verifikasi-manusia", json={
         "state": STATE, "session_token": token_masuk(), "turnstile_token": "jawaban"})
@@ -155,6 +157,7 @@ def test_endpoint_tanpa_login_dan_tidak_disimpan_cache(monkeypatch):
 
 
 def test_endpoint_galat_tidak_membocorkan_rincian(monkeypatch):
+    monkeypatch.setattr(index, "LOGIN_BFF", False)
     monkeypatch.setattr(vs, "_kirim", Cloudflare({"success": False, "error-codes": ["invalid-input-response"]}))
     res = TestClient(index.app).post("/api/v1/verifikasi-manusia", json={
         "state": STATE, "session_token": token_masuk(), "turnstile_token": "jawaban"})
