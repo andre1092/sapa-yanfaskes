@@ -65,6 +65,10 @@ except ImportError:
     import surat_kontrol_detail_service
     import surat_kontrol_service
 try:
+    from . import kessan_service
+except ImportError:
+    import kessan_service
+try:
     from .sheets_source import read_sheet_csv
 except ImportError:
     from sheets_source import read_sheet_csv
@@ -1741,6 +1745,8 @@ def fetch_csv_records(spreadsheet_id: str, sheet_name: str, gid: Optional[str] =
 # --- FKRTL LAPORAN KEPATUHAN: TAB 01 - JADWAL PRAKTEK NAKES, TAB 02 - PENYELESAIAN PENGADUAN, TAB 03 - UMBAL PESERTA, TAB 04 - UPDATE DISPLAY TT ---
 NAKES_SPREADSHEET_ID = "1ZAER9fLUrqz-4qs970gog1ZSb1AZn00MAqspzU7HLZU"
 PENGADUAN_SPREADSHEET_ID = "1iOsYZmtLLcLbKiqgbt8NJqEFoEeHorL7qE6PQwswvbk"
+# Sumber tab Umbal Peserta di Capaian Kepatuhan. Bukan env SAPA_KESSAN_SPREADSHEET_ID milik menu Monitoring Kessan FKRTL
+# (api/kessan_service.py): keduanya sumber berbeda, jangan digabung.
 KESSAN_SPREADSHEET_ID = "148m1t4Z-jaagUFRuJ-ClCUdVvHQyLdSVjQ3fsxoRzj8"
 DISPLAY_TT_SPREADSHEET_ID = "10JV-1frRvBbUg3bgakoUiDnu-FaUT72-oE8i2THTSOk"
 REF_FASKES_SPREADSHEET_ID = "17562YXR6wJq8Az6ibi40_fwsmzdnzaqCorytQTnnWxs"
@@ -4304,6 +4310,24 @@ def surat_kontrol_detail_unduh(request: Request, bulan: str = "", jenis: str = "
     nama = surat_kontrol_detail_service.nama_berkas(bulan, jenis, rs)
     return Response(content=isi, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{nama}"', "Cache-Control": "no-store"})
+
+
+# ==============================================================================
+# --- MONITORING KESSAN FKRTL (keputusan CEO 2026-11-20) ---
+# Data agregat per faskes dari Google Sheets (ID dan gid hanya di env). Lihat: semua peran;
+# Petugas RS hanya baris RS-nya, disaring di server (cakupan sama dengan Surat Kontrol).
+# ==============================================================================
+@app.get("/api/v1/kessan/data")
+def kessan_data(cakupan=Depends(require_sk_lihat)):
+    try:
+        isi = kessan_service.data_kessan(cakupan["kode"])
+    except kessan_service.KessanBelumDikonfigurasi:
+        logger.error("Data Kessan belum dikonfigurasi di env")
+        raise HTTPException(status_code=503, detail=kessan_service.PESAN_BELUM_DIKONFIGURASI, headers=_NO_STORE)
+    except Exception as exc:
+        logger.error("Data Kessan gagal dimuat: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail=kessan_service.PESAN_GAGAL, headers=_NO_STORE)
+    return JSONResponse(headers=_NO_STORE, content=isi)
 
 
 # Alias handler for Vercel Serverless Function entry point (AWS Lambda ASGI Adapter)
