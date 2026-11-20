@@ -64,6 +64,7 @@ def env(monkeypatch):
     monkeypatch.setattr(api.pengguna_service, "status_akun", lambda sub, segar=False: {
         "wajib_ganti_sandi": False, "nonaktif": False, "diatur_ulang_pada": None, "kode_ppk": kode.get(sub, "")})
     monkeypatch.setattr(api.pengguna_service, "get_client", lambda: None)
+    monkeypatch.setattr(api.kepatuhan_service, "get_ref_lookup", lambda: {})  # tanpa jaringan
     monkeypatch.delenv(audit_log.DSN_ENV, raising=False)
     written = []
 
@@ -339,3 +340,55 @@ def test_oversized_drive_file_is_not_downloaded(env, monkeypatch):
     sebelum = drive.unduh_dipanggil
     assert call("GET", "/api/v1/surat-kontrol/data").status_code == 502
     assert drive.unduh_dipanggil == sebelum
+
+
+# --- kabupaten untuk tabel JPEG (perintah CEO 2026-11-19) -------------------
+
+def _ref(monkeypatch, api, gagal=False):
+    def lookup():
+        if gagal:
+            raise RuntimeError("sheet mati")
+        return {"0101R001": {"kabupaten": "KAB. JEMBER"}, "0202R002": {"kabupaten": " KAB. LUMAJANG "}, "9999R999": {"kabupaten": "KAB. LAIN"}}
+    monkeypatch.setattr(api.kepatuhan_service, "get_ref_lookup", lookup)
+
+
+def test_data_includes_kabupaten_for_listed_hospitals(env, monkeypatch):
+    api, _, call, _ = env
+    _ref(monkeypatch, api)
+    unggah(call)
+    kab = call("GET", "/api/v1/surat-kontrol/data").json()["kabupaten"]
+    assert kab == {"0101R001": "KAB. JEMBER", "0202R002": "KAB. LUMAJANG"}
+
+
+def test_petugas_gets_only_own_kabupaten(env, monkeypatch):
+    api, _, call, _ = env
+    _ref(monkeypatch, api)
+    unggah(call)
+    res = call("GET", "/api/v1/surat-kontrol/data", roles=["Petugas RS"], sub="auth0|petugas-mawar")
+    assert res.json()["kabupaten"] == {"0101R001": "KAB. JEMBER"} and "LUMAJANG" not in res.text
+
+
+def test_reference_failure_does_not_break_data(env, monkeypatch):
+    api, _, call, _ = env
+    _ref(monkeypatch, api, gagal=True)
+    unggah(call)
+    res = call("GET", "/api/v1/surat-kontrol/data")
+    assert res.status_code == 200 and res.json()["kabupaten"] == {}
+
+
+def test_kabupaten_falls_back_to_ppk_prefix_when_missing_in_reference(env, monkeypatch):
+    api, _, call, _ = env
+    monkeypatch.setattr(api.kepatuhan_service, "get_ref_lookup", lambda: {"0101R001": {"kabupaten": "KAB. JEMBER"}})
+    monkeypatch.setattr(api, "_SK_KAB_PREFIX", {"0202": "LUMAJANG"})
+    unggah(call)
+    kab = call("GET", "/api/v1/surat-kontrol/data").json()["kabupaten"]
+    assert kab == {"0101R001": "KAB. JEMBER", "0202R002": "LUMAJANG"}  # 0303S003 tidak dikenal: tetap kosong
+
+
+def test_ppk_prefix_table_matches_cinta_reference():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api"))
+    import index
+    assert index._SK_KAB_PREFIX == {"0188": "LUMAJANG", "1330": "LUMAJANG", "0189": "JEMBER", "1329": "JEMBER",
+                                    "0191": "BONDOWOSO", "1332": "BONDOWOSO"}
