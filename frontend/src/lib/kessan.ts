@@ -210,7 +210,8 @@ export function aturLabel(ys: number[], jarak: number, dasar: number): number[] 
   return hasil;
 }
 
-/** Label bulan berselang bila jarak antarbulan < 26 px; bulan terpilih selalu tampil. */
+/** Label bulan berselang bila jarak antarbulan < 26 px; bulan terpilih selalu tampil dan tetangga langsungnya disembunyikan. */
 export function tampilLabelBulan(i: number, jarakPx: number, terpilih: number): boolean {
-  return jarakPx >= 26 || i % 2 === 0 || i === terpilih;
+  if (jarakPx >= 26 || i === terpilih) return true;
+  return i % 2 === 0 && Math.abs(i - terpilih) > 1;
 }

@@ -173,10 +173,10 @@ function GrafikTren({ bulan, seri, terpilih, sementara, kabupaten }: { bulan: st
       {seri.map(s => <li key={s.nama} className={redup(s) ? 'ks-redup' : ''} style={{ '--c': s.warna } as CSSProperties}><i />{s.nama}</li>)}
     </ul>}
     <div ref={ref} className="ks-tren" tabIndex={0} role="group" aria-describedby="ks-tren-ket"
-      aria-label={`Grafik tren kunjungan, ${labelBulan(bulan[0])} sampai ${labelBulan(bulan[n - 1])}. Gunakan panah kiri dan kanan untuk membaca tiap bulan.`}
+      aria-label={`Grafik tren kunjungan, ${labelBulan(bulan[0])} sampai ${labelBulan(bulan[n - 1])}. Gunakan panah kiri dan kanan untuk membaca tiap bulan. Angka lengkap ada di tabel data tren di bawah grafik.`}
       onKeyDown={keyDown} onFocus={() => setHov(h => h ?? iPilih)} onBlur={() => setHov(null)}>
       <svg width={W} height={H} aria-hidden="true">
-        <rect x={x(iPilih) - dx / 2} y={m.t} width={dx} height={ph} style={{ fill: 'var(--ks-sel-band)' }} />
+        <rect className="ks-pilih-bulan" x={x(iPilih) - dx / 2} y={m.t} width={dx} height={ph} style={{ fill: 'var(--ks-sel-band)' }} />
         {garisBantu.map(v => <g key={v}>
           <line x1={m.l} x2={m.l + pw} y1={y(v)} y2={y(v)} style={{ stroke: 'var(--ks-grid)' }} strokeWidth={1} />
           <text x={m.l - 8} y={y(v) + 4} textAnchor="end" fontSize={11} style={{ fill: 'var(--ks-axis)' }}>{angka(v)}</text>
@@ -213,7 +213,7 @@ function GrafikTren({ bulan, seri, terpilih, sementara, kabupaten }: { bulan: st
     </p>
     <details className="ks-data">
       <summary>Tampilkan data tren sebagai tabel</summary>
-      <div className="ks-dt-gulir"><table>
+      <div className="ks-dt-gulir" tabIndex={0} role="region" aria-label="Data tren per bulan"><table>
         <thead><tr><th scope="col">Bulan</th>{seri.map(s => <th key={s.nama} scope="col">{s.nama}</th>)}</tr></thead>
         <tbody>{bulan.map((b, i) => <tr key={b}><th scope="row">{labelBulan(b)}{sem(i) ? ' (sementara)' : ''}</th>
           {seri.map(s => <td key={s.nama}>{angka(s.nilai[i])}</td>)}</tr>)}</tbody>
@@ -232,6 +232,11 @@ const URUT_HP: { v: string; t: string }[] = [
   { v: 'kunjungan:desc', t: 'Capaian terbanyak' }, { v: 'kunjungan:asc', t: 'Capaian tersedikit' }, { v: 'persen:desc', t: '% tertinggi' },
   { v: 'persen:asc', t: '% terendah' }, { v: 'skor:asc', t: 'Skor terendah' }, { v: 'nama:asc', t: 'Nama A–Z' },
 ];
+// Teks pendek untuk urutan dari kepala tabel yang tidak ada di URUT_HP, supaya select tidak melebar di HP.
+const URUT_HP_LAIN: Record<string, string> = {
+  'target:desc': 'Target terbesar', 'target:asc': 'Target terkecil', 'skor:desc': 'Skor tertinggi',
+  'nama:desc': 'Nama Z–A', 'kabupaten:asc': 'Kabupaten A–Z', 'kabupaten:desc': 'Kabupaten Z–A',
+};
 
 function IkonUrut({ arah }: { arah: 'asc' | 'desc' | null }) {
   return <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
@@ -246,15 +251,17 @@ function teksUrut(u: Urutan) {
   return `${kol}, ${u.arah === 'asc' ? (teks ? 'A sampai Z' : 'terkecil di atas') : (teks ? 'Z sampai A' : 'terbesar di atas')}`;
 }
 
-type TabelProps = { baris: BarisKessan[]; bulan: string; petugas: boolean; urut: Urutan; setUrut: (u: Urutan) => void; kartu: boolean };
+type TabelProps = { baris: BarisKessan[]; bulan: string; petugas: boolean; urut: Urutan; setUrut: (u: Urutan) => void; kartu: boolean; geser: boolean };
 
-function TabelFaskes({ baris, bulan, petugas, urut, setUrut, kartu }: TabelProps) {
+function TabelFaskes({ baris, bulan, petugas, urut, setUrut, kartu, geser }: TabelProps) {
   const R = urutkan(baris, urut);
   const maks = Math.max(1, ...R.map(b => b.jumlah_kessan));
   const r = ringkas(R);
   return <>
     <p className="ks-muted ks-geser">Geser tabel ke samping untuk melihat semua kolom.</p>
-    <div className="ks-tw" tabIndex={0} role="region" aria-labelledby="ks-h-tabel">
+    {/* Hanya menjadi region gulir yang bisa difokus saat tabel memang digeser (640–811 px). */}
+    <div className="ks-tw" tabIndex={geser ? 0 : undefined} role={geser ? 'region' : undefined}
+      aria-label={geser ? 'Tabel capaian per faskes, geser ke samping' : undefined}>
       <table className="ks-utama" role="table">
         <caption className="sr-only">Capaian Kessan per faskes, {labelBulan(bulan)}. Urut menurut {teksUrut(urut)}.</caption>
         <thead role="rowgroup"><tr role="row">{KOLOM.map(c => {
@@ -318,6 +325,12 @@ export function MonitoringKessanDashboard() {
   const [pilihan, setPilihan] = useState<FilterKessan | null>(null);
   const [umumkan, setUmumkan] = useState(false);
   const [urut, setUrut] = useState<Urutan>(URUT_BAWAAN);
+  // Region status dipasang kosong dulu, lalu diisi sesudah jeda singkat supaya pembaca layar membacakannya.
+  const [statusSiap, setStatusSiap] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setStatusSiap(true), 150); return () => clearTimeout(t); }, []);
+  // Sesudah "Coba lagi": fokus ke Periode bila berhasil, kembali ke tombol bila gagal lagi.
+  const cobaRef = useRef<HTMLButtonElement>(null);
+  const [fokusKe, setFokusKe] = useState<'periode' | 'coba' | null>(null);
   const query = useQuery<ResponsKessan, Error>({
     queryKey: ['kessan'],
     queryFn: async ({ signal }) => (await apiClient.get('/api/v1/kessan/data', { signal, timeout: 30000 })).data,
@@ -357,11 +370,24 @@ export function MonitoringKessanDashboard() {
   const ubah = (sebagian: Partial<FilterKessan>) => { setPilihan({ ...f, ...sebagian }); setUmumkan(true); };
   const aturUlang = () => { setPilihan({ periode: terbaru, kabupaten: '' }); setUmumkan(true); periodeRef.current?.focus(); };
 
-  const teksStatus = memuat ? 'Memuat data Kessan…'
+  const teksStatus = memuat ? (statusSiap ? 'Memuat data Kessan…' : '')
     : umumkan && r ? teksStatusFilter({ jumlah: tampil.length, bulan: f.periode, kabupaten: f.kabupaten, sementara }) : '';
   const lastUpdate = galat ? 'Last Update : –' : r?.last_update_bi || (memuat ? ' ' : 'Last Update : –');
   const nonaktif = memuat || galat || !tersedia.length;
   const tanpaData = !!r && !tersedia.length;
+
+  useEffect(() => {
+    if (fokusKe === 'coba') { cobaRef.current?.focus(); setFokusKe(null); return; }
+    if (fokusKe !== 'periode' || !r) return;
+    if (!nonaktif) periodeRef.current?.focus();
+    setFokusKe(null);
+  }, [fokusKe, r, nonaktif]);
+  const cobaLagi = async () => {
+    if (query.isFetching) return;
+    setUmumkan(true);
+    const hasil = await query.refetch();
+    setFokusKe(hasil.data ? 'periode' : 'coba');
+  };
 
   const seri: SeriTren[] = terkunci
     ? [{ nama: namaRs || 'Faskes', warna: 'var(--ks-kab-1)', nilai: seriFaskes(semua, tersedia) }]
@@ -414,7 +440,8 @@ export function MonitoringKessanDashboard() {
           : <section className="ks-panel ks-galat" role="alert">
             <h3>{belumDiatur ? 'Data Kessan belum tersedia' : 'Data Kessan belum bisa dimuat'}</h3>
             <p>{belumDiatur ? 'Sumber data Kessan belum diatur. Hubungi administrator SAPA.' : 'Periksa koneksi, lalu coba lagi. Jika tetap gagal, hubungi administrator SAPA.'}</p>
-            {!belumDiatur && <button type="button" className="ks-btn" onClick={() => void query.refetch()} disabled={query.isFetching}>
+            {/* aria-disabled, bukan disabled: tombol nonaktif kehilangan fokus dan fokus jatuh ke body. */}
+            {!belumDiatur && <button ref={cobaRef} type="button" className="ks-btn" onClick={() => void cobaLagi()} aria-disabled={query.isFetching || undefined}>
               {query.isFetching ? 'Memuat…' : 'Coba lagi'}</button>}
           </section>)
           : tanpaData ? <section className="ks-panel ks-galat ks-kosong" aria-labelledby="ks-h-kosong">
@@ -444,13 +471,13 @@ export function MonitoringKessanDashboard() {
                   <h2 id="ks-h-tabel">Capaian per faskes</h2>
                   {!memuat && <p className="ks-muted">
                     {labelBulan(f.periode)} · {terkunci ? namaRs : f.kabupaten ? `Kabupaten ${f.kabupaten}` : 'Semua kabupaten'} · {angka(tampil.length)} faskes
-                    {sementara && <span className="ks-badge-sem">Data sementara</span>}
+                    {sementara && <>{' '}<span className="ks-badge-sem">Data sementara</span></>}
                   </p>}
                 </div>
                 {!memuat && tampil.length > 0 && <label className="ks-urut-hp">Urutkan
                   <select value={URUT_HP.some(o => o.v === `${urut.kolom}:${urut.arah}`) ? `${urut.kolom}:${urut.arah}` : ''}
                     onChange={e => { const [kolom, arah] = e.target.value.split(':'); setUrut({ kolom: kolom as KolomUrut, arah: arah as 'asc' | 'desc' }); }}>
-                    {!URUT_HP.some(o => o.v === `${urut.kolom}:${urut.arah}`) && <option value="" disabled>{teksUrut(urut)}</option>}
+                    {!URUT_HP.some(o => o.v === `${urut.kolom}:${urut.arah}`) && <option value="" disabled>{URUT_HP_LAIN[`${urut.kolom}:${urut.arah}`] ?? teksUrut(urut)}</option>}
                     {URUT_HP.map(o => <option key={o.v} value={o.v}>{o.t}</option>)}
                   </select>
                 </label>}
@@ -460,7 +487,7 @@ export function MonitoringKessanDashboard() {
                   <h3>Belum ada data Kessan untuk {labelBulan(f.periode) || 'periode ini'}</h3>
                   <p>Pilih bulan lain di filter Periode.{f.kabupaten ? ' Atau pilih Semua kabupaten.' : ''}</p>
                 </div>
-                : <TabelFaskes baris={tampil} bulan={f.periode} petugas={terkunci} urut={urut} setUrut={setUrut} kartu={lebarHal < 640} />}
+                : <TabelFaskes baris={tampil} bulan={f.periode} petugas={terkunci} urut={urut} setUrut={setUrut} kartu={lebarHal < 640} geser={lebarHal >= 640 && lebarHal < 812} />}
             </section>
           </>}
       </div>

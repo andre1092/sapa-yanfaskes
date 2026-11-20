@@ -177,8 +177,11 @@ test('label ujung garis dijaga minimal 16 px dan tidak melewati dasar plot', () 
   assert.deepEqual(k.aturLabel([290, 295, 298], 16, 300), [268, 284, 300]);
 });
 
-test('label bulan berselang saat rapat, bulan terpilih selalu tampil', () => {
+test('label bulan berselang saat rapat, bulan terpilih selalu tampil dan tetangganya disembunyikan', () => {
   const tampil = Array.from({ length: 11 }, (_, i) => k.tampilLabelBulan(i, 20, 5)).map(Boolean);
-  assert.deepEqual(tampil, [true, false, true, false, true, true, true, false, true, false, true]);
+  assert.deepEqual(tampil, [true, false, true, false, false, true, false, false, true, false, true]);
+  // n = 12, Desember terpilih: November tidak tampil supaya tidak bertabrakan.
+  assert.equal(k.tampilLabelBulan(10, 15, 11), false);
+  assert.equal(k.tampilLabelBulan(11, 15, 11), true);
   assert.ok(Array.from({ length: 11 }, (_, i) => k.tampilLabelBulan(i, 30, 5)).every(Boolean));
 });

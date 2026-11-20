@@ -81,7 +81,7 @@
 .ks-panel-kepala { margin-bottom: 12px; }
 .ks-panel-kepala h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.4; }
 .ks-muted { color: var(--text-muted); font-size: 12px; margin: 2px 0 0; }
-.ks-badge-sem { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; background: var(--ks-sem-bg); border: 1px solid var(--ks-sem-border); color: var(--ks-sem-strong); font-size: 11px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
+.ks-badge-sem { display: inline-block; margin-left: 2px; padding: 0 8px; border-radius: 999px; background: var(--ks-sem-bg); border: 1px solid var(--ks-sem-border); color: var(--ks-sem-strong); font-size: 11px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
 
 /* bar per kabupaten */
 .ks-kb-daftar { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
@@ -115,7 +115,7 @@
 .ks-tip-sem { color: var(--ks-sem-strong); font-weight: 600; margin-top: 2px; }
 .ks-tren-ket { margin-top: 6px; }
 .ks-data { margin-top: 8px; font-size: 13px; }
-.ks-data summary { cursor: pointer; color: var(--action-primary); font-weight: 500; padding: 8px 0; min-height: 24px; }
+.ks-data summary { cursor: pointer; color: var(--action-primary); font-weight: 500; padding: 12px 0; min-height: 44px; }
 .ks-data table { border-collapse: collapse; font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .ks-data :is(th, td) { border-bottom: 1px solid var(--border-color); padding: 4px 10px; text-align: right; font-weight: 400; }
 .ks-data thead th { font-weight: 600; }
@@ -124,14 +124,14 @@
 
 /* tabel utama */
 .ks-tbl-kepala { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 4px 16px; }
-.ks-tw { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+.ks-tw { overflow-x: auto; margin: 0 -20px; padding: 4px 20px 0; }
 .ks-page .ks-tw:focus-visible { outline-offset: -2px; }
 .ks-utama { width: 100%; min-width: 770px; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
 .ks-utama :is(th, td) { padding: 0 12px; height: 48px; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
 .ks-utama thead th { height: 44px; font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--ks-paper); border-bottom: 1px solid var(--ks-garis-kepala); line-height: 1.3; }
 .ks-utama :is(th, td).ks-num { text-align: right; }
 .ks-utama :is(th, td).ks-tgh { text-align: center; }
-.ks-utama thead button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 10px 0; border-radius: 4px; }
+.ks-utama thead button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0; border-radius: 4px; }
 .ks-utama thead button svg { opacity: .35; flex: none; }
 .ks-utama thead th.ks-num button { text-align: right; }
 .ks-utama thead :is(th.ks-num, th.ks-tgh) { max-width: 120px; }
@@ -155,7 +155,8 @@
 .ks-rr { font-weight: 500; font-size: 12px; color: var(--text-muted); }
 .ks-geser { display: none; margin: 8px 0 0; }
 .ks-urut-hp { display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; margin-top: 8px; }
-.ks-urut-hp select { height: 44px; font-size: 13px; padding: 0 8px; }
+.ks-urut-hp { min-width: 0; max-width: 100%; }
+.ks-urut-hp select { height: 44px; font-size: 13px; padding: 0 8px; min-width: 0; flex: 0 1 auto; }
 .ks-kaki { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
 .ks-kaki .ks-chip { min-width: 36px; font-size: 11px; padding: 0 6px; line-height: 18px; }
 
@@ -164,7 +165,7 @@
 .ks-kosong h3, .ks-galat h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
 .ks-kosong p, .ks-galat p { margin: 0 auto; max-width: 44ch; color: var(--text-muted); font-size: 13px; }
 .ks-btn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 20px; border-radius: 8px; background: var(--action-primary); color: var(--action-on-primary, #fff); font-weight: 500; margin-top: 16px; }
-.ks-btn:disabled { opacity: .6; cursor: progress; }
+.ks-btn:is(:disabled, [aria-disabled="true"]) { opacity: .6; cursor: progress; }
 .ks-sk { display: block; background: var(--ks-skel); border-radius: 6px; animation: ks-kedip 1.4s ease-in-out infinite; }
 .ks-kpi-lbl .ks-sk, .ks-kpi-v .ks-sk, .ks-kpi-s .ks-sk { margin: 4px 0; }
 .ks-sk-kb { display: flex; gap: 10px; align-items: center; padding: 14px 8px; }
@@ -181,11 +182,14 @@
   .ks-filter-isi { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; }
   .ks-fld { flex: 1 1 220px; }
   .ks-btn-teks { align-self: flex-end; }
+  /* sejajarkan dengan select saat teks bantu "Data sementara" tampil: margin 4 px + 12 px × 1,5 */
+  .ks-filter-isi:has(.ks-sem-bantu:not(:empty)) .ks-btn-teks { margin-bottom: 22px; }
 }
 @container ks (width < 900px) { .ks-viz { grid-template-columns: minmax(0, 1fr); } }
 /* Ambang geser = lebar minimum tabel 770 + padding panel 2×20 + garis 2×1. Di atasnya tabel selalu muat
    (juga pada tata letak ≥ 1100 px, panel tabel = lebar − 280 ≥ 820), di bawahnya selalu digeser dan diberi petunjuk. */
-@container ks (width < 812px) {
+/* Dibatasi ≥ 640 px supaya mode kartu tidak ikut sticky dan tanpa garis vertikal. */
+@container ks (640px <= width < 812px) {
   .ks-geser { display: block; }
   .ks-utama :is(tbody th, tfoot th, thead th:first-child) { position: sticky; left: 0; z-index: 1; background: var(--ks-paper); box-shadow: 1px 0 0 var(--border-color); }
   .ks-utama tbody th { min-width: 160px; max-width: 160px; }
@@ -195,7 +199,7 @@
   .ks-lay { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "filt filt" "jf skor" "tot tot" "viz viz" "tbl tbl"; gap: 12px; }
   .ks-lay[data-keadaan="galat"] { grid-template-areas: "filt filt" "galat galat"; }
   .ks-pita { padding: 14px 16px; } .ks-pita h1 { font-size: 19px; } .ks-update { padding: 6px 16px; }
-  .ks-kpi { padding: 12px 14px; min-height: 0; } .ks-kpi .ks-kpi-v { font-size: 26px; }
+  .ks-kpi { padding: 12px 14px; min-height: 0; } .ks-kpi .ks-kpi-v:not(.ks-kpi-nama) { font-size: 26px; }
   .ks-panel, .ks-filter { padding: 14px 16px; }
   .ks-kb { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n v" "t t" "s s"; row-gap: 4px; }
   /* tabel menjadi kartu per faskes; peran eksplisit di markup menjaga semantik tabel */
@@ -220,5 +224,14 @@
   .ks-utama .ks-c-skor { grid-area: skor; align-self: start; }
   .ks-utama tfoot tr { border-top: 2px solid var(--ks-garis-kepala); border-bottom: 0; }
   .ks-utama tfoot :is(th, td) { border-top: 0; }
-  .ks-utama tfoot .ks-c-kab { display: none; }
+  /* sel tetap di pohon aksesibilitas supaya kolom tidak bergeser bagi pembaca layar; hanya disembunyikan visual */
+  .ks-utama tfoot .ks-c-kab { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+}
+
+/* Windows Contrast Themes: teks SVG dan pita periode memakai warna sistem; penanda warna kabupaten dipertahankan. */
+@media (forced-colors: active) {
+  .ks-tren svg text { fill: CanvasText !important; }
+  .ks-tren svg .ks-pilih-bulan { fill: Highlight !important; fill-opacity: .3; }
+  .ks-legenda i, .ks-tip-r i, .ks-kb-nama i { forced-color-adjust: none; }
+  .ks-kb[aria-pressed="true"] { border-left: 3px solid Highlight; }
 }
