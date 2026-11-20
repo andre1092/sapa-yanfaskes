@@ -6,6 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
+import { bulanAwalDitunggu } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 import { UnduhDetailJadwal } from './UnduhDetailJadwal';
@@ -87,7 +88,8 @@ export const NakesComplianceTab: React.FC = () => {
   // Filter states
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  // Kosong sampai data pertama datang; lalu diisi bulan terbaru dari opsi filter API.
+  const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -109,6 +111,7 @@ export const NakesComplianceTab: React.FC = () => {
 
   // Fetch data from backend API
   const fetchData = async () => {
+    let menungguBulan = false;
     setLoading(true);
     setError(null);
     try {
@@ -128,6 +131,14 @@ export const NakesComplianceTab: React.FC = () => {
 
       const res = await apiClient.get<NakesApiResponse>(`/api/v1/fkrtl-kepatuhan/nakes?${params.toString()}`);
       if (res.data && res.data.status === 'success') {
+        // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
+        // Selama bulan belum terpilih, data belum ditampilkan supaya tidak muncul angka gabungan semua bulan.
+        const bulanAwal = bulanAwalDitunggu(selectedBulan, res.data?.filter_options?.bulan);
+        if (bulanAwal) {
+          menungguBulan = true;
+          setSelectedBulan(bulanAwal);
+          return;
+        }
         setApiData(res.data);
       } else {
         throw new Error('Format data tidak sesuai');
@@ -136,7 +147,7 @@ export const NakesComplianceTab: React.FC = () => {
       console.warn('Gagal memuat live data nakes dari backend:', err);
       setError('Gagal menghubungkan ke server, memuat data lokal...');
     } finally {
-      setLoading(false);
+      if (!menungguBulan) setLoading(false);
     }
   };
 

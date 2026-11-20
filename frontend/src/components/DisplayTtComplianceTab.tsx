@@ -6,6 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
+import { bulanAwalDitunggu } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
@@ -76,10 +77,11 @@ export interface DisplayTtApiResponse {
 }
 
 export const DisplayTtComplianceTab: React.FC = () => {
-  // Filter states (Default Bulan: September 2026)
+  // Filter states (bulan bawaan: bulan terbaru dari API)
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  // Kosong sampai data pertama datang; lalu diisi bulan terbaru dari opsi filter API.
+  const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -101,6 +103,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
 
   // Fetch data from backend API
   const fetchData = async () => {
+    let menungguBulan = false;
     setLoading(true);
     setError(null);
     try {
@@ -122,6 +125,14 @@ export const DisplayTtComplianceTab: React.FC = () => {
       const response = await apiClient.get<DisplayTtApiResponse>(`/api/v1/fkrtl-kepatuhan/display-tt${queryString}`);
 
       if (response && response.data && response.data.status === 'success') {
+        // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
+        // Selama bulan belum terpilih, data belum ditampilkan supaya tidak muncul angka gabungan semua bulan.
+        const bulanAwal = bulanAwalDitunggu(selectedBulan, response.data?.filter_options?.bulan);
+        if (bulanAwal) {
+          menungguBulan = true;
+          setSelectedBulan(bulanAwal);
+          return;
+        }
         setApiData(response.data);
       } else {
         setError('Gagal memuat data kepatuhan display tempat tidur.');
@@ -130,7 +141,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
       console.error('Error fetching Display TT compliance data:', err);
       setError(err?.response?.data?.detail || err?.message || 'Gagal mengambil data dari Google Spreadsheet Display TT.');
     } finally {
-      setLoading(false);
+      if (!menungguBulan) setLoading(false);
     }
   };
 
@@ -207,7 +218,7 @@ export const DisplayTtComplianceTab: React.FC = () => {
   const handleResetFilters = () => {
     setSelectedKabupaten('Semua Kabupaten');
     setSelectedNamaPpk('Semua Faskes');
-    setSelectedBulan('September 2026');
+    setSelectedBulan('');
     setSelectedTipeFaskes('Semua Tipe Faskes');
     setSearchQuery('');
     setStatusFilter('ALL');
