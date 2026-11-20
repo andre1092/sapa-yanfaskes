@@ -22,10 +22,17 @@ type Props = {
 
 export function UnduhJpegKessan({ baris, bulan, kabupaten, petugas, namaRs, sementara, lastUpdate, nonaktif }: Props) {
   const [keadaan, setKeadaan] = useState<'diam' | 'menyiapkan' | 'gagal'>('diam');
+  // Pesan gagal hanya berlaku untuk nama berkas (Periode, Kabupaten, status sementara) yang tadi dicoba.
+  const [gagalUntuk, setGagalUntuk] = useState('');
   const eksporRef = useRef<HTMLDivElement>(null);
   const mati = nonaktif || !baris.length;
   const menyiapkan = keadaan === 'menyiapkan' && !mati;
   const namaBerkas = namaBerkasJpegKessan({ bulan, kabupaten: petugas ? '' : kabupaten, namaRs: petugas ? namaRs : '', sementara });
+
+  // Periode atau Kabupaten berganti: pesan gagal lama tidak dipasang ulang (dan tidak diumumkan ulang) untuk filter lain.
+  useEffect(() => {
+    setKeadaan(k => (k === 'gagal' ? 'diam' : k));
+  }, [namaBerkas]);
 
   useEffect(() => {
     if (keadaan !== 'menyiapkan') return;
@@ -50,7 +57,7 @@ export function UnduhJpegKessan({ baris, bulan, kabupaten, petugas, namaRs, seme
         setKeadaan('diam');
       } catch (error) {
         console.error('Gagal membuat JPEG Monitoring Kessan', error);
-        if (!batal) setKeadaan('gagal');
+        if (!batal) { setGagalUntuk(namaBerkas); setKeadaan('gagal'); }
       }
     }, 200);
     return () => { batal = true; window.clearTimeout(t); };
@@ -63,7 +70,7 @@ export function UnduhJpegKessan({ baris, bulan, kabupaten, petugas, namaRs, seme
       onClick={() => { if (!menyiapkan && !mati) setKeadaan('menyiapkan'); }}>
       {menyiapkan ? 'Menyiapkan JPEG…' : 'Unduh JPEG'}
     </button>
-    {keadaan === 'gagal' && !mati && <p role="alert" className="ks-jpeg-galat">JPEG belum bisa dibuat. Coba lagi.</p>}
+    {keadaan === 'gagal' && gagalUntuk === namaBerkas && !mati && <p role="alert" className="ks-jpeg-galat">JPEG belum bisa dibuat. Coba lagi.</p>}
     {/* Simpul ekspor dipasang di body: .ks-page memakai container query (containment), sehingga posisi fixed di
         dalamnya tidak lagi terhadap layar. Awalan id jpeg-export- mengecualikannya dari animasi baris global. */}
     {menyiapkan && createPortal(

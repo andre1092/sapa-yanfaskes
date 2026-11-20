@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import {
-  KABUPATEN_URUT, URUT_BAWAAN, aturLabel, angka, bacaFilter, bulanPendek, kelasSkor, labelBulan, perKabupaten, persen,
+  KABUPATEN_URUT, URUT_BAWAAN, aturLabel, angka, bacaFilter, bulanPendek, kartuSkorPetugas, kelasSkor, labelBulan, perKabupaten, persen,
   rentangBulan, ringkas, saring, seriFaskes, seriKabupaten, skalaSumbu, skorRata, tampilLabelBulan, teksStatusFilter,
   tulisFilter, urutBerikut, urutkan,
 } from '../lib/kessan';
@@ -52,7 +52,10 @@ function Kartu({ baris, bulan, kabupaten, petugas, namaRs }: KartuProps) {
   const ada = r.jumlahFaskes > 0;
   const lingkup = kabupaten ? `Kabupaten ${kabupaten}` : 'Semua kabupaten';
   const subTotal = !ada ? labelBulan(bulan) : r.target > 0 ? `Target ${angka(r.target)} · ${persen(r.persen)}% dari target` : 'Target belum ada';
-  const subSkor = !ada ? ' ' : petugas ? (r.belum100 ? 'Belum skor 100' : 'Target tercapai')
+  // Petugas RS: skor RS itu sendiri; Admin/Viewer: rata-rata faskes bertarget.
+  const kartuRs = kartuSkorPetugas(baris);
+  const nilaiSkor = petugas ? kartuRs.nilai : skorRata(r.rataSkor);
+  const subSkor = !ada ? ' ' : petugas ? kartuRs.sub
     : r.belum100 ? `${angka(r.belum100)} faskes belum skor 100` : 'Semua faskes skor 100';
   return <>
     <div className="ks-kpi ks-kpi-jf">
@@ -68,7 +71,7 @@ function Kartu({ baris, bulan, kabupaten, petugas, namaRs }: KartuProps) {
     </div>
     <div className="ks-kpi ks-kpi-skor">
       <p className="ks-kpi-lbl">{petugas ? 'Skor Kepatuhan' : 'Rata-rata Skor Kepatuhan'}</p>
-      <p className="ks-kpi-v">{skorRata(r.rataSkor)}</p><p className="ks-kpi-s">{subSkor}</p>
+      <p className="ks-kpi-v">{nilaiSkor}</p><p className="ks-kpi-s">{subSkor}</p>
     </div>
   </>;
 }

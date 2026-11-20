@@ -55,7 +55,8 @@ _BULAN = {
     "desember": 12, "agu": 8, "okt": 10, "des": 12,
 }
 
-# kunci konfigurasi -> (kedaluwarsa_pada, respons lengkap | None bila gagal, peta nama | None)
+# kunci konfigurasi -> (kedaluwarsa_pada, respons lengkap | None bila gagal, peta nama | None,
+#                       baris db_fkrtl terakhir yang sah | None)
 _CACHE: Dict[tuple, tuple] = {}
 _CACHE_LOCK = threading.Lock()
 _KUNCI_MUAT: Dict[tuple, threading.Lock] = {}  # satu pengambilan per kunci cache (single-flight)
@@ -224,7 +225,8 @@ def _induk_fkrtl(db_rows: Iterable[Dict[str, str]]) -> Dict[str, Dict[str, str]]
         if not _KODE_PPK_SAH.fullmatch(kode):
             tidak_sah += 1  # baris catatan atau salah ketik: jangan jadi faskes tampil
             continue
-        hasil[kode] = {"nama": (r.get("nama_ppk") or "").strip(), "kabupaten": nama_kabupaten(r.get("kabupaten"))}
+        kab = "" if _kosong(r.get("kabupaten")) else nama_kabupaten(r.get("kabupaten"))  # sel "-" = kosong
+        hasil[kode] = {"nama": (r.get("nama_ppk") or "").strip(), "kabupaten": kab}
     if tidak_sah:
         logger.warning("db_fkrtl Kessan: %d baris berkode PPK tidak sah dilewati", tidak_sah)  # isi baris tidak dicatat
     return hasil
@@ -265,12 +267,14 @@ def susun(kessan_rows: List[Dict[str, str]], db_rows: List[Dict[str, str]],
         target = target or None
         persen = hitung_persen(jumlah, target)
         skor = bilangan_bulat(r.get("skor_kepatuhan"))
-        kabupaten = nama_kabupaten(r.get("kabupaten")) or induk.get(kode, {}).get("kabupaten", "")
+        # Kabupaten dari db_fkrtl dulu (seperti nama); kolom sheet hanya cadangan, sel kosong atau "-" diabaikan.
+        kab_sheet = "" if _kosong(r.get("kabupaten")) else nama_kabupaten(r.get("kabupaten"))
+        kabupaten = induk.get(kode, {}).get("kabupaten") or kab_sheet
         tanpa_kab += not kabupaten
         ganda += (kode, bulan) in per_kunci
         nama_sheet = (r.get("nama_ppk") or "").strip()
         cadangan[kode] = {"nama": nama_sheet or cadangan.get(kode, {}).get("nama", ""),
-                          "kabupaten": kabupaten or cadangan.get(kode, {}).get("kabupaten", "")}
+                          "kabupaten": kab_sheet or cadangan.get(kode, {}).get("kabupaten", "")}
         per_kunci[(kode, bulan)] = {
             "kode_ppk": kode,
             "nama_faskes": nama_db.get(kode) or nama_sheet or kode,
@@ -384,8 +388,18 @@ def _ambil(spreadsheet_id: str, gid: str, label: str) -> Optional[List[Dict[str,
     return baca_csv(isi) if isi else None
 
 
-def _muat(sid: str, gid: str, gid_db: str, dikecualikan: tuple = ()) -> tuple:
-    """(respons lengkap, peta nama, lengkap?) dari sheet; KessanGagalDimuat bila sheet kessan tak terbaca."""
+def _db_sah(db_rows: Optional[List[Dict[str, str]]]) -> bool:
+    """db_fkrtl dianggap terbaca hanya bila berisi minimal satu kode PPK sah (bukan hanya kepala kolom)."""
+    return any(_KODE_PPK_SAH.fullmatch(kode_ppk(r.get("kode_ppk"))) for r in db_rows or ())
+
+
+def _muat(sid: str, gid: str, gid_db: str, dikecualikan: tuple = (),
+          db_simpanan: Optional[List[Dict[str, str]]] = None) -> tuple:
+    """(respons lengkap, peta nama, lengkap?, db_fkrtl sah) dari sheet; KessanGagalDimuat bila sheet kessan tak terbaca.
+
+    Bila db_fkrtl gagal dibaca atau tidak berisi kode sah, dipakai `db_simpanan` (db_fkrtl terakhir yang sah untuk
+    kunci konfigurasi ini) dan hasilnya ditandai tidak lengkap (disimpan dengan TTL singkat).
+    """
     kessan = _ambil(sid, gid, "KESSAN")
     if kessan is None:
         raise KessanGagalDimuat(PESAN_GAGAL)
@@ -393,9 +407,18 @@ def _muat(sid: str, gid: str, gid_db: str, dikecualikan: tuple = ()) -> tuple:
         logger.error("Kolom sheet Kessan tidak dikenali")
         raise KessanGagalDimuat(PESAN_GAGAL)
     db = _ambil(sid, gid_db, "KESSAN_DB_FKRTL")
-    if db is None:
-        logger.warning("Referensi db_fkrtl Kessan tidak terbaca; hanya baris sheet kessan, nama dari sheet kessan")
-    return susun(kessan, db or [], dikecualikan), peta_nama(db or []), db is not None
+    lengkap = _db_sah(db)
+    if not lengkap:
+        if db is not None:
+            logger.warning("Referensi db_fkrtl Kessan tidak berisi kode PPK sah; dianggap gagal dibaca")
+        if db_simpanan:
+            logger.warning("Referensi db_fkrtl Kessan tidak terbaca; memakai db_fkrtl terakhir yang sah")
+            db = db_simpanan
+        else:
+            # Hanya jumlah dan keadaan yang dicatat, tanpa isi baris.
+            logger.error("Referensi db_fkrtl Kessan tidak terbaca dan belum ada simpanan; hanya baris sheet kessan")
+            db = None
+    return susun(kessan, db or [], dikecualikan), peta_nama(db or []), lengkap, db
 
 
 def _segarkan(kunci: tuple, simpanan: Optional[tuple]) -> tuple:
@@ -412,16 +435,17 @@ def _segarkan(kunci: tuple, simpanan: Optional[tuple]) -> tuple:
         sekarang = time.time()
         if simpanan is not None and sekarang < simpanan[0]:
             return simpanan  # sudah disegarkan utas lain selama menunggu
+        db_simpanan = simpanan[3] if simpanan is not None else None
         try:
-            data, nama_db, lengkap = _muat(*kunci)
+            data, nama_db, lengkap, db_sah = _muat(*kunci, db_simpanan=db_simpanan)
         except KessanGagalDimuat:
             if simpanan is not None and simpanan[1] is not None:
                 logger.warning("Sheet Kessan gagal dibaca; memakai data simpanan terakhir")
-                baru = (sekarang + JEDA_GAGAL, simpanan[1], simpanan[2])
+                baru = (sekarang + JEDA_GAGAL, simpanan[1], simpanan[2], db_simpanan)
             else:
-                baru = (sekarang + JEDA_GAGAL, None, None)
+                baru = (sekarang + JEDA_GAGAL, None, None, db_simpanan)
         else:
-            baru = (sekarang + (CACHE_TTL if lengkap else CACHE_TTL_SINGKAT), data, nama_db)
+            baru = (sekarang + (CACHE_TTL if lengkap else CACHE_TTL_SINGKAT), data, nama_db, db_sah)
         with _CACHE_LOCK:
             _CACHE[kunci] = baru
         return baru
@@ -434,7 +458,7 @@ def data_kessan(kode_rs: Optional[str]) -> Dict[str, Any]:
         simpanan = _CACHE.get(kunci)
     if simpanan is None or time.time() >= simpanan[0]:
         simpanan = _segarkan(kunci, simpanan)
-    _, data, nama_db = simpanan
+    _, data, nama_db, _ = simpanan
     if data is None:
         raise KessanGagalDimuat(PESAN_GAGAL)
     return saring_petugas(data, kode_rs, nama_db) if kode_rs else data

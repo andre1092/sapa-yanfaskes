@@ -76,6 +76,17 @@ test('ringkasan: persen hanya dari faskes bertarget, tanpa baris jadi kosong', (
   assert.equal(k.ringkas([{ ...NOV[0], target: null, persen: null, skor: 100 }]).rataSkor, null);
 });
 
+test('kartu skor Petugas RS: skor RS itu sendiri, bukan rata-rata', () => {
+  // RS tanpa target: skor 100 dari aturan, nilai tetap tampil, subteks "Target belum ada".
+  assert.deepEqual(k.kartuSkorPetugas([{ ...NOV[0], target: null, persen: null, jumlah_kessan: 0, skor: 100 }]),
+    { nilai: '100', sub: 'Target belum ada' });
+  assert.deepEqual(k.kartuSkorPetugas([{ ...NOV[0], target: 0, persen: null, skor: 100 }]),
+    { nilai: '100', sub: 'Target belum ada' });
+  assert.deepEqual(k.kartuSkorPetugas([{ ...NOV[0], skor: 75 }]), { nilai: '75', sub: 'Belum skor 100' });
+  assert.deepEqual(k.kartuSkorPetugas([{ ...NOV[0], skor: 100 }]), { nilai: '100', sub: 'Target tercapai' });
+  assert.deepEqual(k.kartuSkorPetugas([]), { nilai: '–', sub: '\u00a0' });
+});
+
 test('agregasi per kabupaten: urutan tetap dan angka acuan', () => {
   const p = k.perKabupaten(NOV, ['Jember', 'Lumajang', 'Bondowoso']);
   assert.deepEqual(p.map(x => [x.kabupaten, x.jumlahFaskes, x.kunjungan]), [

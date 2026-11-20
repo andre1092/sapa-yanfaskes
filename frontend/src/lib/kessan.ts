@@ -94,6 +94,17 @@ export function ringkas(baris: BarisKessan[]): Ringkasan {
   };
 }
 
+/**
+ * Kartu Skor Kepatuhan untuk akun Petugas RS: skor RS itu sendiri pada periode terpilih (satu baris),
+ * bukan rata-rata. RS tanpa target tetap menampilkan skornya (100 dari aturan) dengan subteks "Target belum ada".
+ */
+export function kartuSkorPetugas(baris: BarisKessan[]): { nilai: string; sub: string } {
+  const b = baris[0];
+  if (!b) return { nilai: '–', sub: '\u00a0' };
+  const sub = !bertarget(b) ? 'Target belum ada' : b.skor < 100 ? 'Belum skor 100' : 'Target tercapai';
+  return { nilai: skorRata(b.skor), sub };
+}
+
 export type PerKabupaten = { kabupaten: string; jumlahFaskes: number; kunjungan: number; target: number; persen: number | null };
 
 /** Agregat per kabupaten dalam urutan tetap; kabupaten tanpa faskes tetap muncul dengan nol. */

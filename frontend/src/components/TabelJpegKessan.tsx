@@ -78,7 +78,7 @@ export function TabelJpegKessan({ baris, bulan, kabupaten, petugas, namaRs, seme
         <span style={{ ...warna(n), border: GARIS, padding: '0 6px', fontWeight: 700 }}>{n}</span>{rentang}</span>)}
     </div>
     {t.adaTanpaTarget && <div style={{ marginTop: 6 }}>
-      * Target belum ada (kosong atau 0): skor 100; % Capaian tidak dihitung, dan kunjungannya tidak ikut dalam % Subtotal dan Total.
+      * Target belum ada (kosong atau 0): skor 100; tidak ikut dalam % Capaian, % Subtotal dan Total, serta rata-rata skor.
     </div>}
     <div style={{ marginTop: 10, fontSize: 11, color: REDUP }}>{teksDiunduh(new Date())}</div>
   </div>;
