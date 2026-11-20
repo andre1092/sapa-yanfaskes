@@ -6,6 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
+import { bulanTerbaru } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 
@@ -93,10 +94,11 @@ const KESSAN_TARGET_STANDARDS = [
 ];
 
 export const UmablComplianceTab: React.FC = () => {
-  // Filter states (Default Bulan: September 2026)
+  // Filter states (bulan bawaan: bulan terbaru dari API)
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  // Kosong sampai data pertama datang; lalu diisi bulan terbaru dari opsi filter API.
+  const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -140,6 +142,11 @@ export const UmablComplianceTab: React.FC = () => {
 
       if (response && response.data && response.data.status === 'success') {
         setApiData(response.data);
+        // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
+        if (!selectedBulan) {
+          const terbaru = bulanTerbaru(response.data?.filter_options?.bulan);
+          if (terbaru) setSelectedBulan(terbaru);
+        }
       } else {
         setError('Gagal memuat data kepatuhan umpan balik peserta.');
       }
@@ -296,7 +303,7 @@ export const UmablComplianceTab: React.FC = () => {
           setSelectedKabupaten('Semua Kabupaten');
           setSelectedNamaPpk('Semua Faskes');
           setSelectedTipeFaskes('Semua Tipe Faskes');
-          setSelectedBulan('September 2026');
+          setSelectedBulan('');
           setStatusFilter('ALL');
           setSearchQuery('');
           setCurrentPage(1);

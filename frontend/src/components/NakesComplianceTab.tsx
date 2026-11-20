@@ -6,6 +6,7 @@ import { Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material'
 import '../berry/berry-dashboards.css';
 import { FilterSelect, FilterOption } from './ui/FilterSelect';
 import React, { useState, useEffect, useMemo } from 'react';
+import { bulanTerbaru } from '../lib/bulanTerbaru';
 import { apiClient } from '../lib/apiClient';
 import { UnduhJpegKepatuhan } from './UnduhJpegKepatuhan';
 import { UnduhDetailJadwal } from './UnduhDetailJadwal';
@@ -87,7 +88,8 @@ export const NakesComplianceTab: React.FC = () => {
   // Filter states
   const [selectedKabupaten, setSelectedKabupaten] = useState<string>('Semua Kabupaten');
   const [selectedNamaPpk, setSelectedNamaPpk] = useState<string>('Semua Faskes');
-  const [selectedBulan, setSelectedBulan] = useState<string>('September 2026');
+  // Kosong sampai data pertama datang; lalu diisi bulan terbaru dari opsi filter API.
+  const [selectedBulan, setSelectedBulan] = useState<string>('');
   const [selectedTipeFaskes, setSelectedTipeFaskes] = useState<string>('Semua Tipe Faskes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'TERCAPAI' | 'BELUM_TERCAPAI'>('ALL');
@@ -129,6 +131,11 @@ export const NakesComplianceTab: React.FC = () => {
       const res = await apiClient.get<NakesApiResponse>(`/api/v1/fkrtl-kepatuhan/nakes?${params.toString()}`);
       if (res.data && res.data.status === 'success') {
         setApiData(res.data);
+        // Bulan bawaan = bulan terbaru yang tersedia (bukan bulan tetap), juga setelah Reset filter.
+        if (!selectedBulan) {
+          const terbaru = bulanTerbaru(res.data?.filter_options?.bulan);
+          if (terbaru) setSelectedBulan(terbaru);
+        }
       } else {
         throw new Error('Format data tidak sesuai');
       }
