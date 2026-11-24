@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { tanggalData } from '../lib/ssbiJadwal';
 import { angka, labelBulan } from '../lib/suratKontrol';
-import { bersihkanDetailCsv, bulanTersimpan, bulanUnggahDetail } from '../lib/detailSrk';
+import { bacaTeksBerkas, bersihkanDetailCsv, bulanTersimpan, bulanUnggahDetail } from '../lib/detailSrk';
 
 // Bagian "Detail Surat Kontrol" di Integrasi data (USUL-unduh-detail.md Kim; syarat Clara: nomor dibuang di browser).
 type InfoBulan = { bulan: string; baris: number; diunggah_pada: string; diunggah_oleh: string };
@@ -41,7 +41,7 @@ export function UnggahDetailSuratKontrol() {
     if (!berkas || !bulan) { setGalat('Pilih bulan dulu.'); setTahap('galat'); return; }
     setHasil(null); setGz(null); setTahap('memeriksa');
     try {
-      const bersih = bersihkanDetailCsv(await berkas.text());
+      const bersih = bersihkanDetailCsv(bacaTeksBerkas(await berkas.arrayBuffer()));
       if (bersih.galat) { setGalat(bersih.galat); setTahap('galat'); return; }
       const paket = await gzipTeks(bersih.csv);
       const res = await kirim('periksa', bulan, paket);
@@ -106,7 +106,7 @@ export function UnggahDetailSuratKontrol() {
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
           <li>Buka view SSBI 1310_YANFASKES_SRK_FKRTL → Surat Kontrol = SEP, lalu pilih bulan yang sama dengan pilihan di atas.</li>
           <li>Pastikan filter memuat Rawat Jalan dan Rawat Inap, status = SEP dan &gt; SEP.</li>
-          <li>Unduh sebagai CSV, lalu pilih berkasnya di sini tanpa dibuka di Excel.</li>
+          <li>Klik tombol Download, pilih Data, lalu klik Download. Pilih berkas CSV hasilnya di sini tanpa dibuka di Excel.</li>
         </ol>
       </details>
       <div className="mt-2 flex flex-col gap-3 text-sm">

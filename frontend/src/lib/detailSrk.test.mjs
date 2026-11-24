@@ -74,3 +74,22 @@ test('hasil integrasi harus memuat bulan yang diunggah', () => {
   assert.equal(s.bulanTersimpan({ bulan: [{ bulan: '2026-10' }] }, '2026-11'), false);
   assert.equal(s.bulanTersimpan({}, '2026-11'), false);
 });
+
+// --- Berkas SSBI "Download > Data" (temuan Cinta 2026-11-24): UTF-16 LE ber-BOM, pemisah TAB, CRLF, urutan kolom lain. Nilai palsu.
+test('berkas UTF-16LE ber-BOM dengan pemisah tab terbaca dan nomor tetap dibuang', () => {
+  const kepala = ['Nama Faskes', 'Nomor SEP', 'Day, Month, Year of Tgl Terbit Kontrol', 'Day, Month, Year of Tgl SEP', 'Jenis Pelayanan',
+    'Kode Poli Tujuan SEP', 'Nomor Surat Kontrol', 'Status Surat Kontrol'].join('\t');
+  const baris = ['RSD Mawar', '0189R0011125V000123', 'November 3, 2026', 'November 3, 2026', 'Rawat Jalan', 'INT', '0189R0011125K000124',
+    'Tanggal Terbit Kontrol Sama Dengan Tanggal SEP'].join('\t');
+  const isi = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(`${kepala}\r\n${baris}\r\n`, 'utf16le')]);
+  const h = s.bersihkanDetailCsv(s.bacaTeksBerkas(isi.buffer.slice(isi.byteOffset, isi.byteOffset + isi.length)));
+  assert.equal(h.galat, null);
+  assert.equal(h.baris, 1);
+  assert.equal(h.csv.split('\r\n')[1], '0189R001,Rawat Jalan,INT,"November 3, 2026","November 3, 2026",RSD Mawar,Tanggal Terbit Kontrol Sama Dengan Tanggal SEP');
+  assert.ok(!h.csv.includes('V000123') && !h.csv.includes('K000124'));
+});
+
+test('berkas UTF-8 tanpa BOM tetap dibaca sebagai UTF-8', () => {
+  const isi = Buffer.from(`${KEPALA}\r\n${BARIS}\r\n`, 'utf8');
+  assert.equal(s.bersihkanDetailCsv(s.bacaTeksBerkas(isi.buffer.slice(isi.byteOffset, isi.byteOffset + isi.length))).galat, null);
+});

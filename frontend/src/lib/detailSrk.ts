@@ -45,8 +45,15 @@ export function bulanUnggahDetail(sekarang: Date): string[] {
 export const bulanTersimpan = (data: { bulan?: { bulan: string }[] } | null | undefined, bulan: string) =>
   Array.isArray(data?.bulan) && data.bulan.some(b => b?.bulan === bulan);
 
-/** Pembaca CSV RFC 4180 sederhana (kutip ganda, koma, CRLF/LF). */
-function bacaCsv(teks: string): string[][] {
+/** SSBI "Download > Data" memberi UTF-16 LE ber-BOM; selain itu dibaca UTF-8. TextDecoder membuang BOM. */
+export function bacaTeksBerkas(isi: ArrayBuffer): string {
+  const b = new Uint8Array(isi, 0, Math.min(2, isi.byteLength));
+  const kode = b[0] === 0xff && b[1] === 0xfe ? 'utf-16le' : b[0] === 0xfe && b[1] === 0xff ? 'utf-16be' : 'utf-8';
+  return new TextDecoder(kode).decode(isi);
+}
+
+/** Pembaca CSV RFC 4180 sederhana (kutip ganda, koma atau tab, CRLF/LF). */
+function bacaCsv(teks: string, pemisah: string): string[][] {
   const baris: string[][] = [];
   let sel = '', kini: string[] = [], kutip = false;
   for (let i = 0; i < teks.length; i++) {
@@ -54,7 +61,7 @@ function bacaCsv(teks: string): string[][] {
     if (kutip) {
       if (c === '"' && teks[i + 1] === '"') { sel += '"'; i++; } else if (c === '"') kutip = false; else sel += c;
     } else if (c === '"') kutip = true;
-    else if (c === ',') { kini.push(sel); sel = ''; }
+    else if (c === pemisah) { kini.push(sel); sel = ''; }
     else if (c === '\n' || c === '\r') {
       if (c === '\r' && teks[i + 1] === '\n') i++;
       kini.push(sel); baris.push(kini); kini = []; sel = '';
@@ -69,7 +76,9 @@ const kutipCsv = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}
 export type HasilBersih = { csv: string; baris: number; galat: string | null };
 
 export function bersihkanDetailCsv(teks: string): HasilBersih {
-  const rows = bacaCsv(teks.replace(/^﻿/, ''));
+  const bersih = teks.replace(/^\uFEFF/, '');
+  // Judul SSBI memuat koma ("Day, Month, Year of ..."), jadi tab di baris judul berarti berkas TSV.
+  const rows = bacaCsv(bersih, /^[^\r\n]*\t/.test(bersih) ? '\t' : ',');
   if (!rows.length) return { csv: '', baris: 0, galat: 'Berkas tidak berisi baris data.' };
   const kepala = rows[0].map(h => h.trim());
   const posisi = Object.fromEntries(SUMBER.map(n => [n, kepala.indexOf(n)])) as Record<(typeof SUMBER)[number], number>;
