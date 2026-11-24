@@ -93,3 +93,12 @@ test('berkas UTF-8 tanpa BOM tetap dibaca sebagai UTF-8', () => {
   const isi = Buffer.from(`${KEPALA}\r\n${BARIS}\r\n`, 'utf8');
   assert.equal(s.bersihkanDetailCsv(s.bacaTeksBerkas(isi.buffer.slice(isi.byteOffset, isi.byteOffset + isi.length))).galat, null);
 });
+
+// --- Keputusan CEO 2026-11-24 "RJ saja dulu": sheet SSBI hanya berisi Rawat Jalan.
+test('jenis Rawat Inap menonaktifkan Download Detail; Semua diberi catatan hanya Rawat Jalan', () => {
+  const ri = s.batasJenisDetail('RI');
+  assert.equal(ri.nonaktif, true); assert.match(ri.catatan, /Rawat Inap belum tersedia/);
+  const semua = s.batasJenisDetail('semua');
+  assert.equal(semua.nonaktif, false); assert.match(semua.catatan, /hanya berisi Rawat Jalan/); assert.match(semua.catatan, /Rawat Inap belum tersedia/);
+  assert.deepEqual(s.batasJenisDetail('RJ'), { nonaktif: false, catatan: null });
+});

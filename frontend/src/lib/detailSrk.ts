@@ -100,3 +100,10 @@ export function bersihkanDetailCsv(teks: string): HasilBersih {
   if (keluar.length === 1) return { csv: '', baris: 0, galat: 'Berkas tidak berisi baris data.' };
   return { csv: `${keluar.join('\r\n')}\r\n`, baris: keluar.length - 1, galat: null };
 }
+
+/** Keputusan CEO 2026-11-24 "RJ saja dulu": sheet SSBI hanya memuat Rawat Jalan, jadi detail RI belum ada. */
+export function batasJenisDetail(jenis: string): { nonaktif: boolean; catatan: string | null } {
+  if (jenis === 'RI') return { nonaktif: true, catatan: 'Detail Rawat Inap belum tersedia. Saat ini detail hanya untuk Rawat Jalan.' };
+  if (jenis === 'semua') return { nonaktif: false, catatan: 'Berkas hanya berisi Rawat Jalan; detail Rawat Inap belum tersedia.' };
+  return { nonaktif: false, catatan: null };
+}

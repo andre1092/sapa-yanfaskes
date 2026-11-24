@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
+import { batasJenisDetail } from '../lib/detailSrk';
 import { labelBulan } from '../lib/suratKontrol';
 import type { PilihanJenis, PilihanStatus } from '../lib/suratKontrol';
 
@@ -18,11 +19,14 @@ export function TombolDownloadDetail({ bulan, jenis, status, kodeRs, terkunci }:
     staleTime: 60 * 1000,
   });
   const ada = !!bulan && !!q.data?.bulan.includes(bulan);
+  const batas = batasJenisDetail(jenis);
   const ket = status === 'lt' ? 'Detail hanya tersedia untuk SRK tidak sesuai. Ubah filter Status.'
+    : batas.nonaktif ? batas.catatan
     : q.isError ? 'Detail belum bisa dimuat.'
     : !ada ? `Detail SEP ${labelBulan(bulan)} belum tersedia. Admin perlu mengunggahnya di menu Integrasi data.`
-    : keadaan === 'gagal' ? galat : 'Berkas RAHASIA: data pelayanan peserta, tanpa nomor SEP.';
-  const nonaktif = status === 'lt' || !ada || keadaan === 'mengunduh';
+    : keadaan === 'gagal' ? galat
+    : `${batas.catatan ? `${batas.catatan} ` : ''}Berkas RAHASIA: data pelayanan peserta, tanpa nomor SEP.`;
+  const nonaktif = status === 'lt' || batas.nonaktif || !ada || keadaan === 'mengunduh';
 
   const unduh = async () => {
     setKeadaan('mengunduh');
