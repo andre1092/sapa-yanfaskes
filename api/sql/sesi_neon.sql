@@ -2,7 +2,9 @@
 --
 -- Dijalankan pemilik sendiri di konsol SQL Neon sebagai owner database (bukan oleh aplikasi), lalu env Vercel
 -- Production SAPA_SKEMA_MANUAL=1 membuat aplikasi tidak menjalankan DDL sama sekali. Aman dijalankan ulang
--- (IF NOT EXISTS). Tidak ada sandi di berkas ini: role aplikasi dibuat dan diberi sandi lewat konsol Neon.
+-- (IF NOT EXISTS). Tidak ada sandi di berkas ini. Role aplikasi dibuat lewat SQL (bukan tombol Add role, yang
+-- memberi keanggotaan neon_superuser): CREATE ROLE sapa_aplikasi WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+-- NOREPLICATION NOBYPASSRLS; sandinya diatur ulang lewat halaman Roles di konsol Neon (lihat runbook).
 -- Tabel akun sendiri ada di Cloudflare D1 (workers/sapa-akun/migrations/0001_akun.sql), bukan di sini.
 
 CREATE TABLE IF NOT EXISTS sapa_sesi (
@@ -34,7 +36,7 @@ CREATE TABLE IF NOT EXISTS akun_jangkar (
 );
 
 -- Contoh hak role aplikasi (nama contoh: sapa_aplikasi; sesuaikan dengan role yang dipakai DSN
--- SAPA_SESI_DATABASE_URL). Tanpa DDL, tanpa TRUNCATE, dan tanpa DELETE pada jangkar.
+-- SAPA_SESI_DSN_APLIKASI, bukan SAPA_SESI_DATABASE_URL milik integrasi). Tanpa DDL, tanpa TRUNCATE, dan tanpa DELETE pada jangkar.
 -- Sesi dan pembatas butuh DELETE (keluar, pencabutan sesi, pembersihan baris kedaluwarsa).
 GRANT SELECT, INSERT, UPDATE, DELETE ON sapa_sesi TO sapa_aplikasi;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sapa_batas TO sapa_aplikasi;
