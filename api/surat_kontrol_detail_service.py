@@ -296,7 +296,7 @@ def buat_xlsx(baris: List[List[str]], bulan: str, jenis: str, rs: Optional[str],
     kepala = buku.add_format({"bold": True, "bg_color": "#E8EEF5", "border": 1})
     tgl = buku.add_format({"num_format": "dd/mm/yyyy"})
     ws.merge_range(0, 0, 0, len(KOLOM) - 1, "RAHASIA — data pelayanan peserta", rahasia)
-    ws.write_string(1, 0, f"Detail Surat Kontrol tidak sesuai, {label_bulan(bulan)}, {LABEL_JENIS[jenis]}{', ' + rs if rs else ''}", tebal)
+    ws.write_string(1, 0, f"Detail Surat Kontrol tidak sesuai, {label_bulan(bulan)}, {LABEL_JENIS[jenis].capitalize()}{', ' + rs if rs else ''}", tebal)
     ws.write_string(2, 0, "Sumber: SSBI BPJS Kesehatan (1310_YANFASKES_SRK_FKRTL). Tanpa nomor SEP dan nomor surat kontrol.")
     for c, n in enumerate(KOLOM):
         ws.write_string(4, c, n, kepala)

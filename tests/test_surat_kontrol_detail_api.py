@@ -208,4 +208,6 @@ def test_all_types_with_only_outpatient_rows_is_labelled_outpatient(env):
     res = call("GET", "/api/v1/surat-kontrol-detail/detail?bulan=2026-11&jenis=semua&status=semua")
     assert res.status_code == 200
     assert 'filename="Detail_Surat_Kontrol_November_2026_RJ.xlsx"' in res.headers["content-disposition"]
-    assert "Rawat Jalan" in load_workbook(io.BytesIO(res.content)).active["A2"].value
+    ws = load_workbook(io.BytesIO(res.content)).active
+    assert "Rawat jalan" in ws["A2"].value  # judul SAPA, huruf besar sama dengan label filter (review Kim)
+    assert ws["D6"].value == "Rawat Jalan"  # nilai kolom tetap seperti tulisan SSBI
