@@ -4304,6 +4304,9 @@ def surat_kontrol_detail_unduh(request: Request, bulan: str = "", jenis: str = "
         raise HTTPException(status_code=404, detail="Tidak ada detail untuk pilihan filter ini.", headers=_NO_STORE)
     request.state.audit_detail = f"bulan={bulan} jenis={jenis} status={status} baris={len(pilihan)}"
     rs = pilihan[0][1] if kode else None
+    # "Semua" yang isinya satu jenis saja (kini hanya RJ, keputusan CEO 2026-11-24) diberi label jenis itu.
+    jenis_isi = {r[2] for r in pilihan}
+    jenis = jenis_isi.pop() if jenis == "semua" and len(jenis_isi) == 1 else jenis
     isi = surat_kontrol_detail_service.buat_xlsx(pilihan, bulan, jenis, rs, _sk_kabupaten_kode({r[0] for r in pilihan}))
     if len(isi) > _SKD_BATAS_RESPON:
         raise HTTPException(status_code=413, detail="Berkas detail terlalu besar. Persempit filter (jenis pelayanan atau faskes).", headers=_NO_STORE)

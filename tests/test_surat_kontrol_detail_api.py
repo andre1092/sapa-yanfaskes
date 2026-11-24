@@ -199,3 +199,13 @@ def test_integrate_reports_months_including_uploaded_one(env):
     _, _, call, _ = env
     res = unggah(call, bulan="2026-11")
     assert res.status_code == 200 and "2026-11" in [b["bulan"] for b in res.json()["bulan"]]
+
+
+def test_all_types_with_only_outpatient_rows_is_labelled_outpatient(env):
+    # Keputusan CEO 2026-11-24 "RJ saja dulu": berkas "Semua" yang isinya hanya RJ diberi label Rawat Jalan.
+    _, _, call, _ = env
+    unggah(call, raw=csv(BAIK[0]))
+    res = call("GET", "/api/v1/surat-kontrol-detail/detail?bulan=2026-11&jenis=semua&status=semua")
+    assert res.status_code == 200
+    assert 'filename="Detail_Surat_Kontrol_November_2026_RJ.xlsx"' in res.headers["content-disposition"]
+    assert "Rawat Jalan" in load_workbook(io.BytesIO(res.content)).active["A2"].value

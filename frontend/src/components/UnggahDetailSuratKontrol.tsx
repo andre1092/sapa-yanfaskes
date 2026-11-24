@@ -105,8 +105,8 @@ export function UnggahDetailSuratKontrol() {
         <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
           <li>Buka view SSBI 1310_YANFASKES_SRK_FKRTL → Surat Kontrol = SEP, lalu pilih bulan yang sama dengan pilihan di atas.</li>
-          <li>Pastikan filter Status memuat = SEP dan &gt; SEP. Saat ini sheet hanya berisi Rawat Jalan.</li>
-          <li>Klik tombol Download, pilih Data, lalu klik Download. Pilih berkas CSV hasilnya di sini tanpa dibuka di Excel.</li>
+          <li>Pastikan filter Status memuat = SEP dan &gt; SEP. Saat ini sheet hanya berisi Rawat jalan.</li>
+          <li>Di SSBI, klik Download di bilah alat, pilih Data, lalu klik Download di jendela yang terbuka. Pilih berkas CSV hasilnya di sini tanpa dibuka di Excel.</li>
         </ol>
       </details>
       <div className="mt-2 flex flex-col gap-3 text-sm">
