@@ -4,7 +4,7 @@
 -- Production SAPA_SKEMA_MANUAL=1 membuat aplikasi tidak menjalankan DDL sama sekali. Aman dijalankan ulang
 -- (IF NOT EXISTS). Tidak ada sandi di berkas ini. Role aplikasi dibuat lewat SQL (bukan tombol Add role, yang
 -- memberi keanggotaan neon_superuser): CREATE ROLE sapa_aplikasi WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
--- NOREPLICATION NOBYPASSRLS; sandinya diatur lewat Reset password di konsol Neon.
+-- NOREPLICATION NOBYPASSRLS; sandinya diatur ulang lewat halaman Roles di konsol Neon (lihat runbook).
 -- Tabel akun sendiri ada di Cloudflare D1 (workers/sapa-akun/migrations/0001_akun.sql), bukan di sini.
 
 CREATE TABLE IF NOT EXISTS sapa_sesi (
