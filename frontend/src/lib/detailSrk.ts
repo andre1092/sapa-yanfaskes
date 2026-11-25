@@ -31,16 +31,6 @@ export function normalkanSel(nilai: string): string {
 
 export const miripNomor = (nilai: string) => RE_NOMOR_DI_SEL.test(normalkanSel(nilai));
 
-/** Bulan yang boleh diunggah: 3 bulan terakhir (sama dengan jendela retensi server), tidak sebelum November 2026. */
-export function bulanUnggahDetail(sekarang: Date): string[] {
-  const hasil: string[] = [];
-  for (let i = 0, t = sekarang.getFullYear(), b = sekarang.getMonth() + 1; i < 3 && (t > 2026 || (t === 2026 && b >= 11)); i++) {
-    hasil.push(`${t}-${String(b).padStart(2, '0')}`);
-    if (b === 1) { t--; b = 12; } else b--;
-  }
-  return hasil;
-}
-
 /** Jawaban Integrasikan dianggap berhasil hanya bila daftar bulan tersimpan memuat bulan yang diunggah. */
 export const bulanTersimpan = (data: { bulan?: { bulan: string }[] } | null | undefined, bulan: string) =>
   Array.isArray(data?.bulan) && data.bulan.some(b => b?.bulan === bulan);
@@ -106,4 +96,10 @@ export function batasJenisDetail(jenis: string): { nonaktif: boolean; catatan: s
   if (jenis === 'RI') return { nonaktif: true, catatan: 'Detail Rawat inap belum tersedia. Pilih Jenis Rawat jalan untuk mengunduh detail.' };
   if (jenis === 'semua') return { nonaktif: false, catatan: 'Berkas hanya berisi Rawat jalan; detail Rawat inap belum tersedia.' };
   return { nonaktif: false, catatan: null };
+}
+
+/** Beberapa berkas bersih (judul sama, KIRIM) menjadi satu kiriman: judul sekali, baris semua berkas berurutan. */
+export function gabungDetailCsv(daftar: HasilBersih[]): HasilBersih {
+  const baris = daftar.flatMap(h => h.csv.split('\r\n').slice(1).filter(Boolean));
+  return { csv: `${[KIRIM.map(kutipCsv).join(','), ...baris].join('\r\n')}\r\n`, baris: baris.length, galat: null };
 }

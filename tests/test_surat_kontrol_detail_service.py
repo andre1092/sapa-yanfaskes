@@ -32,8 +32,11 @@ BAIK = [("0189R001", "Rawat Jalan", "INT", "November 3, 2026", "November 3, 2026
         ("1330R002", "Rawat Inap", "BED", "November 4, 2026", "November 9, 2026", "MELATI LUMAJANG, RSUD", BESAR)]
 
 
-def periksa(raw, bulan="2026-11"):
-    return dt.periksa_csv(raw, bulan, PADANAN)
+HARI = date(2026, 11, 20)
+
+
+def periksa(raw, hari=HARI):
+    return dt.periksa_csv(raw, PADANAN, hari)
 
 
 def test_valid_rows_are_normalised_without_numbers():
@@ -42,7 +45,8 @@ def test_valid_rows_are_normalised_without_numbers():
         ["0189R001", "RSD Mawar", "RJ", "INT", "2026-11-03", "2026-11-03", "eq"],
         ["1330R002", "MELATI LUMAJANG, RSUD", "RI", "BED", "2026-11-04", "2026-11-09", "gt"],
     ]
-    assert h.ringkasan == {"bulan": "2026-11", "baris": 2, "RJ": {"eq": 1, "gt": 0}, "RI": {"eq": 0, "gt": 1},
+    assert h.ringkasan == {"bulan": ["2026-11"], "baris": 2,
+                           "per_bulan": {"2026-11": {"baris": 2, "RJ": {"eq": 1, "gt": 0}, "RI": {"eq": 0, "gt": 1}}},
                            "faskes": 2, "kode_tak_dikenal": []}
 
 
@@ -79,7 +83,7 @@ def test_code_missing_from_padanan_is_reported_not_refused():
 
 
 @pytest.mark.parametrize("i,nilai,pesan", [(6, "Tanggal Terbit Kontrol Lebih Kecil Tanggal SEP", "Status"),
-                                           (1, "Rawat Darurat", "Jenis"), (3, "October 30, 2026", "bulan"),
+                                           (1, "Rawat Darurat", "Jenis"), (3, "August 30, 2026", "Agustus 2026"),
                                            (3, "2026-11-03", "tanggal"), (2, "X" * 201, "200")])
 def test_invalid_values_are_refused(i, nilai, pesan):
     b = list(BAIK[0]); b[i] = nilai
@@ -95,7 +99,7 @@ def test_empty_file_is_refused():
 def test_storage_keeps_last_three_months_and_filters_on_read():
     s = None
     for bln in ("2026-09", "2026-10", "2026-11", "2026-12"):
-        s = dt.simpanan_baru(s, bln, [["0189R001", "RSD Mawar", "RJ", "INT", f"{bln}-03", f"{bln}-03", "eq"]],
+        s = dt.simpanan_baru(s, [["0189R001", "RSD Mawar", "RJ", "INT", f"{bln}-03", f"{bln}-03", "eq"]],
                              {"diunggah_oleh": "Admin"}, hari_ini=date(2026, 12, 5))
     isi = dt.baca_simpanan(s)
     assert sorted(isi["bulan"]) == ["2026-10", "2026-11", "2026-12"]
@@ -206,13 +210,47 @@ def test_blank_line_flood_is_parsed_lazily():
     assert puncak < 40 * 1024 * 1024
 
 
-@pytest.mark.parametrize("bulan", ["2026-09", "2026-10", "2026-11"])
-def test_upload_month_inside_three_month_window_is_accepted(bulan):
-    assert dt.cek_bulan_unggah(bulan, date(2026, 11, 20)) == bulan
+def _baris_bulan(tgl):
+    b = list(BAIK[0]); b[3] = b[4] = tgl
+    return tuple(b)
 
 
-@pytest.mark.parametrize("bulan,hari", [("2026-08", date(2026, 11, 20)), ("2026-12", date(2026, 11, 20)),
-                                         ("2026-10", date(2027, 1, 2)), ("2027-02", date(2027, 1, 31))])
-def test_upload_month_outside_window_or_future_is_refused(bulan, hari):
+@pytest.mark.parametrize("tgl", ["September 3, 2026", "October 3, 2026", "November 3, 2026"])
+def test_upload_month_inside_three_month_window_is_accepted(tgl):
+    assert periksa(csv(_baris_bulan(tgl))).ringkasan["baris"] == 1
+
+
+@pytest.mark.parametrize("tgl,hari", [("August 3, 2026", date(2026, 11, 20)), ("December 3, 2026", date(2026, 11, 20)),
+                                       ("October 3, 2026", date(2027, 1, 2)), ("February 3, 2027", date(2027, 1, 31))])
+def test_upload_month_outside_window_or_future_is_refused(tgl, hari):
     with pytest.raises(dt.BerkasDitolak, match="3 bulan terakhir"):
-        dt.cek_bulan_unggah(bulan, hari)
+        periksa(csv(_baris_bulan(tgl)), hari)
+
+
+# --- Seret-lepas tanpa pilih bulan (perintah CEO 2026-11-25, "Setuju semua"). Nilai palsu. ---------------------
+
+OKT = ("0189R001", "Rawat Jalan", "INT", "October 30, 2026", "November 2, 2026", "RSD Mawar", BESAR)
+
+
+def test_rows_are_grouped_per_month_of_sep_date():
+    h = periksa(csv(OKT, *BAIK))
+    assert h.ringkasan["bulan"] == ["2026-10", "2026-11"]
+    assert h.ringkasan["per_bulan"]["2026-10"] == {"baris": 1, "RJ": {"eq": 0, "gt": 1}, "RI": {"eq": 0, "gt": 0}}
+    assert h.ringkasan["per_bulan"]["2026-11"]["baris"] == 2 and h.ringkasan["baris"] == 3
+
+
+def test_months_outside_window_refuse_whole_file_and_are_named():
+    agu = list(OKT); agu[3] = "August 3, 2026"; agu[4] = "August 4, 2026"
+    des = list(OKT); des[3] = "December 1, 2026"; des[4] = "December 1, 2026"
+    with pytest.raises(dt.BerkasDitolak) as err:
+        periksa(csv(tuple(agu), BAIK[0], tuple(des)))
+    assert "Agustus 2026" in err.value.pesan and "Desember 2026" in err.value.pesan and "November" not in err.value.pesan
+
+
+def test_new_upload_replaces_only_months_present():
+    lama = dt.simpanan_baru(None, periksa(csv(OKT, BAIK[0])).baris, {"diunggah_oleh": "A"}, hari_ini=HARI)
+    baru = dt.simpanan_baru(lama, periksa(csv(BAIK[1])).baris, {"diunggah_oleh": "B"}, hari_ini=HARI)
+    isi = dt.baca_simpanan(baru)
+    assert isi["bulan"]["2026-10"]["meta"]["diunggah_oleh"] == "A" and len(isi["bulan"]["2026-10"]["baris"]) == 1
+    assert isi["bulan"]["2026-11"]["meta"]["diunggah_oleh"] == "B"
+    assert [b[0] for b in isi["bulan"]["2026-11"]["baris"]] == ["1330R002"]

@@ -72,8 +72,8 @@ def env(monkeypatch):
     return api, drive, call, written
 
 
-def unggah(call, aksi="integrasikan", raw=None, bulan="2026-11", **kw):
-    return call("POST", f"/api/v1/surat-kontrol-detail/{aksi}?bulan={bulan}", content=gzip.compress(raw or csv(*BAIK)), headers=GZ, **kw)
+def unggah(call, aksi="integrasikan", raw=None, **kw):
+    return call("POST", f"/api/v1/surat-kontrol-detail/{aksi}", content=gzip.compress(raw or csv(*BAIK)), headers=GZ, **kw)
 
 
 @pytest.mark.parametrize("aksi", ["periksa", "integrasikan"])
@@ -89,7 +89,7 @@ def test_number_pattern_is_refused_and_nothing_written(env):
     b = list(BAIK[0]); b[2] = "0189R0011125V000123"
     res = unggah(call, raw=csv(tuple(b)))
     assert res.status_code == 400 and "0189R0011125V000123" not in res.text and drive.tulis_n == 0
-    assert "bulan=2026-11" in written[-1]["target"] and "0189R0011125V000123" not in str(written[-1])
+    assert "0189R0011125V000123" not in str(written[-1])
 
 
 def test_check_summary_and_audit(env):
@@ -183,21 +183,22 @@ def test_rejected_upload_is_audited_without_hash(env):
     _, _, call, written = env
     b = list(BAIK[0]); b[5] = "0189 R001 1125 V000123"
     assert unggah(call, "periksa", raw=csv(tuple(b))).status_code == 400
-    assert "bulan=2026-11" in written[-1]["target"] and "sha256=" not in written[-1]["target"]
+    assert "sha256=" not in written[-1]["target"]
 
 
-@pytest.mark.parametrize("bulan", ["2026-08", "2026-12", "2027-01"])
+@pytest.mark.parametrize("bulan", ["August", "December"])
 @pytest.mark.parametrize("aksi", ["periksa", "integrasikan"])
 def test_upload_month_outside_window_is_400(env, aksi, bulan):
     _, drive, call, _ = env
-    res = unggah(call, aksi, bulan=bulan)
+    b = list(BAIK[0]); b[3] = f"{bulan} 3, 2026"; b[4] = f"{bulan} 4, 2026"
+    res = unggah(call, aksi, raw=csv(tuple(b), BAIK[1]))
     assert res.status_code == 400 and "3 bulan terakhir" in res.json()["detail"] and drive.tulis_n == 0
-    assert "Muat ulang halaman" in res.json()["detail"]
+    assert {"August": "Agustus 2026", "December": "Desember 2026"}[bulan] in res.json()["detail"]
 
 
 def test_integrate_reports_months_including_uploaded_one(env):
     _, _, call, _ = env
-    res = unggah(call, bulan="2026-11")
+    res = unggah(call)
     assert res.status_code == 200 and "2026-11" in [b["bulan"] for b in res.json()["bulan"]]
 
 
@@ -211,3 +212,14 @@ def test_all_types_with_only_outpatient_rows_is_labelled_outpatient(env):
     ws = load_workbook(io.BytesIO(res.content)).active
     assert "Rawat jalan" in ws["A2"].value  # judul SAPA, huruf besar sama dengan label filter (review Kim)
     assert ws["D6"].value == "Rawat Jalan"  # nilai kolom tetap seperti tulisan SSBI
+
+
+
+def test_upload_without_month_choice_reports_and_audits_months(env):
+    _, _, call, written = env
+    okt = ("0189R001", "Rawat Jalan", "INT", "October 30, 2026", "November 2, 2026", "RSD Mawar", BESAR)
+    res = unggah(call, "periksa", raw=csv(okt, *BAIK))
+    assert res.status_code == 200 and res.json()["ringkasan"]["bulan"] == ["2026-10", "2026-11"] and res.json()["ada"] == []
+    assert "bulan=2026-10,2026-11" in written[-1]["target"]
+    assert unggah(call, raw=csv(okt, *BAIK)).status_code == 200
+    assert unggah(call, "periksa", raw=csv(BAIK[0])).json()["ada"] == ["2026-11"]

@@ -63,11 +63,6 @@ test('baris dengan jumlah kolom bergeser ditolak', () => {
   assert.match(g, /tanpa dibuka di Excel/);
 });
 
-test('pilihan bulan unggah hanya 3 bulan terakhir, mulai November 2026', () => {
-  assert.deepEqual(s.bulanUnggahDetail(new Date(2026, 10, 20)), ['2026-11']);
-  assert.deepEqual(s.bulanUnggahDetail(new Date(2026, 11, 5)), ['2026-12', '2026-11']);
-  assert.deepEqual(s.bulanUnggahDetail(new Date(2027, 2, 1)), ['2027-03', '2027-02', '2027-01']);
-});
 
 test('hasil integrasi harus memuat bulan yang diunggah', () => {
   assert.equal(s.bulanTersimpan({ bulan: [{ bulan: '2026-11' }] }, '2026-11'), true);
@@ -101,4 +96,16 @@ test('jenis Rawat Inap menonaktifkan Download Detail; Semua diberi catatan hanya
   const semua = s.batasJenisDetail('semua');
   assert.equal(semua.nonaktif, false); assert.match(semua.catatan, /hanya berisi Rawat jalan/); assert.match(semua.catatan, /Rawat inap belum tersedia/);
   assert.deepEqual(s.batasJenisDetail('RJ'), { nonaktif: false, catatan: null });
+});
+
+// --- Seret-lepas beberapa berkas tanpa pilih bulan (CEO 2026-11-25): satu kiriman, satu baris judul.
+test('beberapa berkas bersih digabung menjadi satu CSV dengan satu baris judul', () => {
+  const a = s.bersihkanDetailCsv(`${KEPALA}\r\n${BARIS}\r\n`);
+  const b = s.bersihkanDetailCsv(`${KEPALA}\r\n${BARIS.replace('November 3', 'October 30').replace('November 3', 'November 2')}\r\n`);
+  const g = s.gabungDetailCsv([a, b]);
+  const baris = g.csv.trim().split('\r\n');
+  assert.equal(g.baris, 2); assert.equal(baris.length, 3);
+  assert.equal(baris[0], a.csv.split('\r\n')[0]);
+  assert.equal(baris[1], a.csv.split('\r\n')[1]); assert.equal(baris[2], b.csv.split('\r\n')[1]);
+  assert.ok(g.csv.endsWith('\r\n'));
 });
