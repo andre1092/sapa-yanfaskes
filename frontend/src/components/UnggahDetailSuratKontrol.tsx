@@ -114,7 +114,7 @@ export function UnggahDetailSuratKontrol() {
           <input type="file" accept=".csv,text/csv" multiple className="sr-only" disabled={sibuk} aria-label="Pilih berkas detail surat kontrol"
             onChange={(e: ChangeEvent<HTMLInputElement>) => { void pilih(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
         </label>
-        <span className="text-xs text-[var(--text-muted)]">Boleh lebih dari satu berkas. Hanya data 3 bulan terakhir yang bisa diunggah.</span>
+        <span className="text-xs text-[var(--text-muted)]">Boleh lebih dari satu berkas. Hanya data 3 bulan terakhir yang bisa diunggah. Unggah semua berkas satu bulan sekaligus, karena unggahan berikutnya mengganti seluruh bulan itu.</span>
       </div>
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
