@@ -4194,17 +4194,12 @@ def require_skd_unduh(request: Request) -> dict:
     return {"claims": claims, "kode": kode}
 
 
-async def _skd_terima(request: Request, bulan: str):
+async def _skd_terima(request: Request):
+    """Tanpa pilih bulan (CEO 2026-11-25): bulan diambil dari Tgl SEP dan dicek jendela 3 bulan di layanan."""
     from starlette.concurrency import run_in_threadpool
 
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != _SSBI_JENIS:
         raise HTTPException(status_code=415, detail="Berkas harus dikirim dari halaman Integrasi data.", headers=_NO_STORE)
-    bulan = _sk_bulan_param(bulan)
-    request.state.audit_detail = f"bulan={bulan}"
-    try:
-        surat_kontrol_detail_service.cek_bulan_unggah(bulan, _sk_hari_ini())
-    except surat_kontrol_detail_service.BerkasDitolak as exc:
-        raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
     padanan = _skd_padanan()
     batas = surat_kontrol_detail_service.BATAS_KOMPRES
     besar = HTTPException(status_code=413, detail="Berkas terlalu besar untuk dikirim (batas 4 MB setelah dikompres).", headers=_NO_STORE)
@@ -4220,7 +4215,7 @@ async def _skd_terima(request: Request, bulan: str):
             raise besar
 
     def olah():
-        return surat_kontrol_detail_service.periksa_csv(surat_kontrol_detail_service.buka_gzip(bytes(data)), bulan, padanan)
+        return surat_kontrol_detail_service.periksa_csv(surat_kontrol_detail_service.buka_gzip(bytes(data)), padanan, _sk_hari_ini())
 
     try:
         hasil = await run_in_threadpool(olah)
@@ -4228,10 +4223,10 @@ async def _skd_terima(request: Request, bulan: str):
         raise HTTPException(status_code=400, detail=exc.pesan, headers=_NO_STORE)
     # sha256 hanya untuk kiriman yang lolos pemeriksaan (sudah pasti tanpa pola nomor; syarat Clara C, review butir 4).
     # Kode tak terpadan dicatat jumlah dan kodenya saja, tanpa nama faskes (review butir 2c).
-    tak = hasil.ringkasan["kode_tak_dikenal"]
-    request.state.audit_detail = (f"bulan={bulan} tak_terpadan={len(tak)} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
+    tak, bulan = hasil.ringkasan["kode_tak_dikenal"], hasil.ringkasan["bulan"]
+    request.state.audit_detail = (f"bulan={','.join(bulan)} tak_terpadan={len(tak)} sha256={hashlib.sha256(bytes(data)).hexdigest()}"
                                   + (f" kode={','.join(tak[:12])}" if tak else ""))
-    return bulan, hasil
+    return hasil
 
 
 def _skd_ringkas(bulan: str, v: dict) -> dict:
@@ -4241,20 +4236,20 @@ def _skd_ringkas(bulan: str, v: dict) -> dict:
 
 
 @app.post("/api/v1/surat-kontrol-detail/periksa")
-async def surat_kontrol_detail_periksa(request: Request, bulan: str = "", user=Depends(require_admin)):
-    bulan, hasil = await _skd_terima(request, bulan)
+async def surat_kontrol_detail_periksa(request: Request, user=Depends(require_admin)):
+    hasil = await _skd_terima(request)
     try:
-        ada = bulan in _skd_aktif()
+        ada = [b for b in hasil.ringkasan["bulan"] if b in _skd_aktif()]
     except HTTPException:
-        ada = False
+        ada = []
     return JSONResponse(headers=_NO_STORE, content={"ringkasan": hasil.ringkasan, "ada": ada})
 
 
 @app.post("/api/v1/surat-kontrol-detail/integrasikan")
-async def surat_kontrol_detail_integrasikan(request: Request, bulan: str = "", user=Depends(require_admin)):
+async def surat_kontrol_detail_integrasikan(request: Request, user=Depends(require_admin)):
     from starlette.concurrency import run_in_threadpool
 
-    bulan, hasil = await _skd_terima(request, bulan)
+    hasil = await _skd_terima(request)
     meta = {"diunggah_pada": datetime.now(WIB).strftime("%Y-%m-%dT%H:%M:%S+07:00"),
             "diunggah_oleh": await run_in_threadpool(_ssbi_nama_admin, user)}
     async with _ssbi_kunci(_SKD_KUNCI) as dapat:
@@ -4266,8 +4261,9 @@ async def surat_kontrol_detail_integrasikan(request: Request, bulan: str = "", u
             if ukuran > surat_kontrol_detail_service.BATAS_MENTAH * 2:
                 raise ValueError("berkas detail melebihi batas")
             lama = _skd_drive_unduh() if ukuran else b""
-            baru = surat_kontrol_detail_service.simpanan_baru(lama, bulan, hasil.baris, meta, _sk_hari_ini())
-            versi, _ = _skd_drive_tulis(baru, {"bulan_terakhir_diunggah": bulan, "diperbarui": meta["diunggah_pada"]})
+            baru = surat_kontrol_detail_service.simpanan_baru(lama, hasil.baris, meta, _sk_hari_ini())
+            versi, _ = _skd_drive_tulis(baru, {"bulan_terakhir_diunggah": ",".join(hasil.ringkasan["bulan"]),
+                                               "diperbarui": meta["diunggah_pada"]})
             return versi, surat_kontrol_detail_service.baca_simpanan(baru)
 
         versi, isi = await run_in_threadpool(_skd_drive, ganti)

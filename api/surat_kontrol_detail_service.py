@@ -85,12 +85,9 @@ def mirip_nomor(nilai: str) -> bool:
     return bool(_RE_NOMOR.search(n) or _RE_POTONGAN.search(n))
 
 
-def cek_bulan_unggah(bulan: str, hari_ini: date) -> str:
+def _dalam_jendela(bulan: str, hari_ini: date) -> bool:
     """Review Clara butir 6: unggah hanya untuk 3 bulan terakhir (bulan berjalan WIB dan dua sebelumnya)."""
-    cek_bulan(bulan)
-    if not (_bulan_minimum(hari_ini) <= bulan <= f"{hari_ini.year}-{hari_ini.month:02d}"):
-        raise BerkasDitolak("Bulan data harus salah satu dari 3 bulan terakhir. Muat ulang halaman untuk melihat pilihan bulan terbaru.")
-    return bulan
+    return _bulan_minimum(hari_ini) <= bulan <= f"{hari_ini.year}-{hari_ini.month:02d}"
 
 
 def norm(nama: str) -> str:
@@ -139,7 +136,7 @@ def _galat(nomor: int, kolom: str, alasan: str) -> BerkasDitolak:
     return BerkasDitolak(f"Isi berkas tidak sesuai di baris {nomor}, kolom {kolom}: {alasan}. Tidak ada data yang diubah.")
 
 
-def periksa_csv(raw: bytes, bulan: str, padanan: Dict[str, Set[str]]) -> HasilPeriksa:
+def periksa_csv(raw: bytes, padanan: Dict[str, Set[str]], hari_ini: date) -> HasilPeriksa:
     """`padanan`: kode PPK -> himpunan nama faskes baku (norm).
 
     Kode di luar padanan diterima dengan syarat (review Clara butir 2): namanya bukan nama padanan milik kode lain,
@@ -165,7 +162,7 @@ def periksa_csv(raw: bytes, bulan: str, padanan: Dict[str, Set[str]]) -> HasilPe
         raise BerkasDitolak("Kolom berkas tidak sesuai view SSBI Surat Kontrol = SEP.")
     milik: Dict[str, str] = {n: k for k, nama in padanan.items() for n in nama}
     hasil: List[List[str]] = []
-    ring = {"RJ": {"eq": 0, "gt": 0}, "RI": {"eq": 0, "gt": 0}}
+    per_bulan: Dict[str, dict] = {}  # bulan diambil dari Tgl SEP (seret-lepas tanpa pilih bulan, CEO 2026-11-25)
     tak_dikenal: Dict[str, str] = {}
     nomor = 1
     try:
@@ -203,16 +200,21 @@ def periksa_csv(raw: bytes, bulan: str, padanan: Dict[str, Set[str]]) -> HasilPe
             a, b = _tgl(t_sep), _tgl(t_terbit)
             if a is None or b is None:
                 raise _galat(nomor, "Tgl SEP/Tgl Terbit", "tanggal tidak terbaca")
-            if a[:7] != bulan:
-                raise _galat(nomor, "Tgl SEP", f"bukan {label_bulan(bulan)}; periksa bulan yang dipilih")
             j, s = JENIS[jenis], STATUS[status]
+            ring = per_bulan.setdefault(a[:7], {"baris": 0, "RJ": {"eq": 0, "gt": 0}, "RI": {"eq": 0, "gt": 0}})
+            ring["baris"] += 1
             ring[j][s] += 1
             hasil.append([kode, nama, j, poli, a, b, s])
     except csv.Error:
         raise BerkasDitolak("Berkas CSV tidak terbaca. Unduh ulang dari SSBI.") from None
     if not hasil:
         raise BerkasDitolak("Berkas tidak berisi baris data.")
-    return HasilPeriksa(hasil, {"bulan": bulan, "baris": len(hasil), **ring,
+    bulan = sorted(per_bulan)
+    luar = [label_bulan(b) for b in bulan if not _dalam_jendela(b, hari_ini)]
+    if luar:  # keputusan CEO 2026-11-25: seluruh kiriman ditolak, pesan menyebut bulannya
+        raise BerkasDitolak(f"Berkas memuat bulan di luar 3 bulan terakhir atau bulan yang akan datang: {', '.join(luar)}. "
+                            "Hapus baris bulan itu di filter SSBI, lalu unduh ulang. Tidak ada data yang diubah.")
+    return HasilPeriksa(hasil, {"bulan": bulan, "baris": len(hasil), "per_bulan": per_bulan,
                                 "faskes": len({b[0] for b in hasil}), "kode_tak_dikenal": sorted(tak_dikenal)})
 
 
@@ -247,9 +249,11 @@ def bulan_aktif(isi: dict, hari_ini: date) -> Dict[str, dict]:
     return {b: v for b, v in isi["bulan"].items() if b >= batas}
 
 
-def simpanan_baru(lama: Optional[bytes], bulan: str, baris: List[List[str]], meta: Dict[str, str], hari_ini: date) -> bytes:
+def simpanan_baru(lama: Optional[bytes], baris: List[List[str]], meta: Dict[str, str], hari_ini: date) -> bytes:
+    """Setiap bulan Tgl SEP yang ada di `baris` menggantikan bulan itu; bulan lain tidak berubah."""
     isi = baca_simpanan(lama or b"")
-    isi["bulan"][cek_bulan(bulan)] = {"baris": baris, "meta": dict(meta)}
+    for bulan in {b[4][:7] for b in baris}:
+        isi["bulan"][cek_bulan(bulan)] = {"baris": [b for b in baris if b[4][:7] == bulan], "meta": dict(meta)}
     isi["bulan"] = dict(sorted(bulan_aktif(isi, hari_ini).items()))
     return gzip.compress(json.dumps(isi, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), mtime=0)
 
