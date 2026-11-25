@@ -213,7 +213,7 @@ def periksa_csv(raw: bytes, padanan: Dict[str, Set[str]], hari_ini: date) -> Has
     luar = [label_bulan(b) for b in bulan if not _dalam_jendela(b, hari_ini)]
     if luar:  # keputusan CEO 2026-11-25: seluruh kiriman ditolak, pesan menyebut bulannya
         raise BerkasDitolak(f"Berkas memuat bulan di luar 3 bulan terakhir atau bulan yang akan datang: {', '.join(luar)}. "
-                            "Hapus baris bulan itu di filter SSBI, lalu unduh ulang. Tidak ada data yang diubah.")
+                            "Hapus bulan itu dari filter SSBI, lalu unduh ulang. Tidak ada data yang diubah.")
     return HasilPeriksa(hasil, {"bulan": bulan, "baris": len(hasil), "per_bulan": per_bulan,
                                 "faskes": len({b[0] for b in hasil}), "kode_tak_dikenal": sorted(tak_dikenal)})
 

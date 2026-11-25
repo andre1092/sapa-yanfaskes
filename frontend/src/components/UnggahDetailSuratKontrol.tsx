@@ -25,7 +25,8 @@ async function gzipTeks(teks: string): Promise<Blob> {
 const kirim = (aksi: 'periksa' | 'integrasikan', gz: Blob) =>
   apiClient.post(`/api/v1/surat-kontrol-detail/${aksi}`, gz, { headers: { 'Content-Type': 'application/gzip' }, timeout: 120000 });
 
-const daftarBulan = (bulan: string[]) => bulan.map(labelBulan).join(', ');
+const daftar = (isi: string[]) => new Intl.ListFormat('id', { type: 'conjunction' }).format(isi);
+const daftarBulan = (bulan: string[]) => daftar(bulan.map(labelBulan));
 
 export function UnggahDetailSuratKontrol() {
   const qc = useQueryClient();
@@ -47,6 +48,10 @@ export function UnggahDetailSuratKontrol() {
     try {
       const bersih = [];
       for (const berkas of daftar) {
+        // `accept` hanya berlaku di pemilih berkas; berkas yang diseret dicek ekstensinya di sini.
+        if (!/\.csv$/i.test(berkas.name)) {
+          setGalat(`${berkas.name}: bukan berkas CSV. Unduh dari SSBI lewat Download > Data, lalu seret berkas CSV-nya ke sini.`); setTahap('galat'); return;
+        }
         const b = bersihkanDetailCsv(bacaTeksBerkas(await berkas.arrayBuffer()));
         if (b.galat) { setGalat(daftar.length > 1 ? `${berkas.name}: ${b.galat}` : b.galat); setTahap('galat'); return; }
         bersih.push(b);
@@ -98,7 +103,7 @@ export function UnggahDetailSuratKontrol() {
             <td>{tanggalData(b.diunggah_pada, true)}</td><td>{b.diunggah_oleh}</td></tr>)}</tbody></table>}
       <div
         onDragOver={e => { e.preventDefault(); if (!sibuk) setSeret(true); }}
-        onDragLeave={() => setSeret(false)}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSeret(false); }}
         onDrop={onDrop}
         className={`mt-4 flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center text-sm ${
           seret ? 'border-[var(--action-primary)] bg-[var(--surface-subtle)]' : 'border-[var(--border-color)]'} ${sibuk ? 'opacity-60' : ''}`}
@@ -114,7 +119,7 @@ export function UnggahDetailSuratKontrol() {
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer py-3 font-semibold text-[var(--text-main)]">Cara mengambil berkas dari SSBI</summary>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-[var(--text-muted)]">
-          <li>Buka view SSBI 1310_YANFASKES_SRK_FKRTL → Surat Kontrol = SEP, lalu pilih bulan Tgl SEP yang ingin diperbarui (paling lama 3 bulan terakhir).</li>
+          <li>Buka view SSBI 1310_YANFASKES_SRK_FKRTL → Surat Kontrol = SEP, lalu pilih bulan Tgl SEP yang ingin diperbarui (hanya 3 bulan terakhir). Satu berkas boleh berisi beberapa bulan.</li>
           <li>Pastikan filter Status memuat = SEP dan &gt; SEP. Saat ini sheet hanya berisi Rawat jalan.</li>
           <li>Di SSBI, klik Download di bilah alat, pilih Data, lalu klik Download di jendela yang terbuka. Seret berkas CSV hasilnya ke sini tanpa dibuka di Excel.</li>
         </ol>
@@ -123,13 +128,13 @@ export function UnggahDetailSuratKontrol() {
         {tahap === 'memeriksa' && <p role="status" className="text-[var(--text-muted)]">Membuang nomor dan memeriksa berkas…</p>}
         {tahap === 'galat' && <p role="alert" className="rounded-lg border border-[var(--danger)] p-3 text-[var(--danger)]">{galat}</p>}
         {r && tahap !== 'berhasil' && <div role="status" className="rounded-lg bg-[var(--surface-subtle)] p-3 text-[var(--text-main)]">
-          <p>{angka(r.baris)} baris, {angka(r.faskes)} faskes.</p>
+          <p>Total {angka(r.baris)} baris, {angka(r.faskes)} faskes, {r.bulan.length} bulan.</p>
           <ul className="mt-1 space-y-1">{r.bulan.map(b => { const v = r.per_bulan[b]; return <li key={b}><strong>{labelBulan(b)}:</strong> {angka(v.baris)} baris.
-            Rawat jalan = SEP {angka(v.RJ.eq)} · &gt; SEP {angka(v.RJ.gt)}; Rawat inap = SEP {angka(v.RI.eq)} · &gt; SEP {angka(v.RI.gt)}.</li>; })}</ul>
+            Rawat jalan = SEP {angka(v.RJ.eq)} · &gt; SEP {angka(v.RJ.gt)}{v.RI.eq + v.RI.gt > 0 && <>; Rawat inap = SEP {angka(v.RI.eq)} · &gt; SEP {angka(v.RI.gt)}</>}.</li>; })}</ul>
           {r.kode_tak_dikenal.length > 0 && <p className="mt-2 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
             <strong>Periksa sebelum Integrasikan:</strong> {r.kode_tak_dikenal.length} kode faskes belum ada di tabel padanan ({r.kode_tak_dikenal.join('; ')}). Nama faskes untuk kode ini tidak bisa dicek, jadi pastikan berkasnya benar. Minta tim teknis SAPA menambahkan kode ini ke tabel padanan.</p>}
           {hasil.ada.length > 0 && <p className="mt-2 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
-            Detail yang sekarang akan diganti: {hasil.ada.map(b => { const n = barisLama(b); return `${labelBulan(b)}${n !== undefined ? ` (${angka(n)} baris)` : ''}`; }).join(', ')}. Bulan lain tidak berubah.</p>}
+            Detail yang sekarang akan diganti: {daftar(hasil.ada.map(b => { const n = barisLama(b); return `${labelBulan(b)}${n !== undefined ? ` (${angka(n)} baris)` : ''}`; }))}. Bulan lain tidak berubah.</p>}
         </div>}
         {tahap === 'berhasil' && r && <p role="status" className="rounded-lg border border-[var(--success)] p-3 text-[var(--text-main)]">Detail {daftarBulan(r.bulan)} tersimpan.</p>}
       </div>
