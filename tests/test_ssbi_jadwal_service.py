@@ -246,7 +246,13 @@ def test_mapping_is_exact_after_trim_space_and_case(tmp_path):
 
 def test_mapping_file_in_repo_is_one_to_one():
     padanan = ssbi.Padanan.dari_berkas()
-    assert len(padanan.kode) == 25
+    assert len(padanan.kode) == 27
+
+
+def test_mapping_file_covers_the_two_fkrtl_added_in_november_2026():
+    padanan = ssbi.Padanan.dari_berkas()
+    assert padanan.untuk_kode("0188S002") == ("KLINIK UTAMA PANASEA", {"klinik utama panasea"})
+    assert padanan.untuk_kode("0191R006") == ("RS CAHYA MEDIKA", {"rs cahya medika"})
 
 
 def test_data_after_the_first_gzip_member_is_refused():
